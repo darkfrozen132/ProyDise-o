@@ -143,3 +143,128 @@ Este framework es adecuado para problemas de:
 - Java 8+
 - Sin dependencias externas
 - Framework completamente autónomo
+
+---
+
+## 📑 Pseudocódigo Simple de las Clases Java Principales
+
+### Individuo.java
+```
+Clase abstracta Individuo:
+    - genotipo: arreglo de genes
+    - fitness: valor de aptitud
+    Métodos:
+        crearGenotipo(tamaño)
+        calcularFitness()
+        clonar()
+        inicializarAleatorio()
+        get/set genotipo y genes
+        getFitness() // calcula si no está calculado
+```
+
+### Poblacion.java
+```
+Clase Poblacion:
+    - individuos: lista de Individuo
+    - tamaño: máximo
+    Métodos:
+        añadirIndividuo()
+        getIndividuo(indice)
+        ordenar() // por fitness
+        getMejorIndividuo()
+        getFitnessPromedio/Maximo/Minimo()
+        limpiar()
+```
+
+### AlgoritmoGenetico.java
+```
+Clase AlgoritmoGenetico:
+    - operadores: seleccion, cruce, mutacion
+    - parámetros: tamañoPoblacion, generaciones, probabilidadCruce, probabilidadMutacion, elitismo
+    Métodos:
+        ejecutar(poblacionInicial):
+            por cada generación:
+                evaluar fitness
+                registrar estadísticas
+                crear nueva generación (selección, cruce, mutación, elitismo)
+            devolver mejor individuo
+```
+
+### Operadores (Cruce, Mutación, Selección)
+```
+Interfaz OperadorCruce:
+    cruzar(padre1, padre2) -> hijos
+
+Interfaz OperadorMutacion:
+    mutar(individuo, probabilidad)
+
+Interfaz OperadorSeleccion:
+    seleccionar(poblacion) -> individuo
+```
+
+Ejemplo de implementación:
+```
+CruceUnPunto:
+    - Elegir punto de corte
+    - Intercambiar genes después del punto
+
+MutacionBitFlip:
+    - Para cada gen, con probabilidad, invertir el bit
+
+SeleccionRuleta:
+    - Seleccionar individuo proporcional a su fitness
+```
+
+---
+
+## 📑 Pseudocódigo de AlgoritmoGenético_WRoute (Ejemplo de aplicación)
+
+```
+Función AlgoritmoGenético_WRoute():
+    • Inicializar parámetros
+        - Definir poblaciónTamaño, tasaMutación, generaciones
+        - Cargar datos de entrada: pedidos, camiones, tanques, y la grilla de rutas
+    • Inicializar población:
+        - población ← InicializarPoblación(poblaciónTamaño, pedidos, camiones)
+    • Bucle evolutivo:
+        Para i desde 1 hasta generaciones:
+            ○ Para cada cromosoma en población:
+                – calcularFitness ← EvaluarFitness(cromosoma)
+            ○ Seleccionar el mejor cromosoma de la población actual
+            ○ Si el mejor cromosoma tiene mayor calidad que la solución global:
+                – actualizar mejorSolución
+            ○ Generar nuevos individuos:
+                – padres ← SeleccionarPadres(población)
+                – hijo ← Cruzar(padres)
+                – hijo ← Mutar(hijo, tasaMutación)
+            ○ Reemplazar uno (o algunos) de los cromosomas de la población con el hijo
+    • Retornar:
+        - mejorSolución con el menor costo (mejor aptitud) encontrado
+
+Función InicializarPoblación(tamaño, pedidos, camiones):
+    • Crear una lista vacía población
+    • Para i desde 1 hasta tamaño:
+        ○ Inicializar un cromosoma vacío
+        ○ Para cada camión en camiones:
+            – Generar una ruta aleatoria (mezclando el orden de los pedidos)
+            – Agregar la configuración (asociada al camión) al cromosoma
+        ○ Agregar el cromosoma a población
+    • Retornar población
+
+Función EvaluarFitness(cromosoma):
+    • Inicializar totalCosto = 0
+    • Para cada par (camión, ruta) en el cromosoma:
+        ○ Simular la ruta en la grilla para obtener métricas (distancia recorrida, tiempo de entrega, consumo de combustible, cumplimiento de plazos)
+        ○ Calcular el costo de la ruta utilizando estos factores
+        ○ Acumular el costo en totalCosto
+    • Retornar totalCosto
+
+Función Cruzar(padres):
+    • Recibir dos padres (por ejemplo, padre1 y padre2)
+    • Para cada posición en la secuencia de la ruta:
+        ○ Si la posición es par, tomar el gen (índice del pedido) de padre1; de lo contrario, de padre2
+    • Formar el cromosoma hijo con la combinación resultante
+    • Retornar el cromosoma hijo
+```
+
+---

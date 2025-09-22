@@ -60,11 +60,25 @@ public abstract class Individuo<T> implements Comparable<Individuo<T>> {
         genotipo[indice] = valor;
         this.fitnessCalculado = false;
     }
-    
+
     public int getTamaño() {
         return genotipo.length;
     }
-    
+
+    /**
+     * Indica si el fitness ya fue calculado para el individuo.
+     */
+    public boolean isFitnessCalculado() {
+        return fitnessCalculado;
+    }
+
+    /**
+     * Marca el fitness como desactualizado para que se vuelva a calcular.
+     */
+    public void invalidarFitness() {
+        this.fitnessCalculado = false;
+    }
+
     public double getFitness() {
         if (!fitnessCalculado) {
             fitness = calcularFitness();

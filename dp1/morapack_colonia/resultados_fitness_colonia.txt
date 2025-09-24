@@ -1,0 +1,30 @@
+RESULTADOS DE 20 EJECUCIONES - ALGORITMO COLONIA DE HORMIGAS
+============================================================
+Archivo: datos/pedidos/pedidos_prueba_final.csv
+============================================================
+
+Ejecucion 01: Fitness=45013.50, Semilla=1112
+Ejecucion 02: Fitness=44760.75, Semilla=1113
+Ejecucion 03: Fitness=46175.00, Semilla=1114
+Ejecucion 04: Fitness=42480.00, Semilla=1115
+Ejecucion 05: Fitness=45158.00, Semilla=1116
+Ejecucion 06: Fitness=46135.75, Semilla=1117
+Ejecucion 07: Fitness=46043.75, Semilla=1118
+Ejecucion 08: Fitness=45411.00, Semilla=1119
+Ejecucion 09: Fitness=45573.00, Semilla=1120
+Ejecucion 10: Fitness=45510.50, Semilla=1121
+Ejecucion 11: Fitness=44060.25, Semilla=1122
+Ejecucion 12: Fitness=45327.50, Semilla=1123
+Ejecucion 13: Fitness=45022.75, Semilla=1124
+Ejecucion 14: Fitness=47325.75, Semilla=1125
+Ejecucion 15: Fitness=44933.75, Semilla=1126
+Ejecucion 16: Fitness=47512.75, Semilla=1127
+Ejecucion 17: Fitness=46987.25, Semilla=1128
+Ejecucion 18: Fitness=46664.50, Semilla=1129
+Ejecucion 19: Fitness=45117.75, Semilla=1130
+Ejecucion 20: Fitness=44562.50, Semilla=1131
+
+=== RESUMEN ===
+Fitness Promedio: 45488.80
+Mejor Fitness: 47512.75
+Peor Fitness: 42480.00

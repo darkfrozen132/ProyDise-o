@@ -2,7 +2,6 @@ package morapack.genetico.core.algoritmo;
 
 import morapack.modelo.Pedido;
 import morapack.modelo.Vuelo;
-import morapack.planificacion.PlanificadorConexiones;
 import morapack.planificacion.PlanificadorAvanzadoEscalas;
 import morapack.planificacion.RutaCompleta;
 import java.util.*;
@@ -24,11 +23,12 @@ public class AlgoritmoGeneticoIntegrado {
     // Datos del problema
     private final List<Pedido> pedidos;
     private final List<Vuelo> vuelos;
-    private final PlanificadorConexiones planificador;
+    private final PlanificadorAvanzadoEscalas planificador;
     private final PlanificadorAvanzadoEscalas planificadorAvanzado;
     
     // Control de ejecución
     private final Random random;
+    private final long semillaBase;
     
     // Estadísticas
     private List<Double> fitnessPromedioPorGeneracion;
@@ -37,6 +37,11 @@ public class AlgoritmoGeneticoIntegrado {
     
     public AlgoritmoGeneticoIntegrado(List<Pedido> pedidos, List<Vuelo> vuelos, 
                                      int tamanoPoblacion, int numeroGeneraciones) {
+        this(pedidos, vuelos, tamanoPoblacion, numeroGeneraciones, System.nanoTime());
+    }
+    
+    public AlgoritmoGeneticoIntegrado(List<Pedido> pedidos, List<Vuelo> vuelos, 
+                                     int tamanoPoblacion, int numeroGeneraciones, long seed) {
         this.pedidos = pedidos;
         this.vuelos = vuelos;
         this.tamanoPoblacion = tamanoPoblacion;
@@ -44,13 +49,13 @@ public class AlgoritmoGeneticoIntegrado {
         this.probabilidadCruce = 0.8;
         this.probabilidadMutacion = 0.1;
         this.elitismo = true;
-        this.tamanoElite = Math.max(1, tamanoPoblacion / 10);
-        
-        this.planificador = new PlanificadorConexiones(vuelos);
+        this.tamanoElite = Math.max(1, tamanoPoblacion / 10);        
+        this.planificador = new PlanificadorAvanzadoEscalas(vuelos);
         this.planificadorAvanzado = new PlanificadorAvanzadoEscalas(vuelos);
-        this.random = new Random();
+        this.semillaBase = seed;
+        this.random = new Random(seed);
         
-        // Inicializar estadísticas
+        
         this.fitnessPromedioPorGeneracion = new ArrayList<>();
         this.fitnessMaximoPorGeneracion = new ArrayList<>();
         this.mejoresSolucionesPorGeneracion = new ArrayList<>();
@@ -60,14 +65,7 @@ public class AlgoritmoGeneticoIntegrado {
      * Ejecuta el algoritmo genético con planificación completa
      */
     public IndividuoIntegrado ejecutar() {
-        System.out.println("🧬 INICIANDO ALGORITMO GENÉTICO INTEGRADO");
-        System.out.println("================================================");
-        System.out.println("📊 Pedidos: " + pedidos.size());
-        System.out.println("✈️ Vuelos: " + vuelos.size());
-        System.out.println("👥 Población: " + tamanoPoblacion);
-        System.out.println("🔄 Generaciones: " + numeroGeneraciones);
-        System.out.println("🎯 Cruce: " + (probabilidadCruce * 100) + "%");
-        System.out.println("🔀 Mutación: " + (probabilidadMutacion * 100) + "%");
+        System.out.println("Algoritmo Genético - Pedidos: " + pedidos.size() + ", Población: " + tamanoPoblacion + ", Generaciones: " + numeroGeneraciones);
         
         // 1. INICIALIZACIÓN
         List<IndividuoIntegrado> poblacion = inicializarPoblacion();
@@ -76,7 +74,7 @@ public class AlgoritmoGeneticoIntegrado {
         IndividuoIntegrado mejorGlobal = Collections.max(poblacion, 
                                       Comparator.comparingDouble(IndividuoIntegrado::getFitness));
         
-        System.out.println("🎯 Fitness inicial del mejor: " + String.format("%.2f", mejorGlobal.getFitness()));
+        System.out.println("Fitness inicial: " + String.format("%.2f", mejorGlobal.getFitness()));
         
         // 2. EVOLUCIÓN
         for (int generacion = 0; generacion < numeroGeneraciones; generacion++) {
@@ -126,16 +124,13 @@ public class AlgoritmoGeneticoIntegrado {
             
             // Mostrar progreso
             if ((generacion + 1) % 10 == 0 || generacion == 0) {
-                System.out.printf("📈 Gen %3d: Mejor=%.2f | Promedio=%.2f | Rutas planificadas=%d%n", 
-                                generacion + 1, mejorGeneracion.getFitness(), fitnessPromedio,
-                                mejorGeneracion.contarRutasPlanificadas());
+                System.out.printf("Gen %3d: Fitness=%.2f%n", 
+                                generacion + 1, mejorGeneracion.getFitness());
             }
         }
         
-        System.out.println("\n🏆 EVOLUCIÓN COMPLETADA");
-        System.out.println("========================");
-        System.out.println("🎯 Fitness final: " + String.format("%.2f", mejorGlobal.getFitness()));
-        System.out.println("📋 Rutas planificadas: " + mejorGlobal.contarRutasPlanificadas() + "/" + pedidos.size());
+        System.out.println("Fitness final: " + String.format("%.2f", mejorGlobal.getFitness()));
+        System.out.println("Rutas encontradas: " + mejorGlobal.contarRutasPlanificadas() + "/" + pedidos.size());
         
         return mejorGlobal;
     }
@@ -147,7 +142,9 @@ public class AlgoritmoGeneticoIntegrado {
         List<IndividuoIntegrado> poblacion = new ArrayList<>();
         
         for (int i = 0; i < tamanoPoblacion; i++) {
-            IndividuoIntegrado individuo = new IndividuoIntegrado(pedidos, planificador, planificadorAvanzado);
+            // Generar semilla derivada para cada individuo
+            long semillaIndividuo = semillaBase + i;
+            IndividuoIntegrado individuo = new IndividuoIntegrado(pedidos, planificador, planificadorAvanzado, semillaIndividuo);
             individuo.inicializarConPlanificacion();
             poblacion.add(individuo);
         }
@@ -189,7 +186,9 @@ public class AlgoritmoGeneticoIntegrado {
             return random.nextBoolean() ? padre1.copiar() : padre2.copiar();
         }
         
-        IndividuoIntegrado hijo = new IndividuoIntegrado(pedidos, planificador, planificadorAvanzado);
+        // Usar semilla derivada para reproducibilidad en cruce
+        long semillaHijo = semillaBase + random.nextLong();
+        IndividuoIntegrado hijo = new IndividuoIntegrado(pedidos, planificador, planificadorAvanzado, semillaHijo);
         
         // Cruce uniforme de rutas
         for (int i = 0; i < pedidos.size(); i++) {

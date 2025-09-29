@@ -179,6 +179,38 @@ datos/                      # Archivos de datos del sistema
 - **Capacidades**: Vuelos (300-360), almacenes (400-480), sedes (ilimitado)
 - **Exclusiones**: No se procesan pedidos con destino a sedes principales
 
+### Manejo Temporal y Husos Horarios
+
+**Sistema Global**: Opera en 3 continentes (SAM, EUR, ASI) con múltiples husos horarios
+
+#### Interpretación de Horarios
+
+**Planes de Vuelo:**
+```
+SKBO,SEQM,03:34,05:21,300
+├── HoraSalida: 03:34 en huso LOCAL del origen (SKBO = GMT-5)
+└── HoraLlegada: 05:21 en huso LOCAL del destino (SEQM = GMT-5)
+```
+
+**Pedidos:**
+```
+30-09-15-SEQM-145-0054321
+├── Día: 30
+├── Hora: 09:15 en huso LOCAL del destino (SEQM = GMT-5)
+└── Plazo: Se mide desde esa hora EN EL HUSO DEL DESTINO
+```
+
+#### Métodos Implementados
+
+**Para cálculos precisos (ACO):**
+- `Vuelo.calcularDuracionReal(origen, destino)`: Duración considerando husos
+- `Pedido.getTiempoPedidoUTC(destino)`: Conversión a UTC para algoritmos
+- `Pedido.horasRestantesUTC(tiempoUTC, destino)`: Urgencia temporal
+
+**Para debugging:**
+- `Vuelo.getInformacionCompletaConHusos(origen, destino)`: Análisis detallado
+- Conversiones automáticas UTC ↔ Local según necesidad
+
 ## Notas de Desarrollo
 
 - Este es un proyecto académico enfocado en aprendizaje ACO

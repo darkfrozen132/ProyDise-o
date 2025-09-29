@@ -173,15 +173,18 @@ public class Pedido {
     }
 
     /**
-     * Establece el tiempo del pedido y calcula el plazo límite
+     * Establece el tiempo del pedido en huso horario del destino
+     * INTERPRETACIÓN: dd-hh-mm están en hora LOCAL del aeropuerto destino
      */
     private void establecerTiempoPedido(int anio, int mes) {
+        // El tiempo del pedido YA ESTÁ en huso horario del destino
+        // No necesita conversión adicional
         this.tiempoPedido = LocalDateTime.of(anio, mes, dia, hora, minuto);
     }
 
     /**
      * Calcula el plazo límite basado en los continentes de origen y destino
-     * @param aeropuertoOrigen Aeropuerto de origen
+     * @param aeropuertoOrigen Aeropuerto de origen (sede principal)
      * @param aeropuertoDestino Aeropuerto de destino
      */
     public void calcularPlazoEntrega(Aeropuerto aeropuertoOrigen, Aeropuerto aeropuertoDestino) {
@@ -194,20 +197,39 @@ public class Pedido {
             aeropuertoDestino.getContinente()
         );
 
-        // Calcular tiempo límite considerando huso horario del destino
-        LocalDateTime tiempoEnDestino = ajustarAHusoHorario(tiempoPedido,
-            aeropuertoOrigen.getHusoHorario(),
-            aeropuertoDestino.getHusoHorario());
-
-        this.tiempoLimiteEntrega = tiempoEnDestino.plusDays(diasPlazo);
+        // El tiempo del pedido YA ESTÁ en huso horario del destino
+        // Simplemente agregamos los días de plazo
+        this.tiempoLimiteEntrega = tiempoPedido.plusDays(diasPlazo);
     }
 
     /**
-     * Ajusta tiempo entre husos horarios
+     * Convierte el tiempo del pedido (en huso destino) a UTC para cálculos
+     * @param aeropuertoDestino Aeropuerto destino con información de huso
+     * @return Tiempo del pedido en UTC
      */
-    private LocalDateTime ajustarAHusoHorario(LocalDateTime tiempo, int husoOrigen, int husoDestino) {
-        int diferenciiaHoras = husoDestino - husoOrigen;
-        return tiempo.plusHours(diferenciiaHoras);
+    public LocalDateTime getTiempoPedidoUTC(Aeropuerto aeropuertoDestino) {
+        if (aeropuertoDestino == null) {
+            throw new IllegalArgumentException("Aeropuerto destino no puede ser null");
+        }
+
+        // Convertir desde huso destino a UTC
+        int offsetDestino = aeropuertoDestino.getHusoHorario();
+        return tiempoPedido.minusHours(offsetDestino);
+    }
+
+    /**
+     * Convierte el tiempo límite de entrega (en huso destino) a UTC
+     * @param aeropuertoDestino Aeropuerto destino con información de huso
+     * @return Tiempo límite en UTC
+     */
+    public LocalDateTime getTiempoLimiteEntregaUTC(Aeropuerto aeropuertoDestino) {
+        if (aeropuertoDestino == null || tiempoLimiteEntrega == null) {
+            return null;
+        }
+
+        // Convertir desde huso destino a UTC
+        int offsetDestino = aeropuertoDestino.getHusoHorario();
+        return tiempoLimiteEntrega.minusHours(offsetDestino);
     }
 
     /**
@@ -222,8 +244,8 @@ public class Pedido {
     }
 
     /**
-     * Verifica si el pedido está dentro del plazo
-     * @param tiempoActual Tiempo actual para comparar
+     * Verifica si el pedido está dentro del plazo (usando huso destino)
+     * @param tiempoActual Tiempo actual en el mismo huso que el pedido (huso destino)
      * @return true si está dentro del plazo
      */
     public boolean estaDentroPlazo(LocalDateTime tiempoActual) {
@@ -234,8 +256,22 @@ public class Pedido {
     }
 
     /**
-     * Calcula las horas restantes hasta el vencimiento
-     * @param tiempoActual Tiempo actual
+     * Verifica si el pedido está dentro del plazo usando UTC para comparación precisa
+     * @param tiempoActualUTC Tiempo actual en UTC
+     * @param aeropuertoDestino Aeropuerto destino para conversión de husos
+     * @return true si está dentro del plazo
+     */
+    public boolean estaDentroPlazoUTC(LocalDateTime tiempoActualUTC, Aeropuerto aeropuertoDestino) {
+        LocalDateTime limiteUTC = getTiempoLimiteEntregaUTC(aeropuertoDestino);
+        if (limiteUTC == null) {
+            return true; // No se ha calculado plazo aún
+        }
+        return tiempoActualUTC.isBefore(limiteUTC) || tiempoActualUTC.isEqual(limiteUTC);
+    }
+
+    /**
+     * Calcula las horas restantes hasta el vencimiento (usando huso destino)
+     * @param tiempoActual Tiempo actual en el mismo huso que el pedido
      * @return Horas restantes (negativo si ya venció)
      */
     public long horasRestantes(LocalDateTime tiempoActual) {
@@ -243,6 +279,20 @@ public class Pedido {
             return Long.MAX_VALUE;
         }
         return java.time.Duration.between(tiempoActual, tiempoLimiteEntrega).toHours();
+    }
+
+    /**
+     * Calcula las horas restantes hasta el vencimiento usando UTC
+     * @param tiempoActualUTC Tiempo actual en UTC
+     * @param aeropuertoDestino Aeropuerto destino para conversión de husos
+     * @return Horas restantes (negativo si ya venció)
+     */
+    public long horasRestantesUTC(LocalDateTime tiempoActualUTC, Aeropuerto aeropuertoDestino) {
+        LocalDateTime limiteUTC = getTiempoLimiteEntregaUTC(aeropuertoDestino);
+        if (limiteUTC == null) {
+            return Long.MAX_VALUE;
+        }
+        return java.time.Duration.between(tiempoActualUTC, limiteUTC).toHours();
     }
 
     // Getters

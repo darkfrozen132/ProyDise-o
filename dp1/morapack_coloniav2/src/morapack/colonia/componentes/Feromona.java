@@ -57,7 +57,7 @@ public class Feromona {
         for (int i = 0; i < tamaño; i++) {
             for (int j = 0; j < tamaño; j++) {
                 matrizFeromona[i][j] = feromonaInicial;
-            }
+            }   
         }
     }
 

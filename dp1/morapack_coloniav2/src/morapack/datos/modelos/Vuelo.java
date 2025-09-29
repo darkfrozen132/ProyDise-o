@@ -131,7 +131,9 @@ public class Vuelo {
     }
 
     /**
-     * Calcula la duración del vuelo
+     * Calcula la duración del vuelo considerando horarios locales
+     * NOTA: Este método es simplificado para horarios en el mismo huso.
+     * Para cálculos precisos con diferentes husos, usar calcularDuracionReal()
      * @return Duración del vuelo
      */
     public Duration calcularDuracion() {
@@ -149,6 +151,57 @@ public class Vuelo {
      */
     public boolean cruzaMedianoche() {
         return horaLlegada.isBefore(horaSalida);
+    }
+
+    /**
+     * Calcula la duración real del vuelo considerando husos horarios
+     * HoraSalida = hora local del aeropuerto origen
+     * HoraLlegada = hora local del aeropuerto destino
+     * @param aeropuertoOrigen Aeropuerto de origen con huso horario
+     * @param aeropuertoDestino Aeropuerto de destino con huso horario
+     * @return Duración real del vuelo
+     */
+    public Duration calcularDuracionReal(Aeropuerto aeropuertoOrigen, Aeropuerto aeropuertoDestino) {
+        if (aeropuertoOrigen == null || aeropuertoDestino == null) {
+            throw new IllegalArgumentException("Aeropuertos no pueden ser null");
+        }
+
+        // Convertir hora de salida a UTC
+        // HoraSalida está en huso horario del origen
+        int offsetOrigen = aeropuertoOrigen.getHusoHorario();
+        LocalTime salidaUTC = horaSalida.minusHours(offsetOrigen);
+
+        // Convertir hora de llegada a UTC
+        // HoraLlegada está en huso horario del destino
+        int offsetDestino = aeropuertoDestino.getHusoHorario();
+        LocalTime llegadaUTC = horaLlegada.minusHours(offsetDestino);
+
+        // Si llegadaUTC < salidaUTC, significa que llega al día siguiente
+        if (llegadaUTC.isBefore(salidaUTC)) {
+            llegadaUTC = llegadaUTC.plusHours(24);
+        }
+
+        return Duration.between(salidaUTC, llegadaUTC);
+    }
+
+    /**
+     * Verifica si el vuelo cruza medianoche considerando husos horarios reales
+     * @param aeropuertoOrigen Aeropuerto de origen
+     * @param aeropuertoDestino Aeropuerto de destino
+     * @return true si el vuelo llega al día siguiente en UTC
+     */
+    public boolean cruzaMedianocheReal(Aeropuerto aeropuertoOrigen, Aeropuerto aeropuertoDestino) {
+        if (aeropuertoOrigen == null || aeropuertoDestino == null) {
+            return false;
+        }
+
+        int offsetOrigen = aeropuertoOrigen.getHusoHorario();
+        int offsetDestino = aeropuertoDestino.getHusoHorario();
+
+        LocalTime salidaUTC = horaSalida.minusHours(offsetOrigen);
+        LocalTime llegadaUTC = horaLlegada.minusHours(offsetDestino);
+
+        return llegadaUTC.isBefore(salidaUTC);
     }
 
     /**
@@ -259,6 +312,8 @@ public class Vuelo {
 
     /**
      * Verifica si dos vuelos pueden conectarse (llegada antes de salida con tiempo mínimo)
+     * NOTA: Este método usa horarios locales simplificados.
+     * Para cálculos precisos, usar puedeConectarConReal()
      * @param siguienteVuelo Vuelo que conecta
      * @param tiempoMinimoConexion Tiempo mínimo de conexión en minutos
      * @return true si pueden conectarse
@@ -288,6 +343,48 @@ public class Vuelo {
             tiempoEspera = Duration.between(llegadaEsteVuelo, salidaSiguienteVuelo.plusHours(24));
         } else {
             tiempoEspera = Duration.between(llegadaEsteVuelo, salidaSiguienteVuelo);
+        }
+
+        return tiempoEspera.toMinutes() >= tiempoMinimoConexion;
+    }
+
+    /**
+     * Verifica si dos vuelos pueden conectarse considerando husos horarios reales
+     * @param siguienteVuelo Vuelo que conecta
+     * @param aeropuertoConexion Aeropuerto de conexión (debe tener huso horario)
+     * @param tiempoMinimoConexion Tiempo mínimo de conexión en minutos
+     * @return true si pueden conectarse
+     */
+    public boolean puedeConectarConReal(Vuelo siguienteVuelo, Aeropuerto aeropuertoConexion, int tiempoMinimoConexion) {
+        if (siguienteVuelo == null || aeropuertoConexion == null) {
+            return false;
+        }
+
+        // El destino de este vuelo debe ser el origen del siguiente
+        if (!this.aeropuertoDestino.equals(siguienteVuelo.aeropuertoOrigen)) {
+            return false;
+        }
+
+        // Verificar que el aeropuerto de conexión sea el correcto
+        if (!this.aeropuertoDestino.equals(aeropuertoConexion.getCodigoICAO())) {
+            return false;
+        }
+
+        // Convertir llegada de este vuelo a hora local del aeropuerto de conexión
+        // horaLlegada ya está en huso del destino (aeropuerto de conexión)
+        LocalTime llegadaLocal = this.horaLlegada;
+
+        // Convertir salida del siguiente vuelo a hora local del aeropuerto de conexión
+        // horaSalida ya está en huso del origen (aeropuerto de conexión)
+        LocalTime salidaLocal = siguienteVuelo.horaSalida;
+
+        // Calcular tiempo de espera en el aeropuerto de conexión
+        Duration tiempoEspera;
+        if (salidaLocal.isBefore(llegadaLocal)) {
+            // El siguiente vuelo sale al día siguiente
+            tiempoEspera = Duration.between(llegadaLocal, salidaLocal.plusHours(24));
+        } else {
+            tiempoEspera = Duration.between(llegadaLocal, salidaLocal);
         }
 
         return tiempoEspera.toMinutes() >= tiempoMinimoConexion;
@@ -327,6 +424,48 @@ public class Vuelo {
           .append("/").append(capacidadMaxima).append(" productos\n");
         sb.append(String.format("Ocupación: %.1f%%\n", getPorcentajeOcupacion()));
         sb.append("Estado: ").append(estado.getDescripcion()).append("\n");
+
+        return sb.toString();
+    }
+
+    /**
+     * Obtiene información completa del vuelo incluyendo análisis de husos horarios
+     * @param aeropuertoOrigen Aeropuerto de origen con información de huso
+     * @param aeropuertoDestino Aeropuerto de destino con información de huso
+     * @return String con análisis detallado incluyendo horarios UTC
+     */
+    public String getInformacionCompletaConHusos(Aeropuerto aeropuertoOrigen, Aeropuerto aeropuertoDestino) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(getInformacionCompleta());
+
+        if (aeropuertoOrigen != null && aeropuertoDestino != null) {
+            sb.append("\n--- ANÁLISIS DE HUSOS HORARIOS ---\n");
+
+            // Información de husos
+            sb.append(String.format("Huso origen (%s): GMT%+d\n",
+                aeropuertoOrigen.getCodigoICAO(), aeropuertoOrigen.getHusoHorario()));
+            sb.append(String.format("Huso destino (%s): GMT%+d\n",
+                aeropuertoDestino.getCodigoICAO(), aeropuertoDestino.getHusoHorario()));
+
+            // Conversión a UTC
+            int offsetOrigen = aeropuertoOrigen.getHusoHorario();
+            int offsetDestino = aeropuertoDestino.getHusoHorario();
+
+            LocalTime salidaUTC = horaSalida.minusHours(offsetOrigen);
+            LocalTime llegadaUTC = horaLlegada.minusHours(offsetDestino);
+
+            sb.append(String.format("Salida UTC: %s\n", salidaUTC));
+            sb.append(String.format("Llegada UTC: %s", llegadaUTC));
+
+            if (cruzaMedianocheReal(aeropuertoOrigen, aeropuertoDestino)) {
+                sb.append(" (+1 día)");
+            }
+            sb.append("\n");
+
+            // Duración real
+            Duration duracionReal = calcularDuracionReal(aeropuertoOrigen, aeropuertoDestino);
+            sb.append(String.format("Duración real: %s\n", formatearDuracion(duracionReal)));
+        }
 
         return sb.toString();
     }

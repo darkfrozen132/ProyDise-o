@@ -151,6 +151,17 @@ public class Aeropuerto {
     }
 
     /**
+     * Calcula el porcentaje de ocupación del almacén
+     * @return Porcentaje de ocupación (0-100)
+     */
+    public double getPorcentajeOcupacion() {
+        if (capacidadAlmacen == 0) {
+            return 0.0;
+        }
+        return ((double) (capacidadAlmacen - capacidadDisponible) / capacidadAlmacen) * 100.0;
+    }
+
+    /**
      * Verifica si es una sede principal de MoraPack
      * @return true si es sede principal (Lima, Bruselas, Baku)
      */

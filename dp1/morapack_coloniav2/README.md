@@ -151,6 +151,12 @@ src/morapack/
 └── utils/
     ├── matematicas/        # Funciones matemáticas
     └── configuracion/      # Gestión de configuración
+
+datos/                      # Archivos de datos del sistema
+├── aeropuertos.csv        # 31 aeropuertos (SAM, EUR, ASI)
+├── planes_de_vuelo.csv    # Horarios y capacidades de vuelos
+└── pedidos/
+    └── pedidos_01.csv     # Pedidos mensuales (enero)
 ```
 
 ## Contribución
@@ -160,8 +166,22 @@ src/morapack/
 - Mantener código limpio y legible
 - Incluir tests unitarios cuando sea apropiado
 
+## Datos del Sistema
+
+### Estructura de Datos
+- **31 aeropuertos**: 3 sedes principales (SPIM, EBCI, UBBB) + 28 destinos
+- **Continentes**: SAM (América del Sur), EUR (Europa), ASI (Asia)
+- **Vuelos**: Capacidad 300-360 productos, múltiples frecuencias diarias
+- **Pedidos**: Formato `dd-hh-mm-dest-###-IdClien` por archivos mensuales
+
+### Restricciones del Problema
+- **Plazos de entrega**: 2 días mismo continente, 3 días diferente continente
+- **Capacidades**: Vuelos (300-360), almacenes (400-480), sedes (ilimitado)
+- **Exclusiones**: No se procesan pedidos con destino a sedes principales
+
 ## Notas de Desarrollo
 
-- Este es un proyecto académico enfocado en aprendizaje
+- Este es un proyecto académico enfocado en aprendizaje ACO
+- Problema específico: Optimización de rutas de distribución logística
 - Se priorizará claridad de código sobre optimización prematura
 - Desarrollo iterativo con validación en cada paso

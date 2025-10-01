@@ -12,7 +12,7 @@ import java.util.regex.Matcher;
  * - hh: horas (01-23)
  * - mm: minutos (01-59)
  * - dest: código aeropuerto destino (ej: SVMI, SBBR)
- * - ###: cantidad (001-999)
+ * - ###: cantidad (001-9999)
  * - IdClien: ID cliente 7 dígitos (0000001-9999999)
  */
 public class Pedido {
@@ -20,7 +20,7 @@ public class Pedido {
     private String clienteId; // 7 dígitos con ceros a la izquierda
     private String aeropuertoOrigenId; // Código del aeropuerto origen (ej: SPIM, EBCI, UBBB)
     private String aeropuertoDestinoId; // Código del aeropuerto destino (ej: SVMI, SBBR)
-    private int cantidadProductos; // 001-999
+    private int cantidadProductos; // 001-9999
     private LocalDateTime fechaCreacion;
     private LocalDateTime fechaLimiteEntrega;
     private int prioridad; // 1=alta, 2=media, 3=baja
@@ -32,9 +32,9 @@ public class Pedido {
     private int hora;
     private int minuto;
     
-    // Patrón para validar el formato del ID
+    // Patrón para validar el formato del ID (permite cantidades de hasta 4 dígitos)
     private static final Pattern ID_PATTERN = Pattern.compile(
-        "^(\\d{2})-(\\d{2})-(\\d{2})-([A-Z]{4})-(\\d{3})-(\\d{7})$"
+        "^(\\d{2})-(\\d{2})-(\\d{2})-([A-Z]{4})-(\\d{3,4})-(\\d{7})$"
     );
     
     public Pedido() {
@@ -77,7 +77,7 @@ public class Pedido {
         String hh = String.format("%02d", hora);
         String mm = String.format("%02d", minuto);
         String dest = aeropuertoDestinoId;
-        String cantidad = String.format("%03d", cantidadProductos);
+        String cantidad = cantidadProductos <= 999 ? String.format("%03d", cantidadProductos) : String.format("%04d", cantidadProductos);
         String idClien = clienteId;
         
         this.id = String.format("%s-%s-%s-%s-%s-%s", dd, hh, mm, dest, cantidad, idClien);
@@ -134,7 +134,7 @@ public class Pedido {
         String hh = String.format("%02d", Math.max(1, Math.min(23, hora)));
         String mm = String.format("%02d", Math.max(1, Math.min(59, minuto)));
         String dest = aeropuerto != null ? aeropuerto : "XXXX";
-        String cant = String.format("%03d", Math.max(1, Math.min(999, cantidad)));
+        String cant = cantidad <= 999 ? String.format("%03d", cantidad) : String.format("%04d", cantidad);
         String client = clienteId != null ? String.format("%07d", 
                        Integer.parseInt(clienteId.replaceAll("[^0-9]", ""))) : "0000000";
         

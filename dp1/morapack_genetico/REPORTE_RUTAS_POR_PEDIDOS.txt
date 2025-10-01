@@ -1,0 +1,231 @@
+=========================================================================
+                    REPORTE DETALLADO: RUTAS POR PEDIDOS
+=========================================================================
+⏰ HORARIOS UTC+0: Salida y llegada con duración real de vuelos
+✈️ DURACIÓN: Continental 12h, Intercontinental 24h (+2h escalas, +4h divididos)
+📝 VALIDACIÓN: Continental ≤2 días, Intercontinental ≤3 días desde pedido
+🌍 CONTINENTES: S=Sudamérica, E/L=Europa, O/U/V=Asia
+
+ID PEDIDO                 | DESTINO  | CANT | TIPO RUTA  | SALIDA UTC+0       | LLEGADA UTC+0      | RUTA COMPLETA                 
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+❌ 17-15-47-SKBO-9500-0000015 | SKBO     | 9500 | FALLO      | FALLO            | FALLO            | Capacidad insuficiente: solo 1,960 de 9,500 productos (faltan 7,540)
+✅ 17-14-46-OJAI-303-0000023 | OJAI     |  303 | DIVIDIDO   | D17 10:46 UTC    | D18 02:46 UTC    | DIVIDIDO → D17-15:17[300](DIR), D18-15:17[3](DIR)
+✅ 19-16-32-LATI-210-0000008 | LATI     |  210 | DIRECTA    | D19 15:32 UTC    | D20 03:32 UTC    | EBCI → LATI                   
+✅ 01-00-22-SGAS-217-0000007 | SGAS     |  217 | DIRECTA    | D1 05:22 UTC     | D1 16:22 UTC     | SPIM → SGAS                   
+✅ 13-07-20-LOWW-313-0000010 | LOWW     |  313 | DIRECTA    | D13 06:20 UTC    | D13 18:20 UTC    | EBCI → LOWW                   
+✅ 14-08-36-SKBO-341-0000001 | SKBO     |  341 | DIVIDIDO   | D14 13:36 UTC    | D15 05:36 UTC    | DIVIDIDO → D14-08:02[300](DIR), D14-18:09[41](DIR)
+✅ 22-09-44-UMMS-223-0000013 | UMMS     |  223 | DIRECTA    | D22 05:44 UTC    | D22 15:44 UTC    | UBBB → UMMS                   
+✅ 04-11-49-SEQM-224-0000015 | SEQM     |  224 | DIRECTA    | D4 16:49 UTC     | D5 04:49 UTC     | SPIM → SEQM                   
+✅ 02-16-09-OERK-325-0000014 | OERK     |  325 | DIRECTA    | D2 12:09 UTC     | D3 01:09 UTC     | UBBB → OERK                   
+✅ 01-07-21-OPKC-288-0000003 | OPKC     |  288 | DIRECTA    | D1 03:21 UTC     | D1 14:21 UTC     | UBBB → OPKC                   
+✅ 04-14-52-EHAM-324-0000007 | EHAM     |  324 | DIRECTA    | D4 13:52 UTC     | D5 01:52 UTC     | EBCI → EHAM                   
+✅ 06-20-04-SABE-225-0000010 | SABE     |  225 | DIRECTA    | D7 01:04 UTC     | D7 11:04 UTC     | SPIM → SABE                   
+✅ 15-08-53-OERK-249-0000015 | OERK     |  249 | DIRECTA    | D15 04:53 UTC    | D15 17:53 UTC    | UBBB → OERK                   
+✅ 20-08-53-SKBO-206-0000015 | SKBO     |  206 | DIRECTA    | D20 13:53 UTC    | D21 01:53 UTC    | SPIM → SKBO                   
+✅ 28-20-04-OJAI-277-0000015 | OJAI     |  277 | DIRECTA    | D28 16:04 UTC    | D29 04:04 UTC    | UBBB → OJAI                   
+✅ 22-05-50-SVMI-301-0000011 | SVMI     |  301 | DIRECTA    | D22 10:50 UTC    | D22 21:50 UTC    | SPIM → SVMI                   
+✅ 18-16-30-SGAS-329-0000012 | SGAS     |  329 | DIRECTA    | D18 21:30 UTC    | D19 08:30 UTC    | SPIM → SGAS                   
+✅ 02-01-52-LOWW-215-0000001 | LOWW     |  215 | DIRECTA    | D2 00:52 UTC     | D2 12:52 UTC     | EBCI → LOWW                   
+✅ 19-17-24-EHAM-289-0000005 | EHAM     |  289 | DIRECTA    | D19 16:24 UTC    | D20 04:24 UTC    | EBCI → EHAM                   
+✅ 11-00-55-LKPR-267-0000019 | LKPR     |  267 | DIRECTA    | D10 23:55 UTC    | D11 11:55 UTC    | EBCI → LKPR                   
+✅ 02-05-05-SUAA-238-0000022 | SUAA     |  238 | DIRECTA    | D2 10:05 UTC     | D2 20:05 UTC     | SPIM → SUAA                   
+✅ 25-01-07-SUAA-297-0000025 | SUAA     |  297 | DIRECTA    | D25 06:07 UTC    | D25 16:07 UTC    | SPIM → SUAA                   
+✅ 12-21-58-OMDB-229-0000021 | OMDB     |  229 | DIRECTA    | D12 17:58 UTC    | D13 05:58 UTC    | UBBB → OMDB                   
+✅ 17-03-09-UMMS-247-0000009 | UMMS     |  247 | DIRECTA    | D16 23:09 UTC    | D17 09:09 UTC    | UBBB → UMMS                   
+✅ 24-11-09-LOWW-258-0000009 | LOWW     |  258 | DIRECTA    | D24 10:09 UTC    | D24 22:09 UTC    | EBCI → LOWW                   
+✅ 25-10-08-SABE-223-0000010 | SABE     |  223 | DIRECTA    | D25 15:08 UTC    | D26 01:08 UTC    | SPIM → SABE                   
+✅ 20-20-02-OAKB-292-0000018 | OAKB     |  292 | DIRECTA    | D20 16:02 UTC    | D21 05:02 UTC    | UBBB → OAKB                   
+✅ 21-03-49-LKPR-333-0000001 | LKPR     |  333 | DIVIDIDO   | D21 02:49 UTC    | D21 18:49 UTC    | DIVIDIDO → D21-05:23[300](DIR), D21-09:10[33](DIR)
+✅ 21-02-50-EHAM-296-0000016 | EHAM     |  296 | DIRECTA    | D21 01:50 UTC    | D21 13:50 UTC    | EBCI → EHAM                   
+✅ 09-01-02-EHAM-349-0000013 | EHAM     |  349 | DIRECTA    | D9 00:02 UTC     | D9 12:02 UTC     | EBCI → EHAM                   
+✅ 03-08-21-OJAI-245-0000012 | OJAI     |  245 | DIRECTA    | D3 04:21 UTC     | D3 16:21 UTC     | UBBB → OJAI                   
+✅ 14-19-56-OOMS-220-0000001 | OOMS     |  220 | DIRECTA    | D14 15:56 UTC    | D15 03:56 UTC    | UBBB → OOMS                   
+✅ 18-11-46-OAKB-307-0000014 | OAKB     |  307 | DIRECTA    | D18 07:46 UTC    | D18 20:46 UTC    | UBBB → OAKB                   
+✅ 05-11-28-UMMS-212-0000012 | UMMS     |  212 | DIRECTA    | D5 07:28 UTC     | D5 17:28 UTC     | UBBB → UMMS                   
+✅ 24-10-04-OMDB-257-0000008 | OMDB     |  257 | DIRECTA    | D24 06:04 UTC    | D24 18:04 UTC    | UBBB → OMDB                   
+✅ 10-12-15-OOMS-227-0000023 | OOMS     |  227 | DIRECTA    | D10 08:15 UTC    | D10 20:15 UTC    | UBBB → OOMS                   
+✅ 17-18-36-OAKB-249-0000003 | OAKB     |  249 | DIRECTA    | D17 14:36 UTC    | D18 03:36 UTC    | UBBB → OAKB                   
+✅ 16-16-18-EKCH-332-0000008 | EKCH     |  332 | DIRECTA    | D16 15:18 UTC    | D17 03:18 UTC    | EBCI → EKCH                   
+✅ 21-17-46-SUAA-275-0000013 | SUAA     |  275 | DIRECTA    | D21 22:46 UTC    | D22 08:46 UTC    | SPIM → SUAA                   
+✅ 18-21-12-SABE-303-0000004 | SABE     |  303 | DIRECTA    | D19 02:12 UTC    | D19 12:12 UTC    | SPIM → SABE                   
+✅ 06-04-45-EDDI-268-0000011 | EDDI     |  268 | DIRECTA    | D6 03:45 UTC     | D6 15:45 UTC     | EBCI → EDDI                   
+✅ 04-11-24-SABE-335-0000017 | SABE     |  335 | DIRECTA    | D4 16:24 UTC     | D5 02:24 UTC     | SPIM → SABE                   
+✅ 12-16-30-EHAM-306-0000012 | EHAM     |  306 | DIRECTA    | D12 15:30 UTC    | D13 03:30 UTC    | EBCI → EHAM                   
+✅ 06-03-15-SGAS-220-0000016 | SGAS     |  220 | DIRECTA    | D6 08:15 UTC     | D6 19:15 UTC     | SPIM → SGAS                   
+✅ 06-02-38-OOMS-343-0000012 | OOMS     |  343 | DIRECTA    | D5 22:38 UTC     | D6 10:38 UTC     | UBBB → OOMS                   
+✅ 29-06-47-SEQM-275-0000018 | SEQM     |  275 | DIRECTA    | D29 11:47 UTC    | D29 23:47 UTC    | SPIM → SEQM                   
+✅ 29-03-03-OYSN-299-0000001 | OYSN     |  299 | DIRECTA    | D28 23:03 UTC    | D29 12:03 UTC    | UBBB → OYSN                   
+✅ 10-17-43-SKBO-318-0000024 | SKBO     |  318 | DIRECTA    | D10 22:43 UTC    | D11 10:43 UTC    | SPIM → SKBO                   
+✅ 06-11-05-SVMI-281-0000024 | SVMI     |  281 | DIRECTA    | D6 16:05 UTC     | D7 03:05 UTC     | SPIM → SVMI                   
+✅ 27-01-30-SBBR-207-0000013 | SBBR     |  207 | DIRECTA    | D27 06:30 UTC    | D27 16:30 UTC    | SPIM → SBBR                   
+✅ 19-00-14-EDDI-256-0000015 | EDDI     |  256 | DIRECTA    | D18 23:14 UTC    | D19 11:14 UTC    | EBCI → EDDI                   
+✅ 17-00-43-EDDI-212-0000022 | EDDI     |  212 | DIRECTA    | D16 23:43 UTC    | D17 11:43 UTC    | EBCI → EDDI                   
+✅ 21-12-00-SUAA-285-0000008 | SUAA     |  285 | DIRECTA    | D21 17:00 UTC    | D22 03:00 UTC    | SPIM → SUAA                   
+✅ 06-19-10-OPKC-298-0000011 | OPKC     |  298 | DIRECTA    | D6 15:10 UTC     | D7 02:10 UTC     | UBBB → OPKC                   
+✅ 02-09-57-EKCH-305-0000014 | EKCH     |  305 | DIRECTA    | D2 08:57 UTC     | D2 20:57 UTC     | EBCI → EKCH                   
+✅ 21-22-29-SLLP-243-0000002 | SLLP     |  243 | DIRECTA    | D22 03:29 UTC    | D22 14:29 UTC    | SPIM → SLLP                   
+✅ 22-17-45-SUAA-318-0000024 | SUAA     |  318 | DIRECTA    | D22 22:45 UTC    | D23 08:45 UTC    | SPIM → SUAA                   
+✅ 08-06-47-SLLP-243-0000025 | SLLP     |  243 | DIRECTA    | D8 11:47 UTC     | D8 22:47 UTC     | SPIM → SLLP                   
+✅ 13-23-39-LOWW-210-0000024 | LOWW     |  210 | DIRECTA    | D13 22:39 UTC    | D14 10:39 UTC    | EBCI → LOWW                   
+✅ 11-01-51-LATI-269-0000017 | LATI     |  269 | DIRECTA    | D11 00:51 UTC    | D11 12:51 UTC    | EBCI → LATI                   
+✅ 11-04-09-SEQM-336-0000010 | SEQM     |  336 | DIVIDIDO   | D11 09:09 UTC    | D12 01:09 UTC    | DIVIDIDO → D11-08:10[300](DIR), D11-17:11[36](DIR)
+✅ 13-05-14-SEQM-255-0000016 | SEQM     |  255 | DIRECTA    | D13 10:14 UTC    | D13 22:14 UTC    | SPIM → SEQM                   
+✅ 03-22-13-LATI-204-0000006 | LATI     |  204 | DIRECTA    | D3 21:13 UTC     | D4 09:13 UTC     | EBCI → LATI                   
+✅ 04-03-33-VIDP-339-0000004 | VIDP     |  339 | DIVIDIDO   | D3 23:33 UTC     | D4 14:33 UTC     | DIVIDIDO → D4-09:12[320](DIR), D4-14:49[19](DIR)
+✅ 12-04-29-EDDI-306-0000009 | EDDI     |  306 | DIRECTA    | D12 03:29 UTC    | D12 15:29 UTC    | EBCI → EDDI                   
+✅ 03-07-29-SGAS-263-0000025 | SGAS     |  263 | DIRECTA    | D3 12:29 UTC     | D3 23:29 UTC     | SPIM → SGAS                   
+✅ 04-15-33-OAKB-249-0000018 | OAKB     |  249 | DIRECTA    | D4 11:33 UTC     | D5 00:33 UTC     | UBBB → OAKB                   
+✅ 01-15-37-SUAA-237-0000015 | SUAA     |  237 | DIRECTA    | D1 20:37 UTC     | D2 06:37 UTC     | SPIM → SUAA                   
+✅ 02-21-05-SABE-266-0000006 | SABE     |  266 | DIRECTA    | D3 02:05 UTC     | D3 12:05 UTC     | SPIM → SABE                   
+✅ 06-04-31-SVMI-349-0000011 | SVMI     |  349 | DIVIDIDO   | D6 09:31 UTC     | D7 00:31 UTC     | DIVIDIDO → D6-05:24[320](DIR), D6-12:15[29](DIR)
+✅ 27-16-26-SVMI-297-0000007 | SVMI     |  297 | DIRECTA    | D27 21:26 UTC    | D28 08:26 UTC    | SPIM → SVMI                   
+✅ 06-17-25-OSDI-347-0000012 | OSDI     |  347 | DIRECTA    | D6 13:25 UTC     | D7 02:25 UTC     | UBBB → OSDI                   
+✅ 08-14-21-LOWW-203-0000018 | LOWW     |  203 | DIRECTA    | D8 13:21 UTC     | D9 01:21 UTC     | EBCI → LOWW                   
+✅ 22-06-50-LDZA-247-0000002 | LDZA     |  247 | DIRECTA    | D22 05:50 UTC    | D22 17:50 UTC    | EBCI → LDZA                   
+✅ 16-12-22-OPKC-260-0000015 | OPKC     |  260 | DIRECTA    | D16 08:22 UTC    | D16 19:22 UTC    | UBBB → OPKC                   
+✅ 16-08-20-OSDI-335-0000016 | OSDI     |  335 | DIRECTA    | D16 04:20 UTC    | D16 17:20 UTC    | UBBB → OSDI                   
+✅ 06-20-23-SABE-248-0000007 | SABE     |  248 | DIRECTA    | D7 01:23 UTC     | D7 11:23 UTC     | SPIM → SABE                   
+✅ 15-08-51-SVMI-343-0000005 | SVMI     |  343 | DIVIDIDO   | D15 13:51 UTC    | D16 04:51 UTC    | DIVIDIDO → D15-12:15[320](DIR), D16-05:24[23](DIR)
+✅ 20-00-04-SGAS-301-0000013 | SGAS     |  301 | DIRECTA    | D20 05:04 UTC    | D20 16:04 UTC    | SPIM → SGAS                   
+✅ 12-22-00-SVMI-324-0000003 | SVMI     |  324 | DIVIDIDO   | D13 03:00 UTC    | D13 18:00 UTC    | DIVIDIDO → D13-05:24[320](DIR), D13-12:15[4](DIR)
+✅ 20-18-40-SEQM-276-0000022 | SEQM     |  276 | DIRECTA    | D20 23:40 UTC    | D21 11:40 UTC    | SPIM → SEQM                   
+✅ 02-01-39-VIDP-307-0000007 | VIDP     |  307 | DIRECTA    | D1 21:39 UTC     | D2 08:39 UTC     | UBBB → VIDP                   
+✅ 06-18-19-EHAM-310-0000018 | EHAM     |  310 | DIRECTA    | D6 17:19 UTC     | D7 05:19 UTC     | EBCI → EHAM                   
+✅ 04-21-39-SKBO-304-0000004 | SKBO     |  304 | DIRECTA    | D5 02:39 UTC     | D5 14:39 UTC     | SPIM → SKBO                   
+✅ 26-03-03-OYSN-293-0000004 | OYSN     |  293 | DIRECTA    | D25 23:03 UTC    | D26 12:03 UTC    | UBBB → OYSN                   
+✅ 25-01-17-OERK-250-0000020 | OERK     |  250 | DIRECTA    | D24 21:17 UTC    | D25 10:17 UTC    | UBBB → OERK                   
+✅ 14-03-53-VIDP-299-0000004 | VIDP     |  299 | DIRECTA    | D13 23:53 UTC    | D14 10:53 UTC    | UBBB → VIDP                   
+✅ 07-18-18-LATI-229-0000017 | LATI     |  229 | DIRECTA    | D7 17:18 UTC     | D8 05:18 UTC     | EBCI → LATI                   
+✅ 07-13-41-EKCH-327-0000019 | EKCH     |  327 | DIRECTA    | D7 12:41 UTC     | D8 00:41 UTC     | EBCI → EKCH                   
+✅ 12-17-05-VIDP-263-0000009 | VIDP     |  263 | DIRECTA    | D12 13:05 UTC    | D13 00:05 UTC    | UBBB → VIDP                   
+✅ 23-12-06-OMDB-325-0000024 | OMDB     |  325 | DIRECTA    | D23 08:06 UTC    | D23 20:06 UTC    | UBBB → OMDB                   
+✅ 30-04-06-SBBR-225-0000025 | SBBR     |  225 | DIRECTA    | D30 09:06 UTC    | D30 19:06 UTC    | SPIM → SBBR                   
+✅ 04-22-56-OSDI-306-0000010 | OSDI     |  306 | DIRECTA    | D4 18:56 UTC     | D5 07:56 UTC     | UBBB → OSDI                   
+✅ 03-05-56-VIDP-334-0000019 | VIDP     |  334 | DIVIDIDO   | D3 01:56 UTC     | D3 16:56 UTC     | DIVIDIDO → D3-09:12[320](DIR), D3-14:49[14](DIR)
+✅ 28-19-28-LATI-274-0000024 | LATI     |  274 | DIRECTA    | D28 18:28 UTC    | D29 06:28 UTC    | EBCI → LATI                   
+✅ 03-13-04-OJAI-314-0000013 | OJAI     |  314 | DIVIDIDO   | D3 09:04 UTC     | D4 01:04 UTC     | DIVIDIDO → D3-15:17[300](DIR), D4-15:17[14](DIR)
+✅ 15-09-37-UMMS-264-0000012 | UMMS     |  264 | DIRECTA    | D15 05:37 UTC    | D15 15:37 UTC    | UBBB → UMMS                   
+✅ 24-03-46-OJAI-248-0000018 | OJAI     |  248 | DIRECTA    | D23 23:46 UTC    | D24 11:46 UTC    | UBBB → OJAI                   
+✅ 30-14-52-SCEL-245-0000021 | SCEL     |  245 | DIRECTA    | D30 19:52 UTC    | D31 06:52 UTC    | SPIM → SCEL                   
+✅ 25-06-36-OERK-281-0000025 | OERK     |  281 | DIRECTA    | D25 02:36 UTC    | D25 15:36 UTC    | UBBB → OERK                   
+✅ 06-01-26-EDDI-215-0000015 | EDDI     |  215 | DIRECTA    | D6 00:26 UTC     | D6 12:26 UTC     | EBCI → EDDI                   
+✅ 19-12-51-OAKB-272-0000019 | OAKB     |  272 | DIRECTA    | D19 08:51 UTC    | D19 21:51 UTC    | UBBB → OAKB                   
+✅ 06-05-28-LKPR-244-0000019 | LKPR     |  244 | DIRECTA    | D6 04:28 UTC     | D6 16:28 UTC     | EBCI → LKPR                   
+✅ 25-22-26-SKBO-299-0000012 | SKBO     |  299 | DIRECTA    | D26 03:26 UTC    | D26 15:26 UTC    | SPIM → SKBO                   
+✅ 17-19-13-OYSN-303-0000016 | OYSN     |  303 | DIRECTA    | D17 15:13 UTC    | D18 04:13 UTC    | UBBB → OYSN                   
+✅ 06-09-27-OYSN-333-0000023 | OYSN     |  333 | DIRECTA    | D6 05:27 UTC     | D6 18:27 UTC     | UBBB → OYSN                   
+✅ 16-19-44-SVMI-254-0000016 | SVMI     |  254 | DIRECTA    | D17 00:44 UTC    | D17 11:44 UTC    | SPIM → SVMI                   
+✅ 15-02-21-LDZA-235-0000007 | LDZA     |  235 | DIRECTA    | D15 01:21 UTC    | D15 13:21 UTC    | EBCI → LDZA                   
+✅ 19-23-28-OYSN-322-0000017 | OYSN     |  322 | DIRECTA    | D19 19:28 UTC    | D20 08:28 UTC    | UBBB → OYSN                   
+✅ 12-06-23-LBSF-310-0000023 | LBSF     |  310 | DIRECTA    | D12 05:23 UTC    | D12 16:23 UTC    | EBCI → LBSF                   
+✅ 05-12-11-LATI-295-0000004 | LATI     |  295 | DIRECTA    | D5 11:11 UTC     | D5 23:11 UTC     | EBCI → LATI                   
+✅ 12-05-07-LKPR-274-0000021 | LKPR     |  274 | DIRECTA    | D12 04:07 UTC    | D12 16:07 UTC    | EBCI → LKPR                   
+✅ 22-06-31-SKBO-291-0000002 | SKBO     |  291 | DIRECTA    | D22 11:31 UTC    | D22 23:31 UTC    | SPIM → SKBO                   
+✅ 08-17-47-OSDI-252-0000015 | OSDI     |  252 | DIRECTA    | D8 13:47 UTC     | D9 02:47 UTC     | UBBB → OSDI                   
+✅ 18-15-45-SABE-282-0000012 | SABE     |  282 | DIRECTA    | D18 20:45 UTC    | D19 06:45 UTC    | SPIM → SABE                   
+✅ 14-16-57-LOWW-223-0000005 | LOWW     |  223 | DIRECTA    | D14 15:57 UTC    | D15 03:57 UTC    | EBCI → LOWW                   
+✅ 22-11-54-OERK-325-0000003 | OERK     |  325 | DIRECTA    | D22 07:54 UTC    | D22 20:54 UTC    | UBBB → OERK                   
+✅ 26-18-02-LKPR-295-0000017 | LKPR     |  295 | DIRECTA    | D26 17:02 UTC    | D27 05:02 UTC    | EBCI → LKPR                   
+✅ 28-19-16-SCEL-291-0000015 | SCEL     |  291 | DIRECTA    | D29 00:16 UTC    | D29 11:16 UTC    | SPIM → SCEL                   
+✅ 03-08-44-SLLP-225-0000021 | SLLP     |  225 | DIRECTA    | D3 13:44 UTC     | D4 00:44 UTC     | SPIM → SLLP                   
+✅ 21-21-13-LOWW-324-0000021 | LOWW     |  324 | DIRECTA    | D21 20:13 UTC    | D22 08:13 UTC    | EBCI → LOWW                   
+✅ 03-03-22-SUAA-253-0000002 | SUAA     |  253 | DIRECTA    | D3 08:22 UTC     | D3 18:22 UTC     | SPIM → SUAA                   
+✅ 16-04-55-SABE-287-0000006 | SABE     |  287 | DIRECTA    | D16 09:55 UTC    | D16 19:55 UTC    | SPIM → SABE                   
+✅ 20-22-26-LKPR-216-0000012 | LKPR     |  216 | DIRECTA    | D20 21:26 UTC    | D21 09:26 UTC    | EBCI → LKPR                   
+✅ 09-02-55-OSDI-276-0000001 | OSDI     |  276 | DIRECTA    | D8 22:55 UTC     | D9 11:55 UTC     | UBBB → OSDI                   
+✅ 21-16-02-SABE-281-0000001 | SABE     |  281 | DIRECTA    | D21 21:02 UTC    | D22 07:02 UTC    | SPIM → SABE                   
+✅ 04-15-56-OSDI-294-0000008 | OSDI     |  294 | DIRECTA    | D4 11:56 UTC     | D5 00:56 UTC     | UBBB → OSDI                   
+✅ 11-17-07-OAKB-269-0000017 | OAKB     |  269 | DIRECTA    | D11 13:07 UTC    | D12 02:07 UTC    | UBBB → OAKB                   
+✅ 05-12-16-UMMS-285-0000005 | UMMS     |  285 | DIRECTA    | D5 08:16 UTC     | D5 18:16 UTC     | UBBB → UMMS                   
+✅ 16-07-09-OJAI-226-0000001 | OJAI     |  226 | DIRECTA    | D16 03:09 UTC    | D16 15:09 UTC    | UBBB → OJAI                   
+✅ 30-16-46-LDZA-284-0000001 | LDZA     |  284 | DIRECTA    | D30 15:46 UTC    | D31 03:46 UTC    | EBCI → LDZA                   
+✅ 07-04-57-SGAS-232-0000008 | SGAS     |  232 | DIRECTA    | D7 09:57 UTC     | D7 20:57 UTC     | SPIM → SGAS                   
+✅ 21-14-47-SVMI-281-0000024 | SVMI     |  281 | DIRECTA    | D21 19:47 UTC    | D22 06:47 UTC    | SPIM → SVMI                   
+✅ 17-23-42-OSDI-307-0000004 | OSDI     |  307 | DIRECTA    | D17 19:42 UTC    | D18 08:42 UTC    | UBBB → OSDI                   
+✅ 15-17-44-OSDI-268-0000021 | OSDI     |  268 | DIRECTA    | D15 13:44 UTC    | D16 02:44 UTC    | UBBB → OSDI                   
+✅ 19-05-17-OERK-345-0000008 | OERK     |  345 | DIRECTA    | D19 01:17 UTC    | D19 14:17 UTC    | UBBB → OERK                   
+✅ 23-06-41-OPKC-249-0000014 | OPKC     |  249 | DIRECTA    | D23 02:41 UTC    | D23 13:41 UTC    | UBBB → OPKC                   
+✅ 15-03-16-OMDB-262-0000001 | OMDB     |  262 | DIRECTA    | D14 23:16 UTC    | D15 11:16 UTC    | UBBB → OMDB                   
+✅ 10-05-48-SKBO-262-0000019 | SKBO     |  262 | DIRECTA    | D10 10:48 UTC    | D10 22:48 UTC    | SPIM → SKBO                   
+✅ 14-10-23-VIDP-240-0000025 | VIDP     |  240 | DIRECTA    | D14 06:23 UTC    | D14 17:23 UTC    | UBBB → VIDP                   
+✅ 27-19-37-LDZA-221-0000009 | LDZA     |  221 | DIRECTA    | D27 18:37 UTC    | D28 06:37 UTC    | EBCI → LDZA                   
+✅ 11-23-22-SGAS-255-0000009 | SGAS     |  255 | DIRECTA    | D12 04:22 UTC    | D12 15:22 UTC    | SPIM → SGAS                   
+✅ 06-15-05-OMDB-230-0000018 | OMDB     |  230 | DIRECTA    | D6 11:05 UTC     | D6 23:05 UTC     | UBBB → OMDB                   
+✅ 11-05-51-OMDB-261-0000007 | OMDB     |  261 | DIRECTA    | D11 01:51 UTC    | D11 13:51 UTC    | UBBB → OMDB                   
+✅ 16-14-31-OSDI-333-0000008 | OSDI     |  333 | DIRECTA    | D16 10:31 UTC    | D16 23:31 UTC    | UBBB → OSDI                   
+✅ 19-00-34-OPKC-257-0000008 | OPKC     |  257 | DIRECTA    | D18 20:34 UTC    | D19 07:34 UTC    | UBBB → OPKC                   
+✅ 21-22-54-OERK-292-0000006 | OERK     |  292 | DIRECTA    | D21 18:54 UTC    | D22 07:54 UTC    | UBBB → OERK                   
+✅ 11-16-08-OMDB-230-0000021 | OMDB     |  230 | DIRECTA    | D11 12:08 UTC    | D12 00:08 UTC    | UBBB → OMDB                   
+✅ 26-20-45-OPKC-332-0000001 | OPKC     |  332 | DIRECTA    | D26 16:45 UTC    | D27 03:45 UTC    | UBBB → OPKC                   
+✅ 14-15-03-OSDI-315-0000015 | OSDI     |  315 | DIRECTA    | D14 11:03 UTC    | D15 00:03 UTC    | UBBB → OSDI                   
+✅ 05-19-30-OJAI-201-0000011 | OJAI     |  201 | DIRECTA    | D5 15:30 UTC     | D6 03:30 UTC     | UBBB → OJAI                   
+✅ 28-08-19-OYSN-210-0000018 | OYSN     |  210 | DIRECTA    | D28 04:19 UTC    | D28 17:19 UTC    | UBBB → OYSN                   
+✅ 29-18-42-SABE-241-0000010 | SABE     |  241 | DIRECTA    | D29 23:42 UTC    | D30 09:42 UTC    | SPIM → SABE                   
+✅ 20-06-18-EHAM-314-0000012 | EHAM     |  314 | DIRECTA    | D20 05:18 UTC    | D20 17:18 UTC    | EBCI → EHAM                   
+✅ 02-23-50-VIDP-297-0000020 | VIDP     |  297 | DIRECTA    | D2 19:50 UTC     | D3 06:50 UTC     | UBBB → VIDP                   
+✅ 15-20-23-SBBR-299-0000021 | SBBR     |  299 | DIRECTA    | D16 01:23 UTC    | D16 11:23 UTC    | SPIM → SBBR                   
+✅ 12-14-26-SGAS-233-0000008 | SGAS     |  233 | DIRECTA    | D12 19:26 UTC    | D13 06:26 UTC    | SPIM → SGAS                   
+✅ 03-23-22-EHAM-256-0000022 | EHAM     |  256 | DIRECTA    | D3 22:22 UTC     | D4 10:22 UTC     | EBCI → EHAM                   
+✅ 23-09-19-SLLP-268-0000008 | SLLP     |  268 | DIRECTA    | D23 14:19 UTC    | D24 01:19 UTC    | SPIM → SLLP                   
+✅ 18-22-15-EKCH-349-0000025 | EKCH     |  349 | DIRECTA    | D18 21:15 UTC    | D19 09:15 UTC    | EBCI → EKCH                   
+✅ 12-18-55-OSDI-302-0000018 | OSDI     |  302 | DIRECTA    | D12 14:55 UTC    | D13 03:55 UTC    | UBBB → OSDI                   
+✅ 03-10-00-SABE-211-0000004 | SABE     |  211 | DIRECTA    | D3 15:00 UTC     | D4 01:00 UTC     | SPIM → SABE                   
+✅ 20-20-33-SBBR-235-0000006 | SBBR     |  235 | DIRECTA    | D21 01:33 UTC    | D21 11:33 UTC    | SPIM → SBBR                   
+✅ 20-07-18-LKPR-267-0000003 | LKPR     |  267 | DIRECTA    | D20 06:18 UTC    | D20 18:18 UTC    | EBCI → LKPR                   
+✅ 09-03-17-OERK-289-0000015 | OERK     |  289 | DIRECTA    | D8 23:17 UTC     | D9 12:17 UTC     | UBBB → OERK                   
+✅ 04-14-09-OOMS-245-0000015 | OOMS     |  245 | DIRECTA    | D4 10:09 UTC     | D4 22:09 UTC     | UBBB → OOMS                   
+✅ 16-04-34-UMMS-298-0000021 | UMMS     |  298 | DIRECTA    | D16 00:34 UTC    | D16 10:34 UTC    | UBBB → UMMS                   
+✅ 30-13-37-EDDI-204-0000006 | EDDI     |  204 | DIRECTA    | D30 12:37 UTC    | D31 00:37 UTC    | EBCI → EDDI                   
+✅ 26-21-42-SVMI-338-0000017 | SVMI     |  338 | DIVIDIDO   | D27 02:42 UTC    | D27 17:42 UTC    | DIVIDIDO → D27-05:24[320](DIR), D27-12:15[18](DIR)
+✅ 07-06-31-SABE-264-0000011 | SABE     |  264 | DIRECTA    | D7 11:31 UTC     | D7 21:31 UTC     | SPIM → SABE                   
+✅ 01-09-38-SUAA-266-0000015 | SUAA     |  266 | DIRECTA    | D1 14:38 UTC     | D2 00:38 UTC     | SPIM → SUAA                   
+✅ 19-16-47-SEQM-205-0000003 | SEQM     |  205 | DIRECTA    | D19 21:47 UTC    | D20 09:47 UTC    | SPIM → SEQM                   
+✅ 28-07-02-OJAI-336-0000009 | OJAI     |  336 | DIVIDIDO   | D28 03:02 UTC    | D28 19:02 UTC    | DIVIDIDO → D28-15:17[300](DIR), D29-15:17[36](DIR)
+✅ 02-04-33-LKPR-275-0000019 | LKPR     |  275 | DIRECTA    | D2 03:33 UTC     | D2 15:33 UTC     | EBCI → LKPR                   
+✅ 04-16-49-OYSN-257-0000003 | OYSN     |  257 | DIRECTA    | D4 12:49 UTC     | D5 01:49 UTC     | UBBB → OYSN                   
+✅ 20-23-24-OMDB-299-0000023 | OMDB     |  299 | DIRECTA    | D20 19:24 UTC    | D21 07:24 UTC    | UBBB → OMDB                   
+✅ 25-12-34-SVMI-258-0000006 | SVMI     |  258 | DIRECTA    | D25 17:34 UTC    | D26 04:34 UTC    | SPIM → SVMI                   
+✅ 01-00-08-EHAM-287-0000011 | EHAM     |  287 | DIRECTA    | D0 23:08 UTC     | D1 11:08 UTC     | EBCI → EHAM                   
+✅ 09-00-45-SGAS-329-0000004 | SGAS     |  329 | DIRECTA    | D9 05:45 UTC     | D9 16:45 UTC     | SPIM → SGAS                   
+✅ 21-22-12-OYSN-219-0000001 | OYSN     |  219 | DIRECTA    | D21 18:12 UTC    | D22 07:12 UTC    | UBBB → OYSN                   
+✅ 18-14-25-SKBO-238-0000018 | SKBO     |  238 | DIRECTA    | D18 19:25 UTC    | D19 07:25 UTC    | SPIM → SKBO                   
+✅ 21-00-35-LBSF-346-0000013 | LBSF     |  346 | DIVIDIDO   | D20 23:35 UTC    | D21 14:35 UTC    | DIVIDIDO → D21-03:36[340](DIR), D21-11:48[6](DIR)
+✅ 01-01-33-OMDB-251-0000011 | OMDB     |  251 | DIRECTA    | D0 21:33 UTC     | D1 09:33 UTC     | UBBB → OMDB                   
+✅ 21-17-08-LATI-325-0000002 | LATI     |  325 | DIRECTA    | D21 16:08 UTC    | D22 04:08 UTC    | EBCI → LATI                   
+✅ 13-11-42-LATI-326-0000013 | LATI     |  326 | DIRECTA    | D13 10:42 UTC    | D13 22:42 UTC    | EBCI → LATI                   
+✅ 03-23-25-LOWW-317-0000017 | LOWW     |  317 | DIRECTA    | D3 22:25 UTC     | D4 10:25 UTC     | EBCI → LOWW                   
+✅ 30-21-31-EHAM-202-0000019 | EHAM     |  202 | DIRECTA    | D30 20:31 UTC    | D31 08:31 UTC    | EBCI → EHAM                   
+✅ 14-01-21-LATI-272-0000009 | LATI     |  272 | DIRECTA    | D14 00:21 UTC    | D14 12:21 UTC    | EBCI → LATI                   
+✅ 03-02-33-SLLP-260-0000021 | SLLP     |  260 | DIRECTA    | D3 07:33 UTC     | D3 18:33 UTC     | SPIM → SLLP                   
+✅ 13-18-10-OAKB-210-0000001 | OAKB     |  210 | DIRECTA    | D13 14:10 UTC    | D14 03:10 UTC    | UBBB → OAKB                   
+✅ 06-09-07-SUAA-223-0000023 | SUAA     |  223 | DIRECTA    | D6 14:07 UTC     | D7 00:07 UTC     | SPIM → SUAA                   
+✅ 16-12-49-VIDP-239-0000017 | VIDP     |  239 | DIRECTA    | D16 08:49 UTC    | D16 19:49 UTC    | UBBB → VIDP                   
+✅ 08-22-39-OAKB-230-0000006 | OAKB     |  230 | DIRECTA    | D8 18:39 UTC     | D9 07:39 UTC     | UBBB → OAKB                   
+✅ 19-05-22-OMDB-233-0000018 | OMDB     |  233 | DIRECTA    | D19 01:22 UTC    | D19 13:22 UTC    | UBBB → OMDB                   
+✅ 29-12-51-SABE-271-0000007 | SABE     |  271 | DIRECTA    | D29 17:51 UTC    | D30 03:51 UTC    | SPIM → SABE                   
+✅ 14-00-17-LOWW-292-0000024 | LOWW     |  292 | DIRECTA    | D13 23:17 UTC    | D14 11:17 UTC    | EBCI → LOWW                   
+✅ 21-09-46-OOMS-308-0000013 | OOMS     |  308 | DIRECTA    | D21 05:46 UTC    | D21 17:46 UTC    | UBBB → OOMS                   
+✅ 26-01-26-SUAA-207-0000010 | SUAA     |  207 | DIRECTA    | D26 06:26 UTC    | D26 16:26 UTC    | SPIM → SUAA                   
+✅ 01-13-50-SKBO-325-0000025 | SKBO     |  325 | DIRECTA    | D1 18:50 UTC     | D2 06:50 UTC     | SPIM → SKBO                   
+✅ 22-00-17-SGAS-305-0000007 | SGAS     |  305 | DIRECTA    | D22 05:17 UTC    | D22 16:17 UTC    | SPIM → SGAS                   
+✅ 02-00-02-SUAA-332-0000021 | SUAA     |  332 | DIRECTA    | D2 05:02 UTC     | D2 15:02 UTC     | SPIM → SUAA                   
+✅ 28-15-42-LKPR-208-0000017 | LKPR     |  208 | DIRECTA    | D28 14:42 UTC    | D29 02:42 UTC    | EBCI → LKPR                   
+✅ 25-00-34-LDZA-304-0000008 | LDZA     |  304 | DIRECTA    | D24 23:34 UTC    | D25 11:34 UTC    | EBCI → LDZA                   
+✅ 30-11-16-OSDI-256-0000019 | OSDI     |  256 | DIRECTA    | D30 07:16 UTC    | D30 20:16 UTC    | UBBB → OSDI                   
+✅ 04-04-40-OYSN-295-0000018 | OYSN     |  295 | DIRECTA    | D4 00:40 UTC     | D4 13:40 UTC     | UBBB → OYSN                   
+✅ 09-20-38-OERK-244-0000008 | OERK     |  244 | DIRECTA    | D9 16:38 UTC     | D10 05:38 UTC    | UBBB → OERK                   
+✅ 23-08-11-LATI-256-0000014 | LATI     |  256 | DIRECTA    | D23 07:11 UTC    | D23 19:11 UTC    | EBCI → LATI                   
+✅ 12-10-34-SEQM-273-0000012 | SEQM     |  273 | DIRECTA    | D12 15:34 UTC    | D13 03:34 UTC    | SPIM → SEQM                   
+✅ 19-05-42-SUAA-233-0000002 | SUAA     |  233 | DIRECTA    | D19 10:42 UTC    | D19 20:42 UTC    | SPIM → SUAA                   
+✅ 10-22-10-LDZA-299-0000007 | LDZA     |  299 | DIRECTA    | D10 21:10 UTC    | D11 09:10 UTC    | EBCI → LDZA                   
+✅ 28-12-57-UMMS-200-0000023 | UMMS     |  200 | DIRECTA    | D28 08:57 UTC    | D28 18:57 UTC    | UBBB → UMMS                   
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+TOTAL: 211 pedidos procesados
+
+🕐 LEYENDA UTC+0:
+• Salida UTC+0: Tiempo de inicio del pedido convertido a UTC
+• Llegada UTC+0: Tiempo real de llegada (Continental: +12h, Intercontinental: +24h)
+• ⚠️: Indica exceso de plazo máximo de tránsito
+• Continental: Mismo continente, 12h vuelo, límite ≤2 días desde pedido
+• Intercontinental: Diferente continente, 24h vuelo, límite ≤3 días desde pedido
+• Escalas: +2h tiempo de conexión, Divididos: +4h tiempo adicional

@@ -19,7 +19,7 @@ public class Hormiga {
     private SolucionMoraPack solucionActual;
     private double fitness;
     private List<Pedido> pedidosPendientes;
-    private Set<Integer> pedidosAsignados;
+    private Set<String> pedidosAsignados; // Cambio: usar String para ID completo
     private Random random;
 
     /**
@@ -32,6 +32,9 @@ public class Hormiga {
         this.pedidosAsignados = new HashSet<>();
         this.random = new Random();
     }
+
+    // Modo debug para logging
+    private static final boolean DEBUG = System.getProperty("hormiga.debug", "false").equals("true");
 
     /**
      * Construye una solución completa para el problema MoraPack
@@ -46,18 +49,54 @@ public class Hormiga {
         }
 
         ProblemaMoraPack problemaMP = (ProblemaMoraPack) problema;
+
+        if (DEBUG) System.out.println("[Hormiga-" + id + "] Inicializando solucion...");
         inicializarSolucionMoraPack(problemaMP);
 
+        if (DEBUG) System.out.println("[Hormiga-" + id + "] Total pedidos: " + pedidosPendientes.size());
+
         // Construir rutas para cada pedido
+        int iteracion = 0;
         while (!solucionCompleta()) {
+            iteracion++;
+            if (DEBUG && iteracion % 10 == 0) {
+                System.out.println("[Hormiga-" + id + "] Iteracion " + iteracion + ", asignados: " + pedidosAsignados.size() + "/" + pedidosPendientes.size());
+            }
+
+            long inicio = DEBUG ? System.currentTimeMillis() : 0;
+
             Pedido pedido = seleccionarSiguientePedido(problemaMP, feromona, heuristica);
+
+            if (DEBUG) {
+                long tiempoSeleccion = System.currentTimeMillis() - inicio;
+                if (tiempoSeleccion > 100) {
+                    System.out.println("[Hormiga-" + id + "] ADVERTENCIA: seleccionarSiguientePedido tardo " + tiempoSeleccion + " ms");
+                }
+            }
+
             if (pedido != null) {
+                long inicioRutas = DEBUG ? System.currentTimeMillis() : 0;
+
                 construirRutasParaPedido(pedido, problemaMP, feromona, heuristica);
-                pedidosAsignados.add(Integer.parseInt(pedido.getIdPedido().split("-")[0])); // Simplificado
+
+                if (DEBUG) {
+                    long tiempoRutas = System.currentTimeMillis() - inicioRutas;
+                    if (tiempoRutas > 100) {
+                        System.out.println("[Hormiga-" + id + "] ADVERTENCIA: construirRutasParaPedido tardo " + tiempoRutas + " ms");
+                    }
+                }
+
+                pedidosAsignados.add(pedido.getIdPedido()); // Usar ID completo
+            } else {
+                if (DEBUG) System.out.println("[Hormiga-" + id + "] No hay mas pedidos disponibles");
+                break;
             }
         }
 
+        if (DEBUG) System.out.println("[Hormiga-" + id + "] Calculando fitness...");
         calcularFitness(problemaMP);
+
+        if (DEBUG) System.out.println("[Hormiga-" + id + "] Solucion completa con fitness: " + fitness);
         return solucionActual;
     }
 
@@ -86,7 +125,7 @@ public class Hormiga {
     private Pedido seleccionarSiguientePedido(ProblemaMoraPack problema, Feromona feromona, Heuristica heuristica) {
         List<Pedido> pedidosDisponibles = new ArrayList<>();
         for (Pedido pedido : pedidosPendientes) {
-            int idPedido = Integer.parseInt(pedido.getIdPedido().split("-")[0]); // Simplificado
+            String idPedido = pedido.getIdPedido(); // Usar ID completo
             if (!pedidosAsignados.contains(idPedido)) {
                 pedidosDisponibles.add(pedido);
             }
@@ -132,14 +171,17 @@ public class Hormiga {
                     LocalDateTime tiempoLlegada = calcularTiempoLlegada(segmentos);
                     boolean cumplePlazo = pedido.estaDentroPlazoUTC(tiempoLlegada, red.getAeropuerto(destino));
 
+                    // Usar hash del ID completo para generar un ID unico numerico
+                    int idNumerico = pedido.getIdPedido().hashCode() & 0x7FFFFFFF;
+
                     SolucionMoraPack.RutaProducto ruta = new SolucionMoraPack.RutaProducto(
-                        Integer.parseInt(pedido.getIdPedido().split("-")[0]), // ID simplificado
+                        idNumerico,
                         cantidadEntrega, cantidadTotal, numeroEntrega,
                         cantidadEntrega < cantidadTotal, // es parcial
                         sedeOrigen, destino, segmentos, tiempoSalida, tiempoLlegada, cumplePlazo
                     );
 
-                    solucionActual.agregarRutaProducto(Integer.parseInt(pedido.getIdPedido().split("-")[0]), ruta);
+                    solucionActual.agregarRutaProducto(idNumerico, ruta);
                     cantidadRestante -= cantidadEntrega;
                 }
             }

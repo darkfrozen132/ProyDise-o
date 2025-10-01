@@ -32,6 +32,10 @@ public class RedDistribucion {
     private Map<String, Set<String>> grafoConectividad;
     private Map<String, List<Vuelo>> vuelosPorRuta;
 
+    // Cache de rutas minimas (optimizacion para ACO)
+    private Map<String, List<String>> cacheRutasMinimas;
+    private boolean cacheRutasConstruido = false;
+
     // Configuración
     private int tiempoMinimoConexion = 60; // minutos
     private LocalDateTime tiempoReferencia;
@@ -46,6 +50,7 @@ public class RedDistribucion {
         this.clientes = new HashMap<>();
         this.grafoConectividad = new HashMap<>();
         this.vuelosPorRuta = new HashMap<>();
+        this.cacheRutasMinimas = new HashMap<>();
         this.tiempoReferencia = LocalDateTime.now();
     }
 
@@ -106,6 +111,10 @@ public class RedDistribucion {
         // Calcular plazos de entrega
         System.out.println("Calculando plazos de entrega...");
         calcularPlazosEntrega();
+
+        // Pre-calcular cache de rutas minimas (OPTIMIZACION CRITICA)
+        System.out.println("Pre-calculando cache de rutas minimas...");
+        construirCacheRutasMinimas();
 
         System.out.println("Red de distribución inicializada exitosamente.");
         mostrarEstadisticas();
@@ -263,12 +272,27 @@ public class RedDistribucion {
     }
 
     /**
-     * Busca ruta más corta entre dos aeropuertos usando BFS
+     * Busca ruta más corta entre dos aeropuertos usando BFS con cache
+     * OPTIMIZADO: Usa cache pre-calculado para evitar BFS repetidos
      * @param origen Código ICAO origen
      * @param destino Código ICAO destino
      * @return Lista con la ruta más corta (null si no hay ruta)
      */
     public List<String> buscarRutaMinima(String origen, String destino) {
+        // Usar cache si está disponible
+        if (cacheRutasConstruido) {
+            String clave = origen + "->" + destino;
+            return cacheRutasMinimas.get(clave);
+        }
+
+        // Fallback a BFS tradicional si no hay cache
+        return buscarRutaMinimaBFS(origen, destino);
+    }
+
+    /**
+     * Busca ruta minima usando BFS (version sin cache)
+     */
+    private List<String> buscarRutaMinimaBFS(String origen, String destino) {
         if (!aeropuertos.containsKey(origen) || !aeropuertos.containsKey(destino)) {
             return null;
         }
@@ -309,6 +333,39 @@ public class RedDistribucion {
         }
 
         return null; // No hay ruta
+    }
+
+    /**
+     * Pre-calcula todas las rutas minimas entre aeropuertos importantes
+     * OPTIMIZACION CRITICA: Reduce complejidad de O(n*BFS) a O(1) por consulta
+     */
+    private void construirCacheRutasMinimas() {
+        cacheRutasMinimas.clear();
+
+        // Solo pre-calcular rutas desde sedes principales a todos los destinos
+        List<String> sedesPrincipales = Arrays.asList("SPIM", "EBCI", "UBBB");
+        Set<String> destinosRelevantes = new HashSet<>(aeropuertos.keySet());
+
+        int totalCalculos = sedesPrincipales.size() * destinosRelevantes.size();
+        int calculosRealizados = 0;
+
+        for (String sede : sedesPrincipales) {
+            if (!aeropuertos.containsKey(sede)) continue;
+
+            for (String destino : destinosRelevantes) {
+                List<String> ruta = buscarRutaMinimaBFS(sede, destino);
+                String clave = sede + "->" + destino;
+                cacheRutasMinimas.put(clave, ruta);
+
+                calculosRealizados++;
+                if (calculosRealizados % 100 == 0) {
+                    System.out.println("   Progreso cache: " + calculosRealizados + "/" + totalCalculos);
+                }
+            }
+        }
+
+        cacheRutasConstruido = true;
+        System.out.println("   Cache construido: " + cacheRutasMinimas.size() + " rutas pre-calculadas");
     }
 
     /**

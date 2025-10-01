@@ -1,0 +1,27 @@
+RESULTADOS DE 20 EJECUCIONES - MORAPACK GENETICO
+=====================================================
+Archivo: datos/pedidos/pedidos_pares_01.csv
+Pedidos: 0
+Poblacion: 25, Generaciones: 30
+=====================================================
+
+Ejecucion 01: Fitness=0.00, Tiempo=21 ms, Semilla=1112
+Ejecucion 02: Fitness=0.00, Tiempo=3 ms, Semilla=1113
+Ejecucion 03: Fitness=0.00, Tiempo=4 ms, Semilla=1114
+Ejecucion 04: Fitness=0.00, Tiempo=4 ms, Semilla=1115
+Ejecucion 05: Fitness=0.00, Tiempo=4 ms, Semilla=1116
+Ejecucion 06: Fitness=0.00, Tiempo=4 ms, Semilla=1117
+Ejecucion 07: Fitness=0.00, Tiempo=3 ms, Semilla=1118
+Ejecucion 08: Fitness=0.00, Tiempo=3 ms, Semilla=1119
+Ejecucion 09: Fitness=0.00, Tiempo=3 ms, Semilla=1120
+Ejecucion 10: Fitness=0.00, Tiempo=2 ms, Semilla=1121
+Ejecucion 11: Fitness=0.00, Tiempo=3 ms, Semilla=1122
+Ejecucion 12: Fitness=0.00, Tiempo=2 ms, Semilla=1123
+Ejecucion 13: Fitness=0.00, Tiempo=4 ms, Semilla=1124
+Ejecucion 14: Fitness=0.00, Tiempo=2 ms, Semilla=1125
+Ejecucion 15: Fitness=0.00, Tiempo=2 ms, Semilla=1126
+Ejecucion 16: Fitness=0.00, Tiempo=2 ms, Semilla=1127
+Ejecucion 17: Fitness=0.00, Tiempo=2 ms, Semilla=1128
+Ejecucion 18: Fitness=0.00, Tiempo=1 ms, Semilla=1129
+Ejecucion 19: Fitness=0.00, Tiempo=3 ms, Semilla=1130
+Ejecucion 20: Fitness=0.00, Tiempo=1 ms, Semilla=1131

@@ -1,0 +1,6 @@
+IdCliente,Nombre,Email,Telefono,TipoCliente,Credito
+0000001,Cargo Express SA,info@cargoexpress.ve,+58-212-555-0001,CORPORATIVO,50000.00
+0000123,Distribuidora Nacional,pedidos@distrinacional.com.ve,+58-414-555-0123,CORPORATIVO,35000.00
+0001234,Importaciones Globales,compras@impglobales.ve,+58-212-555-1234,CORPORATIVO,75000.00
+0005678,Envios Rapidos CA,ventas@enviosrapidos.ve,+58-424-555-5678,PYME,15000.00
+0009876,LogiTech Solutions,contacto@logitech.ve,+58-416-555-9876,PYME,25000.00

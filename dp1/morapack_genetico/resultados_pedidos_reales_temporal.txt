@@ -1,0 +1,3115 @@
+🚀 MORAPACK GENETICO - PLANIFICADOR CON PEDIDOS REALES
+====================================================
+⏰ Procesando pedidos del archivo pedidoUltrafinal.txt
+
+📂 PASO 1: Carga de datos
+   Vuelos cargados: 2866
+
+🧠 PASO 2: Inicialización del planificador
+🕐 Planificador Temporal Mejorado inicializado:
+   - Tiempo de preparación: 30 minutos
+   - Vuelos diarios repetitivos: Activado
+   - Lógica nocturna: Activado
+
+📦 PASO 3: Carga de pedidos reales
+   📦 Pedidos cargados: 50
+   📦 Pedidos cargados: 100
+   📦 Pedidos cargados: 150
+   📦 Pedidos cargados: 200
+   ✅ Pedidos cargados exitosamente: 211
+
+📊 ESTADÍSTICAS DE PEDIDOS CARGADOS:
+   Total pedidos: 211
+   📍 Destinos más frecuentes:
+     SABE: 13 pedidos
+     OSDI: 12 pedidos
+     SUAA: 12 pedidos
+     SKBO: 10 pedidos
+     LATI: 10 pedidos
+   ⏰ Rango horario: 00:00 - 23:00
+   📦 Cantidades: Min=200, Max=349, Promedio=273.7
+
+🔄 PASO 4: Procesamiento temporal de pedidos
+Procesando 211 pedidos reales...
+
+📋 Iniciando procesamiento de 211 pedidos...
+
+📊 Progreso: 0/211 pedidos procesados (0.0%)
+
+1. 📦 PROCESANDO PEDIDO: 17-15-47-SKBO-324-0000015
+   ⏰ Hora del pedido: 15:47
+   🎯 Destino: SKBO
+   📦 Cantidad: 324
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 17-15-47-SKBO-324-0000015:
+   Hora pedido: 15:47
+   Tiempo mínimo salida: 16:17
+     ✅ Vuelo 04:35 SPIM→SKBO (Cap: 340/340, Paquetes: 324)
+   ✈️ Ruta directa encontrada: SPIM → SKBO
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SKBO (04:35-08:51)
+       🛫 SALIDA: SPIM → SKBO (04:35-08:51)
+
+2. 📦 PROCESANDO PEDIDO: 17-14-46-OJAI-303-0000023
+   ⏰ Hora del pedido: 14:46
+   🎯 Destino: OJAI
+   📦 Cantidad: 303
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 17-14-46-OJAI-303-0000023:
+   Hora pedido: 14:46
+   Tiempo mínimo salida: 15:16
+     ✅ Vuelo 05:19 SKBO→OJAI (Cap: 360/360, Paquetes: 303)
+   ✈️ Ruta directa encontrada: SKBO → OJAI
+     🔄 Escala: UBBB→SKBO→... (303 paquetes)
+   🔄 Ruta con escalas encontrada
+   ✅ RESULTADO: RUTA CON 1 ESCALAS
+   ❌ ERROR: Index 0 out of bounds for length 0
+
+3. 📦 PROCESANDO PEDIDO: 19-16-32-LATI-210-0000008
+   ⏰ Hora del pedido: 16:32
+   🎯 Destino: LATI
+   📦 Cantidad: 210
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 19-16-32-LATI-210-0000008:
+   Hora pedido: 16:32
+   Tiempo mínimo salida: 17:02
+     ✅ Vuelo 02:04 EBCI→LATI (Cap: 300/300, Paquetes: 210)
+   ✈️ Ruta directa encontrada: EBCI → LATI
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: EBCI→LATI (02:04-05:59)
+       🛫 SALIDA: EBCI → LATI (02:04-05:59)
+
+4. 📦 PROCESANDO PEDIDO: 01-00-22-SGAS-217-0000007
+   ⏰ Hora del pedido: 00:22
+   🎯 Destino: SGAS
+   📦 Cantidad: 217
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 01-00-22-SGAS-217-0000007:
+   Hora pedido: 00:22
+   Tiempo mínimo salida: 00:52
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 01:32 SPIM→SGAS (Cap: 320/320, Paquetes: 217)
+   ✈️ Ruta directa encontrada: SPIM → SGAS
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SGAS (01:32-07:44)
+       🛫 SALIDA: SPIM → SGAS (01:32-07:44)
+
+5. 📦 PROCESANDO PEDIDO: 13-07-20-LOWW-313-0000010
+   ⏰ Hora del pedido: 07:20
+   🎯 Destino: LOWW
+   📦 Cantidad: 313
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 13-07-20-LOWW-313-0000010:
+   Hora pedido: 07:20
+   Tiempo mínimo salida: 07:50
+     ✅ Vuelo 01:56 EBCI→LOWW (Cap: 360/360, Paquetes: 313)
+   ✈️ Ruta directa encontrada: EBCI → LOWW
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: EBCI→LOWW (01:56-04:04)
+       🛫 SALIDA: EBCI → LOWW (01:56-04:04)
+
+6. 📦 PROCESANDO PEDIDO: 14-08-36-SKBO-341-0000001
+   ⏰ Hora del pedido: 08:36
+   🎯 Destino: SKBO
+   📦 Cantidad: 341
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 14-08-36-SKBO-341-0000001:
+   Hora pedido: 08:36
+   Tiempo mínimo salida: 09:06
+     ✅ Vuelo 12:35 SABE→SKBO (Cap: 360/360, Paquetes: 341)
+   ✈️ Ruta directa encontrada: SABE → SKBO
+     🔄 Escala: SPIM→SABE→... (341 paquetes)
+   🔄 Ruta con escalas encontrada
+   ✅ RESULTADO: RUTA CON 1 ESCALAS
+   ❌ ERROR: Index 0 out of bounds for length 0
+
+7. 📦 PROCESANDO PEDIDO: 22-09-44-UMMS-223-0000013
+   ⏰ Hora del pedido: 09:44
+   🎯 Destino: UMMS
+   📦 Cantidad: 223
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 22-09-44-UMMS-223-0000013:
+   Hora pedido: 09:44
+   Tiempo mínimo salida: 10:14
+     ✅ Vuelo 02:26 UBBB→UMMS (Cap: 300/300, Paquetes: 223)
+   ✈️ Ruta directa encontrada: UBBB → UMMS
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→UMMS (02:26-07:12)
+       🛫 SALIDA: UBBB → UMMS (02:26-07:12)
+
+8. 📦 PROCESANDO PEDIDO: 04-11-49-SEQM-224-0000015
+   ⏰ Hora del pedido: 11:49
+   🎯 Destino: SEQM
+   📦 Cantidad: 224
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 04-11-49-SEQM-224-0000015:
+   Hora pedido: 11:49
+   Tiempo mínimo salida: 12:19
+     ✅ Vuelo 00:13 SPIM→SEQM (Cap: 320/320, Paquetes: 224)
+   ✈️ Ruta directa encontrada: SPIM → SEQM
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SEQM (00:13-03:54)
+       🛫 SALIDA: SPIM → SEQM (00:13-03:54)
+
+9. 📦 PROCESANDO PEDIDO: 02-16-09-OERK-325-0000014
+   ⏰ Hora del pedido: 16:09
+   🎯 Destino: OERK
+   📦 Cantidad: 325
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 02-16-09-OERK-325-0000014:
+   Hora pedido: 16:09
+   Tiempo mínimo salida: 16:39
+     ✅ Vuelo 00:32 UBBB→OERK (Cap: 340/340, Paquetes: 325)
+   ✈️ Ruta directa encontrada: UBBB → OERK
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OERK (00:32-05:49)
+       🛫 SALIDA: UBBB → OERK (00:32-05:49)
+
+10. 📦 PROCESANDO PEDIDO: 01-07-21-OPKC-288-0000003
+   ⏰ Hora del pedido: 07:21
+   🎯 Destino: OPKC
+   📦 Cantidad: 288
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 01-07-21-OPKC-288-0000003:
+   Hora pedido: 07:21
+   Tiempo mínimo salida: 07:51
+     ✅ Vuelo 03:16 UBBB→OPKC (Cap: 340/340, Paquetes: 288)
+   ✈️ Ruta directa encontrada: UBBB → OPKC
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OPKC (03:16-11:16)
+       🛫 SALIDA: UBBB → OPKC (03:16-11:16)
+
+11. 📦 PROCESANDO PEDIDO: 04-14-52-EHAM-324-0000007
+   ⏰ Hora del pedido: 14:52
+   🎯 Destino: EHAM
+   📦 Cantidad: 324
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 04-14-52-EHAM-324-0000007:
+   Hora pedido: 14:52
+   Tiempo mínimo salida: 15:22
+     ✅ Vuelo 03:48 EBCI→EHAM (Cap: 360/360, Paquetes: 324)
+   ✈️ Ruta directa encontrada: EBCI → EHAM
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: EBCI→EHAM (03:48-05:04)
+       🛫 SALIDA: EBCI → EHAM (03:48-05:04)
+
+12. 📦 PROCESANDO PEDIDO: 06-20-04-SABE-225-0000010
+   ⏰ Hora del pedido: 20:04
+   🎯 Destino: SABE
+   📦 Cantidad: 225
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 06-20-04-SABE-225-0000010:
+   Hora pedido: 20:04
+   Tiempo mínimo salida: 20:34
+     ✅ Vuelo 05:20 SPIM→SABE (Cap: 300/300, Paquetes: 225)
+   ✈️ Ruta directa encontrada: SPIM → SABE
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SABE (05:20-12:14)
+       🛫 SALIDA: SPIM → SABE (05:20-12:14)
+
+13. 📦 PROCESANDO PEDIDO: 15-08-53-OERK-249-0000015
+   ⏰ Hora del pedido: 08:53
+   🎯 Destino: OERK
+   📦 Cantidad: 249
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 15-08-53-OERK-249-0000015:
+   Hora pedido: 08:53
+   Tiempo mínimo salida: 09:23
+     ✅ Vuelo 00:32 UBBB→OERK (Cap: 340/340, Paquetes: 249)
+   ✈️ Ruta directa encontrada: UBBB → OERK
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OERK (00:32-05:49)
+       🛫 SALIDA: UBBB → OERK (00:32-05:49)
+
+14. 📦 PROCESANDO PEDIDO: 20-08-53-SKBO-206-0000015
+   ⏰ Hora del pedido: 08:53
+   🎯 Destino: SKBO
+   📦 Cantidad: 206
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 20-08-53-SKBO-206-0000015:
+   Hora pedido: 08:53
+   Tiempo mínimo salida: 09:23
+     ✅ Vuelo 04:35 SPIM→SKBO (Cap: 340/340, Paquetes: 206)
+   ✈️ Ruta directa encontrada: SPIM → SKBO
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SKBO (04:35-08:51)
+       🛫 SALIDA: SPIM → SKBO (04:35-08:51)
+
+15. 📦 PROCESANDO PEDIDO: 28-20-04-OJAI-277-0000015
+   ⏰ Hora del pedido: 20:04
+   🎯 Destino: OJAI
+   📦 Cantidad: 277
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 28-20-04-OJAI-277-0000015:
+   Hora pedido: 20:04
+   Tiempo mínimo salida: 20:34
+     ✅ Vuelo 15:17 UBBB→OJAI (Cap: 300/300, Paquetes: 277)
+   ✈️ Ruta directa encontrada: UBBB → OJAI
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OJAI (15:17-20:24)
+       🛫 SALIDA: UBBB → OJAI (15:17-20:24)
+
+16. 📦 PROCESANDO PEDIDO: 22-05-50-SVMI-301-0000011
+   ⏰ Hora del pedido: 05:50
+   🎯 Destino: SVMI
+   📦 Cantidad: 301
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 22-05-50-SVMI-301-0000011:
+   Hora pedido: 05:50
+   Tiempo mínimo salida: 06:20
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 05:24 SPIM→SVMI (Cap: 320/320, Paquetes: 301)
+   ✈️ Ruta directa encontrada: SPIM → SVMI
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SVMI (05:24-11:50)
+       🛫 SALIDA: SPIM → SVMI (05:24-11:50)
+
+17. 📦 PROCESANDO PEDIDO: 18-16-30-SGAS-329-0000012
+   ⏰ Hora del pedido: 16:30
+   🎯 Destino: SGAS
+   📦 Cantidad: 329
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 18-16-30-SGAS-329-0000012:
+   Hora pedido: 16:30
+   Tiempo mínimo salida: 17:00
+     ✅ Vuelo 21:32 SPIM→SGAS (Cap: 360/360, Paquetes: 329)
+   ✈️ Ruta directa encontrada: SPIM → SGAS
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SGAS (21:32-03:44)
+       🛫 SALIDA: SPIM → SGAS (21:32-03:44)
+
+18. 📦 PROCESANDO PEDIDO: 02-01-52-LOWW-215-0000001
+   ⏰ Hora del pedido: 01:52
+   🎯 Destino: LOWW
+   📦 Cantidad: 215
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 02-01-52-LOWW-215-0000001:
+   Hora pedido: 01:52
+   Tiempo mínimo salida: 02:22
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 01:56 EBCI→LOWW (Cap: 360/360, Paquetes: 215)
+   ✈️ Ruta directa encontrada: EBCI → LOWW
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: EBCI→LOWW (01:56-04:04)
+       🛫 SALIDA: EBCI → LOWW (01:56-04:04)
+
+19. 📦 PROCESANDO PEDIDO: 19-17-24-EHAM-289-0000005
+   ⏰ Hora del pedido: 17:24
+   🎯 Destino: EHAM
+   📦 Cantidad: 289
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 19-17-24-EHAM-289-0000005:
+   Hora pedido: 17:24
+   Tiempo mínimo salida: 17:54
+     ✅ Vuelo 03:48 EBCI→EHAM (Cap: 360/360, Paquetes: 289)
+   ✈️ Ruta directa encontrada: EBCI → EHAM
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: EBCI→EHAM (03:48-05:04)
+       🛫 SALIDA: EBCI → EHAM (03:48-05:04)
+
+20. 📦 PROCESANDO PEDIDO: 11-00-55-LKPR-267-0000019
+   ⏰ Hora del pedido: 00:55
+   🎯 Destino: LKPR
+   📦 Cantidad: 267
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 11-00-55-LKPR-267-0000019:
+   Hora pedido: 00:55
+   Tiempo mínimo salida: 01:25
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 05:23 EBCI→LKPR (Cap: 300/300, Paquetes: 267)
+   ✈️ Ruta directa encontrada: EBCI → LKPR
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: EBCI→LKPR (05:23-07:16)
+       🛫 SALIDA: EBCI → LKPR (05:23-07:16)
+📊 Progreso: 20/211 pedidos procesados (9.5%)
+
+21. 📦 PROCESANDO PEDIDO: 02-05-05-SUAA-238-0000022
+   ⏰ Hora del pedido: 05:05
+   🎯 Destino: SUAA
+   📦 Cantidad: 238
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 02-05-05-SUAA-238-0000022:
+   Hora pedido: 05:05
+   Tiempo mínimo salida: 05:35
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 07:09 SPIM→SUAA (Cap: 300/300, Paquetes: 238)
+   ✈️ Ruta directa encontrada: SPIM → SUAA
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SUAA (07:09-15:13)
+       🛫 SALIDA: SPIM → SUAA (07:09-15:13)
+
+22. 📦 PROCESANDO PEDIDO: 25-01-07-SUAA-297-0000025
+   ⏰ Hora del pedido: 01:07
+   🎯 Destino: SUAA
+   📦 Cantidad: 297
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 25-01-07-SUAA-297-0000025:
+   Hora pedido: 01:07
+   Tiempo mínimo salida: 01:37
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 07:09 SPIM→SUAA (Cap: 300/300, Paquetes: 297)
+   ✈️ Ruta directa encontrada: SPIM → SUAA
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SUAA (07:09-15:13)
+       🛫 SALIDA: SPIM → SUAA (07:09-15:13)
+
+23. 📦 PROCESANDO PEDIDO: 12-21-58-OMDB-229-0000021
+   ⏰ Hora del pedido: 21:58
+   🎯 Destino: OMDB
+   📦 Cantidad: 229
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 12-21-58-OMDB-229-0000021:
+   Hora pedido: 21:58
+   Tiempo mínimo salida: 22:28
+     ✅ Vuelo 04:13 UBBB→OMDB (Cap: 360/360, Paquetes: 229)
+   ✈️ Ruta directa encontrada: UBBB → OMDB
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OMDB (04:13-10:23)
+       🛫 SALIDA: UBBB → OMDB (04:13-10:23)
+
+24. 📦 PROCESANDO PEDIDO: 17-03-09-UMMS-247-0000009
+   ⏰ Hora del pedido: 03:09
+   🎯 Destino: UMMS
+   📦 Cantidad: 247
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 17-03-09-UMMS-247-0000009:
+   Hora pedido: 03:09
+   Tiempo mínimo salida: 03:39
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 02:26 UBBB→UMMS (Cap: 300/300, Paquetes: 247)
+   ✈️ Ruta directa encontrada: UBBB → UMMS
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→UMMS (02:26-07:12)
+       🛫 SALIDA: UBBB → UMMS (02:26-07:12)
+
+25. 📦 PROCESANDO PEDIDO: 24-11-09-LOWW-258-0000009
+   ⏰ Hora del pedido: 11:09
+   🎯 Destino: LOWW
+   📦 Cantidad: 258
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 24-11-09-LOWW-258-0000009:
+   Hora pedido: 11:09
+   Tiempo mínimo salida: 11:39
+     ✅ Vuelo 01:56 EBCI→LOWW (Cap: 360/360, Paquetes: 258)
+   ✈️ Ruta directa encontrada: EBCI → LOWW
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: EBCI→LOWW (01:56-04:04)
+       🛫 SALIDA: EBCI → LOWW (01:56-04:04)
+
+26. 📦 PROCESANDO PEDIDO: 25-10-08-SABE-223-0000010
+   ⏰ Hora del pedido: 10:08
+   🎯 Destino: SABE
+   📦 Cantidad: 223
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 25-10-08-SABE-223-0000010:
+   Hora pedido: 10:08
+   Tiempo mínimo salida: 10:38
+     ✅ Vuelo 05:20 SPIM→SABE (Cap: 300/300, Paquetes: 223)
+   ✈️ Ruta directa encontrada: SPIM → SABE
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SABE (05:20-12:14)
+       🛫 SALIDA: SPIM → SABE (05:20-12:14)
+
+27. 📦 PROCESANDO PEDIDO: 20-20-02-OAKB-292-0000018
+   ⏰ Hora del pedido: 20:02
+   🎯 Destino: OAKB
+   📦 Cantidad: 292
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 20-20-02-OAKB-292-0000018:
+   Hora pedido: 20:02
+   Tiempo mínimo salida: 20:32
+     ✅ Vuelo 00:24 UBBB→OAKB (Cap: 320/320, Paquetes: 292)
+   ✈️ Ruta directa encontrada: UBBB → OAKB
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OAKB (00:24-06:40)
+       🛫 SALIDA: UBBB → OAKB (00:24-06:40)
+
+28. 📦 PROCESANDO PEDIDO: 21-03-49-LKPR-333-0000001
+   ⏰ Hora del pedido: 03:49
+   🎯 Destino: LKPR
+   📦 Cantidad: 333
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 21-03-49-LKPR-333-0000001:
+   Hora pedido: 03:49
+   Tiempo mínimo salida: 04:19
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 05:32 SKBO→LKPR (Cap: 360/360, Paquetes: 333)
+   ✈️ Ruta directa encontrada: SKBO → LKPR
+     🔄 Escala: EBCI→SKBO→... (333 paquetes)
+   🔄 Ruta con escalas encontrada
+   ✅ RESULTADO: RUTA CON 1 ESCALAS
+   ❌ ERROR: Index 0 out of bounds for length 0
+
+29. 📦 PROCESANDO PEDIDO: 21-02-50-EHAM-296-0000016
+   ⏰ Hora del pedido: 02:50
+   🎯 Destino: EHAM
+   📦 Cantidad: 296
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 21-02-50-EHAM-296-0000016:
+   Hora pedido: 02:50
+   Tiempo mínimo salida: 03:20
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 03:48 EBCI→EHAM (Cap: 360/360, Paquetes: 296)
+   ✈️ Ruta directa encontrada: EBCI → EHAM
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: EBCI→EHAM (03:48-05:04)
+       🛫 SALIDA: EBCI → EHAM (03:48-05:04)
+
+30. 📦 PROCESANDO PEDIDO: 09-01-02-EHAM-349-0000013
+   ⏰ Hora del pedido: 01:02
+   🎯 Destino: EHAM
+   📦 Cantidad: 349
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 09-01-02-EHAM-349-0000013:
+   Hora pedido: 01:02
+   Tiempo mínimo salida: 01:32
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 03:48 EBCI→EHAM (Cap: 360/360, Paquetes: 349)
+   ✈️ Ruta directa encontrada: EBCI → EHAM
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: EBCI→EHAM (03:48-05:04)
+       🛫 SALIDA: EBCI → EHAM (03:48-05:04)
+
+31. 📦 PROCESANDO PEDIDO: 03-08-21-OJAI-245-0000012
+   ⏰ Hora del pedido: 08:21
+   🎯 Destino: OJAI
+   📦 Cantidad: 245
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 03-08-21-OJAI-245-0000012:
+   Hora pedido: 08:21
+   Tiempo mínimo salida: 08:51
+     ✅ Vuelo 15:17 UBBB→OJAI (Cap: 300/300, Paquetes: 245)
+   ✈️ Ruta directa encontrada: UBBB → OJAI
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OJAI (15:17-20:24)
+       🛫 SALIDA: UBBB → OJAI (15:17-20:24)
+
+32. 📦 PROCESANDO PEDIDO: 14-19-56-OOMS-220-0000001
+   ⏰ Hora del pedido: 19:56
+   🎯 Destino: OOMS
+   📦 Cantidad: 220
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 14-19-56-OOMS-220-0000001:
+   Hora pedido: 19:56
+   Tiempo mínimo salida: 20:26
+     ✅ Vuelo 05:58 UBBB→OOMS (Cap: 360/360, Paquetes: 220)
+   ✈️ Ruta directa encontrada: UBBB → OOMS
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OOMS (05:58-11:31)
+       🛫 SALIDA: UBBB → OOMS (05:58-11:31)
+
+33. 📦 PROCESANDO PEDIDO: 18-11-46-OAKB-307-0000014
+   ⏰ Hora del pedido: 11:46
+   🎯 Destino: OAKB
+   📦 Cantidad: 307
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 18-11-46-OAKB-307-0000014:
+   Hora pedido: 11:46
+   Tiempo mínimo salida: 12:16
+     ✅ Vuelo 00:24 UBBB→OAKB (Cap: 320/320, Paquetes: 307)
+   ✈️ Ruta directa encontrada: UBBB → OAKB
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OAKB (00:24-06:40)
+       🛫 SALIDA: UBBB → OAKB (00:24-06:40)
+
+34. 📦 PROCESANDO PEDIDO: 05-11-28-UMMS-212-0000012
+   ⏰ Hora del pedido: 11:28
+   🎯 Destino: UMMS
+   📦 Cantidad: 212
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 05-11-28-UMMS-212-0000012:
+   Hora pedido: 11:28
+   Tiempo mínimo salida: 11:58
+     ✅ Vuelo 02:26 UBBB→UMMS (Cap: 300/300, Paquetes: 212)
+   ✈️ Ruta directa encontrada: UBBB → UMMS
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→UMMS (02:26-07:12)
+       🛫 SALIDA: UBBB → UMMS (02:26-07:12)
+
+35. 📦 PROCESANDO PEDIDO: 24-10-04-OMDB-257-0000008
+   ⏰ Hora del pedido: 10:04
+   🎯 Destino: OMDB
+   📦 Cantidad: 257
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 24-10-04-OMDB-257-0000008:
+   Hora pedido: 10:04
+   Tiempo mínimo salida: 10:34
+     ✅ Vuelo 04:13 UBBB→OMDB (Cap: 360/360, Paquetes: 257)
+   ✈️ Ruta directa encontrada: UBBB → OMDB
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OMDB (04:13-10:23)
+       🛫 SALIDA: UBBB → OMDB (04:13-10:23)
+
+36. 📦 PROCESANDO PEDIDO: 10-12-15-OOMS-227-0000023
+   ⏰ Hora del pedido: 12:15
+   🎯 Destino: OOMS
+   📦 Cantidad: 227
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 10-12-15-OOMS-227-0000023:
+   Hora pedido: 12:15
+   Tiempo mínimo salida: 12:45
+     ✅ Vuelo 05:58 UBBB→OOMS (Cap: 360/360, Paquetes: 227)
+   ✈️ Ruta directa encontrada: UBBB → OOMS
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OOMS (05:58-11:31)
+       🛫 SALIDA: UBBB → OOMS (05:58-11:31)
+
+37. 📦 PROCESANDO PEDIDO: 17-18-36-OAKB-249-0000003
+   ⏰ Hora del pedido: 18:36
+   🎯 Destino: OAKB
+   📦 Cantidad: 249
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 17-18-36-OAKB-249-0000003:
+   Hora pedido: 18:36
+   Tiempo mínimo salida: 19:06
+     ✅ Vuelo 00:24 UBBB→OAKB (Cap: 320/320, Paquetes: 249)
+   ✈️ Ruta directa encontrada: UBBB → OAKB
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OAKB (00:24-06:40)
+       🛫 SALIDA: UBBB → OAKB (00:24-06:40)
+
+38. 📦 PROCESANDO PEDIDO: 16-16-18-EKCH-332-0000008
+   ⏰ Hora del pedido: 16:18
+   🎯 Destino: EKCH
+   📦 Cantidad: 332
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 16-16-18-EKCH-332-0000008:
+   Hora pedido: 16:18
+   Tiempo mínimo salida: 16:48
+     ✅ Vuelo 10:47 EBCI→EKCH (Cap: 340/340, Paquetes: 332)
+   ✈️ Ruta directa encontrada: EBCI → EKCH
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: EBCI→EKCH (10:47-12:45)
+       🛫 SALIDA: EBCI → EKCH (10:47-12:45)
+
+39. 📦 PROCESANDO PEDIDO: 21-17-46-SUAA-275-0000013
+   ⏰ Hora del pedido: 17:46
+   🎯 Destino: SUAA
+   📦 Cantidad: 275
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 21-17-46-SUAA-275-0000013:
+   Hora pedido: 17:46
+   Tiempo mínimo salida: 18:16
+     ✅ Vuelo 07:09 SPIM→SUAA (Cap: 300/300, Paquetes: 275)
+   ✈️ Ruta directa encontrada: SPIM → SUAA
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SUAA (07:09-15:13)
+       🛫 SALIDA: SPIM → SUAA (07:09-15:13)
+
+40. 📦 PROCESANDO PEDIDO: 18-21-12-SABE-303-0000004
+   ⏰ Hora del pedido: 21:12
+   🎯 Destino: SABE
+   📦 Cantidad: 303
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 18-21-12-SABE-303-0000004:
+   Hora pedido: 21:12
+   Tiempo mínimo salida: 21:42
+     ✅ Vuelo 06:35 SPIM→SABE (Cap: 360/360, Paquetes: 303)
+   ✈️ Ruta directa encontrada: SPIM → SABE
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SABE (06:35-13:29)
+       🛫 SALIDA: SPIM → SABE (06:35-13:29)
+📊 Progreso: 40/211 pedidos procesados (19.0%)
+
+41. 📦 PROCESANDO PEDIDO: 06-04-45-EDDI-268-0000011
+   ⏰ Hora del pedido: 04:45
+   🎯 Destino: EDDI
+   📦 Cantidad: 268
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 06-04-45-EDDI-268-0000011:
+   Hora pedido: 04:45
+   Tiempo mínimo salida: 05:15
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 04:41 EBCI→EDDI (Cap: 360/360, Paquetes: 268)
+   ✈️ Ruta directa encontrada: EBCI → EDDI
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: EBCI→EDDI (04:41-06:31)
+       🛫 SALIDA: EBCI → EDDI (04:41-06:31)
+
+42. 📦 PROCESANDO PEDIDO: 04-11-24-SABE-335-0000017
+   ⏰ Hora del pedido: 11:24
+   🎯 Destino: SABE
+   📦 Cantidad: 335
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 04-11-24-SABE-335-0000017:
+   Hora pedido: 11:24
+   Tiempo mínimo salida: 11:54
+     ✅ Vuelo 06:35 SPIM→SABE (Cap: 360/360, Paquetes: 335)
+   ✈️ Ruta directa encontrada: SPIM → SABE
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SABE (06:35-13:29)
+       🛫 SALIDA: SPIM → SABE (06:35-13:29)
+
+43. 📦 PROCESANDO PEDIDO: 12-16-30-EHAM-306-0000012
+   ⏰ Hora del pedido: 16:30
+   🎯 Destino: EHAM
+   📦 Cantidad: 306
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 12-16-30-EHAM-306-0000012:
+   Hora pedido: 16:30
+   Tiempo mínimo salida: 17:00
+     ✅ Vuelo 03:48 EBCI→EHAM (Cap: 360/360, Paquetes: 306)
+   ✈️ Ruta directa encontrada: EBCI → EHAM
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: EBCI→EHAM (03:48-05:04)
+       🛫 SALIDA: EBCI → EHAM (03:48-05:04)
+
+44. 📦 PROCESANDO PEDIDO: 06-03-15-SGAS-220-0000016
+   ⏰ Hora del pedido: 03:15
+   🎯 Destino: SGAS
+   📦 Cantidad: 220
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 06-03-15-SGAS-220-0000016:
+   Hora pedido: 03:15
+   Tiempo mínimo salida: 03:45
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 01:32 SPIM→SGAS (Cap: 320/320, Paquetes: 220)
+   ✈️ Ruta directa encontrada: SPIM → SGAS
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SGAS (01:32-07:44)
+       🛫 SALIDA: SPIM → SGAS (01:32-07:44)
+
+45. 📦 PROCESANDO PEDIDO: 06-02-38-OOMS-343-0000012
+   ⏰ Hora del pedido: 02:38
+   🎯 Destino: OOMS
+   📦 Cantidad: 343
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 06-02-38-OOMS-343-0000012:
+   Hora pedido: 02:38
+   Tiempo mínimo salida: 03:08
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 05:58 UBBB→OOMS (Cap: 360/360, Paquetes: 343)
+   ✈️ Ruta directa encontrada: UBBB → OOMS
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OOMS (05:58-11:31)
+       🛫 SALIDA: UBBB → OOMS (05:58-11:31)
+
+46. 📦 PROCESANDO PEDIDO: 29-06-47-SEQM-275-0000018
+   ⏰ Hora del pedido: 06:47
+   🎯 Destino: SEQM
+   📦 Cantidad: 275
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 29-06-47-SEQM-275-0000018:
+   Hora pedido: 06:47
+   Tiempo mínimo salida: 07:17
+     ✅ Vuelo 00:13 SPIM→SEQM (Cap: 320/320, Paquetes: 275)
+   ✈️ Ruta directa encontrada: SPIM → SEQM
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SEQM (00:13-03:54)
+       🛫 SALIDA: SPIM → SEQM (00:13-03:54)
+
+47. 📦 PROCESANDO PEDIDO: 29-03-03-OYSN-299-0000001
+   ⏰ Hora del pedido: 03:03
+   🎯 Destino: OYSN
+   📦 Cantidad: 299
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 29-03-03-OYSN-299-0000001:
+   Hora pedido: 03:03
+   Tiempo mínimo salida: 03:33
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 00:25 UBBB→OYSN (Cap: 320/320, Paquetes: 299)
+   ✈️ Ruta directa encontrada: UBBB → OYSN
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OYSN (00:25-06:59)
+       🛫 SALIDA: UBBB → OYSN (00:25-06:59)
+
+48. 📦 PROCESANDO PEDIDO: 10-17-43-SKBO-318-0000024
+   ⏰ Hora del pedido: 17:43
+   🎯 Destino: SKBO
+   📦 Cantidad: 318
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 10-17-43-SKBO-318-0000024:
+   Hora pedido: 17:43
+   Tiempo mínimo salida: 18:13
+     ✅ Vuelo 04:35 SPIM→SKBO (Cap: 340/340, Paquetes: 318)
+   ✈️ Ruta directa encontrada: SPIM → SKBO
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SKBO (04:35-08:51)
+       🛫 SALIDA: SPIM → SKBO (04:35-08:51)
+
+49. 📦 PROCESANDO PEDIDO: 06-11-05-SVMI-281-0000024
+   ⏰ Hora del pedido: 11:05
+   🎯 Destino: SVMI
+   📦 Cantidad: 281
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 06-11-05-SVMI-281-0000024:
+   Hora pedido: 11:05
+   Tiempo mínimo salida: 11:35
+     ✅ Vuelo 05:24 SPIM→SVMI (Cap: 320/320, Paquetes: 281)
+   ✈️ Ruta directa encontrada: SPIM → SVMI
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SVMI (05:24-11:50)
+       🛫 SALIDA: SPIM → SVMI (05:24-11:50)
+
+50. 📦 PROCESANDO PEDIDO: 27-01-30-SBBR-207-0000013
+   ⏰ Hora del pedido: 01:30
+   🎯 Destino: SBBR
+   📦 Cantidad: 207
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 27-01-30-SBBR-207-0000013:
+   Hora pedido: 01:30
+   Tiempo mínimo salida: 02:00
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 00:48 SPIM→SBBR (Cap: 300/300, Paquetes: 207)
+   ✈️ Ruta directa encontrada: SPIM → SBBR
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SBBR (00:48-08:53)
+       🛫 SALIDA: SPIM → SBBR (00:48-08:53)
+
+51. 📦 PROCESANDO PEDIDO: 19-00-14-EDDI-256-0000015
+   ⏰ Hora del pedido: 00:14
+   🎯 Destino: EDDI
+   📦 Cantidad: 256
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 19-00-14-EDDI-256-0000015:
+   Hora pedido: 00:14
+   Tiempo mínimo salida: 00:44
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 04:41 EBCI→EDDI (Cap: 360/360, Paquetes: 256)
+   ✈️ Ruta directa encontrada: EBCI → EDDI
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: EBCI→EDDI (04:41-06:31)
+       🛫 SALIDA: EBCI → EDDI (04:41-06:31)
+
+52. 📦 PROCESANDO PEDIDO: 17-00-43-EDDI-212-0000022
+   ⏰ Hora del pedido: 00:43
+   🎯 Destino: EDDI
+   📦 Cantidad: 212
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 17-00-43-EDDI-212-0000022:
+   Hora pedido: 00:43
+   Tiempo mínimo salida: 01:13
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 04:41 EBCI→EDDI (Cap: 360/360, Paquetes: 212)
+   ✈️ Ruta directa encontrada: EBCI → EDDI
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: EBCI→EDDI (04:41-06:31)
+       🛫 SALIDA: EBCI → EDDI (04:41-06:31)
+
+53. 📦 PROCESANDO PEDIDO: 21-12-00-SUAA-285-0000008
+   ⏰ Hora del pedido: 12:00
+   🎯 Destino: SUAA
+   📦 Cantidad: 285
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 21-12-00-SUAA-285-0000008:
+   Hora pedido: 12:00
+   Tiempo mínimo salida: 12:30
+     ✅ Vuelo 15:55 SPIM→SUAA (Cap: 340/340, Paquetes: 285)
+   ✈️ Ruta directa encontrada: SPIM → SUAA
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SUAA (15:55-23:59)
+       🛫 SALIDA: SPIM → SUAA (15:55-23:59)
+
+54. 📦 PROCESANDO PEDIDO: 06-19-10-OPKC-298-0000011
+   ⏰ Hora del pedido: 19:10
+   🎯 Destino: OPKC
+   📦 Cantidad: 298
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 06-19-10-OPKC-298-0000011:
+   Hora pedido: 19:10
+   Tiempo mínimo salida: 19:40
+     ✅ Vuelo 03:16 UBBB→OPKC (Cap: 340/340, Paquetes: 298)
+   ✈️ Ruta directa encontrada: UBBB → OPKC
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OPKC (03:16-11:16)
+       🛫 SALIDA: UBBB → OPKC (03:16-11:16)
+
+55. 📦 PROCESANDO PEDIDO: 02-09-57-EKCH-305-0000014
+   ⏰ Hora del pedido: 09:57
+   🎯 Destino: EKCH
+   📦 Cantidad: 305
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 02-09-57-EKCH-305-0000014:
+   Hora pedido: 09:57
+   Tiempo mínimo salida: 10:27
+     ✅ Vuelo 10:47 EBCI→EKCH (Cap: 340/340, Paquetes: 305)
+   ✈️ Ruta directa encontrada: EBCI → EKCH
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: EBCI→EKCH (10:47-12:45)
+       🛫 SALIDA: EBCI → EKCH (10:47-12:45)
+
+56. 📦 PROCESANDO PEDIDO: 21-22-29-SLLP-243-0000002
+   ⏰ Hora del pedido: 22:29
+   🎯 Destino: SLLP
+   📦 Cantidad: 243
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 21-22-29-SLLP-243-0000002:
+   Hora pedido: 22:29
+   Tiempo mínimo salida: 22:59
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 00:21 SPIM→SLLP (Cap: 300/300, Paquetes: 243)
+   ✈️ Ruta directa encontrada: SPIM → SLLP
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SLLP (00:21-04:41)
+       🛫 SALIDA: SPIM → SLLP (00:21-04:41)
+
+57. 📦 PROCESANDO PEDIDO: 22-17-45-SUAA-318-0000024
+   ⏰ Hora del pedido: 17:45
+   🎯 Destino: SUAA
+   📦 Cantidad: 318
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 22-17-45-SUAA-318-0000024:
+   Hora pedido: 17:45
+   Tiempo mínimo salida: 18:15
+     ✅ Vuelo 15:55 SPIM→SUAA (Cap: 340/340, Paquetes: 318)
+   ✈️ Ruta directa encontrada: SPIM → SUAA
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SUAA (15:55-23:59)
+       🛫 SALIDA: SPIM → SUAA (15:55-23:59)
+
+58. 📦 PROCESANDO PEDIDO: 08-06-47-SLLP-243-0000025
+   ⏰ Hora del pedido: 06:47
+   🎯 Destino: SLLP
+   📦 Cantidad: 243
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 08-06-47-SLLP-243-0000025:
+   Hora pedido: 06:47
+   Tiempo mínimo salida: 07:17
+     ✅ Vuelo 00:21 SPIM→SLLP (Cap: 300/300, Paquetes: 243)
+   ✈️ Ruta directa encontrada: SPIM → SLLP
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SLLP (00:21-04:41)
+       🛫 SALIDA: SPIM → SLLP (00:21-04:41)
+
+59. 📦 PROCESANDO PEDIDO: 13-23-39-LOWW-210-0000024
+   ⏰ Hora del pedido: 23:39
+   🎯 Destino: LOWW
+   📦 Cantidad: 210
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 13-23-39-LOWW-210-0000024:
+   Hora pedido: 23:39
+   Tiempo mínimo salida: 00:09
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 07:10 EBCI→LOWW (Cap: 320/320, Paquetes: 210)
+   ✈️ Ruta directa encontrada: EBCI → LOWW
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: EBCI→LOWW (07:10-10:18)
+       🛫 SALIDA: EBCI → LOWW (07:10-10:18)
+
+60. 📦 PROCESANDO PEDIDO: 11-01-51-LATI-269-0000017
+   ⏰ Hora del pedido: 01:51
+   🎯 Destino: LATI
+   📦 Cantidad: 269
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 11-01-51-LATI-269-0000017:
+   Hora pedido: 01:51
+   Tiempo mínimo salida: 02:21
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 02:04 EBCI→LATI (Cap: 300/300, Paquetes: 269)
+   ✈️ Ruta directa encontrada: EBCI → LATI
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: EBCI→LATI (02:04-05:59)
+       🛫 SALIDA: EBCI → LATI (02:04-05:59)
+📊 Progreso: 60/211 pedidos procesados (28.4%)
+
+61. 📦 PROCESANDO PEDIDO: 11-04-09-SEQM-336-0000010
+   ⏰ Hora del pedido: 04:09
+   🎯 Destino: SEQM
+   📦 Cantidad: 336
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 11-04-09-SEQM-336-0000010:
+   Hora pedido: 04:09
+   Tiempo mínimo salida: 04:39
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 19:01 SKBO→SEQM (Cap: 340/340, Paquetes: 336)
+   ✈️ Ruta directa encontrada: SKBO → SEQM
+     🔄 Escala: SPIM→SKBO→... (336 paquetes)
+   🔄 Ruta con escalas encontrada
+   ✅ RESULTADO: RUTA CON 1 ESCALAS
+   ❌ ERROR: Index 0 out of bounds for length 0
+
+62. 📦 PROCESANDO PEDIDO: 13-05-14-SEQM-255-0000016
+   ⏰ Hora del pedido: 05:14
+   🎯 Destino: SEQM
+   📦 Cantidad: 255
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 13-05-14-SEQM-255-0000016:
+   Hora pedido: 05:14
+   Tiempo mínimo salida: 05:44
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 00:13 SPIM→SEQM (Cap: 320/320, Paquetes: 255)
+   ✈️ Ruta directa encontrada: SPIM → SEQM
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SEQM (00:13-03:54)
+       🛫 SALIDA: SPIM → SEQM (00:13-03:54)
+
+63. 📦 PROCESANDO PEDIDO: 03-22-13-LATI-204-0000006
+   ⏰ Hora del pedido: 22:13
+   🎯 Destino: LATI
+   📦 Cantidad: 204
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 03-22-13-LATI-204-0000006:
+   Hora pedido: 22:13
+   Tiempo mínimo salida: 22:43
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 02:04 EBCI→LATI (Cap: 300/300, Paquetes: 204)
+   ✈️ Ruta directa encontrada: EBCI → LATI
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: EBCI→LATI (02:04-05:59)
+       🛫 SALIDA: EBCI → LATI (02:04-05:59)
+
+64. 📦 PROCESANDO PEDIDO: 04-03-33-VIDP-339-0000004
+   ⏰ Hora del pedido: 03:33
+   🎯 Destino: VIDP
+   📦 Cantidad: 339
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 04-03-33-VIDP-339-0000004:
+   Hora pedido: 03:33
+   Tiempo mínimo salida: 04:03
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 19:05 SKBO→VIDP (Cap: 340/340, Paquetes: 339)
+   ✈️ Ruta directa encontrada: SKBO → VIDP
+     🔄 Escala: UBBB→SKBO→... (339 paquetes)
+   🔄 Ruta con escalas encontrada
+   ✅ RESULTADO: RUTA CON 1 ESCALAS
+   ❌ ERROR: Index 0 out of bounds for length 0
+
+65. 📦 PROCESANDO PEDIDO: 12-04-29-EDDI-306-0000009
+   ⏰ Hora del pedido: 04:29
+   🎯 Destino: EDDI
+   📦 Cantidad: 306
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 12-04-29-EDDI-306-0000009:
+   Hora pedido: 04:29
+   Tiempo mínimo salida: 04:59
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 04:41 EBCI→EDDI (Cap: 360/360, Paquetes: 306)
+   ✈️ Ruta directa encontrada: EBCI → EDDI
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: EBCI→EDDI (04:41-06:31)
+       🛫 SALIDA: EBCI → EDDI (04:41-06:31)
+
+66. 📦 PROCESANDO PEDIDO: 03-07-29-SGAS-263-0000025
+   ⏰ Hora del pedido: 07:29
+   🎯 Destino: SGAS
+   📦 Cantidad: 263
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 03-07-29-SGAS-263-0000025:
+   Hora pedido: 07:29
+   Tiempo mínimo salida: 07:59
+     ✅ Vuelo 01:32 SPIM→SGAS (Cap: 320/320, Paquetes: 263)
+   ✈️ Ruta directa encontrada: SPIM → SGAS
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SGAS (01:32-07:44)
+       🛫 SALIDA: SPIM → SGAS (01:32-07:44)
+
+67. 📦 PROCESANDO PEDIDO: 04-15-33-OAKB-249-0000018
+   ⏰ Hora del pedido: 15:33
+   🎯 Destino: OAKB
+   📦 Cantidad: 249
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 04-15-33-OAKB-249-0000018:
+   Hora pedido: 15:33
+   Tiempo mínimo salida: 16:03
+     ✅ Vuelo 00:24 UBBB→OAKB (Cap: 320/320, Paquetes: 249)
+   ✈️ Ruta directa encontrada: UBBB → OAKB
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OAKB (00:24-06:40)
+       🛫 SALIDA: UBBB → OAKB (00:24-06:40)
+
+68. 📦 PROCESANDO PEDIDO: 01-15-37-SUAA-237-0000015
+   ⏰ Hora del pedido: 15:37
+   🎯 Destino: SUAA
+   📦 Cantidad: 237
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 01-15-37-SUAA-237-0000015:
+   Hora pedido: 15:37
+   Tiempo mínimo salida: 16:07
+     ✅ Vuelo 07:09 SPIM→SUAA (Cap: 300/300, Paquetes: 237)
+   ✈️ Ruta directa encontrada: SPIM → SUAA
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SUAA (07:09-15:13)
+       🛫 SALIDA: SPIM → SUAA (07:09-15:13)
+
+69. 📦 PROCESANDO PEDIDO: 02-21-05-SABE-266-0000006
+   ⏰ Hora del pedido: 21:05
+   🎯 Destino: SABE
+   📦 Cantidad: 266
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 02-21-05-SABE-266-0000006:
+   Hora pedido: 21:05
+   Tiempo mínimo salida: 21:35
+     ✅ Vuelo 05:20 SPIM→SABE (Cap: 300/300, Paquetes: 266)
+   ✈️ Ruta directa encontrada: SPIM → SABE
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SABE (05:20-12:14)
+       🛫 SALIDA: SPIM → SABE (05:20-12:14)
+
+70. 📦 PROCESANDO PEDIDO: 06-04-31-SVMI-349-0000011
+   ⏰ Hora del pedido: 04:31
+   🎯 Destino: SVMI
+   📦 Cantidad: 349
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 06-04-31-SVMI-349-0000011:
+   Hora pedido: 04:31
+   Tiempo mínimo salida: 05:01
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 13:56 SKBO→SVMI (Cap: 360/360, Paquetes: 349)
+   ✈️ Ruta directa encontrada: SKBO → SVMI
+     🔄 Escala: SABE→SKBO→... (349 paquetes)
+   🔄 Ruta con escalas encontrada
+     🔄 Escala: SPIM→SABE→... (349 paquetes)
+   🔄 Ruta con escalas encontrada
+   ✅ RESULTADO: RUTA CON 2 ESCALAS
+   ❌ ERROR: Index 0 out of bounds for length 0
+
+71. 📦 PROCESANDO PEDIDO: 27-16-26-SVMI-297-0000007
+   ⏰ Hora del pedido: 16:26
+   🎯 Destino: SVMI
+   📦 Cantidad: 297
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 27-16-26-SVMI-297-0000007:
+   Hora pedido: 16:26
+   Tiempo mínimo salida: 16:56
+     ✅ Vuelo 05:24 SPIM→SVMI (Cap: 320/320, Paquetes: 297)
+   ✈️ Ruta directa encontrada: SPIM → SVMI
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SVMI (05:24-11:50)
+       🛫 SALIDA: SPIM → SVMI (05:24-11:50)
+
+72. 📦 PROCESANDO PEDIDO: 06-17-25-OSDI-347-0000012
+   ⏰ Hora del pedido: 17:25
+   🎯 Destino: OSDI
+   📦 Cantidad: 347
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 06-17-25-OSDI-347-0000012:
+   Hora pedido: 17:25
+   Tiempo mínimo salida: 17:55
+     ✅ Vuelo 11:58 UBBB→OSDI (Cap: 360/360, Paquetes: 347)
+   ✈️ Ruta directa encontrada: UBBB → OSDI
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OSDI (11:58-15:49)
+       🛫 SALIDA: UBBB → OSDI (11:58-15:49)
+
+73. 📦 PROCESANDO PEDIDO: 08-14-21-LOWW-203-0000018
+   ⏰ Hora del pedido: 14:21
+   🎯 Destino: LOWW
+   📦 Cantidad: 203
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 08-14-21-LOWW-203-0000018:
+   Hora pedido: 14:21
+   Tiempo mínimo salida: 14:51
+     ✅ Vuelo 01:56 EBCI→LOWW (Cap: 360/360, Paquetes: 203)
+   ✈️ Ruta directa encontrada: EBCI → LOWW
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: EBCI→LOWW (01:56-04:04)
+       🛫 SALIDA: EBCI → LOWW (01:56-04:04)
+
+74. 📦 PROCESANDO PEDIDO: 22-06-50-LDZA-247-0000002
+   ⏰ Hora del pedido: 06:50
+   🎯 Destino: LDZA
+   📦 Cantidad: 247
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 22-06-50-LDZA-247-0000002:
+   Hora pedido: 06:50
+   Tiempo mínimo salida: 07:20
+     ✅ Vuelo 05:43 EBCI→LDZA (Cap: 340/340, Paquetes: 247)
+   ✈️ Ruta directa encontrada: EBCI → LDZA
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: EBCI→LDZA (05:43-08:02)
+       🛫 SALIDA: EBCI → LDZA (05:43-08:02)
+
+75. 📦 PROCESANDO PEDIDO: 16-12-22-OPKC-260-0000015
+   ⏰ Hora del pedido: 12:22
+   🎯 Destino: OPKC
+   📦 Cantidad: 260
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 16-12-22-OPKC-260-0000015:
+   Hora pedido: 12:22
+   Tiempo mínimo salida: 12:52
+     ✅ Vuelo 03:16 UBBB→OPKC (Cap: 340/340, Paquetes: 260)
+   ✈️ Ruta directa encontrada: UBBB → OPKC
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OPKC (03:16-11:16)
+       🛫 SALIDA: UBBB → OPKC (03:16-11:16)
+
+76. 📦 PROCESANDO PEDIDO: 16-08-20-OSDI-335-0000016
+   ⏰ Hora del pedido: 08:20
+   🎯 Destino: OSDI
+   📦 Cantidad: 335
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 16-08-20-OSDI-335-0000016:
+   Hora pedido: 08:20
+   Tiempo mínimo salida: 08:50
+     ✅ Vuelo 00:00 UBBB→OSDI (Cap: 340/340, Paquetes: 335)
+   ✈️ Ruta directa encontrada: UBBB → OSDI
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OSDI (00:00-04:51)
+       🛫 SALIDA: UBBB → OSDI (00:00-04:51)
+
+77. 📦 PROCESANDO PEDIDO: 06-20-23-SABE-248-0000007
+   ⏰ Hora del pedido: 20:23
+   🎯 Destino: SABE
+   📦 Cantidad: 248
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 06-20-23-SABE-248-0000007:
+   Hora pedido: 20:23
+   Tiempo mínimo salida: 20:53
+     ✅ Vuelo 15:03 SPIM→SABE (Cap: 340/340, Paquetes: 248)
+   ✈️ Ruta directa encontrada: SPIM → SABE
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SABE (15:03-22:57)
+       🛫 SALIDA: SPIM → SABE (15:03-22:57)
+
+78. 📦 PROCESANDO PEDIDO: 15-08-51-SVMI-343-0000005
+   ⏰ Hora del pedido: 08:51
+   🎯 Destino: SVMI
+   📦 Cantidad: 343
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 15-08-51-SVMI-343-0000005:
+   Hora pedido: 08:51
+   Tiempo mínimo salida: 09:21
+     ✅ Vuelo 13:56 SKBO→SVMI (Cap: 360/360, Paquetes: 343)
+   ✈️ Ruta directa encontrada: SKBO → SVMI
+     🔄 Escala: SABE→SKBO→... (343 paquetes)
+   🔄 Ruta con escalas encontrada
+     🔄 Escala: SPIM→SABE→... (343 paquetes)
+   🔄 Ruta con escalas encontrada
+   ✅ RESULTADO: RUTA CON 2 ESCALAS
+   ❌ ERROR: Index 0 out of bounds for length 0
+
+79. 📦 PROCESANDO PEDIDO: 20-00-04-SGAS-301-0000013
+   ⏰ Hora del pedido: 00:04
+   🎯 Destino: SGAS
+   📦 Cantidad: 301
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 20-00-04-SGAS-301-0000013:
+   Hora pedido: 00:04
+   Tiempo mínimo salida: 00:34
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 01:32 SPIM→SGAS (Cap: 320/320, Paquetes: 301)
+   ✈️ Ruta directa encontrada: SPIM → SGAS
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SGAS (01:32-07:44)
+       🛫 SALIDA: SPIM → SGAS (01:32-07:44)
+
+80. 📦 PROCESANDO PEDIDO: 12-22-00-SVMI-324-0000003
+   ⏰ Hora del pedido: 22:00
+   🎯 Destino: SVMI
+   📦 Cantidad: 324
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 12-22-00-SVMI-324-0000003:
+   Hora pedido: 22:00
+   Tiempo mínimo salida: 22:30
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 13:56 SKBO→SVMI (Cap: 360/360, Paquetes: 324)
+   ✈️ Ruta directa encontrada: SKBO → SVMI
+     🔄 Escala: SPIM→SKBO→... (324 paquetes)
+   🔄 Ruta con escalas encontrada
+   ✅ RESULTADO: RUTA CON 1 ESCALAS
+   ❌ ERROR: Index 0 out of bounds for length 0
+📊 Progreso: 80/211 pedidos procesados (37.9%)
+
+81. 📦 PROCESANDO PEDIDO: 20-18-40-SEQM-276-0000022
+   ⏰ Hora del pedido: 18:40
+   🎯 Destino: SEQM
+   📦 Cantidad: 276
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 20-18-40-SEQM-276-0000022:
+   Hora pedido: 18:40
+   Tiempo mínimo salida: 19:10
+     ✅ Vuelo 00:13 SPIM→SEQM (Cap: 320/320, Paquetes: 276)
+   ✈️ Ruta directa encontrada: SPIM → SEQM
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SEQM (00:13-03:54)
+       🛫 SALIDA: SPIM → SEQM (00:13-03:54)
+
+82. 📦 PROCESANDO PEDIDO: 02-01-39-VIDP-307-0000007
+   ⏰ Hora del pedido: 01:39
+   🎯 Destino: VIDP
+   📦 Cantidad: 307
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 02-01-39-VIDP-307-0000007:
+   Hora pedido: 01:39
+   Tiempo mínimo salida: 02:09
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 09:12 UBBB→VIDP (Cap: 320/320, Paquetes: 307)
+   ✈️ Ruta directa encontrada: UBBB → VIDP
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→VIDP (09:12-17:43)
+       🛫 SALIDA: UBBB → VIDP (09:12-17:43)
+
+83. 📦 PROCESANDO PEDIDO: 06-18-19-EHAM-310-0000018
+   ⏰ Hora del pedido: 18:19
+   🎯 Destino: EHAM
+   📦 Cantidad: 310
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 06-18-19-EHAM-310-0000018:
+   Hora pedido: 18:19
+   Tiempo mínimo salida: 18:49
+     ✅ Vuelo 03:48 EBCI→EHAM (Cap: 360/360, Paquetes: 310)
+   ✈️ Ruta directa encontrada: EBCI → EHAM
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: EBCI→EHAM (03:48-05:04)
+       🛫 SALIDA: EBCI → EHAM (03:48-05:04)
+
+84. 📦 PROCESANDO PEDIDO: 04-21-39-SKBO-304-0000004
+   ⏰ Hora del pedido: 21:39
+   🎯 Destino: SKBO
+   📦 Cantidad: 304
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 04-21-39-SKBO-304-0000004:
+   Hora pedido: 21:39
+   Tiempo mínimo salida: 22:09
+     ✅ Vuelo 04:35 SPIM→SKBO (Cap: 340/340, Paquetes: 304)
+   ✈️ Ruta directa encontrada: SPIM → SKBO
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SKBO (04:35-08:51)
+       🛫 SALIDA: SPIM → SKBO (04:35-08:51)
+
+85. 📦 PROCESANDO PEDIDO: 26-03-03-OYSN-293-0000004
+   ⏰ Hora del pedido: 03:03
+   🎯 Destino: OYSN
+   📦 Cantidad: 293
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 26-03-03-OYSN-293-0000004:
+   Hora pedido: 03:03
+   Tiempo mínimo salida: 03:33
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 00:25 UBBB→OYSN (Cap: 320/320, Paquetes: 293)
+   ✈️ Ruta directa encontrada: UBBB → OYSN
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OYSN (00:25-06:59)
+       🛫 SALIDA: UBBB → OYSN (00:25-06:59)
+
+86. 📦 PROCESANDO PEDIDO: 25-01-17-OERK-250-0000020
+   ⏰ Hora del pedido: 01:17
+   🎯 Destino: OERK
+   📦 Cantidad: 250
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 25-01-17-OERK-250-0000020:
+   Hora pedido: 01:17
+   Tiempo mínimo salida: 01:47
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 00:32 UBBB→OERK (Cap: 340/340, Paquetes: 250)
+   ✈️ Ruta directa encontrada: UBBB → OERK
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OERK (00:32-05:49)
+       🛫 SALIDA: UBBB → OERK (00:32-05:49)
+
+87. 📦 PROCESANDO PEDIDO: 14-03-53-VIDP-299-0000004
+   ⏰ Hora del pedido: 03:53
+   🎯 Destino: VIDP
+   📦 Cantidad: 299
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 14-03-53-VIDP-299-0000004:
+   Hora pedido: 03:53
+   Tiempo mínimo salida: 04:23
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 02:12 UBBB→VIDP (Cap: 300/300, Paquetes: 299)
+   ✈️ Ruta directa encontrada: UBBB → VIDP
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→VIDP (02:12-10:43)
+       🛫 SALIDA: UBBB → VIDP (02:12-10:43)
+
+88. 📦 PROCESANDO PEDIDO: 07-18-18-LATI-229-0000017
+   ⏰ Hora del pedido: 18:18
+   🎯 Destino: LATI
+   📦 Cantidad: 229
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 07-18-18-LATI-229-0000017:
+   Hora pedido: 18:18
+   Tiempo mínimo salida: 18:48
+     ✅ Vuelo 02:04 EBCI→LATI (Cap: 300/300, Paquetes: 229)
+   ✈️ Ruta directa encontrada: EBCI → LATI
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: EBCI→LATI (02:04-05:59)
+       🛫 SALIDA: EBCI → LATI (02:04-05:59)
+
+89. 📦 PROCESANDO PEDIDO: 07-13-41-EKCH-327-0000019
+   ⏰ Hora del pedido: 13:41
+   🎯 Destino: EKCH
+   📦 Cantidad: 327
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 07-13-41-EKCH-327-0000019:
+   Hora pedido: 13:41
+   Tiempo mínimo salida: 14:11
+     ✅ Vuelo 10:47 EBCI→EKCH (Cap: 340/340, Paquetes: 327)
+   ✈️ Ruta directa encontrada: EBCI → EKCH
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: EBCI→EKCH (10:47-12:45)
+       🛫 SALIDA: EBCI → EKCH (10:47-12:45)
+
+90. 📦 PROCESANDO PEDIDO: 12-17-05-VIDP-263-0000009
+   ⏰ Hora del pedido: 17:05
+   🎯 Destino: VIDP
+   📦 Cantidad: 263
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 12-17-05-VIDP-263-0000009:
+   Hora pedido: 17:05
+   Tiempo mínimo salida: 17:35
+     ✅ Vuelo 02:12 UBBB→VIDP (Cap: 300/300, Paquetes: 263)
+   ✈️ Ruta directa encontrada: UBBB → VIDP
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→VIDP (02:12-10:43)
+       🛫 SALIDA: UBBB → VIDP (02:12-10:43)
+
+91. 📦 PROCESANDO PEDIDO: 23-12-06-OMDB-325-0000024
+   ⏰ Hora del pedido: 12:06
+   🎯 Destino: OMDB
+   📦 Cantidad: 325
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 23-12-06-OMDB-325-0000024:
+   Hora pedido: 12:06
+   Tiempo mínimo salida: 12:36
+     ✅ Vuelo 04:13 UBBB→OMDB (Cap: 360/360, Paquetes: 325)
+   ✈️ Ruta directa encontrada: UBBB → OMDB
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OMDB (04:13-10:23)
+       🛫 SALIDA: UBBB → OMDB (04:13-10:23)
+
+92. 📦 PROCESANDO PEDIDO: 30-04-06-SBBR-225-0000025
+   ⏰ Hora del pedido: 04:06
+   🎯 Destino: SBBR
+   📦 Cantidad: 225
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 30-04-06-SBBR-225-0000025:
+   Hora pedido: 04:06
+   Tiempo mínimo salida: 04:36
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 00:48 SPIM→SBBR (Cap: 300/300, Paquetes: 225)
+   ✈️ Ruta directa encontrada: SPIM → SBBR
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SBBR (00:48-08:53)
+       🛫 SALIDA: SPIM → SBBR (00:48-08:53)
+
+93. 📦 PROCESANDO PEDIDO: 04-22-56-OSDI-306-0000010
+   ⏰ Hora del pedido: 22:56
+   🎯 Destino: OSDI
+   📦 Cantidad: 306
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 04-22-56-OSDI-306-0000010:
+   Hora pedido: 22:56
+   Tiempo mínimo salida: 23:26
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 00:00 UBBB→OSDI (Cap: 340/340, Paquetes: 306)
+   ✈️ Ruta directa encontrada: UBBB → OSDI
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OSDI (00:00-04:51)
+       🛫 SALIDA: UBBB → OSDI (00:00-04:51)
+
+94. 📦 PROCESANDO PEDIDO: 03-05-56-VIDP-334-0000019
+   ⏰ Hora del pedido: 05:56
+   🎯 Destino: VIDP
+   📦 Cantidad: 334
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 03-05-56-VIDP-334-0000019:
+   Hora pedido: 05:56
+   Tiempo mínimo salida: 06:26
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 19:05 SKBO→VIDP (Cap: 340/340, Paquetes: 334)
+   ✈️ Ruta directa encontrada: SKBO → VIDP
+     🔄 Escala: UBBB→SKBO→... (334 paquetes)
+   🔄 Ruta con escalas encontrada
+   ✅ RESULTADO: RUTA CON 1 ESCALAS
+   ❌ ERROR: Index 0 out of bounds for length 0
+
+95. 📦 PROCESANDO PEDIDO: 28-19-28-LATI-274-0000024
+   ⏰ Hora del pedido: 19:28
+   🎯 Destino: LATI
+   📦 Cantidad: 274
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 28-19-28-LATI-274-0000024:
+   Hora pedido: 19:28
+   Tiempo mínimo salida: 19:58
+     ✅ Vuelo 02:04 EBCI→LATI (Cap: 300/300, Paquetes: 274)
+   ✈️ Ruta directa encontrada: EBCI → LATI
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: EBCI→LATI (02:04-05:59)
+       🛫 SALIDA: EBCI → LATI (02:04-05:59)
+
+96. 📦 PROCESANDO PEDIDO: 03-13-04-OJAI-314-0000013
+   ⏰ Hora del pedido: 13:04
+   🎯 Destino: OJAI
+   📦 Cantidad: 314
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 03-13-04-OJAI-314-0000013:
+   Hora pedido: 13:04
+   Tiempo mínimo salida: 13:34
+     ✅ Vuelo 05:19 SKBO→OJAI (Cap: 360/360, Paquetes: 314)
+   ✈️ Ruta directa encontrada: SKBO → OJAI
+     🔄 Escala: UBBB→SKBO→... (314 paquetes)
+   🔄 Ruta con escalas encontrada
+   ✅ RESULTADO: RUTA CON 1 ESCALAS
+   ❌ ERROR: Index 0 out of bounds for length 0
+
+97. 📦 PROCESANDO PEDIDO: 15-09-37-UMMS-264-0000012
+   ⏰ Hora del pedido: 09:37
+   🎯 Destino: UMMS
+   📦 Cantidad: 264
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 15-09-37-UMMS-264-0000012:
+   Hora pedido: 09:37
+   Tiempo mínimo salida: 10:07
+     ✅ Vuelo 02:26 UBBB→UMMS (Cap: 300/300, Paquetes: 264)
+   ✈️ Ruta directa encontrada: UBBB → UMMS
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→UMMS (02:26-07:12)
+       🛫 SALIDA: UBBB → UMMS (02:26-07:12)
+
+98. 📦 PROCESANDO PEDIDO: 24-03-46-OJAI-248-0000018
+   ⏰ Hora del pedido: 03:46
+   🎯 Destino: OJAI
+   📦 Cantidad: 248
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 24-03-46-OJAI-248-0000018:
+   Hora pedido: 03:46
+   Tiempo mínimo salida: 04:16
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 15:17 UBBB→OJAI (Cap: 300/300, Paquetes: 248)
+   ✈️ Ruta directa encontrada: UBBB → OJAI
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OJAI (15:17-20:24)
+       🛫 SALIDA: UBBB → OJAI (15:17-20:24)
+
+99. 📦 PROCESANDO PEDIDO: 30-14-52-SCEL-245-0000021
+   ⏰ Hora del pedido: 14:52
+   🎯 Destino: SCEL
+   📦 Cantidad: 245
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 30-14-52-SCEL-245-0000021:
+   Hora pedido: 14:52
+   Tiempo mínimo salida: 15:22
+     ✅ Vuelo 03:11 SPIM→SCEL (Cap: 340/340, Paquetes: 245)
+   ✈️ Ruta directa encontrada: SPIM → SCEL
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SCEL (03:11-10:15)
+       🛫 SALIDA: SPIM → SCEL (03:11-10:15)
+
+100. 📦 PROCESANDO PEDIDO: 25-06-36-OERK-281-0000025
+   ⏰ Hora del pedido: 06:36
+   🎯 Destino: OERK
+   📦 Cantidad: 281
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 25-06-36-OERK-281-0000025:
+   Hora pedido: 06:36
+   Tiempo mínimo salida: 07:06
+     ✅ Vuelo 15:46 UBBB→OERK (Cap: 340/340, Paquetes: 281)
+   ✈️ Ruta directa encontrada: UBBB → OERK
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OERK (15:46-20:03)
+       🛫 SALIDA: UBBB → OERK (15:46-20:03)
+📊 Progreso: 100/211 pedidos procesados (47.4%)
+
+101. 📦 PROCESANDO PEDIDO: 06-01-26-EDDI-215-0000015
+   ⏰ Hora del pedido: 01:26
+   🎯 Destino: EDDI
+   📦 Cantidad: 215
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 06-01-26-EDDI-215-0000015:
+   Hora pedido: 01:26
+   Tiempo mínimo salida: 01:56
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 10:37 EBCI→EDDI (Cap: 300/300, Paquetes: 215)
+   ✈️ Ruta directa encontrada: EBCI → EDDI
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: EBCI→EDDI (10:37-12:27)
+       🛫 SALIDA: EBCI → EDDI (10:37-12:27)
+
+102. 📦 PROCESANDO PEDIDO: 19-12-51-OAKB-272-0000019
+   ⏰ Hora del pedido: 12:51
+   🎯 Destino: OAKB
+   📦 Cantidad: 272
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 19-12-51-OAKB-272-0000019:
+   Hora pedido: 12:51
+   Tiempo mínimo salida: 13:21
+     ✅ Vuelo 00:24 UBBB→OAKB (Cap: 320/320, Paquetes: 272)
+   ✈️ Ruta directa encontrada: UBBB → OAKB
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OAKB (00:24-06:40)
+       🛫 SALIDA: UBBB → OAKB (00:24-06:40)
+
+103. 📦 PROCESANDO PEDIDO: 06-05-28-LKPR-244-0000019
+   ⏰ Hora del pedido: 05:28
+   🎯 Destino: LKPR
+   📦 Cantidad: 244
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 06-05-28-LKPR-244-0000019:
+   Hora pedido: 05:28
+   Tiempo mínimo salida: 05:58
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 05:23 EBCI→LKPR (Cap: 300/300, Paquetes: 244)
+   ✈️ Ruta directa encontrada: EBCI → LKPR
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: EBCI→LKPR (05:23-07:16)
+       🛫 SALIDA: EBCI → LKPR (05:23-07:16)
+
+104. 📦 PROCESANDO PEDIDO: 25-22-26-SKBO-299-0000012
+   ⏰ Hora del pedido: 22:26
+   🎯 Destino: SKBO
+   📦 Cantidad: 299
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 25-22-26-SKBO-299-0000012:
+   Hora pedido: 22:26
+   Tiempo mínimo salida: 22:56
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 04:35 SPIM→SKBO (Cap: 340/340, Paquetes: 299)
+   ✈️ Ruta directa encontrada: SPIM → SKBO
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SKBO (04:35-08:51)
+       🛫 SALIDA: SPIM → SKBO (04:35-08:51)
+
+105. 📦 PROCESANDO PEDIDO: 17-19-13-OYSN-303-0000016
+   ⏰ Hora del pedido: 19:13
+   🎯 Destino: OYSN
+   📦 Cantidad: 303
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 17-19-13-OYSN-303-0000016:
+   Hora pedido: 19:13
+   Tiempo mínimo salida: 19:43
+     ✅ Vuelo 00:25 UBBB→OYSN (Cap: 320/320, Paquetes: 303)
+   ✈️ Ruta directa encontrada: UBBB → OYSN
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OYSN (00:25-06:59)
+       🛫 SALIDA: UBBB → OYSN (00:25-06:59)
+
+106. 📦 PROCESANDO PEDIDO: 06-09-27-OYSN-333-0000023
+   ⏰ Hora del pedido: 09:27
+   🎯 Destino: OYSN
+   📦 Cantidad: 333
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 06-09-27-OYSN-333-0000023:
+   Hora pedido: 09:27
+   Tiempo mínimo salida: 09:57
+     ✅ Vuelo 07:35 UBBB→OYSN (Cap: 360/360, Paquetes: 333)
+   ✈️ Ruta directa encontrada: UBBB → OYSN
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OYSN (07:35-13:09)
+       🛫 SALIDA: UBBB → OYSN (07:35-13:09)
+
+107. 📦 PROCESANDO PEDIDO: 16-19-44-SVMI-254-0000016
+   ⏰ Hora del pedido: 19:44
+   🎯 Destino: SVMI
+   📦 Cantidad: 254
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 16-19-44-SVMI-254-0000016:
+   Hora pedido: 19:44
+   Tiempo mínimo salida: 20:14
+     ✅ Vuelo 05:24 SPIM→SVMI (Cap: 320/320, Paquetes: 254)
+   ✈️ Ruta directa encontrada: SPIM → SVMI
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SVMI (05:24-11:50)
+       🛫 SALIDA: SPIM → SVMI (05:24-11:50)
+
+108. 📦 PROCESANDO PEDIDO: 15-02-21-LDZA-235-0000007
+   ⏰ Hora del pedido: 02:21
+   🎯 Destino: LDZA
+   📦 Cantidad: 235
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 15-02-21-LDZA-235-0000007:
+   Hora pedido: 02:21
+   Tiempo mínimo salida: 02:51
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 05:43 EBCI→LDZA (Cap: 340/340, Paquetes: 235)
+   ✈️ Ruta directa encontrada: EBCI → LDZA
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: EBCI→LDZA (05:43-08:02)
+       🛫 SALIDA: EBCI → LDZA (05:43-08:02)
+
+109. 📦 PROCESANDO PEDIDO: 19-23-28-OYSN-322-0000017
+   ⏰ Hora del pedido: 23:28
+   🎯 Destino: OYSN
+   📦 Cantidad: 322
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 19-23-28-OYSN-322-0000017:
+   Hora pedido: 23:28
+   Tiempo mínimo salida: 23:58
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 07:35 UBBB→OYSN (Cap: 360/360, Paquetes: 322)
+   ✈️ Ruta directa encontrada: UBBB → OYSN
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OYSN (07:35-13:09)
+       🛫 SALIDA: UBBB → OYSN (07:35-13:09)
+
+110. 📦 PROCESANDO PEDIDO: 12-06-23-LBSF-310-0000023
+   ⏰ Hora del pedido: 06:23
+   🎯 Destino: LBSF
+   📦 Cantidad: 310
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 12-06-23-LBSF-310-0000023:
+   Hora pedido: 06:23
+   Tiempo mínimo salida: 06:53
+     ✅ Vuelo 03:36 EBCI→LBSF (Cap: 340/340, Paquetes: 310)
+   ✈️ Ruta directa encontrada: EBCI → LBSF
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: EBCI→LBSF (03:36-08:45)
+       🛫 SALIDA: EBCI → LBSF (03:36-08:45)
+
+111. 📦 PROCESANDO PEDIDO: 05-12-11-LATI-295-0000004
+   ⏰ Hora del pedido: 12:11
+   🎯 Destino: LATI
+   📦 Cantidad: 295
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 05-12-11-LATI-295-0000004:
+   Hora pedido: 12:11
+   Tiempo mínimo salida: 12:41
+     ✅ Vuelo 02:04 EBCI→LATI (Cap: 300/300, Paquetes: 295)
+   ✈️ Ruta directa encontrada: EBCI → LATI
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: EBCI→LATI (02:04-05:59)
+       🛫 SALIDA: EBCI → LATI (02:04-05:59)
+
+112. 📦 PROCESANDO PEDIDO: 12-05-07-LKPR-274-0000021
+   ⏰ Hora del pedido: 05:07
+   🎯 Destino: LKPR
+   📦 Cantidad: 274
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 12-05-07-LKPR-274-0000021:
+   Hora pedido: 05:07
+   Tiempo mínimo salida: 05:37
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 05:23 EBCI→LKPR (Cap: 300/300, Paquetes: 274)
+   ✈️ Ruta directa encontrada: EBCI → LKPR
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: EBCI→LKPR (05:23-07:16)
+       🛫 SALIDA: EBCI → LKPR (05:23-07:16)
+
+113. 📦 PROCESANDO PEDIDO: 22-06-31-SKBO-291-0000002
+   ⏰ Hora del pedido: 06:31
+   🎯 Destino: SKBO
+   📦 Cantidad: 291
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 22-06-31-SKBO-291-0000002:
+   Hora pedido: 06:31
+   Tiempo mínimo salida: 07:01
+     ✅ Vuelo 04:35 SPIM→SKBO (Cap: 340/340, Paquetes: 291)
+   ✈️ Ruta directa encontrada: SPIM → SKBO
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SKBO (04:35-08:51)
+       🛫 SALIDA: SPIM → SKBO (04:35-08:51)
+
+114. 📦 PROCESANDO PEDIDO: 08-17-47-OSDI-252-0000015
+   ⏰ Hora del pedido: 17:47
+   🎯 Destino: OSDI
+   📦 Cantidad: 252
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 08-17-47-OSDI-252-0000015:
+   Hora pedido: 17:47
+   Tiempo mínimo salida: 18:17
+     ✅ Vuelo 00:00 UBBB→OSDI (Cap: 340/340, Paquetes: 252)
+   ✈️ Ruta directa encontrada: UBBB → OSDI
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OSDI (00:00-04:51)
+       🛫 SALIDA: UBBB → OSDI (00:00-04:51)
+
+115. 📦 PROCESANDO PEDIDO: 18-15-45-SABE-282-0000012
+   ⏰ Hora del pedido: 15:45
+   🎯 Destino: SABE
+   📦 Cantidad: 282
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 18-15-45-SABE-282-0000012:
+   Hora pedido: 15:45
+   Tiempo mínimo salida: 16:15
+     ✅ Vuelo 05:20 SPIM→SABE (Cap: 300/300, Paquetes: 282)
+   ✈️ Ruta directa encontrada: SPIM → SABE
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SABE (05:20-12:14)
+       🛫 SALIDA: SPIM → SABE (05:20-12:14)
+
+116. 📦 PROCESANDO PEDIDO: 14-16-57-LOWW-223-0000005
+   ⏰ Hora del pedido: 16:57
+   🎯 Destino: LOWW
+   📦 Cantidad: 223
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 14-16-57-LOWW-223-0000005:
+   Hora pedido: 16:57
+   Tiempo mínimo salida: 17:27
+     ✅ Vuelo 01:56 EBCI→LOWW (Cap: 360/360, Paquetes: 223)
+   ✈️ Ruta directa encontrada: EBCI → LOWW
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: EBCI→LOWW (01:56-04:04)
+       🛫 SALIDA: EBCI → LOWW (01:56-04:04)
+
+117. 📦 PROCESANDO PEDIDO: 22-11-54-OERK-325-0000003
+   ⏰ Hora del pedido: 11:54
+   🎯 Destino: OERK
+   📦 Cantidad: 325
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 22-11-54-OERK-325-0000003:
+   Hora pedido: 11:54
+   Tiempo mínimo salida: 12:24
+     ✅ Vuelo 00:32 UBBB→OERK (Cap: 340/340, Paquetes: 325)
+   ✈️ Ruta directa encontrada: UBBB → OERK
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OERK (00:32-05:49)
+       🛫 SALIDA: UBBB → OERK (00:32-05:49)
+
+118. 📦 PROCESANDO PEDIDO: 26-18-02-LKPR-295-0000017
+   ⏰ Hora del pedido: 18:02
+   🎯 Destino: LKPR
+   📦 Cantidad: 295
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 26-18-02-LKPR-295-0000017:
+   Hora pedido: 18:02
+   Tiempo mínimo salida: 18:32
+     ✅ Vuelo 05:23 EBCI→LKPR (Cap: 300/300, Paquetes: 295)
+   ✈️ Ruta directa encontrada: EBCI → LKPR
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: EBCI→LKPR (05:23-07:16)
+       🛫 SALIDA: EBCI → LKPR (05:23-07:16)
+
+119. 📦 PROCESANDO PEDIDO: 28-19-16-SCEL-291-0000015
+   ⏰ Hora del pedido: 19:16
+   🎯 Destino: SCEL
+   📦 Cantidad: 291
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 28-19-16-SCEL-291-0000015:
+   Hora pedido: 19:16
+   Tiempo mínimo salida: 19:46
+     ✅ Vuelo 03:11 SPIM→SCEL (Cap: 340/340, Paquetes: 291)
+   ✈️ Ruta directa encontrada: SPIM → SCEL
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SCEL (03:11-10:15)
+       🛫 SALIDA: SPIM → SCEL (03:11-10:15)
+
+120. 📦 PROCESANDO PEDIDO: 03-08-44-SLLP-225-0000021
+   ⏰ Hora del pedido: 08:44
+   🎯 Destino: SLLP
+   📦 Cantidad: 225
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 03-08-44-SLLP-225-0000021:
+   Hora pedido: 08:44
+   Tiempo mínimo salida: 09:14
+     ✅ Vuelo 00:21 SPIM→SLLP (Cap: 300/300, Paquetes: 225)
+   ✈️ Ruta directa encontrada: SPIM → SLLP
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SLLP (00:21-04:41)
+       🛫 SALIDA: SPIM → SLLP (00:21-04:41)
+📊 Progreso: 120/211 pedidos procesados (56.9%)
+
+121. 📦 PROCESANDO PEDIDO: 21-21-13-LOWW-324-0000021
+   ⏰ Hora del pedido: 21:13
+   🎯 Destino: LOWW
+   📦 Cantidad: 324
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 21-21-13-LOWW-324-0000021:
+   Hora pedido: 21:13
+   Tiempo mínimo salida: 21:43
+     ✅ Vuelo 01:56 EBCI→LOWW (Cap: 360/360, Paquetes: 324)
+   ✈️ Ruta directa encontrada: EBCI → LOWW
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: EBCI→LOWW (01:56-04:04)
+       🛫 SALIDA: EBCI → LOWW (01:56-04:04)
+
+122. 📦 PROCESANDO PEDIDO: 03-03-22-SUAA-253-0000002
+   ⏰ Hora del pedido: 03:22
+   🎯 Destino: SUAA
+   📦 Cantidad: 253
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 03-03-22-SUAA-253-0000002:
+   Hora pedido: 03:22
+   Tiempo mínimo salida: 03:52
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 07:09 SPIM→SUAA (Cap: 300/300, Paquetes: 253)
+   ✈️ Ruta directa encontrada: SPIM → SUAA
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SUAA (07:09-15:13)
+       🛫 SALIDA: SPIM → SUAA (07:09-15:13)
+
+123. 📦 PROCESANDO PEDIDO: 16-04-55-SABE-287-0000006
+   ⏰ Hora del pedido: 04:55
+   🎯 Destino: SABE
+   📦 Cantidad: 287
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 16-04-55-SABE-287-0000006:
+   Hora pedido: 04:55
+   Tiempo mínimo salida: 05:25
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 05:20 SPIM→SABE (Cap: 300/300, Paquetes: 287)
+   ✈️ Ruta directa encontrada: SPIM → SABE
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SABE (05:20-12:14)
+       🛫 SALIDA: SPIM → SABE (05:20-12:14)
+
+124. 📦 PROCESANDO PEDIDO: 20-22-26-LKPR-216-0000012
+   ⏰ Hora del pedido: 22:26
+   🎯 Destino: LKPR
+   📦 Cantidad: 216
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 20-22-26-LKPR-216-0000012:
+   Hora pedido: 22:26
+   Tiempo mínimo salida: 22:56
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 05:23 EBCI→LKPR (Cap: 300/300, Paquetes: 216)
+   ✈️ Ruta directa encontrada: EBCI → LKPR
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: EBCI→LKPR (05:23-07:16)
+       🛫 SALIDA: EBCI → LKPR (05:23-07:16)
+
+125. 📦 PROCESANDO PEDIDO: 09-02-55-OSDI-276-0000001
+   ⏰ Hora del pedido: 02:55
+   🎯 Destino: OSDI
+   📦 Cantidad: 276
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 09-02-55-OSDI-276-0000001:
+   Hora pedido: 02:55
+   Tiempo mínimo salida: 03:25
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 00:00 UBBB→OSDI (Cap: 340/340, Paquetes: 276)
+   ✈️ Ruta directa encontrada: UBBB → OSDI
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OSDI (00:00-04:51)
+       🛫 SALIDA: UBBB → OSDI (00:00-04:51)
+
+126. 📦 PROCESANDO PEDIDO: 21-16-02-SABE-281-0000001
+   ⏰ Hora del pedido: 16:02
+   🎯 Destino: SABE
+   📦 Cantidad: 281
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 21-16-02-SABE-281-0000001:
+   Hora pedido: 16:02
+   Tiempo mínimo salida: 16:32
+     ✅ Vuelo 05:20 SPIM→SABE (Cap: 300/300, Paquetes: 281)
+   ✈️ Ruta directa encontrada: SPIM → SABE
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SABE (05:20-12:14)
+       🛫 SALIDA: SPIM → SABE (05:20-12:14)
+
+127. 📦 PROCESANDO PEDIDO: 04-15-56-OSDI-294-0000008
+   ⏰ Hora del pedido: 15:56
+   🎯 Destino: OSDI
+   📦 Cantidad: 294
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 04-15-56-OSDI-294-0000008:
+   Hora pedido: 15:56
+   Tiempo mínimo salida: 16:26
+     ✅ Vuelo 11:58 UBBB→OSDI (Cap: 360/360, Paquetes: 294)
+   ✈️ Ruta directa encontrada: UBBB → OSDI
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OSDI (11:58-15:49)
+       🛫 SALIDA: UBBB → OSDI (11:58-15:49)
+
+128. 📦 PROCESANDO PEDIDO: 11-17-07-OAKB-269-0000017
+   ⏰ Hora del pedido: 17:07
+   🎯 Destino: OAKB
+   📦 Cantidad: 269
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 11-17-07-OAKB-269-0000017:
+   Hora pedido: 17:07
+   Tiempo mínimo salida: 17:37
+     ✅ Vuelo 00:24 UBBB→OAKB (Cap: 320/320, Paquetes: 269)
+   ✈️ Ruta directa encontrada: UBBB → OAKB
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OAKB (00:24-06:40)
+       🛫 SALIDA: UBBB → OAKB (00:24-06:40)
+
+129. 📦 PROCESANDO PEDIDO: 05-12-16-UMMS-285-0000005
+   ⏰ Hora del pedido: 12:16
+   🎯 Destino: UMMS
+   📦 Cantidad: 285
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 05-12-16-UMMS-285-0000005:
+   Hora pedido: 12:16
+   Tiempo mínimo salida: 12:46
+     ✅ Vuelo 06:05 UBBB→UMMS (Cap: 300/300, Paquetes: 285)
+   ✈️ Ruta directa encontrada: UBBB → UMMS
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→UMMS (06:05-11:51)
+       🛫 SALIDA: UBBB → UMMS (06:05-11:51)
+
+130. 📦 PROCESANDO PEDIDO: 16-07-09-OJAI-226-0000001
+   ⏰ Hora del pedido: 07:09
+   🎯 Destino: OJAI
+   📦 Cantidad: 226
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 16-07-09-OJAI-226-0000001:
+   Hora pedido: 07:09
+   Tiempo mínimo salida: 07:39
+     ✅ Vuelo 15:17 UBBB→OJAI (Cap: 300/300, Paquetes: 226)
+   ✈️ Ruta directa encontrada: UBBB → OJAI
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OJAI (15:17-20:24)
+       🛫 SALIDA: UBBB → OJAI (15:17-20:24)
+
+131. 📦 PROCESANDO PEDIDO: 30-16-46-LDZA-284-0000001
+   ⏰ Hora del pedido: 16:46
+   🎯 Destino: LDZA
+   📦 Cantidad: 284
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 30-16-46-LDZA-284-0000001:
+   Hora pedido: 16:46
+   Tiempo mínimo salida: 17:16
+     ✅ Vuelo 05:43 EBCI→LDZA (Cap: 340/340, Paquetes: 284)
+   ✈️ Ruta directa encontrada: EBCI → LDZA
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: EBCI→LDZA (05:43-08:02)
+       🛫 SALIDA: EBCI → LDZA (05:43-08:02)
+
+132. 📦 PROCESANDO PEDIDO: 07-04-57-SGAS-232-0000008
+   ⏰ Hora del pedido: 04:57
+   🎯 Destino: SGAS
+   📦 Cantidad: 232
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 07-04-57-SGAS-232-0000008:
+   Hora pedido: 04:57
+   Tiempo mínimo salida: 05:27
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 01:32 SPIM→SGAS (Cap: 320/320, Paquetes: 232)
+   ✈️ Ruta directa encontrada: SPIM → SGAS
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SGAS (01:32-07:44)
+       🛫 SALIDA: SPIM → SGAS (01:32-07:44)
+
+133. 📦 PROCESANDO PEDIDO: 21-14-47-SVMI-281-0000024
+   ⏰ Hora del pedido: 14:47
+   🎯 Destino: SVMI
+   📦 Cantidad: 281
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 21-14-47-SVMI-281-0000024:
+   Hora pedido: 14:47
+   Tiempo mínimo salida: 15:17
+     ✅ Vuelo 05:24 SPIM→SVMI (Cap: 320/320, Paquetes: 281)
+   ✈️ Ruta directa encontrada: SPIM → SVMI
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SVMI (05:24-11:50)
+       🛫 SALIDA: SPIM → SVMI (05:24-11:50)
+
+134. 📦 PROCESANDO PEDIDO: 17-23-42-OSDI-307-0000004
+   ⏰ Hora del pedido: 23:42
+   🎯 Destino: OSDI
+   📦 Cantidad: 307
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 17-23-42-OSDI-307-0000004:
+   Hora pedido: 23:42
+   Tiempo mínimo salida: 00:12
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 00:00 UBBB→OSDI (Cap: 340/340, Paquetes: 307)
+   ✈️ Ruta directa encontrada: UBBB → OSDI
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OSDI (00:00-04:51)
+       🛫 SALIDA: UBBB → OSDI (00:00-04:51)
+
+135. 📦 PROCESANDO PEDIDO: 15-17-44-OSDI-268-0000021
+   ⏰ Hora del pedido: 17:44
+   🎯 Destino: OSDI
+   📦 Cantidad: 268
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 15-17-44-OSDI-268-0000021:
+   Hora pedido: 17:44
+   Tiempo mínimo salida: 18:14
+     ✅ Vuelo 00:00 UBBB→OSDI (Cap: 340/340, Paquetes: 268)
+   ✈️ Ruta directa encontrada: UBBB → OSDI
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OSDI (00:00-04:51)
+       🛫 SALIDA: UBBB → OSDI (00:00-04:51)
+
+136. 📦 PROCESANDO PEDIDO: 19-05-17-OERK-345-0000008
+   ⏰ Hora del pedido: 05:17
+   🎯 Destino: OERK
+   📦 Cantidad: 345
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 19-05-17-OERK-345-0000008:
+   Hora pedido: 05:17
+   Tiempo mínimo salida: 05:47
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 22:47 UBBB→OERK (Cap: 360/360, Paquetes: 345)
+   ✈️ Ruta directa encontrada: UBBB → OERK
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OERK (22:47-03:04)
+       🛫 SALIDA: UBBB → OERK (22:47-03:04)
+
+137. 📦 PROCESANDO PEDIDO: 23-06-41-OPKC-249-0000014
+   ⏰ Hora del pedido: 06:41
+   🎯 Destino: OPKC
+   📦 Cantidad: 249
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 23-06-41-OPKC-249-0000014:
+   Hora pedido: 06:41
+   Tiempo mínimo salida: 07:11
+     ✅ Vuelo 03:16 UBBB→OPKC (Cap: 340/340, Paquetes: 249)
+   ✈️ Ruta directa encontrada: UBBB → OPKC
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OPKC (03:16-11:16)
+       🛫 SALIDA: UBBB → OPKC (03:16-11:16)
+
+138. 📦 PROCESANDO PEDIDO: 15-03-16-OMDB-262-0000001
+   ⏰ Hora del pedido: 03:16
+   🎯 Destino: OMDB
+   📦 Cantidad: 262
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 15-03-16-OMDB-262-0000001:
+   Hora pedido: 03:16
+   Tiempo mínimo salida: 03:46
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 04:13 UBBB→OMDB (Cap: 360/360, Paquetes: 262)
+   ✈️ Ruta directa encontrada: UBBB → OMDB
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OMDB (04:13-10:23)
+       🛫 SALIDA: UBBB → OMDB (04:13-10:23)
+
+139. 📦 PROCESANDO PEDIDO: 10-05-48-SKBO-262-0000019
+   ⏰ Hora del pedido: 05:48
+   🎯 Destino: SKBO
+   📦 Cantidad: 262
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 10-05-48-SKBO-262-0000019:
+   Hora pedido: 05:48
+   Tiempo mínimo salida: 06:18
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 08:02 SPIM→SKBO (Cap: 300/300, Paquetes: 262)
+   ✈️ Ruta directa encontrada: SPIM → SKBO
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SKBO (08:02-12:18)
+       🛫 SALIDA: SPIM → SKBO (08:02-12:18)
+
+140. 📦 PROCESANDO PEDIDO: 14-10-23-VIDP-240-0000025
+   ⏰ Hora del pedido: 10:23
+   🎯 Destino: VIDP
+   📦 Cantidad: 240
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 14-10-23-VIDP-240-0000025:
+   Hora pedido: 10:23
+   Tiempo mínimo salida: 10:53
+     ✅ Vuelo 09:12 UBBB→VIDP (Cap: 320/320, Paquetes: 240)
+   ✈️ Ruta directa encontrada: UBBB → VIDP
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→VIDP (09:12-17:43)
+       🛫 SALIDA: UBBB → VIDP (09:12-17:43)
+📊 Progreso: 140/211 pedidos procesados (66.4%)
+
+141. 📦 PROCESANDO PEDIDO: 27-19-37-LDZA-221-0000009
+   ⏰ Hora del pedido: 19:37
+   🎯 Destino: LDZA
+   📦 Cantidad: 221
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 27-19-37-LDZA-221-0000009:
+   Hora pedido: 19:37
+   Tiempo mínimo salida: 20:07
+     ✅ Vuelo 05:43 EBCI→LDZA (Cap: 340/340, Paquetes: 221)
+   ✈️ Ruta directa encontrada: EBCI → LDZA
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: EBCI→LDZA (05:43-08:02)
+       🛫 SALIDA: EBCI → LDZA (05:43-08:02)
+
+142. 📦 PROCESANDO PEDIDO: 11-23-22-SGAS-255-0000009
+   ⏰ Hora del pedido: 23:22
+   🎯 Destino: SGAS
+   📦 Cantidad: 255
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 11-23-22-SGAS-255-0000009:
+   Hora pedido: 23:22
+   Tiempo mínimo salida: 23:52
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 01:32 SPIM→SGAS (Cap: 320/320, Paquetes: 255)
+   ✈️ Ruta directa encontrada: SPIM → SGAS
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SGAS (01:32-07:44)
+       🛫 SALIDA: SPIM → SGAS (01:32-07:44)
+
+143. 📦 PROCESANDO PEDIDO: 06-15-05-OMDB-230-0000018
+   ⏰ Hora del pedido: 15:05
+   🎯 Destino: OMDB
+   📦 Cantidad: 230
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 06-15-05-OMDB-230-0000018:
+   Hora pedido: 15:05
+   Tiempo mínimo salida: 15:35
+     ✅ Vuelo 04:13 UBBB→OMDB (Cap: 360/360, Paquetes: 230)
+   ✈️ Ruta directa encontrada: UBBB → OMDB
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OMDB (04:13-10:23)
+       🛫 SALIDA: UBBB → OMDB (04:13-10:23)
+
+144. 📦 PROCESANDO PEDIDO: 11-05-51-OMDB-261-0000007
+   ⏰ Hora del pedido: 05:51
+   🎯 Destino: OMDB
+   📦 Cantidad: 261
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 11-05-51-OMDB-261-0000007:
+   Hora pedido: 05:51
+   Tiempo mínimo salida: 06:21
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 04:13 UBBB→OMDB (Cap: 360/360, Paquetes: 261)
+   ✈️ Ruta directa encontrada: UBBB → OMDB
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OMDB (04:13-10:23)
+       🛫 SALIDA: UBBB → OMDB (04:13-10:23)
+
+145. 📦 PROCESANDO PEDIDO: 16-14-31-OSDI-333-0000008
+   ⏰ Hora del pedido: 14:31
+   🎯 Destino: OSDI
+   📦 Cantidad: 333
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 16-14-31-OSDI-333-0000008:
+   Hora pedido: 14:31
+   Tiempo mínimo salida: 15:01
+     ✅ Vuelo 11:58 UBBB→OSDI (Cap: 360/360, Paquetes: 333)
+   ✈️ Ruta directa encontrada: UBBB → OSDI
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OSDI (11:58-15:49)
+       🛫 SALIDA: UBBB → OSDI (11:58-15:49)
+
+146. 📦 PROCESANDO PEDIDO: 19-00-34-OPKC-257-0000008
+   ⏰ Hora del pedido: 00:34
+   🎯 Destino: OPKC
+   📦 Cantidad: 257
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 19-00-34-OPKC-257-0000008:
+   Hora pedido: 00:34
+   Tiempo mínimo salida: 01:04
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 03:16 UBBB→OPKC (Cap: 340/340, Paquetes: 257)
+   ✈️ Ruta directa encontrada: UBBB → OPKC
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OPKC (03:16-11:16)
+       🛫 SALIDA: UBBB → OPKC (03:16-11:16)
+
+147. 📦 PROCESANDO PEDIDO: 21-22-54-OERK-292-0000006
+   ⏰ Hora del pedido: 22:54
+   🎯 Destino: OERK
+   📦 Cantidad: 292
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 21-22-54-OERK-292-0000006:
+   Hora pedido: 22:54
+   Tiempo mínimo salida: 23:24
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 00:32 UBBB→OERK (Cap: 340/340, Paquetes: 292)
+   ✈️ Ruta directa encontrada: UBBB → OERK
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OERK (00:32-05:49)
+       🛫 SALIDA: UBBB → OERK (00:32-05:49)
+
+148. 📦 PROCESANDO PEDIDO: 11-16-08-OMDB-230-0000021
+   ⏰ Hora del pedido: 16:08
+   🎯 Destino: OMDB
+   📦 Cantidad: 230
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 11-16-08-OMDB-230-0000021:
+   Hora pedido: 16:08
+   Tiempo mínimo salida: 16:38
+     ✅ Vuelo 07:01 UBBB→OMDB (Cap: 300/300, Paquetes: 230)
+   ✈️ Ruta directa encontrada: UBBB → OMDB
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OMDB (07:01-13:11)
+       🛫 SALIDA: UBBB → OMDB (07:01-13:11)
+
+149. 📦 PROCESANDO PEDIDO: 26-20-45-OPKC-332-0000001
+   ⏰ Hora del pedido: 20:45
+   🎯 Destino: OPKC
+   📦 Cantidad: 332
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 26-20-45-OPKC-332-0000001:
+   Hora pedido: 20:45
+   Tiempo mínimo salida: 21:15
+     ✅ Vuelo 03:16 UBBB→OPKC (Cap: 340/340, Paquetes: 332)
+   ✈️ Ruta directa encontrada: UBBB → OPKC
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OPKC (03:16-11:16)
+       🛫 SALIDA: UBBB → OPKC (03:16-11:16)
+
+150. 📦 PROCESANDO PEDIDO: 14-15-03-OSDI-315-0000015
+   ⏰ Hora del pedido: 15:03
+   🎯 Destino: OSDI
+   📦 Cantidad: 315
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 14-15-03-OSDI-315-0000015:
+   Hora pedido: 15:03
+   Tiempo mínimo salida: 15:33
+     ✅ Vuelo 00:00 UBBB→OSDI (Cap: 340/340, Paquetes: 315)
+   ✈️ Ruta directa encontrada: UBBB → OSDI
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OSDI (00:00-04:51)
+       🛫 SALIDA: UBBB → OSDI (00:00-04:51)
+
+151. 📦 PROCESANDO PEDIDO: 05-19-30-OJAI-201-0000011
+   ⏰ Hora del pedido: 19:30
+   🎯 Destino: OJAI
+   📦 Cantidad: 201
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 05-19-30-OJAI-201-0000011:
+   Hora pedido: 19:30
+   Tiempo mínimo salida: 20:00
+     ✅ Vuelo 15:17 UBBB→OJAI (Cap: 300/300, Paquetes: 201)
+   ✈️ Ruta directa encontrada: UBBB → OJAI
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OJAI (15:17-20:24)
+       🛫 SALIDA: UBBB → OJAI (15:17-20:24)
+
+152. 📦 PROCESANDO PEDIDO: 28-08-19-OYSN-210-0000018
+   ⏰ Hora del pedido: 08:19
+   🎯 Destino: OYSN
+   📦 Cantidad: 210
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 28-08-19-OYSN-210-0000018:
+   Hora pedido: 08:19
+   Tiempo mínimo salida: 08:49
+     ✅ Vuelo 00:25 UBBB→OYSN (Cap: 320/320, Paquetes: 210)
+   ✈️ Ruta directa encontrada: UBBB → OYSN
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OYSN (00:25-06:59)
+       🛫 SALIDA: UBBB → OYSN (00:25-06:59)
+
+153. 📦 PROCESANDO PEDIDO: 29-18-42-SABE-241-0000010
+   ⏰ Hora del pedido: 18:42
+   🎯 Destino: SABE
+   📦 Cantidad: 241
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 29-18-42-SABE-241-0000010:
+   Hora pedido: 18:42
+   Tiempo mínimo salida: 19:12
+     ✅ Vuelo 05:20 SPIM→SABE (Cap: 300/300, Paquetes: 241)
+   ✈️ Ruta directa encontrada: SPIM → SABE
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SABE (05:20-12:14)
+       🛫 SALIDA: SPIM → SABE (05:20-12:14)
+
+154. 📦 PROCESANDO PEDIDO: 20-06-18-EHAM-314-0000012
+   ⏰ Hora del pedido: 06:18
+   🎯 Destino: EHAM
+   📦 Cantidad: 314
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 20-06-18-EHAM-314-0000012:
+   Hora pedido: 06:18
+   Tiempo mínimo salida: 06:48
+     ✅ Vuelo 03:48 EBCI→EHAM (Cap: 360/360, Paquetes: 314)
+   ✈️ Ruta directa encontrada: EBCI → EHAM
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: EBCI→EHAM (03:48-05:04)
+       🛫 SALIDA: EBCI → EHAM (03:48-05:04)
+
+155. 📦 PROCESANDO PEDIDO: 02-23-50-VIDP-297-0000020
+   ⏰ Hora del pedido: 23:50
+   🎯 Destino: VIDP
+   📦 Cantidad: 297
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 02-23-50-VIDP-297-0000020:
+   Hora pedido: 23:50
+   Tiempo mínimo salida: 00:20
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 02:12 UBBB→VIDP (Cap: 300/300, Paquetes: 297)
+   ✈️ Ruta directa encontrada: UBBB → VIDP
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→VIDP (02:12-10:43)
+       🛫 SALIDA: UBBB → VIDP (02:12-10:43)
+
+156. 📦 PROCESANDO PEDIDO: 15-20-23-SBBR-299-0000021
+   ⏰ Hora del pedido: 20:23
+   🎯 Destino: SBBR
+   📦 Cantidad: 299
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 15-20-23-SBBR-299-0000021:
+   Hora pedido: 20:23
+   Tiempo mínimo salida: 20:53
+     ✅ Vuelo 00:48 SPIM→SBBR (Cap: 300/300, Paquetes: 299)
+   ✈️ Ruta directa encontrada: SPIM → SBBR
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SBBR (00:48-08:53)
+       🛫 SALIDA: SPIM → SBBR (00:48-08:53)
+
+157. 📦 PROCESANDO PEDIDO: 12-14-26-SGAS-233-0000008
+   ⏰ Hora del pedido: 14:26
+   🎯 Destino: SGAS
+   📦 Cantidad: 233
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 12-14-26-SGAS-233-0000008:
+   Hora pedido: 14:26
+   Tiempo mínimo salida: 14:56
+     ✅ Vuelo 01:32 SPIM→SGAS (Cap: 320/320, Paquetes: 233)
+   ✈️ Ruta directa encontrada: SPIM → SGAS
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SGAS (01:32-07:44)
+       🛫 SALIDA: SPIM → SGAS (01:32-07:44)
+
+158. 📦 PROCESANDO PEDIDO: 03-23-22-EHAM-256-0000022
+   ⏰ Hora del pedido: 23:22
+   🎯 Destino: EHAM
+   📦 Cantidad: 256
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 03-23-22-EHAM-256-0000022:
+   Hora pedido: 23:22
+   Tiempo mínimo salida: 23:52
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 03:48 EBCI→EHAM (Cap: 360/360, Paquetes: 256)
+   ✈️ Ruta directa encontrada: EBCI → EHAM
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: EBCI→EHAM (03:48-05:04)
+       🛫 SALIDA: EBCI → EHAM (03:48-05:04)
+
+159. 📦 PROCESANDO PEDIDO: 23-09-19-SLLP-268-0000008
+   ⏰ Hora del pedido: 09:19
+   🎯 Destino: SLLP
+   📦 Cantidad: 268
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 23-09-19-SLLP-268-0000008:
+   Hora pedido: 09:19
+   Tiempo mínimo salida: 09:49
+     ✅ Vuelo 00:21 SPIM→SLLP (Cap: 300/300, Paquetes: 268)
+   ✈️ Ruta directa encontrada: SPIM → SLLP
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SLLP (00:21-04:41)
+       🛫 SALIDA: SPIM → SLLP (00:21-04:41)
+
+160. 📦 PROCESANDO PEDIDO: 18-22-15-EKCH-349-0000025
+   ⏰ Hora del pedido: 22:15
+   🎯 Destino: EKCH
+   📦 Cantidad: 349
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 18-22-15-EKCH-349-0000025:
+   Hora pedido: 22:15
+   Tiempo mínimo salida: 22:45
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 15:54 EBCI→EKCH (Cap: 360/360, Paquetes: 349)
+   ✈️ Ruta directa encontrada: EBCI → EKCH
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: EBCI→EKCH (15:54-17:52)
+       🛫 SALIDA: EBCI → EKCH (15:54-17:52)
+📊 Progreso: 160/211 pedidos procesados (75.8%)
+
+161. 📦 PROCESANDO PEDIDO: 12-18-55-OSDI-302-0000018
+   ⏰ Hora del pedido: 18:55
+   🎯 Destino: OSDI
+   📦 Cantidad: 302
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 12-18-55-OSDI-302-0000018:
+   Hora pedido: 18:55
+   Tiempo mínimo salida: 19:25
+     ✅ Vuelo 00:00 UBBB→OSDI (Cap: 340/340, Paquetes: 302)
+   ✈️ Ruta directa encontrada: UBBB → OSDI
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OSDI (00:00-04:51)
+       🛫 SALIDA: UBBB → OSDI (00:00-04:51)
+
+162. 📦 PROCESANDO PEDIDO: 03-10-00-SABE-211-0000004
+   ⏰ Hora del pedido: 10:00
+   🎯 Destino: SABE
+   📦 Cantidad: 211
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 03-10-00-SABE-211-0000004:
+   Hora pedido: 10:00
+   Tiempo mínimo salida: 10:30
+     ✅ Vuelo 05:20 SPIM→SABE (Cap: 300/300, Paquetes: 211)
+   ✈️ Ruta directa encontrada: SPIM → SABE
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SABE (05:20-12:14)
+       🛫 SALIDA: SPIM → SABE (05:20-12:14)
+
+163. 📦 PROCESANDO PEDIDO: 20-20-33-SBBR-235-0000006
+   ⏰ Hora del pedido: 20:33
+   🎯 Destino: SBBR
+   📦 Cantidad: 235
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 20-20-33-SBBR-235-0000006:
+   Hora pedido: 20:33
+   Tiempo mínimo salida: 21:03
+     ✅ Vuelo 00:48 SPIM→SBBR (Cap: 300/300, Paquetes: 235)
+   ✈️ Ruta directa encontrada: SPIM → SBBR
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SBBR (00:48-08:53)
+       🛫 SALIDA: SPIM → SBBR (00:48-08:53)
+
+164. 📦 PROCESANDO PEDIDO: 20-07-18-LKPR-267-0000003
+   ⏰ Hora del pedido: 07:18
+   🎯 Destino: LKPR
+   📦 Cantidad: 267
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 20-07-18-LKPR-267-0000003:
+   Hora pedido: 07:18
+   Tiempo mínimo salida: 07:48
+     ✅ Vuelo 09:10 EBCI→LKPR (Cap: 300/300, Paquetes: 267)
+   ✈️ Ruta directa encontrada: EBCI → LKPR
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: EBCI→LKPR (09:10-11:03)
+       🛫 SALIDA: EBCI → LKPR (09:10-11:03)
+
+165. 📦 PROCESANDO PEDIDO: 09-03-17-OERK-289-0000015
+   ⏰ Hora del pedido: 03:17
+   🎯 Destino: OERK
+   📦 Cantidad: 289
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 09-03-17-OERK-289-0000015:
+   Hora pedido: 03:17
+   Tiempo mínimo salida: 03:47
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 00:32 UBBB→OERK (Cap: 340/340, Paquetes: 289)
+   ✈️ Ruta directa encontrada: UBBB → OERK
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OERK (00:32-05:49)
+       🛫 SALIDA: UBBB → OERK (00:32-05:49)
+
+166. 📦 PROCESANDO PEDIDO: 04-14-09-OOMS-245-0000015
+   ⏰ Hora del pedido: 14:09
+   🎯 Destino: OOMS
+   📦 Cantidad: 245
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 04-14-09-OOMS-245-0000015:
+   Hora pedido: 14:09
+   Tiempo mínimo salida: 14:39
+     ✅ Vuelo 05:58 UBBB→OOMS (Cap: 360/360, Paquetes: 245)
+   ✈️ Ruta directa encontrada: UBBB → OOMS
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OOMS (05:58-11:31)
+       🛫 SALIDA: UBBB → OOMS (05:58-11:31)
+
+167. 📦 PROCESANDO PEDIDO: 16-04-34-UMMS-298-0000021
+   ⏰ Hora del pedido: 04:34
+   🎯 Destino: UMMS
+   📦 Cantidad: 298
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 16-04-34-UMMS-298-0000021:
+   Hora pedido: 04:34
+   Tiempo mínimo salida: 05:04
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 02:26 UBBB→UMMS (Cap: 300/300, Paquetes: 298)
+   ✈️ Ruta directa encontrada: UBBB → UMMS
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→UMMS (02:26-07:12)
+       🛫 SALIDA: UBBB → UMMS (02:26-07:12)
+
+168. 📦 PROCESANDO PEDIDO: 30-13-37-EDDI-204-0000006
+   ⏰ Hora del pedido: 13:37
+   🎯 Destino: EDDI
+   📦 Cantidad: 204
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 30-13-37-EDDI-204-0000006:
+   Hora pedido: 13:37
+   Tiempo mínimo salida: 14:07
+     ✅ Vuelo 04:41 EBCI→EDDI (Cap: 360/360, Paquetes: 204)
+   ✈️ Ruta directa encontrada: EBCI → EDDI
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: EBCI→EDDI (04:41-06:31)
+       🛫 SALIDA: EBCI → EDDI (04:41-06:31)
+
+169. 📦 PROCESANDO PEDIDO: 26-21-42-SVMI-338-0000017
+   ⏰ Hora del pedido: 21:42
+   🎯 Destino: SVMI
+   📦 Cantidad: 338
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 26-21-42-SVMI-338-0000017:
+   Hora pedido: 21:42
+   Tiempo mínimo salida: 22:12
+     ✅ Vuelo 13:56 SKBO→SVMI (Cap: 360/360, Paquetes: 338)
+   ✈️ Ruta directa encontrada: SKBO → SVMI
+     🔄 Escala: SPIM→SKBO→... (338 paquetes)
+   🔄 Ruta con escalas encontrada
+   ✅ RESULTADO: RUTA CON 1 ESCALAS
+   ❌ ERROR: Index 0 out of bounds for length 0
+
+170. 📦 PROCESANDO PEDIDO: 07-06-31-SABE-264-0000011
+   ⏰ Hora del pedido: 06:31
+   🎯 Destino: SABE
+   📦 Cantidad: 264
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 07-06-31-SABE-264-0000011:
+   Hora pedido: 06:31
+   Tiempo mínimo salida: 07:01
+     ✅ Vuelo 05:20 SPIM→SABE (Cap: 300/300, Paquetes: 264)
+   ✈️ Ruta directa encontrada: SPIM → SABE
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SABE (05:20-12:14)
+       🛫 SALIDA: SPIM → SABE (05:20-12:14)
+
+171. 📦 PROCESANDO PEDIDO: 01-09-38-SUAA-266-0000015
+   ⏰ Hora del pedido: 09:38
+   🎯 Destino: SUAA
+   📦 Cantidad: 266
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 01-09-38-SUAA-266-0000015:
+   Hora pedido: 09:38
+   Tiempo mínimo salida: 10:08
+     ✅ Vuelo 15:55 SPIM→SUAA (Cap: 340/340, Paquetes: 266)
+   ✈️ Ruta directa encontrada: SPIM → SUAA
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SUAA (15:55-23:59)
+       🛫 SALIDA: SPIM → SUAA (15:55-23:59)
+
+172. 📦 PROCESANDO PEDIDO: 19-16-47-SEQM-205-0000003
+   ⏰ Hora del pedido: 16:47
+   🎯 Destino: SEQM
+   📦 Cantidad: 205
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 19-16-47-SEQM-205-0000003:
+   Hora pedido: 16:47
+   Tiempo mínimo salida: 17:17
+     ✅ Vuelo 00:13 SPIM→SEQM (Cap: 320/320, Paquetes: 205)
+   ✈️ Ruta directa encontrada: SPIM → SEQM
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SEQM (00:13-03:54)
+       🛫 SALIDA: SPIM → SEQM (00:13-03:54)
+
+173. 📦 PROCESANDO PEDIDO: 28-07-02-OJAI-336-0000009
+   ⏰ Hora del pedido: 07:02
+   🎯 Destino: OJAI
+   📦 Cantidad: 336
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 28-07-02-OJAI-336-0000009:
+   Hora pedido: 07:02
+   Tiempo mínimo salida: 07:32
+     ✅ Vuelo 05:19 SKBO→OJAI (Cap: 360/360, Paquetes: 336)
+   ✈️ Ruta directa encontrada: SKBO → OJAI
+     🔄 Escala: UBBB→SKBO→... (336 paquetes)
+   🔄 Ruta con escalas encontrada
+   ✅ RESULTADO: RUTA CON 1 ESCALAS
+   ❌ ERROR: Index 0 out of bounds for length 0
+
+174. 📦 PROCESANDO PEDIDO: 02-04-33-LKPR-275-0000019
+   ⏰ Hora del pedido: 04:33
+   🎯 Destino: LKPR
+   📦 Cantidad: 275
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 02-04-33-LKPR-275-0000019:
+   Hora pedido: 04:33
+   Tiempo mínimo salida: 05:03
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 05:23 EBCI→LKPR (Cap: 300/300, Paquetes: 275)
+   ✈️ Ruta directa encontrada: EBCI → LKPR
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: EBCI→LKPR (05:23-07:16)
+       🛫 SALIDA: EBCI → LKPR (05:23-07:16)
+
+175. 📦 PROCESANDO PEDIDO: 04-16-49-OYSN-257-0000003
+   ⏰ Hora del pedido: 16:49
+   🎯 Destino: OYSN
+   📦 Cantidad: 257
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 04-16-49-OYSN-257-0000003:
+   Hora pedido: 16:49
+   Tiempo mínimo salida: 17:19
+     ✅ Vuelo 00:25 UBBB→OYSN (Cap: 320/320, Paquetes: 257)
+   ✈️ Ruta directa encontrada: UBBB → OYSN
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OYSN (00:25-06:59)
+       🛫 SALIDA: UBBB → OYSN (00:25-06:59)
+
+176. 📦 PROCESANDO PEDIDO: 20-23-24-OMDB-299-0000023
+   ⏰ Hora del pedido: 23:24
+   🎯 Destino: OMDB
+   📦 Cantidad: 299
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 20-23-24-OMDB-299-0000023:
+   Hora pedido: 23:24
+   Tiempo mínimo salida: 23:54
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 04:13 UBBB→OMDB (Cap: 360/360, Paquetes: 299)
+   ✈️ Ruta directa encontrada: UBBB → OMDB
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OMDB (04:13-10:23)
+       🛫 SALIDA: UBBB → OMDB (04:13-10:23)
+
+177. 📦 PROCESANDO PEDIDO: 25-12-34-SVMI-258-0000006
+   ⏰ Hora del pedido: 12:34
+   🎯 Destino: SVMI
+   📦 Cantidad: 258
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 25-12-34-SVMI-258-0000006:
+   Hora pedido: 12:34
+   Tiempo mínimo salida: 13:04
+     ✅ Vuelo 05:24 SPIM→SVMI (Cap: 320/320, Paquetes: 258)
+   ✈️ Ruta directa encontrada: SPIM → SVMI
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SVMI (05:24-11:50)
+       🛫 SALIDA: SPIM → SVMI (05:24-11:50)
+
+178. 📦 PROCESANDO PEDIDO: 01-00-08-EHAM-287-0000011
+   ⏰ Hora del pedido: 00:08
+   🎯 Destino: EHAM
+   📦 Cantidad: 287
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 01-00-08-EHAM-287-0000011:
+   Hora pedido: 00:08
+   Tiempo mínimo salida: 00:38
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 03:48 EBCI→EHAM (Cap: 360/360, Paquetes: 287)
+   ✈️ Ruta directa encontrada: EBCI → EHAM
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: EBCI→EHAM (03:48-05:04)
+       🛫 SALIDA: EBCI → EHAM (03:48-05:04)
+
+179. 📦 PROCESANDO PEDIDO: 09-00-45-SGAS-329-0000004
+   ⏰ Hora del pedido: 00:45
+   🎯 Destino: SGAS
+   📦 Cantidad: 329
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 09-00-45-SGAS-329-0000004:
+   Hora pedido: 00:45
+   Tiempo mínimo salida: 01:15
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 21:32 SPIM→SGAS (Cap: 360/360, Paquetes: 329)
+   ✈️ Ruta directa encontrada: SPIM → SGAS
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SGAS (21:32-03:44)
+       🛫 SALIDA: SPIM → SGAS (21:32-03:44)
+
+180. 📦 PROCESANDO PEDIDO: 21-22-12-OYSN-219-0000001
+   ⏰ Hora del pedido: 22:12
+   🎯 Destino: OYSN
+   📦 Cantidad: 219
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 21-22-12-OYSN-219-0000001:
+   Hora pedido: 22:12
+   Tiempo mínimo salida: 22:42
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 00:25 UBBB→OYSN (Cap: 320/320, Paquetes: 219)
+   ✈️ Ruta directa encontrada: UBBB → OYSN
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OYSN (00:25-06:59)
+       🛫 SALIDA: UBBB → OYSN (00:25-06:59)
+📊 Progreso: 180/211 pedidos procesados (85.3%)
+
+181. 📦 PROCESANDO PEDIDO: 18-14-25-SKBO-238-0000018
+   ⏰ Hora del pedido: 14:25
+   🎯 Destino: SKBO
+   📦 Cantidad: 238
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 18-14-25-SKBO-238-0000018:
+   Hora pedido: 14:25
+   Tiempo mínimo salida: 14:55
+     ✅ Vuelo 04:35 SPIM→SKBO (Cap: 340/340, Paquetes: 238)
+   ✈️ Ruta directa encontrada: SPIM → SKBO
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SKBO (04:35-08:51)
+       🛫 SALIDA: SPIM → SKBO (04:35-08:51)
+
+182. 📦 PROCESANDO PEDIDO: 21-00-35-LBSF-346-0000013
+   ⏰ Hora del pedido: 00:35
+   🎯 Destino: LBSF
+   📦 Cantidad: 346
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 21-00-35-LBSF-346-0000013:
+   Hora pedido: 00:35
+   Tiempo mínimo salida: 01:05
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 07:08 SVMI→LBSF (Cap: 360/360, Paquetes: 346)
+   ✈️ Ruta directa encontrada: SVMI → LBSF
+     🔄 Escala: EBCI→SVMI→... (346 paquetes)
+   🔄 Ruta con escalas encontrada
+   ✅ RESULTADO: RUTA CON 1 ESCALAS
+   ❌ ERROR: Index 0 out of bounds for length 0
+
+183. 📦 PROCESANDO PEDIDO: 01-01-33-OMDB-251-0000011
+   ⏰ Hora del pedido: 01:33
+   🎯 Destino: OMDB
+   📦 Cantidad: 251
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 01-01-33-OMDB-251-0000011:
+   Hora pedido: 01:33
+   Tiempo mínimo salida: 02:03
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 04:13 UBBB→OMDB (Cap: 360/360, Paquetes: 251)
+   ✈️ Ruta directa encontrada: UBBB → OMDB
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OMDB (04:13-10:23)
+       🛫 SALIDA: UBBB → OMDB (04:13-10:23)
+
+184. 📦 PROCESANDO PEDIDO: 21-17-08-LATI-325-0000002
+   ⏰ Hora del pedido: 17:08
+   🎯 Destino: LATI
+   📦 Cantidad: 325
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 21-17-08-LATI-325-0000002:
+   Hora pedido: 17:08
+   Tiempo mínimo salida: 17:38
+     ✅ Vuelo 06:28 EBCI→LATI (Cap: 340/340, Paquetes: 325)
+   ✈️ Ruta directa encontrada: EBCI → LATI
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: EBCI→LATI (06:28-09:23)
+       🛫 SALIDA: EBCI → LATI (06:28-09:23)
+
+185. 📦 PROCESANDO PEDIDO: 13-11-42-LATI-326-0000013
+   ⏰ Hora del pedido: 11:42
+   🎯 Destino: LATI
+   📦 Cantidad: 326
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 13-11-42-LATI-326-0000013:
+   Hora pedido: 11:42
+   Tiempo mínimo salida: 12:12
+     ✅ Vuelo 06:28 EBCI→LATI (Cap: 340/340, Paquetes: 326)
+   ✈️ Ruta directa encontrada: EBCI → LATI
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: EBCI→LATI (06:28-09:23)
+       🛫 SALIDA: EBCI → LATI (06:28-09:23)
+
+186. 📦 PROCESANDO PEDIDO: 03-23-25-LOWW-317-0000017
+   ⏰ Hora del pedido: 23:25
+   🎯 Destino: LOWW
+   📦 Cantidad: 317
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 03-23-25-LOWW-317-0000017:
+   Hora pedido: 23:25
+   Tiempo mínimo salida: 23:55
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 01:56 EBCI→LOWW (Cap: 360/360, Paquetes: 317)
+   ✈️ Ruta directa encontrada: EBCI → LOWW
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: EBCI→LOWW (01:56-04:04)
+       🛫 SALIDA: EBCI → LOWW (01:56-04:04)
+
+187. 📦 PROCESANDO PEDIDO: 30-21-31-EHAM-202-0000019
+   ⏰ Hora del pedido: 21:31
+   🎯 Destino: EHAM
+   📦 Cantidad: 202
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 30-21-31-EHAM-202-0000019:
+   Hora pedido: 21:31
+   Tiempo mínimo salida: 22:01
+     ✅ Vuelo 03:48 EBCI→EHAM (Cap: 360/360, Paquetes: 202)
+   ✈️ Ruta directa encontrada: EBCI → EHAM
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: EBCI→EHAM (03:48-05:04)
+       🛫 SALIDA: EBCI → EHAM (03:48-05:04)
+
+188. 📦 PROCESANDO PEDIDO: 14-01-21-LATI-272-0000009
+   ⏰ Hora del pedido: 01:21
+   🎯 Destino: LATI
+   📦 Cantidad: 272
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 14-01-21-LATI-272-0000009:
+   Hora pedido: 01:21
+   Tiempo mínimo salida: 01:51
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 02:04 EBCI→LATI (Cap: 300/300, Paquetes: 272)
+   ✈️ Ruta directa encontrada: EBCI → LATI
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: EBCI→LATI (02:04-05:59)
+       🛫 SALIDA: EBCI → LATI (02:04-05:59)
+
+189. 📦 PROCESANDO PEDIDO: 03-02-33-SLLP-260-0000021
+   ⏰ Hora del pedido: 02:33
+   🎯 Destino: SLLP
+   📦 Cantidad: 260
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 03-02-33-SLLP-260-0000021:
+   Hora pedido: 02:33
+   Tiempo mínimo salida: 03:03
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 09:22 SPIM→SLLP (Cap: 320/320, Paquetes: 260)
+   ✈️ Ruta directa encontrada: SPIM → SLLP
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SLLP (09:22-13:42)
+       🛫 SALIDA: SPIM → SLLP (09:22-13:42)
+
+190. 📦 PROCESANDO PEDIDO: 13-18-10-OAKB-210-0000001
+   ⏰ Hora del pedido: 18:10
+   🎯 Destino: OAKB
+   📦 Cantidad: 210
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 13-18-10-OAKB-210-0000001:
+   Hora pedido: 18:10
+   Tiempo mínimo salida: 18:40
+     ✅ Vuelo 00:24 UBBB→OAKB (Cap: 320/320, Paquetes: 210)
+   ✈️ Ruta directa encontrada: UBBB → OAKB
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OAKB (00:24-06:40)
+       🛫 SALIDA: UBBB → OAKB (00:24-06:40)
+
+191. 📦 PROCESANDO PEDIDO: 06-09-07-SUAA-223-0000023
+   ⏰ Hora del pedido: 09:07
+   🎯 Destino: SUAA
+   📦 Cantidad: 223
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 06-09-07-SUAA-223-0000023:
+   Hora pedido: 09:07
+   Tiempo mínimo salida: 09:37
+     ✅ Vuelo 07:09 SPIM→SUAA (Cap: 300/300, Paquetes: 223)
+   ✈️ Ruta directa encontrada: SPIM → SUAA
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SUAA (07:09-15:13)
+       🛫 SALIDA: SPIM → SUAA (07:09-15:13)
+
+192. 📦 PROCESANDO PEDIDO: 16-12-49-VIDP-239-0000017
+   ⏰ Hora del pedido: 12:49
+   🎯 Destino: VIDP
+   📦 Cantidad: 239
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 16-12-49-VIDP-239-0000017:
+   Hora pedido: 12:49
+   Tiempo mínimo salida: 13:19
+     ✅ Vuelo 02:12 UBBB→VIDP (Cap: 300/300, Paquetes: 239)
+   ✈️ Ruta directa encontrada: UBBB → VIDP
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→VIDP (02:12-10:43)
+       🛫 SALIDA: UBBB → VIDP (02:12-10:43)
+
+193. 📦 PROCESANDO PEDIDO: 08-22-39-OAKB-230-0000006
+   ⏰ Hora del pedido: 22:39
+   🎯 Destino: OAKB
+   📦 Cantidad: 230
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 08-22-39-OAKB-230-0000006:
+   Hora pedido: 22:39
+   Tiempo mínimo salida: 23:09
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 00:24 UBBB→OAKB (Cap: 320/320, Paquetes: 230)
+   ✈️ Ruta directa encontrada: UBBB → OAKB
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OAKB (00:24-06:40)
+       🛫 SALIDA: UBBB → OAKB (00:24-06:40)
+
+194. 📦 PROCESANDO PEDIDO: 19-05-22-OMDB-233-0000018
+   ⏰ Hora del pedido: 05:22
+   🎯 Destino: OMDB
+   📦 Cantidad: 233
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 19-05-22-OMDB-233-0000018:
+   Hora pedido: 05:22
+   Tiempo mínimo salida: 05:52
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 04:13 UBBB→OMDB (Cap: 360/360, Paquetes: 233)
+   ✈️ Ruta directa encontrada: UBBB → OMDB
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OMDB (04:13-10:23)
+       🛫 SALIDA: UBBB → OMDB (04:13-10:23)
+
+195. 📦 PROCESANDO PEDIDO: 29-12-51-SABE-271-0000007
+   ⏰ Hora del pedido: 12:51
+   🎯 Destino: SABE
+   📦 Cantidad: 271
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 29-12-51-SABE-271-0000007:
+   Hora pedido: 12:51
+   Tiempo mínimo salida: 13:21
+     ✅ Vuelo 06:35 SPIM→SABE (Cap: 360/360, Paquetes: 271)
+   ✈️ Ruta directa encontrada: SPIM → SABE
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SABE (06:35-13:29)
+       🛫 SALIDA: SPIM → SABE (06:35-13:29)
+
+196. 📦 PROCESANDO PEDIDO: 14-00-17-LOWW-292-0000024
+   ⏰ Hora del pedido: 00:17
+   🎯 Destino: LOWW
+   📦 Cantidad: 292
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 14-00-17-LOWW-292-0000024:
+   Hora pedido: 00:17
+   Tiempo mínimo salida: 00:47
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 07:10 EBCI→LOWW (Cap: 320/320, Paquetes: 292)
+   ✈️ Ruta directa encontrada: EBCI → LOWW
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: EBCI→LOWW (07:10-10:18)
+       🛫 SALIDA: EBCI → LOWW (07:10-10:18)
+
+197. 📦 PROCESANDO PEDIDO: 21-09-46-OOMS-308-0000013
+   ⏰ Hora del pedido: 09:46
+   🎯 Destino: OOMS
+   📦 Cantidad: 308
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 21-09-46-OOMS-308-0000013:
+   Hora pedido: 09:46
+   Tiempo mínimo salida: 10:16
+     ✅ Vuelo 05:58 UBBB→OOMS (Cap: 360/360, Paquetes: 308)
+   ✈️ Ruta directa encontrada: UBBB → OOMS
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OOMS (05:58-11:31)
+       🛫 SALIDA: UBBB → OOMS (05:58-11:31)
+
+198. 📦 PROCESANDO PEDIDO: 26-01-26-SUAA-207-0000010
+   ⏰ Hora del pedido: 01:26
+   🎯 Destino: SUAA
+   📦 Cantidad: 207
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 26-01-26-SUAA-207-0000010:
+   Hora pedido: 01:26
+   Tiempo mínimo salida: 01:56
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 07:09 SPIM→SUAA (Cap: 300/300, Paquetes: 207)
+   ✈️ Ruta directa encontrada: SPIM → SUAA
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SUAA (07:09-15:13)
+       🛫 SALIDA: SPIM → SUAA (07:09-15:13)
+
+199. 📦 PROCESANDO PEDIDO: 01-13-50-SKBO-325-0000025
+   ⏰ Hora del pedido: 13:50
+   🎯 Destino: SKBO
+   📦 Cantidad: 325
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 01-13-50-SKBO-325-0000025:
+   Hora pedido: 13:50
+   Tiempo mínimo salida: 14:20
+     ✅ Vuelo 04:35 SPIM→SKBO (Cap: 340/340, Paquetes: 325)
+   ✈️ Ruta directa encontrada: SPIM → SKBO
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SKBO (04:35-08:51)
+       🛫 SALIDA: SPIM → SKBO (04:35-08:51)
+
+200. 📦 PROCESANDO PEDIDO: 22-00-17-SGAS-305-0000007
+   ⏰ Hora del pedido: 00:17
+   🎯 Destino: SGAS
+   📦 Cantidad: 305
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 22-00-17-SGAS-305-0000007:
+   Hora pedido: 00:17
+   Tiempo mínimo salida: 00:47
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 01:32 SPIM→SGAS (Cap: 320/320, Paquetes: 305)
+   ✈️ Ruta directa encontrada: SPIM → SGAS
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SGAS (01:32-07:44)
+       🛫 SALIDA: SPIM → SGAS (01:32-07:44)
+📊 Progreso: 200/211 pedidos procesados (94.8%)
+
+201. 📦 PROCESANDO PEDIDO: 02-00-02-SUAA-332-0000021
+   ⏰ Hora del pedido: 00:02
+   🎯 Destino: SUAA
+   📦 Cantidad: 332
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 02-00-02-SUAA-332-0000021:
+   Hora pedido: 00:02
+   Tiempo mínimo salida: 00:32
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 15:55 SPIM→SUAA (Cap: 340/340, Paquetes: 332)
+   ✈️ Ruta directa encontrada: SPIM → SUAA
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SUAA (15:55-23:59)
+       🛫 SALIDA: SPIM → SUAA (15:55-23:59)
+
+202. 📦 PROCESANDO PEDIDO: 28-15-42-LKPR-208-0000017
+   ⏰ Hora del pedido: 15:42
+   🎯 Destino: LKPR
+   📦 Cantidad: 208
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 28-15-42-LKPR-208-0000017:
+   Hora pedido: 15:42
+   Tiempo mínimo salida: 16:12
+     ✅ Vuelo 05:23 EBCI→LKPR (Cap: 300/300, Paquetes: 208)
+   ✈️ Ruta directa encontrada: EBCI → LKPR
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: EBCI→LKPR (05:23-07:16)
+       🛫 SALIDA: EBCI → LKPR (05:23-07:16)
+
+203. 📦 PROCESANDO PEDIDO: 25-00-34-LDZA-304-0000008
+   ⏰ Hora del pedido: 00:34
+   🎯 Destino: LDZA
+   📦 Cantidad: 304
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 25-00-34-LDZA-304-0000008:
+   Hora pedido: 00:34
+   Tiempo mínimo salida: 01:04
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 05:43 EBCI→LDZA (Cap: 340/340, Paquetes: 304)
+   ✈️ Ruta directa encontrada: EBCI → LDZA
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: EBCI→LDZA (05:43-08:02)
+       🛫 SALIDA: EBCI → LDZA (05:43-08:02)
+
+204. 📦 PROCESANDO PEDIDO: 30-11-16-OSDI-256-0000019
+   ⏰ Hora del pedido: 11:16
+   🎯 Destino: OSDI
+   📦 Cantidad: 256
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 30-11-16-OSDI-256-0000019:
+   Hora pedido: 11:16
+   Tiempo mínimo salida: 11:46
+     ✅ Vuelo 00:00 UBBB→OSDI (Cap: 340/340, Paquetes: 256)
+   ✈️ Ruta directa encontrada: UBBB → OSDI
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OSDI (00:00-04:51)
+       🛫 SALIDA: UBBB → OSDI (00:00-04:51)
+
+205. 📦 PROCESANDO PEDIDO: 04-04-40-OYSN-295-0000018
+   ⏰ Hora del pedido: 04:40
+   🎯 Destino: OYSN
+   📦 Cantidad: 295
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 04-04-40-OYSN-295-0000018:
+   Hora pedido: 04:40
+   Tiempo mínimo salida: 05:10
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 07:35 UBBB→OYSN (Cap: 360/360, Paquetes: 295)
+   ✈️ Ruta directa encontrada: UBBB → OYSN
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OYSN (07:35-13:09)
+       🛫 SALIDA: UBBB → OYSN (07:35-13:09)
+
+206. 📦 PROCESANDO PEDIDO: 09-20-38-OERK-244-0000008
+   ⏰ Hora del pedido: 20:38
+   🎯 Destino: OERK
+   📦 Cantidad: 244
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 09-20-38-OERK-244-0000008:
+   Hora pedido: 20:38
+   Tiempo mínimo salida: 21:08
+     ✅ Vuelo 15:46 UBBB→OERK (Cap: 340/340, Paquetes: 244)
+   ✈️ Ruta directa encontrada: UBBB → OERK
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→OERK (15:46-20:03)
+       🛫 SALIDA: UBBB → OERK (15:46-20:03)
+
+207. 📦 PROCESANDO PEDIDO: 23-08-11-LATI-256-0000014
+   ⏰ Hora del pedido: 08:11
+   🎯 Destino: LATI
+   📦 Cantidad: 256
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 23-08-11-LATI-256-0000014:
+   Hora pedido: 08:11
+   Tiempo mínimo salida: 08:41
+     ✅ Vuelo 02:04 EBCI→LATI (Cap: 300/300, Paquetes: 256)
+   ✈️ Ruta directa encontrada: EBCI → LATI
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: EBCI→LATI (02:04-05:59)
+       🛫 SALIDA: EBCI → LATI (02:04-05:59)
+
+208. 📦 PROCESANDO PEDIDO: 12-10-34-SEQM-273-0000012
+   ⏰ Hora del pedido: 10:34
+   🎯 Destino: SEQM
+   📦 Cantidad: 273
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 12-10-34-SEQM-273-0000012:
+   Hora pedido: 10:34
+   Tiempo mínimo salida: 11:04
+     ✅ Vuelo 00:13 SPIM→SEQM (Cap: 320/320, Paquetes: 273)
+   ✈️ Ruta directa encontrada: SPIM → SEQM
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SEQM (00:13-03:54)
+       🛫 SALIDA: SPIM → SEQM (00:13-03:54)
+
+209. 📦 PROCESANDO PEDIDO: 19-05-42-SUAA-233-0000002
+   ⏰ Hora del pedido: 05:42
+   🎯 Destino: SUAA
+   📦 Cantidad: 233
+   🏢 Sede asignada: SPIM
+📦 Planificando pedido 19-05-42-SUAA-233-0000002:
+   Hora pedido: 05:42
+   Tiempo mínimo salida: 06:12
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 07:09 SPIM→SUAA (Cap: 300/300, Paquetes: 233)
+   ✈️ Ruta directa encontrada: SPIM → SUAA
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: SPIM→SUAA (07:09-15:13)
+       🛫 SALIDA: SPIM → SUAA (07:09-15:13)
+
+210. 📦 PROCESANDO PEDIDO: 10-22-10-LDZA-299-0000007
+   ⏰ Hora del pedido: 22:10
+   🎯 Destino: LDZA
+   📦 Cantidad: 299
+   🏢 Sede asignada: EBCI
+📦 Planificando pedido 10-22-10-LDZA-299-0000007:
+   Hora pedido: 22:10
+   Tiempo mínimo salida: 22:40
+   🌙 Pedido nocturno detectado
+     ✅ Vuelo 05:43 EBCI→LDZA (Cap: 340/340, Paquetes: 299)
+   ✈️ Ruta directa encontrada: EBCI → LDZA
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: EBCI→LDZA (05:43-08:02)
+       🛫 SALIDA: EBCI → LDZA (05:43-08:02)
+
+211. 📦 PROCESANDO PEDIDO: 28-12-57-UMMS-200-0000023
+   ⏰ Hora del pedido: 12:57
+   🎯 Destino: UMMS
+   📦 Cantidad: 200
+   🏢 Sede asignada: UBBB
+📦 Planificando pedido 28-12-57-UMMS-200-0000023:
+   Hora pedido: 12:57
+   Tiempo mínimo salida: 13:27
+     ✅ Vuelo 02:26 UBBB→UMMS (Cap: 300/300, Paquetes: 200)
+   ✈️ Ruta directa encontrada: UBBB → UMMS
+   ✅ RESULTADO: RUTA DIRECTA
+   📋 Detalles: DIRECTO: UBBB→UMMS (02:26-07:12)
+       🛫 SALIDA: UBBB → UMMS (02:26-07:12)
+
+==================================================
+📊 RESUMEN FINAL - PEDIDOS REALES CON LÓGICA TEMPORAL:
+   ✅ Rutas exitosas: 211/211 (100.0%)
+   ✈️ Rutas directas: 198 (93.8%)
+   🔄 Rutas con escalas: 13 (6.2%)
+   ❌ Rutas fallidas: 13
+
+📊 ANÁLISIS DE ESCALAS:
+   Las rutas con escalas representan el 6.2% de las rutas exitosas
+   Esto demuestra la capacidad del algoritmo para encontrar rutas complejas
+
+📊 PASO 5: Estadísticas finales
+📊 ESTADÍSTICAS DEL PLANIFICADOR TEMPORAL:
+   Total paquetes a transportar: 57752
+   Promedio paquetes por pedido: 273.7
+   Pedidos procesados exitosamente: 211

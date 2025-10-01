@@ -1,0 +1,407 @@
+package morapack.main;
+
+import morapack.colonia.algoritmo.AlgoritmoColoniaHormigas;
+import morapack.modelo.Aeropuerto;
+import morapack.modelo.Pedido;  
+import morapack.modelo.Vuelo;
+import morapack.datos.CargadorDatosCSV;
+
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * Clase principal del sistema MoraPack Colonia v2.
+ *
+ * Este programa utiliza algoritmos de colonias de hormigas (ACO) para optimizar
+ * la distribucion de productos MPE desde 3 sedes principales (Lima, Bruselas, Baku)
+ * hacia aeropuertos de destino en America, Asia y Europa.
+ *
+ * Caracteristicas principales:
+ * - Entregas parciales multiples (un pedido puede tener varias entregas)
+ * - Restricciones temporales (2 dias mismo continente, 3 dias diferente)
+ * - Capacidades limitadas (vuelos y almacenes)
+ * - Manejo de husos horarios globales
+ */
+public class Main {
+
+    // Configuracion del sistema
+    private static final int MES_EJECUCION = 1;      // Enero
+    private static final int ANIO_EJECUCION = 2025;
+    private static final int DIA_INICIO = 1;         // Dia 1 del mes
+
+    // Parametros del algoritmo ACO (pueden ser ajustados segun necesidad)
+    private static final int NUMERO_HORMIGAS = 5;   // Hormigas en la colonia
+    private static final int MAX_ITERACIONES = 10;  // Iteraciones maximas
+    private static final double TASA_EVAPORACION = 0.15; // Tasa de evaporacion de feromonas
+
+    // Modo debug
+    private static final boolean DEBUG_MODE = true;
+
+    /**
+     * Punto de entrada principal del programa
+     */
+    public static void main(String[] args) {
+        System.out.println("==============================================================");
+        System.out.println("          MORAPACK COLONIA V2 - ACO OPTIMIZER                ");
+        System.out.println("   Sistema de Optimizacion de Rutas de Distribucion Global   ");
+        System.out.println("==============================================================");
+        System.out.println();
+
+        try {
+            // PASO 1: Cargar y configurar la red de distribucion
+            System.out.println("=== PASO 1: CARGA DE DATOS ===");
+            RedDistribucion red = cargarRedDistribucion();
+            System.out.println();
+
+            // PASO 2: Preparar el problema de optimizacion
+            System.out.println("=== PASO 2: CONFIGURACION DEL PROBLEMA ===");
+            ProblemaMoraPack problema = configurarProblema(red);
+            System.out.println();
+
+            // PASO 3: Ejecutar el algoritmo ACO
+            System.out.println("=== PASO 3: EJECUCION DEL ALGORITMO ACO ===");
+            SolucionMoraPack mejorSolucion = ejecutarAlgoritmoACO(problema);
+            System.out.println();
+
+            // PASO 4: Mostrar resultados
+            System.out.println("=== PASO 4: RESULTADOS DE LA OPTIMIZACION ===");
+            mostrarResultados(mejorSolucion);
+            System.out.println();
+
+            System.out.println("==============================================================");
+            System.out.println("                  EJECUCION COMPLETADA                        ");
+            System.out.println("==============================================================");
+
+        } catch (Exception e) {
+            System.err.println("ERROR CRITICO: " + e.getMessage());
+            e.printStackTrace();
+            System.exit(1);
+        }
+    }
+
+    /**
+     * Carga la red de distribucion completa con todos sus componentes:
+     * - Aeropuertos globales (31 aeropuertos: 3 sedes + 28 destinos)
+     * - Planes de vuelo (horarios y capacidades)
+     * - Pedidos del mes (con filtrado automatico de destinos invalidos)
+     *
+     * @return RedDistribucion configurada y validada
+     * @throws Exception si hay problemas en la carga de datos
+     */
+    private static RedDistribucion cargarRedDistribucion() throws Exception {
+        System.out.println("Cargando datos del sistema...");
+        System.out.println("   Mes: " + MES_EJECUCION + "/" + ANIO_EJECUCION);
+        System.out.println();
+
+        // Crear e inicializar la red
+        RedDistribucion red = new RedDistribucion();
+
+        // El metodo inicializar() carga automaticamente:
+        // - datos/aeropuertos.csv
+        // - datos/planes_de_vuelo.csv
+        // - datos/pedidos/pedidos_01.csv
+        // Y realiza todas las validaciones de integridad
+        red.inicializar(MES_EJECUCION, ANIO_EJECUCION);
+
+        // Establecer tiempo de referencia para simulacion
+        LocalDateTime tiempoReferencia = LocalDateTime.of(ANIO_EJECUCION, MES_EJECUCION, DIA_INICIO, 0, 0);
+        red.setTiempoReferencia(tiempoReferencia);
+
+        System.out.println("Red de distribucion cargada exitosamente");
+        System.out.println("   Tiempo de referencia: " + tiempoReferencia);
+
+        return red;
+    }
+
+    /**
+     * Configura el problema de optimizacion MoraPack.
+     *
+     * El problema incluye:
+     * - Lista de pedidos a procesar (filtrados y validados)
+     * - Red de distribucion (aeropuertos, vuelos, capacidades)
+     * - Tiempo de inicio para calculos temporales
+     * - Parametros de funcion objetivo (penalizaciones y bonificaciones)
+     *
+     * @param red Red de distribucion cargada
+     * @return ProblemaMoraPack configurado
+     */
+    private static ProblemaMoraPack configurarProblema(RedDistribucion red) {
+        System.out.println("Configurando problema de optimizacion...");
+
+        // Obtener todos los pedidos cargados (ya filtrados por RedDistribucion)
+        List<Pedido> pedidos = new ArrayList<>(red.getPedidos().values());
+
+        System.out.println("   Total de pedidos a procesar: " + pedidos.size());
+
+        // Calcular estadisticas de los pedidos
+        int totalProductos = pedidos.stream()
+                                    .mapToInt(Pedido::getCantidadProductos)
+                                    .sum();
+
+        System.out.println("   Total de productos: " + totalProductos);
+
+        // Tiempo de inicio de la simulacion
+        LocalDateTime tiempoInicio = red.getTiempoReferencia();
+
+        // Crear problema con parametros por defecto optimizados
+        // Constructor usa: alfa=1.0, beta=2.0, Q=100.0
+        //                  pesoUrgencia=0.4, pesoCapacidad=0.3, pesoCosto=0.3
+        //                  penalizacionRetraso=200.0, bonificacion=500.0
+        ProblemaMoraPack problema = new ProblemaMoraPack(red, pedidos, tiempoInicio);
+
+        System.out.println("Problema configurado exitosamente");
+        System.out.println("   Funcion objetivo: MAXIMIZAR fitness");
+        System.out.println("   (Mayor fitness = Mejor solucion)");
+
+        return problema;
+    }
+
+    /**
+     * Ejecuta el algoritmo de colonias de hormigas (ACO) para encontrar
+     * la mejor solucion de rutas de distribucion.
+     *
+     * El algoritmo:
+     * - Genera multiples soluciones usando hormigas virtuales
+     * - Cada hormiga construye rutas basadas en feromonas y heuristicas
+     * - Soporta entregas parciales multiples por pedido
+     * - Optimiza para cumplir plazos y maximizar eficiencia
+     *
+     * @param problema Problema de optimizacion configurado
+     * @return Mejor solucion encontrada
+     */
+    private static SolucionMoraPack ejecutarAlgoritmoACO(ProblemaMoraPack problema) {
+        System.out.println("Inicializando colonia de hormigas...");
+        System.out.println("   Numero de hormigas: " + NUMERO_HORMIGAS);
+        System.out.println("   Iteraciones maximas: " + MAX_ITERACIONES);
+        System.out.println("   Tasa de evaporacion: " + TASA_EVAPORACION);
+        System.out.println();
+
+        if (DEBUG_MODE) {
+            System.out.println("[DEBUG] Creando algoritmo ACO...");
+        }
+
+        // Crear algoritmo con parametros configurados
+        AlgoritmoColoniaHormigas algoritmo = new AlgoritmoColoniaHormigas(
+            problema,
+            NUMERO_HORMIGAS,
+            MAX_ITERACIONES,
+            TASA_EVAPORACION
+        );
+
+        if (DEBUG_MODE) {
+            System.out.println("[DEBUG] Algoritmo creado exitosamente");
+        }
+
+        System.out.println("Ejecutando algoritmo ACO...");
+        System.out.println("   (Esto puede tomar varios minutos)");
+        System.out.println();
+
+        if (DEBUG_MODE) {
+            System.out.println("[DEBUG] Llamando a algoritmo.ejecutar()...");
+            System.out.println("[DEBUG] Esto puede tardar dependiendo de la complejidad");
+        }
+
+        // Ejecutar el problema
+        // El metodo ejecutar() ejecuta todas las iteraciones y retorna la mejor solucion
+        Solucion solucion = algoritmo.ejecutar();
+
+        if (DEBUG_MODE) {
+            System.out.println("[DEBUG] algoritmo.ejecutar() retorno: " +
+                             (solucion != null ? "solucion valida" : "null"));
+        }
+
+        // Convertir a SolucionMoraPack (cast seguro)
+        SolucionMoraPack mejorSolucion = (SolucionMoraPack) solucion;
+
+        System.out.println("Algoritmo ACO completado");
+
+        return mejorSolucion;
+    }
+
+    /**
+     * Muestra los resultados de la optimizacion de forma clara y detallada.
+     *
+     * Incluye:
+     * - Fitness de la solucion (mayor = mejor)
+     * - Estadisticas de pedidos completados
+     * - Informacion sobre entregas parciales
+     * - Cumplimiento de plazos
+     * - Eficiencia del sistema
+     *
+     * @param solucion Mejor solucion encontrada por ACO
+     */
+    private static void mostrarResultados(SolucionMoraPack solucion) {
+        if (solucion == null) {
+            System.out.println("No se encontro solucion valida");
+            return;
+        }
+
+        System.out.println("==============================================================");
+        System.out.println("                    SOLUCION OPTIMA                           ");
+        System.out.println("==============================================================");
+        System.out.println();
+
+        // Fitness de la solucion (MAYOR = MEJOR)
+        System.out.println("CALIDAD DE LA SOLUCION:");
+        System.out.println("   Fitness: " + String.format("%.2f", solucion.getFitness()));
+        System.out.println("   (Mayor fitness indica mejor solucion)");
+        System.out.println();
+
+        // Estadisticas generales de la solucion
+        System.out.println("ESTADISTICAS GENERALES:");
+        System.out.println("   " + solucion.getEstadisticas());
+        System.out.println();
+
+        // Estadisticas de entregas parciales
+        System.out.println("ENTREGAS PARCIALES:");
+        System.out.println("   " + solucion.getEstadisticasEntregasParciales());
+        System.out.println();
+
+        // Cumplimiento de plazos
+        System.out.println("CUMPLIMIENTO:");
+        if (solucion.cumplePlazos()) {
+            System.out.println("   Todos los pedidos cumplen plazos de entrega");
+        } else {
+            System.out.println("   Algunos pedidos tienen retrasos");
+        }
+        System.out.println();
+
+        // Detalles adicionales
+        System.out.println("DETALLES ADICIONALES:");
+        System.out.println("   Tiempo de creacion: " + solucion.getTiempoCreacion());
+        System.out.println();
+
+        // Mostrar rutas detalladas
+        mostrarRutasDetalladas(solucion);
+        
+        // Nota sobre visualizacion
+        System.out.println("NOTA:");
+        System.out.println("   Para ver detalles de rutas especificas por pedido,");
+        System.out.println("   usa: solucion.getRutasProducto(idPedido)");
+        System.out.println("   Para mas ejemplos, consulta: morapack.ejemplos.EjemploEntregasParciales");
+    }
+
+    /**
+     * Clase auxiliar para configuracion de ejecucion
+     * Permite modificar parametros sin cambiar el codigo principal
+     */
+    public static class ConfiguracionEjecucion {
+        private int mes = MES_EJECUCION;
+        private int anio = ANIO_EJECUCION;
+        private int numeroHormigas = NUMERO_HORMIGAS;
+        private int maxIteraciones = MAX_ITERACIONES;
+        private double tasaEvaporacion = TASA_EVAPORACION;
+
+        // Getters y setters
+        public int getMes() { return mes; }
+        public void setMes(int mes) { this.mes = mes; }
+
+        public int getAnio() { return anio; }
+        public void setAnio(int anio) { this.anio = anio; }
+
+        public int getNumeroHormigas() { return numeroHormigas; }
+        public void setNumeroHormigas(int numeroHormigas) { this.numeroHormigas = numeroHormigas; }
+
+        public int getMaxIteraciones() { return maxIteraciones; }
+        public void setMaxIteraciones(int maxIteraciones) { this.maxIteraciones = maxIteraciones; }
+
+        public double getTasaEvaporacion() { return tasaEvaporacion; }
+        public void setTasaEvaporacion(double tasaEvaporacion) { this.tasaEvaporacion = tasaEvaporacion; }
+    }
+    
+    /**
+     * Muestra las rutas detalladas de la solucion - TODAS las rutas y escalas
+     */
+    private static void mostrarRutasDetalladas(SolucionMoraPack solucion) {
+        System.out.println("RUTAS COMPLETAS CON ANÁLISIS DE ESCALAS:");
+        System.out.println("===============================================");
+        
+        try {
+            // Obtener todas las rutas organizadas por pedido
+            var rutasPorPedido = solucion.getRutasPorPedido();
+            
+            if (rutasPorPedido == null || rutasPorPedido.isEmpty()) {
+                System.out.println("   No hay rutas en la solucion");
+                return;
+            }
+            
+            int contadorRutas = 0;
+            int pedidosConEscalas = 0;
+            int totalSegmentos = 0;
+            
+            // Procesar TODOS los pedidos sin límite
+            for (Map.Entry<Integer, List<SolucionMoraPack.RutaProducto>> entrada : rutasPorPedido.entrySet()) {
+                try {
+                    Integer idPedido = entrada.getKey();
+                    List<SolucionMoraPack.RutaProducto> rutasProducto = entrada.getValue();
+                    
+                    if (rutasProducto != null && !rutasProducto.isEmpty()) {
+                        contadorRutas++;
+                        boolean tieneEscalas = rutasProducto.size() > 1;
+                        if (tieneEscalas) pedidosConEscalas++;
+                        totalSegmentos += rutasProducto.size();
+                        
+                        System.out.println("   Pedido " + idPedido + ":");
+                        
+                        if (tieneEscalas) {
+                            System.out.println("     ⚠️  RUTA CON ESCALAS (" + rutasProducto.size() + " segmentos)");
+                        } else {
+                            System.out.println("     ✈️  RUTA DIRECTA (1 segmento)");
+                        }
+                        
+                        // Mostrar TODAS las rutas específicas para este pedido
+                        for (int i = 0; i < rutasProducto.size(); i++) {
+                            SolucionMoraPack.RutaProducto ruta = rutasProducto.get(i);
+                            String tipoSegmento = (i == 0) ? "ORIGEN" : 
+                                                (i == rutasProducto.size() - 1) ? "DESTINO" : "ESCALA " + i;
+                            System.out.println("     Segmento " + (i+1) + " [" + tipoSegmento + "]: " + ruta.toString());
+                        }
+                        
+                        // Mostrar ruta completa como cadena
+                        if (tieneEscalas) {
+                            StringBuilder rutaCompleta = new StringBuilder("     RUTA COMPLETA: ");
+                            for (int i = 0; i < rutasProducto.size(); i++) {
+                                SolucionMoraPack.RutaProducto ruta = rutasProducto.get(i);
+                                String rutaStr = ruta.toString();
+                                // Extraer origen y destino de la representación string
+                                if (rutaStr.contains(" -> ")) {
+                                    String[] partes = rutaStr.split(" -> ");
+                                    if (i == 0) rutaCompleta.append(partes[0]);
+                                    rutaCompleta.append(" → ").append(partes[1].split(" ")[0]);
+                                }
+                            }
+                            System.out.println(rutaCompleta.toString());
+                        }
+                        
+                        System.out.println();
+                    }
+                    
+                } catch (Exception e) {
+                    System.out.println("   Error procesando pedido " + entrada.getKey() + ": " + e.getMessage());
+                }
+            }
+            
+            // Estadísticas finales
+            System.out.println("===============================================");
+            System.out.println("ESTADÍSTICAS DE RUTAS:");
+            System.out.println("   Total de pedidos procesados: " + contadorRutas + "/" + rutasPorPedido.size());
+            System.out.println("   Pedidos con rutas directas: " + (contadorRutas - pedidosConEscalas));
+            System.out.println("   Pedidos con escalas: " + pedidosConEscalas);
+            System.out.println("   Total de segmentos de vuelo: " + totalSegmentos);
+            System.out.println("   Promedio de segmentos por pedido: " + String.format("%.2f", (double)totalSegmentos/contadorRutas));
+            
+            if (pedidosConEscalas > 0) {
+                double porcentajeEscalas = (double)pedidosConEscalas / contadorRutas * 100;
+                System.out.println("   Porcentaje con escalas: " + String.format("%.1f%%", porcentajeEscalas));
+            }
+            
+        } catch (Exception e) {
+            System.out.println("   Error mostrando rutas: " + e.getMessage());
+            e.printStackTrace();
+        }
+        
+        System.out.println();
+    }
+}

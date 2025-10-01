@@ -172,4 +172,48 @@ public class CargadorPedidosUltrafinal {
         
         System.out.println("===================================================");
     }
+    
+    /**
+     * Muestra estadísticas sin iconos para una mejor legibilidad
+     */
+    public static void mostrarEstadisticasSinIconos(List<Pedido> pedidos) {
+        if (pedidos.isEmpty()) {
+            System.out.println("No hay pedidos para mostrar estadisticas");
+            return;
+        }
+        
+        System.out.println("===================================================");
+        System.out.println("             ESTADISTICAS DE PEDIDOS              ");
+        System.out.println("===================================================");
+        
+        System.out.printf("Total de pedidos cargados: %d%n", pedidos.size());
+        
+        // Total de productos
+        int totalProductos = pedidos.stream().mapToInt(Pedido::getCantidadProductos).sum();
+        System.out.printf("Total productos: %d%n", totalProductos);
+        
+        // Promedio de productos por pedido
+        double promedioProductos = (double) totalProductos / pedidos.size();
+        System.out.printf("Promedio productos/pedido: %.1f%n", promedioProductos);
+        
+        // Rango de días
+        int diaMin = pedidos.stream().mapToInt(Pedido::getDia).min().orElse(0);
+        int diaMax = pedidos.stream().mapToInt(Pedido::getDia).max().orElse(0);
+        System.out.printf("Rango de dias: %d - %d%n", diaMin, diaMax);
+        
+        // Destinos más frecuentes (top 5)
+        System.out.println("\\nTOP 5 DESTINOS MAS FRECUENTES:");
+        pedidos.stream()
+            .collect(java.util.stream.Collectors.groupingBy(
+                Pedido::getAeropuertoDestinoId,
+                java.util.stream.Collectors.counting()))
+            .entrySet()
+            .stream()
+            .sorted(java.util.Map.Entry.<String, Long>comparingByValue().reversed())
+            .limit(5)
+            .forEach(entry -> 
+                System.out.printf("   %s: %d pedidos%n", entry.getKey(), entry.getValue()));
+        
+        System.out.println("===================================================");
+    }
 }

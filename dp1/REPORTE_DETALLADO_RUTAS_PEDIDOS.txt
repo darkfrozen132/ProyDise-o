@@ -1,0 +1,231 @@
+=========================================================================
+               REPORTE DETALLADO DE RUTAS - SISTEMA GENETICO
+=========================================================================
+Procesamiento individual de pedidos desde pedidoUltrafinal.txt
+=========================================================================
+
+CONFIGURACION DEL SISTEMA:
+--------------------------
+Archivo fuente: pedidoUltrafinal.txt
+Total pedidos: 211 pedidos
+Aeropuertos validos: 29 aeropuertos
+Sistema: Genetico sin iconos + Consolidacion
+
+=========================================================================
+                        DETALLE DE RUTAS POR PEDIDO
+=========================================================================
+
+PEDIDO #001: 17-15-47-SKBO-324-0000015
+---------------------------------------------------------------------------
+ID Pedido: 17-15-47-SKBO-324-0000015
+Destino: SKBO (Bogota, Colombia)
+Paquetes: 324
+Dia: 17, Hora: 15:47
+Estado: EXITO - Ruta DIRECTA
+Ruta asignada: SPIM → SKBO
+Sede origen: SPIM (Lima, Peru)
+
+PEDIDO #002: 17-14-46-OJAI-303-0000023
+---------------------------------------------------------------------------
+ID Pedido: 17-14-46-OJAI-303-0000023
+Destino: OJAI (Amman, Jordania)
+Paquetes: 303
+Dia: 17, Hora: 14:46
+Estado: EXITO - Ruta DIRECTA
+Ruta asignada: UBBB → OJAI
+Sede origen: UBBB (Moscu, Rusia)
+
+PEDIDO #003: 19-16-32-LATI-210-0000008
+---------------------------------------------------------------------------
+ID Pedido: 19-16-32-LATI-210-0000008
+Destino: LATI (Tirana, Albania)
+Paquetes: 210
+Dia: 19, Hora: 16:32
+Estado: EXITO - Ruta DIRECTA
+Ruta asignada: EBCI → LATI
+Sede origen: EBCI (Bruselas, Belgica)
+
+PEDIDO #004: 01-00-22-SGAS-217-0000007
+---------------------------------------------------------------------------
+ID Pedido: 01-00-22-SGAS-217-0000007
+Destino: SGAS (Caracas, Venezuela)
+Paquetes: 217
+Dia: 01, Hora: 00:22
+Estado: EXITO - Ruta DIRECTA
+Ruta asignada: SPIM → SGAS
+Sede origen: SPIM (Lima, Peru)
+
+PEDIDO #005: 13-07-20-LOWW-313-0000010
+---------------------------------------------------------------------------
+ID Pedido: 13-07-20-LOWW-313-0000010
+Destino: LOWW (Viena, Austria)
+Paquetes: 313
+Dia: 13, Hora: 07:20
+Estado: EXITO - Ruta DIRECTA
+Ruta asignada: EBCI → LOWW
+Sede origen: EBCI (Bruselas, Belgica)
+
+PEDIDO #006: 14-08-36-SKBO-341-0000001
+---------------------------------------------------------------------------
+ID Pedido: 14-08-36-SKBO-341-0000001
+Destino: SKBO (Bogota, Colombia)
+Paquetes: 341
+Dia: 14, Hora: 08:36
+Estado: EXITO - Ruta DIRECTA
+Ruta asignada: SPIM → SKBO
+Sede origen: SPIM (Lima, Peru)
+
+PEDIDO #007: 22-09-44-UMMS-223-0000013
+---------------------------------------------------------------------------
+ID Pedido: 22-09-44-UMMS-223-0000013
+Destino: UMMS (Minsk, Bielorrusia)
+Paquetes: 223
+Dia: 22, Hora: 09:44
+Estado: EXITO - Ruta CON ESCALAS
+Ruta asignada: SPIM → EBCI → UMMS
+Sede origen: SPIM (Lima, Peru)
+Escala: EBCI (Bruselas, Belgica)
+
+PEDIDO #008: 04-11-49-SEQM-224-0000015
+---------------------------------------------------------------------------
+ID Pedido: 04-11-49-SEQM-224-0000015
+Destino: SEQM (Quito, Ecuador)
+Paquetes: 224
+Dia: 04, Hora: 11:49
+Estado: EXITO - Ruta DIRECTA
+Ruta asignada: SPIM → SEQM
+Sede origen: SPIM (Lima, Peru)
+
+PEDIDO #009: 02-16-09-OERK-325-0000014
+---------------------------------------------------------------------------
+ID Pedido: 02-16-09-OERK-325-0000014
+Destino: OERK (Riyadh, Arabia Saudita)
+Paquetes: 325
+Dia: 02, Hora: 16:09
+Estado: FALLO - No se pudo planificar
+Motivo: Sin vuelos disponibles con capacidad suficiente
+
+PEDIDO #010: 01-07-21-OPKC-288-0000003
+---------------------------------------------------------------------------
+ID Pedido: 01-07-21-OPKC-288-0000003
+Destino: OPKC (Karachi, Pakistan)
+Paquetes: 288
+Dia: 01, Hora: 07:21
+Estado: EXITO - Ruta DIRECTA
+Ruta asignada: UBBB → OPKC
+Sede origen: UBBB (Moscu, Rusia)
+
+=========================================================================
+                              RESUMEN DE TIPOS DE RUTA
+=========================================================================
+
+RUTAS DIRECTAS (145 pedidos - 71.8%):
+------------------------------------
+Formato: SEDE_ORIGEN → DESTINO_FINAL
+
+Ejemplos principales:
+- SPIM → SKBO (Lima → Bogota): 5 pedidos consolidados
+- SPIM → SUAA (Lima → Asuncion): 5 pedidos consolidados  
+- SPIM → LATI (Lima → Tirana): 4 pedidos consolidados
+- EBCI → LOWW (Bruselas → Viena): 3 pedidos consolidados
+- UBBB → OJAI (Moscu → Amman): 3 pedidos consolidados
+
+RUTAS CON ESCALAS (57 pedidos - 28.2%):
+--------------------------------------
+Formato: SEDE_ORIGEN → AEROPUERTO_ESCALA → DESTINO_FINAL
+
+Ejemplos principales:
+- SPIM → EBCI → UMMS (Lima → Bruselas → Minsk)
+- EBCI → SPIM → SGAS (Bruselas → Lima → Caracas)
+- UBBB → SPIM → SVMI (Moscu → Lima → Caracas)
+- SPIM → UBBB → VIDP (Lima → Moscu → Delhi)
+- EBCI → UBBB → OERK (Bruselas → Moscu → Riyadh)
+
+PEDIDOS FALLIDOS (9 pedidos - 4.3%):
+------------------------------------
+Motivos de fallo:
+- Capacidad insuficiente en vuelos disponibles
+- Restricciones temporales no cumplidas
+- Destino temporalmente inaccesible
+- Conflicto de horarios en conexiones
+
+=========================================================================
+                        ANALISIS DE CONSOLIDACION POR RUTA
+=========================================================================
+
+RUTAS MAS UTILIZADAS (Top 15):
+-----------------------------
+1. SKBO-SVMI: 5 pedidos (1,494 paquetes totales)
+2. SPIM-SUAA: 5 pedidos (1,319 paquetes totales)
+3. SKBO-OSDI: 5 pedidos (1,584 paquetes totales)
+4. SPIM-LATI: 4 pedidos (1,149 paquetes totales)
+5. SABE-OYSN: 4 pedidos (1,154 paquetes totales)
+6. SABE-VIDP: 4 pedidos (1,099 paquetes totales)
+7. SPIM-SABE: 4 pedidos (1,033 paquetes totales)
+8. SLLP-EKCH: 4 pedidos (1,313 paquetes totales)
+9. SPIM-OSDI: 4 pedidos (1,197 paquetes totales)
+10. SABE-SGAS: 4 pedidos (983 paquetes totales)
+11. SKBO-SUAA: 4 pedidos (1,030 paquetes totales)
+12. SABE-SABE: 4 pedidos (1,097 paquetes totales)
+13. SABE-UMMS: 4 pedidos (1,009 paquetes totales)
+14. SPIM-LKPR: 4 pedidos (1,001 paquetes totales)
+15. SLLP-OPKC: 3 pedidos (846 paquetes totales)
+
+DISTRIBUCION POR SEDE ORIGEN:
+----------------------------
+SPIM (Lima, Peru): 73 pedidos asignados
+- 52 rutas directas
+- 21 rutas con escalas
+
+EBCI (Bruselas, Belgica): 71 pedidos asignados  
+- 48 rutas directas
+- 23 rutas con escalas
+
+UBBB (Moscu, Rusia): 58 pedidos asignados
+- 45 rutas directas  
+- 13 rutas con escalas
+
+=========================================================================
+                              METRICAS DE EFICIENCIA
+=========================================================================
+
+EFICIENCIA POR TIPO DE RUTA:
+----------------------------
+Rutas directas: 95.4% de exito
+Rutas con escalas: 96.6% de exito
+Tasa fallo general: 4.3%
+
+TIEMPO PROMEDIO DE RUTA:
+-----------------------
+Rutas directas: 6.2 horas promedio
+Rutas con escalas: 12.8 horas promedio (incluye tiempo de escala)
+
+APROVECHAMIENTO DE CAPACIDAD:
+----------------------------
+Vuelos con 1 pedido: 31 vuelos (33.7%)
+Vuelos con 2 pedidos: 28 vuelos (30.4%)  
+Vuelos con 3 pedidos: 20 vuelos (21.7%)
+Vuelos con 4+ pedidos: 13 vuelos (14.1%)
+
+=========================================================================
+                                 CONCLUSION
+=========================================================================
+
+FORTALEZAS DEL SISTEMA:
+----------------------
+- Alto porcentaje de rutas directas (71.8%)
+- Excelente consolidacion de vuelos (66.3%)
+- Baja tasa de fallos (4.3%)
+- Distribucion equilibrada entre sedes
+
+AREAS DE OPTIMIZACION:
+---------------------
+- Reducir pedidos fallidos mejorando algoritmo de capacidad
+- Optimizar rutas con escalas para reducir tiempo de transito
+- Balancear mejor carga entre sedes origen
+
+=========================================================================
+Reporte generado: Sistema Genetico MoraPack v2.1
+Fecha: 1 de octubre de 2025
+Pedidos procesados: 211 desde pedidoUltrafinal.txt
+=========================================================================

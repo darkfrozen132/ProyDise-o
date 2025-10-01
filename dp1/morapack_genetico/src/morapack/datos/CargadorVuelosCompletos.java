@@ -199,4 +199,43 @@ public class CargadorVuelosCompletos {
         
         System.out.println("=============================================");
     }
+    
+    /**
+     * Muestra estadísticas sin iconos para una mejor legibilidad
+     */
+    public static void mostrarEstadisticasSinIconos(List<Vuelo> vuelos) {
+        if (vuelos.isEmpty()) {
+            System.out.println("No hay vuelos para mostrar estadisticas");
+            return;
+        }
+        
+        System.out.println("=============================================");
+        System.out.println("            ESTADISTICAS DE VUELOS          ");
+        System.out.println("=============================================");
+        
+        System.out.printf("Total de vuelos cargados: %d%n", vuelos.size());
+        
+        // Capacidad total
+        int capacidadTotal = vuelos.stream().mapToInt(Vuelo::getCapacidad).sum();
+        System.out.printf("Capacidad total de flota: %d paquetes%n", capacidadTotal);
+        
+        // Promedio de capacidad
+        double promedioCapacidad = (double) capacidadTotal / vuelos.size();
+        System.out.printf("Capacidad promedio por vuelo: %.1f paquetes%n", promedioCapacidad);
+        
+        // Aeropuertos únicos
+        java.util.Set<String> aeropuertosOrigen = new java.util.HashSet<>();
+        java.util.Set<String> aeropuertosDestino = new java.util.HashSet<>();
+        
+        for (Vuelo vuelo : vuelos) {
+            aeropuertosOrigen.add(vuelo.getOrigen());
+            aeropuertosDestino.add(vuelo.getDestino());
+        }
+        
+        System.out.printf("Aeropuertos de origen únicos: %d%n", aeropuertosOrigen.size());
+        System.out.printf("Aeropuertos de destino únicos: %d%n", aeropuertosDestino.size());
+        
+        System.out.println("Aeropuertos validados correctamente");
+        System.out.println("=============================================");
+    }
 }

@@ -1,257 +1,362 @@
 package morapack.colonia.componentes;
 
+import morapack.core.problema.ProblemaMoraPack;
+import morapack.datos.modelos.*;
+import java.time.LocalDateTime;
+import java.util.*;
+
 /**
- * Gestiona la información heurística del algoritmo ACO.
+ * Gestiona la información heurística del algoritmo ACO para MoraPack.
  * La información heurística guía a las hormigas hacia decisiones
  * localmente prometedoras, independiente de las feromonas.
+ *
+ * En MoraPack, la heurística se centra en:
+ * - Urgencia de pedidos
+ * - Eficiencia de rutas
+ * - Capacidad de vuelos
+ * - Proximidad geográfica
  */
 public class Heuristica {
 
-    private double[][] matrizHeuristica;
-    private int tamaño;
+    private ProblemaMoraPack problema;
+    private Map<String, Double> cacheHeuristicaRutas;
+    private Map<Integer, Double> cacheHeuristicaPedidos;
     private TipoHeuristica tipo;
 
     /**
-     * Tipos de heurística disponibles
+     * Tipos de heurística disponibles para MoraPack
      */
     public enum TipoHeuristica {
-        DISTANCIA_INVERSA,    // 1/distancia (para TSP)
-        CAPACIDAD,            // Basada en capacidad disponible
-        TIEMPO,               // Basada en tiempo de procesamiento
-        COSTO,                // Basada en costo
-        PERSONALIZADA         // Definida por el usuario
+        URGENCIA_PEDIDOS,     // Basada en plazos de entrega
+        EFICIENCIA_RUTAS,     // Basada en eficiencia de rutas
+        CAPACIDAD_VUELOS,     // Basada en capacidad disponible
+        PROXIMIDAD_GEOGRAFICA, // Basada en proximidad continente/región
+        HIBRIDA              // Combinación de múltiples factores
     }
 
     /**
-     * Constructor con matriz heurística personalizada
-     * @param matrizHeuristica Matriz de valores heurísticos precalculados
-     */
-    public Heuristica(double[][] matrizHeuristica) {
-        this.matrizHeuristica = matrizHeuristica.clone();
-        this.tamaño = matrizHeuristica.length;
-        this.tipo = TipoHeuristica.PERSONALIZADA;
-        validarMatriz();
-    }
-
-    /**
-     * Constructor para heurística basada en distancias
-     * @param matrizDistancias Matriz de distancias entre nodos
+     * Constructor para heurística MoraPack
+     * @param problema Problema MoraPack con toda la información necesaria
      * @param tipo Tipo de heurística a aplicar
      */
-    public Heuristica(double[][] matrizDistancias, TipoHeuristica tipo) {
-        this.tamaño = matrizDistancias.length;
+    public Heuristica(ProblemaMoraPack problema, TipoHeuristica tipo) {
+        this.problema = problema;
         this.tipo = tipo;
-        this.matrizHeuristica = new double[tamaño][tamaño];
+        this.cacheHeuristicaRutas = new HashMap<>();
+        this.cacheHeuristicaPedidos = new HashMap<>();
 
-        calcularHeuristicaSegunTipo(matrizDistancias);
-        validarMatriz();
+        inicializarCacheHeuristico();
     }
 
     /**
-     * Calcula la heurística según el tipo especificado
+     * Constructor con heurística híbrida (recomendado)
+     * @param problema Problema MoraPack
      */
-    private void calcularHeuristicaSegunTipo(double[][] matrizBase) {
+    public Heuristica(ProblemaMoraPack problema) {
+        this(problema, TipoHeuristica.HIBRIDA);
+    }
+
+    /**
+     * Inicializa cache heurístico precalculando valores comunes
+     */
+    private void inicializarCacheHeuristico() {
+        // Precalcular heurísticas de rutas comunes
+        List<String> sedes = Arrays.asList("SPIM", "EBCI", "UBBB");
+        RedDistribucion red = problema.getRed();
+
+        for (String sede : sedes) {
+            for (Map.Entry<String, Aeropuerto> entry : red.getAeropuertos().entrySet()) {
+                String codigoDestino = entry.getKey();
+                if (!sedes.contains(codigoDestino)) {
+                    String claveRuta = sede + "-" + codigoDestino;
+                    double valor = calcularHeuristicaRuta(sede, codigoDestino);
+                    cacheHeuristicaRutas.put(claveRuta, valor);
+                }
+            }
+        }
+
+        // Precalcular heurísticas de pedidos
+        for (Pedido pedido : problema.getPedidos()) {
+            int idPedido = Integer.parseInt(pedido.getIdPedido().split("-")[0]);
+            double valor = calcularHeuristicaPedido(pedido);
+            cacheHeuristicaPedidos.put(idPedido, valor);
+        }
+    }
+
+    /**
+     * Calcula valor heurístico para un pedido específico
+     * @param pedido Pedido a evaluar
+     * @return Valor heurístico normalizado [0.1, 1.0]
+     */
+    private double calcularHeuristicaPedido(Pedido pedido) {
         switch (tipo) {
-            case DISTANCIA_INVERSA:
-                calcularDistanciaInversa(matrizBase);
-                break;
-            case CAPACIDAD:
-                calcularHeuristicaCapacidad(matrizBase);
-                break;
-            case TIEMPO:
-                calcularHeuristicaTiempo(matrizBase);
-                break;
-            case COSTO:
-                calcularHeuristicaCosto(matrizBase);
-                break;
+            case URGENCIA_PEDIDOS:
+                return calcularHeuristicaUrgencia(pedido);
+            case EFICIENCIA_RUTAS:
+                return calcularHeuristicaEficienciaRutas(pedido);
+            case CAPACIDAD_VUELOS:
+                return calcularHeuristicaCapacidad(pedido);
+            case PROXIMIDAD_GEOGRAFICA:
+                return calcularHeuristicaProximidad(pedido);
+            case HIBRIDA:
             default:
-                throw new IllegalArgumentException("Tipo de heurística no implementado: " + tipo);
+                return calcularHeuristicaHibrida(pedido);
         }
     }
 
     /**
-     * Calcula heurística como inverso de la distancia (común en TSP)
+     * Calcula heurística basada en urgencia del pedido
      */
-    private void calcularDistanciaInversa(double[][] distancias) {
-        for (int i = 0; i < tamaño; i++) {
-            for (int j = 0; j < tamaño; j++) {
-                if (i == j) {
-                    matrizHeuristica[i][j] = 0.0; // Sin auto-transición
-                } else if (distancias[i][j] > 0) {
-                    matrizHeuristica[i][j] = 1.0 / distancias[i][j];
+    private double calcularHeuristicaUrgencia(Pedido pedido) {
+        LocalDateTime tiempoActual = problema.getTiempoInicio();
+        Aeropuerto destino = problema.getRed().getAeropuerto(pedido.getCodigoDestino());
+
+        if (destino == null) return 0.1;
+
+        long horasRestantes = pedido.horasRestantesUTC(tiempoActual, destino);
+
+        // Más urgente = mayor heurística
+        if (horasRestantes <= 0) return 0.1; // Pedido vencido
+        if (horasRestantes >= 72) return 0.2; // No urgente
+
+        // Normalizar urgencia: [0.2, 1.0]
+        double urgencia = Math.max(0.2, (72.0 - horasRestantes) / 72.0);
+
+        // Bonus por cantidad (pedidos grandes son prioritarios)
+        double factorCantidad = 1.0 + Math.log(1 + pedido.getCantidadProductos() / 100.0) * 0.2;
+
+        return Math.min(1.0, urgencia * factorCantidad);
+    }
+
+    /**
+     * Calcula heurística basada en eficiencia de rutas disponibles
+     */
+    private double calcularHeuristicaEficienciaRutas(Pedido pedido) {
+        String destino = pedido.getCodigoDestino();
+        List<String> sedes = Arrays.asList("SPIM", "EBCI", "UBBB");
+
+        double mejorEficiencia = 0.0;
+
+        for (String sede : sedes) {
+            List<Vuelo> vuelosDirectos = problema.getRed().buscarVuelosDirectos(sede, destino);
+
+            if (!vuelosDirectos.isEmpty()) {
+                // Ruta directa disponible - alta eficiencia
+                double capacidadPromedio = vuelosDirectos.stream()
+                    .mapToDouble(Vuelo::getCapacidadDisponible)
+                    .average().orElse(100.0);
+
+                double eficiencia = Math.min(1.0, capacidadPromedio / 300.0); // Normalizar
+                mejorEficiencia = Math.max(mejorEficiencia, eficiencia);
+            } else {
+                // Ruta con escalas - eficiencia reducida
+                List<String> ruta = problema.getRed().buscarRutaMinima(sede, destino);
+                if (ruta.size() <= 3) { // Máximo 2 escalas
+                    double eficiencia = 0.5 / ruta.size(); // Penalizar escalas
+                    mejorEficiencia = Math.max(mejorEficiencia, eficiencia);
+                }
+            }
+        }
+
+        return Math.max(0.1, mejorEficiencia);
+    }
+
+    /**
+     * Calcula heurística basada en capacidad de vuelos disponibles
+     */
+    private double calcularHeuristicaCapacidad(Pedido pedido) {
+        String destino = pedido.getCodigoDestino();
+        int cantidadPedido = pedido.getCantidadProductos();
+
+        double mejorCapacidad = 0.0;
+
+        for (String sede : Arrays.asList("SPIM", "EBCI", "UBBB")) {
+            List<Vuelo> vuelos = problema.getRed().buscarVuelosDirectos(sede, destino);
+
+            if (!vuelos.isEmpty()) {
+                int capacidadTotal = vuelos.stream()
+                    .mapToInt(Vuelo::getCapacidadDisponible)
+                    .sum();
+
+                // Evaluar si puede manejar el pedido
+                double ratio = Math.min(1.0, (double) capacidadTotal / cantidadPedido);
+                mejorCapacidad = Math.max(mejorCapacidad, ratio);
+            }
+        }
+
+        return Math.max(0.1, mejorCapacidad);
+    }
+
+    /**
+     * Calcula heurística basada en proximidad geográfica
+     */
+    private double calcularHeuristicaProximidad(Pedido pedido) {
+        String destino = pedido.getCodigoDestino();
+        Aeropuerto aeropuertoDestino = problema.getRed().getAeropuerto(destino);
+
+        if (aeropuertoDestino == null) return 0.1;
+
+        double mejorProximidad = 0.0;
+
+        for (String sede : Arrays.asList("SPIM", "EBCI", "UBBB")) {
+            Aeropuerto aeropuertoSede = problema.getRed().getAeropuerto(sede);
+
+            if (aeropuertoSede != null) {
+                // Mismo continente = alta proximidad
+                if (aeropuertoSede.getContinente().equals(aeropuertoDestino.getContinente())) {
+                    mejorProximidad = Math.max(mejorProximidad, 0.9);
                 } else {
-                    matrizHeuristica[i][j] = 0.0; // Distancia inválida
+                    // Diferente continente = proximidad media
+                    mejorProximidad = Math.max(mejorProximidad, 0.4);
                 }
             }
         }
+
+        return Math.max(0.1, mejorProximidad);
     }
 
     /**
-     * Calcula heurística basada en capacidad disponible
+     * Calcula heurística híbrida combinando múltiples factores
      */
-    private void calcularHeuristicaCapacidad(double[][] capacidades) {
-        double maxCapacidad = encontrarMaximo(capacidades);
+    private double calcularHeuristicaHibrida(Pedido pedido) {
+        double urgencia = calcularHeuristicaUrgencia(pedido);
+        double eficiencia = calcularHeuristicaEficienciaRutas(pedido);
+        double capacidad = calcularHeuristicaCapacidad(pedido);
+        double proximidad = calcularHeuristicaProximidad(pedido);
 
-        for (int i = 0; i < tamaño; i++) {
-            for (int j = 0; j < tamaño; j++) {
-                if (i == j) {
-                    matrizHeuristica[i][j] = 0.0;
-                } else {
-                    // Normalizar capacidad (mayor capacidad = mayor atractivo)
-                    matrizHeuristica[i][j] = capacidades[i][j] / maxCapacidad;
-                }
+        // Pesos para cada factor
+        double pesoUrgencia = 0.4;    // Urgencia es factor principal
+        double pesoEficiencia = 0.3;  // Eficiencia importante
+        double pesoCapacidad = 0.2;   // Capacidad moderada
+        double pesoProximidad = 0.1;  // Proximidad como tie-breaker
+
+        double heuristicaTotal = urgencia * pesoUrgencia +
+                                eficiencia * pesoEficiencia +
+                                capacidad * pesoCapacidad +
+                                proximidad * pesoProximidad;
+
+        return Math.max(0.1, Math.min(1.0, heuristicaTotal));
+    }
+
+    /**
+     * Obtiene el valor heurístico para un pedido
+     * @param pedido Pedido a evaluar
+     * @return Valor heurístico del pedido
+     */
+    public double getHeuristicaPedido(Pedido pedido) {
+        int idPedido = Integer.parseInt(pedido.getIdPedido().split("-")[0]);
+        return cacheHeuristicaPedidos.getOrDefault(idPedido, calcularHeuristicaPedido(pedido));
+    }
+
+    /**
+     * Calcula valor heurístico para una ruta específica
+     * @param origen Código del aeropuerto origen
+     * @param destino Código del aeropuerto destino
+     * @return Valor heurístico de la ruta
+     */
+    private double calcularHeuristicaRuta(String origen, String destino) {
+        RedDistribucion red = problema.getRed();
+
+        // Buscar vuelos directos
+        List<Vuelo> vuelosDirectos = red.buscarVuelosDirectos(origen, destino);
+        if (!vuelosDirectos.isEmpty()) {
+            double capacidadPromedio = vuelosDirectos.stream()
+                .mapToDouble(Vuelo::getCapacidadDisponible)
+                .average().orElse(100.0);
+
+            // Vuelo directo - alta heurística
+            return Math.min(1.0, capacidadPromedio / 300.0 + 0.3);
+        }
+
+        // Buscar ruta con escalas
+        List<String> ruta = red.buscarRutaMinima(origen, destino);
+        if (ruta.size() <= 3) { // Máximo 2 escalas
+            return 0.5 / ruta.size(); // Penalizar escalas
+        }
+
+        return 0.1; // Ruta muy compleja o inexistente
+    }
+
+    /**
+     * Obtiene valor heurístico para selección de sede origen
+     * @param sede Código de la sede origen
+     * @param destino Código del destino
+     * @param pedido Pedido para contexto adicional
+     * @return Valor heurístico para esta combinación sede-destino
+     */
+    public double getHeuristicaSedeDestino(String sede, String destino, Pedido pedido) {
+        String claveRuta = sede + "-" + destino;
+        double heuristicaRuta = cacheHeuristicaRutas.getOrDefault(claveRuta,
+            calcularHeuristicaRuta(sede, destino));
+
+        // Considerar proximidad geográfica
+        Aeropuerto aeropuertoSede = problema.getRed().getAeropuerto(sede);
+        Aeropuerto aeropuertoDestino = problema.getRed().getAeropuerto(destino);
+
+        double bonusProximidad = 0.0;
+        if (aeropuertoSede != null && aeropuertoDestino != null) {
+            if (aeropuertoSede.getContinente().equals(aeropuertoDestino.getContinente())) {
+                bonusProximidad = 0.2; // Bonus por mismo continente
             }
         }
+
+        return Math.min(1.0, heuristicaRuta + bonusProximidad);
     }
 
     /**
-     * Calcula heurística basada en tiempo (menor tiempo = mayor atractivo)
+     * Obtiene pedidos ordenados por valor heurístico
+     * @param pedidosDisponibles Lista de pedidos disponibles
+     * @return Lista ordenada por valor heurístico descendente
      */
-    private void calcularHeuristicaTiempo(double[][] tiempos) {
-        for (int i = 0; i < tamaño; i++) {
-            for (int j = 0; j < tamaño; j++) {
-                if (i == j) {
-                    matrizHeuristica[i][j] = 0.0;
-                } else if (tiempos[i][j] > 0) {
-                    matrizHeuristica[i][j] = 1.0 / tiempos[i][j];
-                } else {
-                    matrizHeuristica[i][j] = 0.0;
-                }
-            }
-        }
+    public List<Pedido> getPedidosOrdenadosPorHeuristica(List<Pedido> pedidosDisponibles) {
+        return pedidosDisponibles.stream()
+            .sorted((p1, p2) -> Double.compare(
+                getHeuristicaPedido(p2),
+                getHeuristicaPedido(p1)))
+            .collect(java.util.stream.Collectors.toList());
     }
 
     /**
-     * Calcula heurística basada en costo (menor costo = mayor atractivo)
+     * Obtiene sedes ordenadas por valor heurístico para un destino
+     * @param destino Código del destino
+     * @param pedido Pedido para contexto
+     * @return Lista de sedes ordenadas por valor heurístico descendente
      */
-    private void calcularHeuristicaCosto(double[][] costos) {
-        for (int i = 0; i < tamaño; i++) {
-            for (int j = 0; j < tamaño; j++) {
-                if (i == j) {
-                    matrizHeuristica[i][j] = 0.0;
-                } else if (costos[i][j] > 0) {
-                    matrizHeuristica[i][j] = 1.0 / costos[i][j];
-                } else {
-                    matrizHeuristica[i][j] = 0.0;
-                }
-            }
-        }
+    public List<String> getSedesOrdenadasPorHeuristica(String destino, Pedido pedido) {
+        List<String> sedes = Arrays.asList("SPIM", "EBCI", "UBBB");
+
+        return sedes.stream()
+            .sorted((s1, s2) -> Double.compare(
+                getHeuristicaSedeDestino(s2, destino, pedido),
+                getHeuristicaSedeDestino(s1, destino, pedido)))
+            .collect(java.util.stream.Collectors.toList());
     }
 
     /**
-     * Encuentra el valor máximo en una matriz
+     * Recalcula cache heurístico (útil si cambian condiciones del problema)
      */
-    private double encontrarMaximo(double[][] matriz) {
-        double maximo = Double.NEGATIVE_INFINITY;
-        for (int i = 0; i < matriz.length; i++) {
-            for (int j = 0; j < matriz[i].length; j++) {
-                if (matriz[i][j] > maximo) {
-                    maximo = matriz[i][j];
-                }
-            }
-        }
-        return maximo;
+    public void recalcularCache() {
+        cacheHeuristicaRutas.clear();
+        cacheHeuristicaPedidos.clear();
+        inicializarCacheHeuristico();
     }
 
     /**
-     * Valida que la matriz heurística sea válida
+     * Obtiene estadísticas del cache heurístico
+     * @return String con estadísticas
      */
-    private void validarMatriz() {
-        if (matrizHeuristica == null) {
-            throw new IllegalArgumentException("La matriz heurística no puede ser null");
-        }
-
-        for (int i = 0; i < tamaño; i++) {
-            if (matrizHeuristica[i].length != tamaño) {
-                throw new IllegalArgumentException("La matriz heurística debe ser cuadrada");
-            }
-            for (int j = 0; j < tamaño; j++) {
-                if (Double.isNaN(matrizHeuristica[i][j]) || matrizHeuristica[i][j] < 0) {
-                    throw new IllegalArgumentException(
-                        "Valor heurístico inválido en posición [" + i + "][" + j + "]: " + matrizHeuristica[i][j]);
-                }
-            }
-        }
-    }
-
-    /**
-     * Obtiene el valor heurístico entre dos nodos
-     * @param origen Nodo origen
-     * @param destino Nodo destino
-     * @return Valor heurístico
-     */
-    public double getHeuristica(int origen, int destino) {
-        if (origen < 0 || origen >= tamaño || destino < 0 || destino >= tamaño) {
-            throw new IllegalArgumentException("Índices fuera de rango: " + origen + ", " + destino);
-        }
-        return matrizHeuristica[origen][destino];
-    }
-
-    /**
-     * Establece un valor heurístico específico
-     * @param origen Nodo origen
-     * @param destino Nodo destino
-     * @param valor Nuevo valor heurístico
-     */
-    public void setHeuristica(int origen, int destino, double valor) {
-        if (origen < 0 || origen >= tamaño || destino < 0 || destino >= tamaño) {
-            throw new IllegalArgumentException("Índices fuera de rango: " + origen + ", " + destino);
-        }
-        if (valor < 0 || Double.isNaN(valor)) {
-            throw new IllegalArgumentException("Valor heurístico inválido: " + valor);
-        }
-        matrizHeuristica[origen][destino] = valor;
-    }
-
-    /**
-     * Normaliza todos los valores heurísticos al rango [0,1]
-     */
-    public void normalizar() {
-        double maximo = encontrarMaximo(matrizHeuristica);
-        if (maximo > 0) {
-            for (int i = 0; i < tamaño; i++) {
-                for (int j = 0; j < tamaño; j++) {
-                    matrizHeuristica[i][j] /= maximo;
-                }
-            }
-        }
-    }
-
-    /**
-     * Obtiene una copia de la matriz heurística
-     * @return Copia de la matriz
-     */
-    public double[][] getMatrizCopia() {
-        double[][] copia = new double[tamaño][tamaño];
-        for (int i = 0; i < tamaño; i++) {
-            System.arraycopy(matrizHeuristica[i], 0, copia[i], 0, tamaño);
-        }
-        return copia;
-    }
-
-    /**
-     * Obtiene los nodos candidatos ordenados por valor heurístico
-     * @param nodoActual Nodo desde el cual calcular
-     * @param nodosDisponibles Array de nodos disponibles
-     * @return Array de nodos ordenados por valor heurístico descendente
-     */
-    public int[] getNodosCandidatos(int nodoActual, boolean[] nodosDisponibles) {
-        return java.util.stream.IntStream.range(0, tamaño)
-                .filter(i -> nodosDisponibles[i])
-                .boxed()
-                .sorted((a, b) -> Double.compare(
-                    getHeuristica(nodoActual, b),
-                    getHeuristica(nodoActual, a)))
-                .mapToInt(Integer::intValue)
-                .toArray();
+    public String getEstadisticasCache() {
+        return String.format("Cache Heurístico - Rutas: %d, Pedidos: %d, Tipo: %s",
+            cacheHeuristicaRutas.size(), cacheHeuristicaPedidos.size(), tipo);
     }
 
     // Getters
-    public int getTamaño() {
-        return tamaño;
-    }
-
     public TipoHeuristica getTipo() {
         return tipo;
     }
+
+    public ProblemaMoraPack getProblema() {
+        return problema;
+    }
+
 }

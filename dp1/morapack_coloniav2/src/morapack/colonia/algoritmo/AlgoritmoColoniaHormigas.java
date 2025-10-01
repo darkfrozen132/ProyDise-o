@@ -4,7 +4,9 @@ import morapack.colonia.componentes.Feromona;
 import morapack.colonia.componentes.Heuristica;
 import morapack.colonia.componentes.Hormiga;
 import morapack.core.problema.Problema;
+import morapack.core.problema.ProblemaMoraPack;
 import morapack.core.solucion.Solucion;
+import morapack.core.solucion.SolucionMoraPack;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -39,11 +41,11 @@ public class AlgoritmoColoniaHormigas {
     private boolean algoritmoTerminado;
     private List<EstadisticasIteracion> historialEstadisticas;
 
-    // Configuración por defecto
-    private static final int NUMERO_HORMIGAS_DEFAULT = 10;
-    private static final int MAX_ITERACIONES_DEFAULT = 100;
-    private static final double TASA_EVAPORACION_DEFAULT = 0.1;
-    private static final int MAX_ITERACIONES_SIN_MEJORA = 10;
+    // Configuración optimizada para problemas de logística
+    private static final int NUMERO_HORMIGAS_DEFAULT = 15; // Más hormigas para mayor diversidad
+    private static final int MAX_ITERACIONES_DEFAULT = 150; // Más iteraciones para problemas complejos
+    private static final double TASA_EVAPORACION_DEFAULT = 0.15; // Mayor evaporación para evitar estancamiento
+    private static final int MAX_ITERACIONES_SIN_MEJORA = 20; // Más paciencia para problemas logísticos
     private static final double UMBRAL_CONVERGENCIA_DEFAULT = 0.001;
 
     /**
@@ -97,9 +99,15 @@ public class AlgoritmoColoniaHormigas {
         // Crear matriz de feromonas
         this.feromona = new Feromona(problema.getTamaño(), 0.1, tasaEvaporacion, 0.01, 10.0);
 
-        // Crear información heurística basada en distancias
-        double[][] distancias = problema.getMatrizDistancias();
-        this.heuristica = new Heuristica(distancias, Heuristica.TipoHeuristica.DISTANCIA_INVERSA);
+        // Crear información heurística específica para MoraPack
+        if (problema instanceof ProblemaMoraPack) {
+            this.heuristica = new Heuristica((ProblemaMoraPack) problema);
+        } else {
+            // Fallback para compatibilidad hacia atrás
+            double[][] distancias = problema.getMatrizDistancias();
+            // Crear heurística básica manualmente para TSP genérico
+            throw new UnsupportedOperationException("Solo se soporta ProblemaMoraPack en esta versión");
+        }
 
         // Crear colonia de hormigas
         this.colonia = new ArrayList<>();
@@ -183,7 +191,7 @@ public class AlgoritmoColoniaHormigas {
         // 4. Actualizar mejor solución global
         if (mejorSolucionGlobal == null ||
             (mejorSolucionIteracion != null &&
-             mejorSolucionIteracion.getFitness() < mejorSolucionGlobal.getFitness())) {
+             mejorSolucionIteracion.getFitness() > mejorSolucionGlobal.getFitness())) {
 
             mejorSolucionGlobal = mejorSolucionIteracion.clone();
             iteracionesSinMejora = 0;
@@ -211,7 +219,7 @@ public class AlgoritmoColoniaHormigas {
 
         Solucion mejor = soluciones.get(0);
         for (Solucion solucion : soluciones) {
-            if (solucion.getFitness() < mejor.getFitness()) {
+            if (solucion.getFitness() > mejor.getFitness()) {
                 mejor = solucion;
             }
         }
@@ -220,24 +228,98 @@ public class AlgoritmoColoniaHormigas {
 
     /**
      * Deposita feromonas según las soluciones encontradas
+     * Adaptado para el modelo de entregas parciales de MoraPack
      */
     private void depositarFeromonas(List<Solucion> soluciones) {
-        // Estrategia: solo la mejor hormiga deposita feromona
+        if (problema instanceof ProblemaMoraPack) {
+            depositarFeromonasMoraPack(soluciones);
+        } else {
+            depositarFeromonasTSP(soluciones);
+        }
+    }
+
+    /**
+     * Estrategia de depositación específica para MoraPack
+     */
+    private void depositarFeromonasMoraPack(List<Solucion> soluciones) {
+        // Estrategia diversificada: mejor 30% deposita feromona
+        soluciones.sort((s1, s2) -> Double.compare(s2.getFitness(), s1.getFitness()));
+        int numElite = Math.max(1, (int) (soluciones.size() * 0.3));
+
+        for (int i = 0; i < numElite; i++) {
+            SolucionMoraPack solucion = (SolucionMoraPack) soluciones.get(i);
+            double factorElite = 1.0 - (i * 0.2); // Decreciente para diversidad
+
+            depositarFeromonaPorPedidos(solucion, factorElite);
+        }
+
+        // Refuerzo de la mejor solución global (pero más conservador)
+        if (mejorSolucionGlobal != null && ThreadLocalRandom.current().nextDouble() < 0.05) {
+            depositarFeromonaPorPedidos((SolucionMoraPack) mejorSolucionGlobal, 0.3);
+        }
+    }
+
+    /**
+     * Deposita feromona basada en los pedidos y rutas de una solución
+     */
+    private void depositarFeromonaPorPedidos(SolucionMoraPack solucion, double factor) {
+        double cantidadBase = Feromona.calcularCantidadFeromona(
+            solucion.getFitness(), problema.getConstanteQ()) * factor;
+
+        // Para cada pedido en la solución
+        for (Integer idPedido : solucion.getRutasPorPedido().keySet()) {
+            List<SolucionMoraPack.RutaProducto> rutas = solucion.getRutasProducto(idPedido);
+
+            for (SolucionMoraPack.RutaProducto ruta : rutas) {
+                // Bonus por entregas que cumplen plazo
+                double bonusPlazo = ruta.cumplePlazo() ? 1.2 : 0.8;
+
+                // Bonus por eficiencia de la entrega
+                double bonusEficiencia = ruta.esEntregaParcial() ?
+                    (1.0 + ruta.porcentajeCompletado() * 0.3) : 1.1;
+
+                double cantidadFeromona = cantidadBase * bonusPlazo * bonusEficiencia;
+
+                // Crear camino de feromona para esta ruta
+                int[] caminoRuta = construirCaminoDeRuta(ruta);
+                feromona.depositarFeromonaEnCamino(caminoRuta, cantidadFeromona);
+            }
+        }
+    }
+
+    /**
+     * Construye un camino de feromona para una ruta específica
+     */
+    private int[] construirCaminoDeRuta(SolucionMoraPack.RutaProducto ruta) {
+        // Simplificación: usar índices de aeropuertos para la matriz de feromonas
+        // En un sistema más complejo, esto mapearía rutas a índices de feromona
+        List<String> aeropuertos = new ArrayList<>();
+        aeropuertos.add(ruta.getAeropuertoOrigen());
+
+        for (SolucionMoraPack.SegmentoVuelo segmento : ruta.getSegmentos()) {
+            if (!aeropuertos.contains(segmento.getAeropuertoDestino())) {
+                aeropuertos.add(segmento.getAeropuertoDestino());
+            }
+        }
+
+        // Convertir a índices (simplificado)
+        int[] camino = new int[aeropuertos.size()];
+        for (int i = 0; i < aeropuertos.size(); i++) {
+            camino[i] = Math.abs(aeropuertos.get(i).hashCode()) % problema.getTamaño();
+        }
+        return camino;
+    }
+
+    /**
+     * Fallback para problemas TSP tradicionales
+     */
+    private void depositarFeromonasTSP(List<Solucion> soluciones) {
         if (mejorSolucionIteracion != null) {
             double cantidadFeromona = Feromona.calcularCantidadFeromona(
                 mejorSolucionIteracion.getFitness(), problema.getConstanteQ());
 
             int[] secuencia = mejorSolucionIteracion.getSecuenciaComoArray();
             feromona.depositarFeromonaEnCamino(secuencia, cantidadFeromona);
-        }
-
-        // Opcional: refuerzo de la mejor solución global
-        if (mejorSolucionGlobal != null && ThreadLocalRandom.current().nextDouble() < 0.1) {
-            double cantidadRefuerzo = Feromona.calcularCantidadFeromona(
-                mejorSolucionGlobal.getFitness(), problema.getConstanteQ()) * 0.5;
-
-            int[] secuenciaGlobal = mejorSolucionGlobal.getSecuenciaComoArray();
-            feromona.depositarFeromonaEnCamino(secuenciaGlobal, cantidadRefuerzo);
         }
     }
 
@@ -250,21 +332,49 @@ public class AlgoritmoColoniaHormigas {
         }
 
         double sumFitness = 0.0;
-        double mejorFitness = Double.MAX_VALUE;
-        double peorFitness = Double.MIN_VALUE;
+        double mejorFitness = Double.MIN_VALUE;
+        double peorFitness = Double.MAX_VALUE;
+
+        // Estadísticas adicionales para MoraPack
+        int totalPedidos = 0;
+        int pedidosCompletos = 0;
+        int entregasParciales = 0;
+        double promedioEntregasPorPedido = 0.0;
 
         for (Solucion solucion : soluciones) {
             double fitness = solucion.getFitness();
             sumFitness += fitness;
-            mejorFitness = Math.min(mejorFitness, fitness);
-            peorFitness = Math.max(peorFitness, fitness);
+            mejorFitness = Math.max(mejorFitness, fitness);
+            peorFitness = Math.min(peorFitness, fitness);
+
+            // Estadísticas específicas de MoraPack
+            if (solucion instanceof SolucionMoraPack) {
+                SolucionMoraPack solMP = (SolucionMoraPack) solucion;
+                totalPedidos += solMP.getRutasPorPedido().size();
+
+                for (Integer idPedido : solMP.getRutasPorPedido().keySet()) {
+                    if (solMP.pedidoCompleto(idPedido)) {
+                        pedidosCompletos++;
+                    }
+                    List<SolucionMoraPack.RutaProducto> rutas = solMP.getRutasProducto(idPedido);
+                    if (rutas.size() > 1) {
+                        entregasParciales++;
+                    }
+                    promedioEntregasPorPedido += rutas.size();
+                }
+            }
         }
 
         double fitnessPromedio = sumFitness / soluciones.size();
 
+        if (totalPedidos > 0) {
+            promedioEntregasPorPedido /= totalPedidos;
+        }
+
         EstadisticasIteracion stats = new EstadisticasIteracion(
             iteracionActual, mejorFitness, peorFitness, fitnessPromedio,
-            mejorSolucionGlobal != null ? mejorSolucionGlobal.getFitness() : Double.MAX_VALUE
+            mejorSolucionGlobal != null ? mejorSolucionGlobal.getFitness() : Double.MIN_VALUE,
+            totalPedidos, pedidosCompletos, entregasParciales, promedioEntregasPorPedido
         );
 
         historialEstadisticas.add(stats);
@@ -292,7 +402,7 @@ public class AlgoritmoColoniaHormigas {
     private void mostrarProgreso() {
         System.out.printf("Iteración %d/%d - Mejor fitness: %.4f - Sin mejora: %d%n",
             iteracionActual, maxIteraciones,
-            mejorSolucionGlobal != null ? mejorSolucionGlobal.getFitness() : Double.MAX_VALUE,
+            mejorSolucionGlobal != null ? mejorSolucionGlobal.getFitness() : Double.MIN_VALUE,
             iteracionesSinMejora);
     }
 
@@ -367,6 +477,7 @@ public class AlgoritmoColoniaHormigas {
 
     /**
      * Clase interna para almacenar estadísticas de cada iteración
+     * Incluye métricas específicas para problemas de logística
      */
     public static class EstadisticasIteracion {
         public final int iteracion;
@@ -375,19 +486,57 @@ public class AlgoritmoColoniaHormigas {
         public final double fitnessPromedio;
         public final double mejorFitnessGlobal;
 
+        // Estadísticas específicas de MoraPack
+        public final int totalPedidos;
+        public final int pedidosCompletos;
+        public final int entregasParciales;
+        public final double promedioEntregasPorPedido;
+
+        // Constructor básico (compatibilidad hacia atrás)
         public EstadisticasIteracion(int iteracion, double mejorFitness, double peorFitness,
                                    double fitnessPromedio, double mejorFitnessGlobal) {
+            this(iteracion, mejorFitness, peorFitness, fitnessPromedio, mejorFitnessGlobal,
+                 0, 0, 0, 0.0);
+        }
+
+        // Constructor completo con estadísticas MoraPack
+        public EstadisticasIteracion(int iteracion, double mejorFitness, double peorFitness,
+                                   double fitnessPromedio, double mejorFitnessGlobal,
+                                   int totalPedidos, int pedidosCompletos, int entregasParciales,
+                                   double promedioEntregasPorPedido) {
             this.iteracion = iteracion;
             this.mejorFitness = mejorFitness;
             this.peorFitness = peorFitness;
             this.fitnessPromedio = fitnessPromedio;
             this.mejorFitnessGlobal = mejorFitnessGlobal;
+            this.totalPedidos = totalPedidos;
+            this.pedidosCompletos = pedidosCompletos;
+            this.entregasParciales = entregasParciales;
+            this.promedioEntregasPorPedido = promedioEntregasPorPedido;
+        }
+
+        public double tasaCompletitud() {
+            return totalPedidos > 0 ? (double) pedidosCompletos / totalPedidos : 0.0;
+        }
+
+        public double tasaEntregasParciales() {
+            return totalPedidos > 0 ? (double) entregasParciales / totalPedidos : 0.0;
         }
 
         @Override
         public String toString() {
-            return String.format("Iter %d: mejor=%.4f, promedio=%.4f, global=%.4f",
-                iteracion, mejorFitness, fitnessPromedio, mejorFitnessGlobal);
+            if (totalPedidos > 0) {
+                return String.format("Iter %d: fitness=%.2f (prom=%.2f, global=%.2f) | " +
+                                   "Pedidos: %d/%d completos (%.1f%%) | " +
+                                   "Parciales: %d (%.1f%%) | Entregas/Pedido: %.1f",
+                    iteracion, mejorFitness, fitnessPromedio, mejorFitnessGlobal,
+                    pedidosCompletos, totalPedidos, tasaCompletitud() * 100,
+                    entregasParciales, tasaEntregasParciales() * 100,
+                    promedioEntregasPorPedido);
+            } else {
+                return String.format("Iter %d: mejor=%.4f, promedio=%.4f, global=%.4f",
+                    iteracion, mejorFitness, fitnessPromedio, mejorFitnessGlobal);
+            }
         }
     }
 }

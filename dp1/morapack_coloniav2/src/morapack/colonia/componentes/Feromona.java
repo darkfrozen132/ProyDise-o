@@ -148,15 +148,18 @@ public class Feromona {
 
     /**
      * Calcula la cantidad de feromona a depositar basada en la calidad de la solución
-     * @param fitness Fitness de la solución (menor es mejor)
+     * @param fitness Fitness de la solución (MAYOR es mejor)
      * @param constanteQ Constante Q del algoritmo
      * @return Cantidad de feromona a depositar
      */
     public static double calcularCantidadFeromona(double fitness, double constanteQ) {
         if (fitness <= 0) {
-            return constanteQ; // Evitar división por cero
+            return 0.01; // Mínimo para fitness inválido
         }
-        return constanteQ / fitness;
+        // NUEVA FÓRMULA: Más fitness = más feromona
+        // Normalizar fitness para evitar valores excesivos
+        double fitnessNormalizado = Math.min(fitness, constanteQ * 10.0);
+        return (constanteQ * fitnessNormalizado) / (constanteQ + fitnessNormalizado);
     }
 
     // Getters y Setters

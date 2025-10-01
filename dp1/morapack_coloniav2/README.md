@@ -1,6 +1,6 @@
 # MoraPack Colonia v2 - Ant Colony Optimization
 
-Sistema de optimización basado en algoritmos de colonias de hormigas para resolver problemas de planificación y ruteo.
+Sistema de optimización basado en algoritmos de colonias de hormigas para resolver problemas de planificación y ruteo logístico con soporte completo para **entregas parciales múltiples**.
 
 ## Estructura del Proyecto
 
@@ -8,12 +8,23 @@ Sistema de optimización basado en algoritmos de colonias de hormigas para resol
 morapack_coloniav2/
 ├── bin/                    # Archivos ejecutables compilados
 ├── datos/                  # Archivos de datos y configuración
+│   ├── aeropuertos.csv     # 31 aeropuertos globales (3 sedes + 28 destinos)
+│   ├── planes_de_vuelo.csv # Horarios y capacidades de vuelos
+│   └── pedidos/
+│       └── pedidos_01.csv  # Pedidos enero
 ├── src/                    # Código fuente
 │   └── morapack/
 │       ├── colonia/        # Algoritmos de colonia de hormigas
+│       │   ├── algoritmo/  # AlgoritmoColoniaHormigas (optimizado para logística)
+│       │   └── componentes/ # Hormiga, Heuristica, Feromona
 │       ├── datos/          # Manejo de datos y persistencia
-│       ├── utils/          # Utilidades y helpers
-│       └── core/           # Componentes principales
+│       │   ├── cargadores/  # Cargadores CSV especializados
+│       │   └── modelos/     # RedDistribucion, Aeropuerto, Vuelo, Pedido
+│       ├── core/           # Componentes principales
+│       │   ├── problema/    # ProblemaMoraPack (problema logístico)
+│       │   └── solucion/    # SolucionMoraPack (entregas parciales)
+│       ├── ejemplos/       # Demostraciones y ejemplos
+│       └── main/           # Clase principal
 └── README.md
 ```
 
@@ -39,28 +50,51 @@ morapack_coloniav2/
 - **Archivos**: camelCase
   - Ejemplo: `pedidoService.js`
 
-## Algoritmo Ant Colony Optimization (ACO)
+## Características Principales
 
-### Componentes Principales
-- **Hormiga**: Agente que construye soluciones
-- **Feromona**: Información persistente del entorno
-- **Heurística**: Información local para guiar decisiones
-- **Colonia**: Conjunto de hormigas y gestión del algoritmo
+### ✨ Modelo Híbrido de Entregas Parciales
+- **Entregas Múltiples**: Un pedido puede dividirse en varias entregas
+- **Productos Fungibles**: Los productos son intercambiables entre pedidos
+- **Entregas Asíncronas**: Cada entrega puede llegar en momentos diferentes
+- **Optimización Flexible**: Mejor utilización de capacidades de vuelo
 
-### Parámetros del Algoritmo
-- `α (alfa)`: Influencia de la feromona
-- `β (beta)`: Influencia de la información heurística
-- `ρ (rho)`: Tasa de evaporación de feromonas
-- `Q`: Constante para cálculo de feromonas
+### 🧠 Algoritmo ACO Optimizado para Logística
+- **Parámetros Especializados**: Configuración específica para problemas logísticos
+- **Heurísticas Inteligentes**: Urgencia, eficiencia, capacidad, proximidad geográfica
+- **Depositación Elite**: Top 30% de hormigas con bonus por cumplimiento
+- **Estadísticas Avanzadas**: Métricas específicas de logística
 
-## Desarrollo Incremental
+### 🌍 Manejo Global de Husos Horarios
+- **Operación Multi-Continental**: SAM, EUR, ASI con husos horarios precisos
+- **Conversiones Automáticas**: UTC ↔ Local según necesidad
+- **Validación Temporal**: Cumplimiento de plazos por zona horaria
+- **Cálculos Precisos**: Duración real de vuelos considerando husos
 
-Este proyecto se desarrollará incrementalmente:
+### 📊 Detección de Colapso del Sistema
+- **Criterios Múltiples**: Plazos, capacidades, conectividad
+- **Métricas en Tiempo Real**: Utilización, retrasos, factibilidad
+- **Validación Integral**: Sistema completo y componentes individuales
 
-1. **Fase 1**: Implementación básica del algoritmo ACO
-2. **Fase 2**: Adaptación al problema específico universitario
-3. **Fase 3**: Optimizaciones y mejoras de rendimiento
-4. **Fase 4**: Interfaz y visualización
+## Estado del Desarrollo
+
+### ✅ Fase 1 - Completada
+- ✅ Implementación básica del algoritmo ACO
+- ✅ Componentes Hormiga, Feromona, Heurística
+
+### ✅ Fase 2 - Completada
+- ✅ Adaptación completa al problema MoraPack
+- ✅ Cargadores de datos CSV especializados
+- ✅ Manejo de husos horarios globales
+
+### ✅ Fase 3 - Completada
+- ✅ Modelo híbrido de entregas parciales
+- ✅ Optimizaciones específicas para logística
+- ✅ Sistema de detección de colapso
+- ✅ Eliminación de métodos deprecated
+
+### 🚧 Fase 4 - En Progreso
+- 🚧 Interfaz y visualización (pendiente)
+- 🚧 Escenarios de evaluación (pendiente)
 
 ## Instalación y Uso
 
@@ -110,18 +144,19 @@ make clean compile
 
 #### Opción 3: Comandos Manuales
 ```bash
-# Crear directorio bin
-mkdir bin
+# Usar siempre los scripts automáticos (recomendado)
+# Los scripts manejan las dependencias correctamente
 
-# Compilar paso a paso
-javac -d bin src/morapack/core/solucion/Solucion.java
-javac -cp bin -d bin src/morapack/core/problema/Problema.java
-javac -cp bin -d bin src/morapack/core/problema/ProblemaTSP.java
-javac -cp bin -d bin src/morapack/colonia/componentes/*.java
-javac -cp bin -d bin src/morapack/colonia/algoritmo/AlgoritmoColoniaHormigas.java
-javac -cp bin -d bin src/morapack/main/Main.java
+# Windows
+compile.bat
+run.bat
 
-# Ejecutar
+# Unix/Linux/Mac
+./compile.sh
+./run.sh
+
+# Ejemplos específicos
+java -cp bin morapack.ejemplos.EjemploEntregasParciales
 java -cp bin morapack.main.Main
 ```
 
@@ -133,30 +168,41 @@ Si encuentras errores de compilación:
 3. Elimina el directorio `bin` y vuelve a compilar
 4. En Windows, usa `compile.bat`; en Unix/Linux/Mac, usa `./compile.sh`
 
-## Estructura de Paquetes Planificada
+## Ejemplos de Uso
 
+### Demostrar Entregas Parciales
+```bash
+java -cp bin morapack.ejemplos.EjemploEntregasParciales
 ```
-src/morapack/
-├── colonia/
-│   ├── algoritmo/          # Implementación del algoritmo ACO
-│   ├── componentes/        # Hormigas, Feromonas, Heurísticas
-│   └── utils/              # Utilidades específicas de ACO
-├── datos/
-│   ├── dao/                # Data Access Objects
-│   ├── modelos/            # Clases de dominio
-│   └── cargadores/         # Cargadores de datos
-├── core/
-│   ├── problema/           # Definición del problema a resolver
-│   └── solucion/           # Representación de soluciones
-└── utils/
-    ├── matematicas/        # Funciones matemáticas
-    └── configuracion/      # Gestión de configuración
+**Output esperado:**
+```
+=== DEMOSTRACIÓN: MODELO HÍBRIDO CON ENTREGAS PARCIALES ===
+📦 PEDIDO ORIGINAL:
+   ID: 12345
+   Destino: SEQM (Quito, Ecuador)
+   Cantidad: 145 productos MPE
 
-datos/                      # Archivos de datos del sistema
-├── aeropuertos.csv        # 31 aeropuertos (SAM, EUR, ASI)
-├── planes_de_vuelo.csv    # Horarios y capacidades de vuelos
+🚚 PLAN DE ENTREGAS PARCIALES:
+   📦 Entrega #1: 60/145 productos (41.4%) - SPIM -> SEQM
+   📦 Entrega #2: 45/145 productos (31.0%) - SPIM -> SBBR -> SEQM
+   📦 Entrega #3: 40/145 productos (27.6%) - EBCI -> SEQM
+```
+
+### Ejecutar Sistema Principal
+```bash
+java -cp bin morapack.main.Main
+```
+
+### Estructura de Archivos de Datos
+```
+datos/
+├── aeropuertos.csv        # 31 aeropuertos (3 sedes + 28 destinos)
+│   # SPIM,Lima,Peru,lima,-5,440,-12.0219,-77.1143,SAM
+├── planes_de_vuelo.csv    # Horarios y capacidades
+│   # SKBO,SEQM,03:34,05:21,300
 └── pedidos/
-    └── pedidos_01.csv     # Pedidos mensuales (enero)
+    └── pedidos_01.csv     # Pedidos enero
+        # 30-09-15-SEQM-145-0054321
 ```
 
 ## Contribución

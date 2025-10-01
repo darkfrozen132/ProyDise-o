@@ -46,7 +46,7 @@ public class ProblemaMoraPack extends Problema {
         this(red, pedidos, tiempoInicio,
              1.0, 2.0, 100.0,              // Parámetros ACO (alfa, beta, Q)
              0.4, 0.3, 0.3,                // Pesos heurística (urgencia, capacidad, costo)
-             1000.0, 500.0, 100.0);        // Penalizaciones (retraso, capacidad, bonificación)
+             200.0, 100.0, 500.0);         // OPTIMIZADO: (retraso, capacidad, bonificación)
     }
 
     /**
@@ -150,32 +150,100 @@ public class ProblemaMoraPack extends Problema {
 
         SolucionMoraPack solucionMP = (SolucionMoraPack) solucion;
 
-        double costoTotal = 0.0;
+        double costoOperacional = 0.0;
         double penalizacionTotal = 0.0;
         double bonificacionTotal = 0.0;
+        int pedidosCompletos = 0;
+        int pedidosATiempo = 0;
+        int pedidosTempranos = 0;
 
-        // Evaluar cada ruta de producto
-        for (SolucionMoraPack.RutaProducto ruta : solucionMP.getRutasProductos().values()) {
+        // Evaluar cada pedido y sus entregas parciales
+        for (Map.Entry<Integer, List<SolucionMoraPack.RutaProducto>> entrada :
+             solucionMP.getRutasPorPedido().entrySet()) {
 
-            // 1. Costo operacional de la ruta
-            costoTotal += calcularCostoOperacionalRuta(ruta);
+            int idPedido = entrada.getKey();
+            List<SolucionMoraPack.RutaProducto> rutasPedido = entrada.getValue();
 
-            // 2. Penalizaciones por retrasos
-            if (!ruta.cumplePlazo()) {
-                penalizacionTotal += penalizacionRetraso;
+            if (rutasPedido.isEmpty()) continue;
+
+            pedidosCompletos++;
+
+            // Variables para este pedido específico
+            boolean pedidoCompleto = solucionMP.pedidoCompleto(idPedido);
+            boolean pedidoCumplePlazo = solucionMP.pedidoCumplePlazo(idPedido);
+            int totalTransportado = rutasPedido.stream().mapToInt(r -> r.getCantidadTransportada()).sum();
+            int totalRequerido = rutasPedido.get(0).getCantidadTotalPedido();
+
+            // 1. Evaluación por completitud del pedido
+            if (pedidoCompleto) {
+                bonificacionTotal += bonificacionEficiencia * 2.0; // Bonificación grande por completar pedido
+                pedidosATiempo++;
+            } else {
+                // Bonificación parcial proporcional
+                double porcentajeCompletado = (double) totalTransportado / totalRequerido;
+                bonificacionTotal += bonificacionEficiencia * porcentajeCompletado;
             }
 
-            // 3. Bonificación por entregas tempranas
-            if (ruta.cumplePlazo() && esEntregaTemprana(ruta)) {
+            // 2. Evaluación temporal
+            if (pedidoCumplePlazo) {
                 bonificacionTotal += bonificacionEficiencia;
+
+                // Bonificación extra por entregas tempranas
+                long entregasTempranas = rutasPedido.stream()
+                    .filter(this::esEntregaTemprana)
+                    .count();
+                if (entregasTempranas > 0) {
+                    pedidosTempranos++;
+                    bonificacionTotal += bonificacionEficiencia * 0.3 * entregasTempranas;
+                }
+            } else {
+                // Penalización por retrasos (menos severa si es entrega parcial)
+                double factorPenalizacion = pedidoCompleto ? 1.0 : 0.5;
+                penalizacionTotal += penalizacionRetraso * factorPenalizacion;
+            }
+
+            // 3. Costos operacionales de todas las rutas del pedido
+            for (SolucionMoraPack.RutaProducto ruta : rutasPedido) {
+                double costoRuta = calcularCostoOperacionalRuta(ruta);
+                costoOperacional += Math.max(0, 1000.0 - costoRuta / 10.0);
+            }
+
+            // 4. Bonificación por eficiencia en entregas (menos rutas = mejor)
+            if (rutasPedido.size() == 1) {
+                bonificacionTotal += bonificacionEficiencia * 0.2; // Entrega directa
+            } else if (rutasPedido.size() <= 3) {
+                bonificacionTotal += bonificacionEficiencia * 0.1; // Pocas entregas
             }
         }
 
         // 4. Penalizaciones por violaciones de capacidad
         penalizacionTotal += calcularPenalizacionesCapacidad(solucionMP);
 
-        // Función objetivo: minimizar costo total
-        return costoTotal + penalizacionTotal - bonificacionTotal;
+        // 5. Bonificación por completitud del sistema (considerando entregas parciales)
+        int pedidosCompletosReales = (int) solucionMP.getRutasPorPedido().keySet().stream()
+            .filter(solucionMP::pedidoCompleto)
+            .count();
+
+        double bonificacionCompletitud = (pedidosCompletos > 0) ?
+            (double) pedidosCompletosReales / pedidosCompletos * 800.0 : 0.0;
+
+        // 6. Bonificación por eficiencia en entregas parciales
+        int totalEntregas = solucionMP.getRutasPorPedido().values().stream()
+            .mapToInt(List::size)
+            .sum();
+        double eficienciaEntregas = (pedidosCompletos > 0) ?
+            Math.max(0, 1.0 - (double) totalEntregas / pedidosCompletos / 3.0) * 300.0 : 0.0;
+
+        // 7. Bonificación por entregas tempranas
+        double bonificacionEficienciaGeneral = (pedidosCompletos > 0) ?
+            (double) pedidosTempranos / pedidosCompletos * 200.0 : 0.0;
+
+        // NUEVA FUNCIÓN OBJETIVO: MAYOR FITNESS = MEJOR SOLUCIÓN (CON ENTREGAS PARCIALES)
+        double fitness = costoOperacional + bonificacionTotal + bonificacionCompletitud +
+                        eficienciaEntregas + bonificacionEficienciaGeneral - penalizacionTotal;
+
+        // Asegurar que el fitness sea siempre positivo
+        return Math.max(1.0, fitness);
     }
 
     /**
@@ -195,7 +263,7 @@ public class ProblemaMoraPack extends Problema {
         }
 
         // Factor por cantidad de productos
-        costo *= ruta.getCantidadProductos();
+        costo *= ruta.getCantidadTransportada();
 
         return costo;
     }
@@ -209,7 +277,7 @@ public class ProblemaMoraPack extends Problema {
     }
 
     /**
-     * Calcula penalizaciones por violaciones de capacidad
+     * Calcula penalizaciones por violaciones de capacidad (considerando entregas parciales)
      */
     private double calcularPenalizacionesCapacidad(SolucionMoraPack solucion) {
         double penalizacion = 0.0;
@@ -233,6 +301,19 @@ public class ProblemaMoraPack extends Problema {
             }
         }
 
+        // Penalización adicional por fragmentación excesiva
+        int totalEntregas = solucion.getRutasPorPedido().values().stream()
+            .mapToInt(List::size)
+            .sum();
+        int totalPedidos = solucion.getRutasPorPedido().size();
+
+        if (totalPedidos > 0) {
+            double promedioEntregasPorPedido = (double) totalEntregas / totalPedidos;
+            if (promedioEntregasPorPedido > 3.0) { // Más de 3 entregas promedio es ineficiente
+                penalizacion += penalizacionCapacidad * 0.1 * (promedioEntregasPorPedido - 3.0);
+            }
+        }
+
         return penalizacion;
     }
 
@@ -249,20 +330,50 @@ public class ProblemaMoraPack extends Problema {
 
         SolucionMoraPack solucionMP = (SolucionMoraPack) solucion;
 
-        // 1. Verificar que todos los pedidos tengan ruta
-        if (solucionMP.getRutasProductos().size() != pedidos.size()) {
+        // 1. Verificar que todos los pedidos tengan al menos una ruta
+        if (solucionMP.getRutasPorPedido().size() != pedidos.size()) {
             return false;
         }
 
-        // 2. Verificar que cada ruta sea válida
-        for (SolucionMoraPack.RutaProducto ruta : solucionMP.getRutasProductos().values()) {
-            if (!esRutaValida(ruta)) {
+        // 2. Verificar que cada ruta sea válida y que las cantidades sean consistentes
+        for (Map.Entry<Integer, List<SolucionMoraPack.RutaProducto>> entrada :
+             solucionMP.getRutasPorPedido().entrySet()) {
+
+            List<SolucionMoraPack.RutaProducto> rutas = entrada.getValue();
+            if (rutas.isEmpty()) {
+                return false; // Pedido sin rutas
+            }
+
+            // Verificar cada ruta individual
+            for (SolucionMoraPack.RutaProducto ruta : rutas) {
+                if (!esRutaValida(ruta)) {
+                    return false;
+                }
+            }
+
+            // Verificar consistencia de cantidades
+            if (!cantidadesConsistentes(rutas)) {
                 return false;
             }
         }
 
         // 3. Verificar restricciones de capacidad (flexibles con penalizaciones)
         return true; // Las violaciones se manejan con penalizaciones en la función objetivo
+    }
+
+    /**
+     * Verifica que las cantidades en las rutas sean consistentes
+     */
+    private boolean cantidadesConsistentes(List<SolucionMoraPack.RutaProducto> rutas) {
+        if (rutas.isEmpty()) return false;
+
+        int cantidadTotal = rutas.get(0).getCantidadTotalPedido();
+        int sumaTransportada = rutas.stream()
+            .mapToInt(SolucionMoraPack.RutaProducto::getCantidadTransportada)
+            .sum();
+
+        // Permitir entregas parciales (suma <= total) pero no exceder
+        return sumaTransportada <= cantidadTotal && sumaTransportada > 0;
     }
 
     /**

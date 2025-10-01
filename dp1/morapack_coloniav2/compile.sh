@@ -33,7 +33,31 @@ compile_with_check() {
 # Compilar en orden de dependencias
 compile_with_check "src/morapack/core/solucion/Solucion.java" "clase Solucion"
 compile_with_check "src/morapack/core/problema/Problema.java" "clase Problema"
-compile_with_check "src/morapack/core/problema/ProblemaTSP.java" "clase ProblemaTSP"
+
+echo "[INFO] Compilando cargadores base..."
+compile_with_check "src/morapack/datos/cargadores/CargadorException.java" "excepción de cargador"
+compile_with_check "src/morapack/datos/cargadores/CargadorCSV.java" "cargador CSV base"
+
+echo "[INFO] Compilando modelos base..."
+compile_with_check "src/morapack/datos/modelos/Continente.java" "modelo Continente"
+compile_with_check "src/morapack/datos/modelos/Aeropuerto.java" "modelo Aeropuerto"
+compile_with_check "src/morapack/datos/modelos/Vuelo.java" "modelo Vuelo"
+compile_with_check "src/morapack/datos/modelos/Pedido.java" "modelo Pedido"
+compile_with_check "src/morapack/datos/modelos/Cliente.java" "modelo Cliente"
+
+echo "[INFO] Compilando cargadores específicos..."
+compile_with_check "src/morapack/datos/cargadores/CargadorAeropuertos.java" "cargador Aeropuertos"
+compile_with_check "src/morapack/datos/cargadores/CargadorVuelos.java" "cargador Vuelos"
+compile_with_check "src/morapack/datos/cargadores/CargadorPedidos.java" "cargador Pedidos"
+
+echo "[INFO] Compilando modelos complejos..."
+compile_with_check "src/morapack/datos/modelos/RedDistribucion.java" "red de distribución"
+compile_with_check "src/morapack/datos/modelos/ValidadorColapso.java" "validador de colapso"
+compile_with_check "src/morapack/datos/modelos/MetricasSistema.java" "métricas del sistema"
+
+# Ahora compilar las clases específicas de MoraPack que dependen de los modelos
+compile_with_check "src/morapack/core/solucion/SolucionMoraPack.java" "clase SolucionMoraPack"
+compile_with_check "src/morapack/core/problema/ProblemaMoraPack.java" "clase ProblemaMoraPack"
 
 echo "[INFO] Compilando componentes de colonia..."
 javac -cp bin -d bin src/morapack/colonia/componentes/*.java

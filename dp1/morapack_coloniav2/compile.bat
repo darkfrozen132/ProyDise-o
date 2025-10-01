@@ -31,9 +31,114 @@ if %ERRORLEVEL% neq 0 (
     exit /b 1
 )
 
-javac -cp bin -d bin src\morapack\core\problema\ProblemaTSP.java
+REM Las clases específicas se compilarán después de los modelos de datos
+
+echo [INFO] Compilando cargadores base...
+javac -cp bin -d bin src\morapack\datos\cargadores\CargadorException.java
 if %ERRORLEVEL% neq 0 (
-    echo [ERROR] Fallo al compilar ProblemaTSP.java
+    echo [ERROR] Fallo al compilar CargadorException.java
+    pause
+    exit /b 1
+)
+
+javac -cp bin -d bin src\morapack\datos\cargadores\CargadorCSV.java
+if %ERRORLEVEL% neq 0 (
+    echo [ERROR] Fallo al compilar CargadorCSV.java
+    pause
+    exit /b 1
+)
+
+echo [INFO] Compilando modelos base...
+javac -cp bin -d bin src\morapack\datos\modelos\Continente.java
+if %ERRORLEVEL% neq 0 (
+    echo [ERROR] Fallo al compilar Continente.java
+    pause
+    exit /b 1
+)
+
+javac -cp bin -d bin src\morapack\datos\modelos\Aeropuerto.java
+if %ERRORLEVEL% neq 0 (
+    echo [ERROR] Fallo al compilar Aeropuerto.java
+    pause
+    exit /b 1
+)
+
+javac -cp bin -d bin src\morapack\datos\modelos\Vuelo.java
+if %ERRORLEVEL% neq 0 (
+    echo [ERROR] Fallo al compilar Vuelo.java
+    pause
+    exit /b 1
+)
+
+javac -cp bin -d bin src\morapack\datos\modelos\Pedido.java
+if %ERRORLEVEL% neq 0 (
+    echo [ERROR] Fallo al compilar Pedido.java
+    pause
+    exit /b 1
+)
+
+javac -cp bin -d bin src\morapack\datos\modelos\Cliente.java
+if %ERRORLEVEL% neq 0 (
+    echo [ERROR] Fallo al compilar Cliente.java
+    pause
+    exit /b 1
+)
+
+echo [INFO] Compilando cargadores especificos...
+javac -cp bin -d bin src\morapack\datos\cargadores\CargadorAeropuertos.java
+if %ERRORLEVEL% neq 0 (
+    echo [ERROR] Fallo al compilar CargadorAeropuertos.java
+    pause
+    exit /b 1
+)
+
+javac -cp bin -d bin src\morapack\datos\cargadores\CargadorVuelos.java
+if %ERRORLEVEL% neq 0 (
+    echo [ERROR] Fallo al compilar CargadorVuelos.java
+    pause
+    exit /b 1
+)
+
+javac -cp bin -d bin src\morapack\datos\cargadores\CargadorPedidos.java
+if %ERRORLEVEL% neq 0 (
+    echo [ERROR] Fallo al compilar CargadorPedidos.java
+    pause
+    exit /b 1
+)
+
+echo [INFO] Compilando modelos complejos...
+javac -cp bin -d bin src\morapack\datos\modelos\RedDistribucion.java
+if %ERRORLEVEL% neq 0 (
+    echo [ERROR] Fallo al compilar RedDistribucion.java
+    pause
+    exit /b 1
+)
+
+javac -cp bin -d bin src\morapack\datos\modelos\ValidadorColapso.java
+if %ERRORLEVEL% neq 0 (
+    echo [ERROR] Fallo al compilar ValidadorColapso.java
+    pause
+    exit /b 1
+)
+
+javac -cp bin -d bin src\morapack\datos\modelos\MetricasSistema.java
+if %ERRORLEVEL% neq 0 (
+    echo [ERROR] Fallo al compilar MetricasSistema.java
+    pause
+    exit /b 1
+)
+
+echo [INFO] Compilando clases específicas MoraPack...
+javac -cp bin -d bin src\morapack\core\solucion\SolucionMoraPack.java
+if %ERRORLEVEL% neq 0 (
+    echo [ERROR] Fallo al compilar SolucionMoraPack.java
+    pause
+    exit /b 1
+)
+
+javac -cp bin -d bin src\morapack\core\problema\ProblemaMoraPack.java
+if %ERRORLEVEL% neq 0 (
+    echo [ERROR] Fallo al compilar ProblemaMoraPack.java
     pause
     exit /b 1
 )

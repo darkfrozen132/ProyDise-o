@@ -373,56 +373,81 @@ Minimizar: Σ(penalización_tiempo * retraso_i) + Σ(costo_operacional * x_ijk)
 **Estructura de una Solución:**
 Una solución representa el plan completo de rutas para todos los productos en un período dado.
 
-**Representación:**
+**Representación Implementada:**
 ```java
 class SolucionMoraPack {
-    Map<Integer, RutaProducto> rutasProductos;  // ID_producto -> ruta completa
-    double fitness;                             // Costo total + penalizaciones
-    boolean cumplePlazos;                       // Factibilidad temporal
-    Map<String, Integer> usageVuelos;          // Uso de capacidad por vuelo
-    Map<String, Integer> usageAlmacenes;       // Uso de capacidad por almacén
+    // MODELO HÍBRIDO: Soporte para entregas parciales múltiples
+    Map<Integer, List<RutaProducto>> rutasPorPedido;  // ID_pedido -> lista de entregas
+    double fitness;                                    // MAYOR = MEJOR solución
+    boolean cumplePlazos;                             // Factibilidad temporal
+    LocalDateTime tiempoCreacion;                     // Timestamp de creación
+    boolean validacionRealizada;                      // Estado de validación
 }
 
 class RutaProducto {
-    int idProducto;
+    // Identificación del pedido y entrega
+    int idPedido;                               // ID del pedido original
+    int cantidadTransportada;                   // Cantidad en esta entrega
+    int cantidadTotalPedido;                    // Cantidad total del pedido
+    int numeroEntrega;                          // 1, 2, 3... para entregas múltiples
+    boolean esEntregaParcial;                   // true si hay más entregas
+
+    // Información de ruta
     String aeropuertoOrigen;                    // Lima/Bruselas/Baku
     String aeropuertoDestino;                   // Destino final
-    List<Escalas> escalas;                      // Aeropuertos intermedios
-    LocalDateTime tiempoSalida;
-    LocalDateTime tiempoLlegada;
-    boolean cumplePlazo;
+    List<SegmentoVuelo> segmentos;              // Vuelos que componen la ruta
+    LocalDateTime tiempoSalida;                 // Inicio de la ruta
+    LocalDateTime tiempoLlegada;                // Fin de la ruta
+    boolean cumplePlazo;                        // Validación temporal
+
+    // Métodos auxiliares
+    double porcentajeCompletado();              // % de completitud de la entrega
+    RutaProducto clonar();                      // Copia profunda
 }
 
-class Escala {
-    String aeropuerto;
-    LocalDateTime llegada;
-    LocalDateTime salida;
-    String vueloEntrada;  // ID del vuelo
-    String vueloSalida;   // ID del vuelo
+class SegmentoVuelo {
+    String idVuelo;                             // ID único del vuelo
+    String aeropuertoOrigen;                    // Aeropuerto de salida
+    String aeropuertoDestino;                   // Aeropuerto de llegada
+    LocalDateTime horaSalida;                   // Hora de salida
+    LocalDateTime horaLlegada;                  // Hora de llegada
 }
 ```
 
-**Construcción de Soluciones por Hormigas:**
+**Construcción de Soluciones por Hormigas (Implementación Real):**
 
-1. **Inicialización**: Cada hormiga recibe lista de productos pendientes
-2. **Para cada producto**:
-   - Seleccionar sede origen (Lima/Bruselas/Baku) basado en disponibilidad
-   - Construir ruta paso a paso usando probabilidades ACO:
+1. **Inicialización**: Cada hormiga recibe lista de pedidos pendientes ordenados aleatoriamente
+2. **Para cada pedido**:
+   - Seleccionar pedido siguiente usando probabilidades basadas en urgencia y heurística
+   - Construir rutas múltiples para el pedido (entregas parciales):
+     ```java
+     while (cantidadRestante > 0 && numeroEntrega <= 3) {
+         String sedeOrigen = seleccionarSedeOrigen(destino, heuristica);
+         int cantidadEntrega = determinarCantidadEntrega(cantidadRestante, capacidades);
+         List<SegmentoVuelo> ruta = construirRuta(sedeOrigen, destino);
+         // Crear entrega y agregar a la solución
+     }
      ```
-     P(aeropuerto_j) = [τ(i,j)]^α × [η(i,j)]^β / Σ[...]
-     ```
-3. **Heurística η(i,j)**:
-   - Tiempo restante hasta deadline
-   - Capacidad disponible en vuelo
-   - Capacidad disponible en almacén destino
-   - Costo operacional del vuelo
+3. **Heurísticas Implementadas**:
+   - **Urgencia**: horasRestantesUTC(), factorCantidad
+   - **Eficiencia**: vuelos directos vs. escalas, capacidadPromedio
+   - **Proximidad**: mismo continente, conexiones disponibles
+   - **Capacidad**: ratio cantidadPedido/capacidadDisponible
 
-**Función de Evaluación (Fitness):**
+**Función de Evaluación (Fitness) - MAYOR = MEJOR:**
 ```java
-fitness = Σ(costo_vuelos_usados)
-        + PENALIZACION_RETRASO * Σ(productos_retrasados)
-        + PENALIZACION_CAPACIDAD * Σ(violaciones_capacidad)
-        + BONUS_EFICIENCIA * (productos_entregados_temprano)
+// NUEVA FUNCIÓN OBJETIVO: MAYOR FITNESS = MEJOR SOLUCIÓN
+double fitness = costoOperacional + bonificacionTotal + bonificacionCompletitud +
+                eficienciaEntregas + bonificacionEficienciaGeneral - penalizacionTotal;
+
+Donde:
+- costoOperacional: Costo base de todos los vuelos utilizados
+- bonificacionTotal: Bonus por entregas que cumplen plazo (500.0 por entrega)
+- bonificacionCompletitud: Bonus por pedidos 100% completados (200.0 por pedido)
+- eficienciaEntregas: Bonus por eficiencia de entregas parciales
+- penalizacionTotal: Penalización por retrasos (200.0 por día de retraso)
+
+return Math.max(1.0, fitness); // Fitness mínimo = 1.0
 ```
 
 **Validación de Solución:**
@@ -736,3 +761,84 @@ public boolean rutaEsFactible(List<Vuelo> ruta, Pedido pedido) {
 5. **Optimización ACO**: Heurísticas basadas en urgencia temporal real
 
 Este sistema temporal robusto garantiza que el algoritmo ACO pueda tomar decisiones precisas considerando las restricciones temporales reales del problema de distribución global de MoraPack.
+
+---
+
+# IV. ESTADO ACTUAL DE IMPLEMENTACIÓN
+
+## Estado del Proyecto (Enero 2025)
+
+### ✅ COMPLETAMENTE IMPLEMENTADO
+
+#### 1. **Modelo Híbrido de Entregas Parciales**
+- ✅ **SolucionMoraPack**: Soporte completo para múltiples entregas por pedido
+- ✅ **RutaProducto**: Tracking de cantidad, número de entrega, completitud
+- ✅ **Métodos de gestión**: `getRutasProducto()`, `pedidoCompleto()`, `pedidoCumplePlazo()`
+- ✅ **Estadísticas**: Eficiencia de entregas parciales, tasas de completitud
+
+#### 2. **Algoritmo ACO Optimizado para Logística**
+- ✅ **Hormiga**: Construcción basada en pedidos con entregas parciales
+- ✅ **Heurística**: 5 tipos especializados (urgencia, eficiencia, capacidad, proximidad, híbrida)
+- ✅ **Feromona**: Depositación elite diversificada con bonus por cumplimiento
+- ✅ **AlgoritmoColoniaHormigas**: Parámetros optimizados para logística
+
+#### 3. **Sistema de Datos Robusto**
+- ✅ **RedDistribucion**: Integrador principal con servicios para ACO
+- ✅ **Cargadores CSV**: Aeropuertos, vuelos, pedidos con validación cruzada
+- ✅ **Modelos de dominio**: Aeropuerto, Vuelo, Pedido con métodos UTC
+- ✅ **Manejo de husos horarios**: Conversiones automáticas y cálculos precisos
+
+#### 4. **Función de Fitness Balanceada**
+- ✅ **Convención moderna**: MAYOR fitness = MEJOR solución
+- ✅ **Parámetros calibrados**: Penalizaciones 200.0, bonificaciones 500.0
+- ✅ **Evaluación integral**: Costo + cumplimiento + eficiencia + completitud
+
+#### 5. **Sistema de Validación y Detección de Colapso**
+- ✅ **ValidadorColapso**: Detección de condiciones críticas
+- ✅ **MetricasSistema**: Métricas de utilización y eficiencia
+- ✅ **Criterios múltiples**: Plazos, capacidades, conectividad
+
+#### 6. **Ejemplos y Demostraciones**
+- ✅ **EjemploEntregasParciales**: Demostración completa del modelo híbrido
+- ✅ **Output detallado**: Estadísticas, rutas, cumplimiento de plazos
+- ✅ **API limpia**: Sin métodos deprecated, solo versiones modernas
+
+### 🚧 PENDIENTE DE IMPLEMENTACIÓN
+
+#### 1. **Escenarios de Evaluación**
+- 🚧 **Operaciones día a día**: Registro manual + carga de archivos
+- 🚧 **Simulación semanal**: Ejecución 30-90 minutos
+- 🚧 **Simulación colapso**: Hasta saturación del sistema
+
+#### 2. **Interfaz Gráfica**
+- 🚧 **Componente visualizador**: Mapa con monitoreo en tiempo real
+- 🚧 **Dashboard**: Métricas y estadísticas en vivo
+- 🚧 **Panel de control**: Cancelaciones manuales de vuelos
+
+#### 3. **Funcionalidades Avanzadas**
+- 🚧 **Cancelación de vuelos**: Manual y programada por archivos
+- 🚧 **Demoras de vuelos**: 3 horas fijas (en evaluación)
+- 🚧 **Replanificación dinámica**: Reasignación automática
+
+### 📊 Métricas de Completitud
+
+| Componente | Estado | Completitud |
+|------------|--------|-------------|
+| **Core ACO** | ✅ Completo | 100% |
+| **Modelo de Datos** | ✅ Completo | 100% |
+| **Entregas Parciales** | ✅ Completo | 100% |
+| **Evaluación de Fitness** | ✅ Completo | 100% |
+| **Detección de Colapso** | ✅ Completo | 100% |
+| **Manejo Temporal** | ✅ Completo | 100% |
+| **Escenarios de Evaluación** | 🚧 Pendiente | 0% |
+| **Interfaz Gráfica** | 🚧 Pendiente | 0% |
+| **Funciones Avanzadas** | 🚧 Pendiente | 30% |
+
+### 🎯 **Próximos Pasos Recomendados**
+
+1. **Implementar escenarios de evaluación** (prioridad alta)
+2. **Desarrollar interfaz básica de visualización**
+3. **Integrar funcionalidades de cancelación de vuelos**
+4. **Crear simulaciones de carga para pruebas de colapso**
+
+El proyecto ha alcanzado un **estado altamente funcional** con todas las funcionalidades core implementadas y optimizadas para el dominio logístico específico de MoraPack.

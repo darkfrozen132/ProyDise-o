@@ -1,7 +1,7 @@
 # Claude Code Configuration
 
 ## Project Overview
-MoraPack Colonia v2 - Sistema de optimización basado en algoritmos de colonias de hormigas (Ant Colony Optimization) para resolver problemas de planificación y ruteo.
+MoraPack Colonia v2 - Sistema de optimización basado en algoritmos de colonias de hormigas (Ant Colony Optimization) para resolver problemas de planificación y ruteo logístico con soporte para entregas parciales múltiples.
 
 ## Build Commands
 
@@ -48,6 +48,10 @@ make help
 
 ### Key Files
 - **Main class**: `src/morapack/main/Main.java`
+- **Core ACO**: `src/morapack/colonia/algoritmo/AlgoritmoColoniaHormigas.java`
+- **Problem definition**: `src/morapack/core/problema/ProblemaMoraPack.java`
+- **Solution model**: `src/morapack/core/solucion/SolucionMoraPack.java`
+- **Examples**: `src/morapack/ejemplos/EjemploEntregasParciales.java`
 - **Build output**: `bin/` directory
 - **Data files**: `datos/` directory
 
@@ -65,6 +69,43 @@ datos/
 - Flight capacities: 300-360 products per flight
 - Airport storage: 400-480 products per airport
 - Time restrictions: 2 days same continent, 3 days different continent
+
+## Modelo Híbrido de Entregas Parciales
+
+### Concepto Principal
+El sistema soporta **entregas parciales múltiples** para pedidos grandes que no pueden ser completados en un solo envío. Esto permite optimización flexible y mejor utilización de capacidades.
+
+### Características del Modelo
+- **Un pedido** puede tener **múltiples entregas**
+- **Productos fungibles**: Los productos son intercambiables entre pedidos
+- **Entregas asíncronas**: Cada entrega puede llegar en momentos diferentes
+- **Cumplimiento flexible**: Todas las entregas deben cumplir el plazo individual
+
+### Estructura de Datos
+```java
+Map<Integer, List<RutaProducto>> rutasPorPedido;
+// Un pedido (ID) -> Lista de entregas parciales
+
+class RutaProducto {
+    int cantidadTransportada;     // Cantidad en esta entrega
+    int cantidadTotalPedido;      // Cantidad total del pedido
+    int numeroEntrega;            // 1, 2, 3...
+    boolean esEntregaParcial;     // true si hay más entregas
+    // ... campos de ruta y timing
+}
+```
+
+### Ejemplos de Uso
+```bash
+# Ejecutar ejemplo de entregas parciales
+java -cp bin morapack.ejemplos.EjemploEntregasParciales
+```
+
+### Métodos Clave
+- `solucion.getRutasProducto(idPedido)` - Obtener todas las entregas
+- `solucion.pedidoCompleto(idPedido)` - Verificar completitud
+- `solucion.pedidoCumplePlazo(idPedido)` - Verificar cumplimiento
+- `ruta.porcentajeCompletado()` - % de completitud de la entrega
 
 ## Coding Conventions
 
@@ -161,6 +202,47 @@ boolean colapso = ValidadorColapso
 ### Ejecutar Ejemplo
 ```bash
 java -cp bin morapack.ejemplos.EjemploValidacionColapso
+```
+
+## Algoritmo ACO Optimizado para Logística
+
+### Parámetros Optimizados
+El algoritmo ha sido configurado específicamente para problemas logísticos:
+
+```java
+// Configuración optimizada para MoraPack
+NUMERO_HORMIGAS_DEFAULT = 15      // Más diversidad que TSP
+MAX_ITERACIONES_DEFAULT = 150     // Más paciencia para convergencia
+TASA_EVAPORACION_DEFAULT = 0.15   // Evita estancamiento local
+MAX_ITERACIONES_SIN_MEJORA = 20   // Mayor tolerancia
+```
+
+### Depositación de Feromonas Inteligente
+- **Estrategia Elite Diversificada**: Top 30% de hormigas depositan feromona
+- **Bonus por Cumplimiento**: 1.2x feromona para entregas a tiempo
+- **Bonus por Eficiencia**: Incremento basado en % de completitud
+- **Refuerzo Conservador**: 5% probabilidad de refuerzo global
+
+### Heurísticas Específicas para MoraPack
+```java
+// Tipos de heurística implementados
+URGENCIA_PEDIDOS         // Basada en tiempo restante
+EFICIENCIA_RUTAS         // Vuelos directos vs. escalas
+CAPACIDAD_VUELOS         // Disponibilidad de espacio
+PROXIMIDAD_GEOGRAFICA    // Preferencia por mismo continente
+HIBRIDA                  // Combinación ponderada (default)
+```
+
+### Estadísticas Avanzadas
+```java
+// Métricas específicas de logística
+totalPedidos, pedidosCompletos, entregasParciales
+tasaCompletitud(), tasaEntregasParciales()
+promedioEntregasPorPedido
+
+// Ejemplo de salida
+"Iter 10: fitness=1250.50 | Pedidos: 45/50 completos (90%) |
+Parciales: 15 (30%) | Entregas/Pedido: 1.8"
 ```
 
 ## Dependencies

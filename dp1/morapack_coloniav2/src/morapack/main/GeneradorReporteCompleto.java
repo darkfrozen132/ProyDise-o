@@ -479,86 +479,64 @@ public class GeneradorReporteCompleto {
                                     horaLlegadaEstimada -= 24;
                                     diaLlegadaEstimada++;
                                 }
+                            } else if (ruta.rutaCompleta.contains("→") && !ruta.rutaCompleta.contains("ESCALA")) {
+                                // Vuelo directo - usar duración real del plan de vuelo
+                                boolean esIntercontinental = esRutaIntercontinental(origen, destino);
+                                int duracionHoras = esIntercontinental ? 24 : 12;
+                                
+                                horaLlegadaEstimada = horaVueloDisponible + duracionHoras;
+                                diaLlegadaEstimada = diaVueloDisponible;
+                                
+                                // Ajustar día si las horas exceden 24
+                                while (horaLlegadaEstimada >= 24) {
+                                    horaLlegadaEstimada -= 24;
+                                    diaLlegadaEstimada++;
+                                }
                             } else {
-                                // ✅ USAR HORARIOS REALES DEL VUELO desde vuelos_completos.csv
-                                // Buscar vuelo específico para obtener horario real
-                                String horariosVuelo = obtenerHorariosVueloReal(origen, destino, diaVueloDisponible, horaVueloDisponible);
-                                if (horariosVuelo != null) {
-                                    // Formato: "HoraSalida,HoraLlegada" ej: "04:35,08:51" (HORA LOCAL)
-                                    String[] partes = horariosVuelo.split(",");
-                                    String horaSalidaReal = partes[0]; // "04:35" (hora local)
-                                    String horaLlegadaReal = partes[1]; // "08:51" (hora local)
-                                    
-                                    // Convertir horario de salida de HORA LOCAL a UTC
-                                    String[] salidaPartes = horaSalidaReal.split(":");
-                                    int horaSalidaLocal = Integer.parseInt(salidaPartes[0]);
-                                    int minutoSalidaReal = Integer.parseInt(salidaPartes[1]);
-                                    
-                                    // Aplicar conversión de zona horaria origen a UTC
-                                    int offsetOrigen = obtenerOffsetUTC(origen);
-                                    int horaSalidaRealUTC = horaSalidaLocal - offsetOrigen;
-                                    int diaSalidaReal = diaVueloDisponible;
-                                    
-                                    // Ajustar día si la conversión UTC cambia el día
-                                    if (horaSalidaRealUTC < 0) {
-                                        horaSalidaRealUTC += 24;
-                                        diaSalidaReal--;
-                                    } else if (horaSalidaRealUTC >= 24) {
-                                        horaSalidaRealUTC -= 24;
-                                        diaSalidaReal++;
-                                    }
-                                    
-                                    salidaUTC = String.format("D%d %02d:%02d UTC", diaSalidaReal, horaSalidaRealUTC, minutoSalidaReal);
-                                    
-                                    // Convertir horario de llegada de HORA LOCAL a UTC
-                                    String[] llegadaPartes = horaLlegadaReal.split(":");
-                                    int horaLlegadaLocal = Integer.parseInt(llegadaPartes[0]);
-                                    int minutoLlegadaReal = Integer.parseInt(llegadaPartes[1]);
-                                    
-                                    // Aplicar conversión de zona horaria destino a UTC
-                                    int offsetDestino = obtenerOffsetUTC(destino);
-                                    int horaLlegadaRealUTC = horaLlegadaLocal - offsetDestino;
-                                    int diaLlegadaReal = diaVueloDisponible;
-                                    
-                                    // Si llegada local < salida local, es día siguiente en hora local
-                                    if (horaLlegadaLocal < horaSalidaLocal) {
-                                        diaLlegadaReal++;
-                                    }
-                                    
-                                    // Ajustar día si la conversión UTC cambia el día
-                                    if (horaLlegadaRealUTC < 0) {
-                                        horaLlegadaRealUTC += 24;
-                                        diaLlegadaReal--;
-                                    } else if (horaLlegadaRealUTC >= 24) {
-                                        horaLlegadaRealUTC -= 24;
-                                        diaLlegadaReal++;
-                                    }
-                                    
-                                    llegadaUTC = String.format("D%d %02d:%02d UTC", diaLlegadaReal, horaLlegadaRealUTC, minutoLlegadaReal);
-                                    
-                                } else {
-                                    // Fallback: usar duraciones estimadas si no encontramos el vuelo
-                                    boolean esIntercontinental = esRutaIntercontinental(origen, destino);
-                                    int duracionHoras = esIntercontinental ? 24 : 12;
-                                    if (ruta.rutaCompleta.contains("ESCALA")) {
-                                        duracionHoras += 2; // Tiempo de conexión
-                                    }
-                                    
-                                    int horaLlegadaFallback = horaVueloDisponible + duracionHoras;
-                                    int diaLlegadaFallback = diaVueloDisponible;
-                                    
-                                    // Ajustar día si las horas exceden 24
-                                    while (horaLlegadaFallback >= 24) {
-                                        horaLlegadaFallback -= 24;
-                                        diaLlegadaFallback++;
-                                    }
-                                    
-                                    llegadaUTC = String.format("D%d %02d:%02d UTC", diaLlegadaFallback, horaLlegadaFallback, minutoVueloDisponible);
+                                // Con escala - duración + tiempo de conexión del plan de vuelo
+                                boolean esIntercontinental = esRutaIntercontinental(origen, destino);
+                                int duracionHoras = (esIntercontinental ? 24 : 12) + 2;
+                                
+                                horaLlegadaEstimada = horaVueloDisponible + duracionHoras;
+                                diaLlegadaEstimada = diaVueloDisponible;
+                                
+                                // Ajustar día si las horas exceden 24
+                                while (horaLlegadaEstimada >= 24) {
+                                    horaLlegadaEstimada -= 24;
+                                    diaLlegadaEstimada++;
                                 }
                             }
                             
-                            // ✅ FITNESS OPTIMIZADO: No se muestran alertas - el algoritmo ya eligió la mejor opción
-                            // El sistema automáticamente evaluó todas las alternativas por fitness
+                            // Convertir hora de llegada a UTC+0
+                            int horaLlegadaUTC = horaLlegadaEstimada - offsetDestinoHoras;
+                            
+                            // Ajustar día si necesario
+                            if (horaLlegadaUTC < 0) {
+                                horaLlegadaUTC += 24;
+                                diaLlegadaEstimada--;
+                            } else if (horaLlegadaUTC >= 24) {
+                                horaLlegadaUTC -= 24;
+                                diaLlegadaEstimada++;
+                            }
+                            
+                            llegadaUTC = String.format("D%d %02d:%02d UTC", diaLlegadaEstimada, horaLlegadaUTC, minutoVueloDisponible);
+                            
+                            // Validar tiempo de tránsito y determinar tipo de ruta
+                            boolean esIntercontinental = esRutaIntercontinental(origen, destino);
+                            boolean cumplePlazo = validarTiempoTransito(origen, destino, diaPedido, horaPedido, 
+                                                                     diaLlegadaEstimada, horaLlegadaUTC, 59);
+                            if (!cumplePlazo) {
+                                String tipoRuta = esIntercontinental ? "INTER" : "CONT";
+                                llegadaUTC += " ⚠️" + tipoRuta;
+                                
+                                // Buscar ruta alternativa usando los MISMOS parámetros que la validación
+                                String rutaAlternativa = buscarRutaAlternativaMasRapida(origen, destino, 
+                                                                                       diaPedido, horaPedido, 
+                                                                                       diaLlegadaEstimada, horaLlegadaUTC);
+                                if (rutaAlternativa != null && !rutaAlternativa.isEmpty()) {
+                                    llegadaUTC += " [ALT:" + rutaAlternativa + "]";
+                                }
+                            }
                         }
                     } catch (Exception e) {
                         salidaUTC = "N/A";
@@ -1467,39 +1445,6 @@ public class GeneradorReporteCompleto {
         }
         return "VIDP"; // Hub por defecto
     }        /**
-         * Obtiene los horarios reales de salida y llegada de un vuelo desde vuelos_completos.csv
-         * @param origen Aeropuerto origen
-         * @param destino Aeropuerto destino  
-         * @param diaVuelo Día del vuelo
-         * @param horaVuelo Hora del vuelo
-         * @return String "HoraSalida,HoraLlegada" o null si no se encuentra
-         */
-        private static String obtenerHorariosVueloReal(String origen, String destino, int diaVuelo, int horaVuelo) {
-            try {
-                List<Vuelo> vuelos = CargadorDatosCSV.cargarVuelos();
-                
-                // Buscar vuelo que coincida con origen-destino
-                for (Vuelo vuelo : vuelos) {
-                    if (vuelo.getOrigen().equals(origen) && vuelo.getDestino().equals(destino)) {
-                        // Extraer hora del vuelo
-                        String[] partesHoraSalida = vuelo.getHoraSalida().split(":");
-                        int horaVueloCSV = Integer.parseInt(partesHoraSalida[0]);
-                        
-                        // Verificar si este vuelo está disponible para el horario solicitado
-                        // (debe ser después de la hora del pedido + 2h de gracia)
-                        if (horaVueloCSV >= horaVuelo) {
-                            return vuelo.getHoraSalida() + "," + vuelo.getHoraLlegada();
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                System.err.println("Error obteniendo horarios reales: " + e.getMessage());
-            }
-            
-            return null; // No se encontró vuelo disponible
-        }
-
-        /**
          * Formatea la lista de vuelos divididos para mostrar en el reporte
          */
         private static String formatearVuelosDivididos(List<VueloDividido> vuelosDivididos) {

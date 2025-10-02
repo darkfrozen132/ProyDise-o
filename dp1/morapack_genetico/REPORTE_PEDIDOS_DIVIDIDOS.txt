@@ -2,10 +2,10 @@
                      REPORTE: PEDIDOS DIVIDIDOS EN MÚLTIPLES VUELOS
 =========================================================================
 
-📦 TOTAL DE PEDIDOS DIVIDIDOS: 13
+📦 TOTAL DE PEDIDOS DIVIDIDOS: 40
 ═══════════════════════════════════════════════════════════════
 
-🔄 PEDIDO DIVIDIDO: 17-14-46-OJAI-303-0000023
+🔄 PEDIDO DIVIDIDO: 17-14-05-OJAI-303-0000023
    📍 Destino: OJAI
    📦 Cantidad total: 303 productos
    🏢 Sede origen: UBBB
@@ -135,8 +135,278 @@
    📋 Resumen: Dividido en 2 vuelos: D21-03:36-340, D21-11:48-6
 ──────────────────────────────────────────────────────────────────────
 
+🔄 PEDIDO DIVIDIDO: 06-03-51-OJAI-344-0000030
+   📍 Destino: OJAI
+   📦 Cantidad total: 344 productos
+   🏢 Sede origen: UBBB
+   ✈️  VUELOS INDIVIDUALES (horarios locales):
+      1. 📅 Día 6 a las 15:17 → 300 productos - DIRECTA (UBBB → OJAI)
+      2. 📅 Día 7 a las 15:17 → 44 productos - DIRECTA (UBBB → OJAI)
+   📋 Resumen: Dividido en 2 vuelos: D6-15:17-300, D7-15:17-44
+──────────────────────────────────────────────────────────────────────
+
+🔄 PEDIDO DIVIDIDO: 03-06-16-OJAI-342-0000033
+   📍 Destino: OJAI
+   📦 Cantidad total: 342 productos
+   🏢 Sede origen: UBBB
+   ✈️  VUELOS INDIVIDUALES (horarios locales):
+      1. 📅 Día 3 a las 15:17 → 300 productos - DIRECTA (UBBB → OJAI)
+      2. 📅 Día 4 a las 15:17 → 42 productos - DIRECTA (UBBB → OJAI)
+   📋 Resumen: Dividido en 2 vuelos: D3-15:17-300, D4-15:17-42
+──────────────────────────────────────────────────────────────────────
+
+🔄 PEDIDO DIVIDIDO: 23-01-18-UMMS-348-0000041
+   📍 Destino: UMMS
+   📦 Cantidad total: 348 productos
+   🏢 Sede origen: UBBB
+   ✈️  VUELOS INDIVIDUALES (horarios locales):
+      1. 📅 Día 23 a las 06:05 → 300 productos - DIRECTA (UBBB → UMMS)
+      2. 📅 Día 23 a las 13:15 → 48 productos - DIRECTA (UBBB → UMMS)
+   📋 Resumen: Dividido en 2 vuelos: D23-06:05-300, D23-13:15-48
+──────────────────────────────────────────────────────────────────────
+
+🔄 PEDIDO DIVIDIDO: 01-10-31-VIDP-346-0000055
+   📍 Destino: VIDP
+   📦 Cantidad total: 346 productos
+   🏢 Sede origen: UBBB
+   ✈️  VUELOS INDIVIDUALES (horarios locales):
+      1. 📅 Día 1 a las 14:49 → 320 productos - DIRECTA (UBBB → VIDP)
+      2. 📅 Día 1 a las 21:03 → 26 productos - DIRECTA (UBBB → VIDP)
+   📋 Resumen: Dividido en 2 vuelos: D1-14:49-320, D1-21:03-26
+──────────────────────────────────────────────────────────────────────
+
+🔄 PEDIDO DIVIDIDO: 20-07-04-SEQM-348-0000061
+   📍 Destino: SEQM
+   📦 Cantidad total: 348 productos
+   🏢 Sede origen: SPIM
+   ✈️  VUELOS INDIVIDUALES (horarios locales):
+      1. 📅 Día 20 a las 08:10 → 300 productos - DIRECTA (SPIM → SEQM)
+      2. 📅 Día 20 a las 17:11 → 48 productos - DIRECTA (SPIM → SEQM)
+   📋 Resumen: Dividido en 2 vuelos: D20-08:10-300, D20-17:11-48
+──────────────────────────────────────────────────────────────────────
+
+🔄 PEDIDO DIVIDIDO: 07-16-53-OJAI-343-0000066
+   📍 Destino: OJAI
+   📦 Cantidad total: 343 productos
+   🏢 Sede origen: UBBB
+   ✈️  VUELOS INDIVIDUALES (horarios locales):
+      1. 📅 Día 8 a las 15:17 → 300 productos - DIRECTA (UBBB → OJAI)
+      2. 📅 Día 9 a las 15:17 → 43 productos - DIRECTA (UBBB → OJAI)
+   📋 Resumen: Dividido en 2 vuelos: D8-15:17-300, D9-15:17-43
+──────────────────────────────────────────────────────────────────────
+
+🔄 PEDIDO DIVIDIDO: 25-20-27-LBSF-342-0000076
+   📍 Destino: LBSF
+   📦 Cantidad total: 342 productos
+   🏢 Sede origen: EBCI
+   ✈️  VUELOS INDIVIDUALES (horarios locales):
+      1. 📅 Día 26 a las 03:36 → 340 productos - DIRECTA (EBCI → LBSF)
+      2. 📅 Día 26 a las 11:48 → 2 productos - DIRECTA (EBCI → LBSF)
+   📋 Resumen: Dividido en 2 vuelos: D26-03:36-340, D26-11:48-2
+──────────────────────────────────────────────────────────────────────
+
+🔄 PEDIDO DIVIDIDO: 15-09-57-VIDP-326-0000088
+   📍 Destino: VIDP
+   📦 Cantidad total: 326 productos
+   🏢 Sede origen: UBBB
+   ✈️  VUELOS INDIVIDUALES (horarios locales):
+      1. 📅 Día 15 a las 14:49 → 320 productos - DIRECTA (UBBB → VIDP)
+      2. 📅 Día 15 a las 21:03 → 6 productos - DIRECTA (UBBB → VIDP)
+   📋 Resumen: Dividido en 2 vuelos: D15-14:49-320, D15-21:03-6
+──────────────────────────────────────────────────────────────────────
+
+🔄 PEDIDO DIVIDIDO: 03-20-58-SVMI-349-0000089
+   📍 Destino: SVMI
+   📦 Cantidad total: 349 productos
+   🏢 Sede origen: SPIM
+   ✈️  VUELOS INDIVIDUALES (horarios locales):
+      1. 📅 Día 4 a las 05:24 → 320 productos - DIRECTA (SPIM → SVMI)
+      2. 📅 Día 4 a las 12:15 → 29 productos - DIRECTA (SPIM → SVMI)
+   📋 Resumen: Dividido en 2 vuelos: D4-05:24-320, D4-12:15-29
+──────────────────────────────────────────────────────────────────────
+
+🔄 PEDIDO DIVIDIDO: 16-01-59-SVMI-346-0000105
+   📍 Destino: SVMI
+   📦 Cantidad total: 346 productos
+   🏢 Sede origen: SPIM
+   ✈️  VUELOS INDIVIDUALES (horarios locales):
+      1. 📅 Día 16 a las 05:24 → 320 productos - DIRECTA (SPIM → SVMI)
+      2. 📅 Día 16 a las 12:15 → 26 productos - DIRECTA (SPIM → SVMI)
+   📋 Resumen: Dividido en 2 vuelos: D16-05:24-320, D16-12:15-26
+──────────────────────────────────────────────────────────────────────
+
+🔄 PEDIDO DIVIDIDO: 10-03-38-SEQM-325-0000109
+   📍 Destino: SEQM
+   📦 Cantidad total: 325 productos
+   🏢 Sede origen: SPIM
+   ✈️  VUELOS INDIVIDUALES (horarios locales):
+      1. 📅 Día 10 a las 08:10 → 300 productos - DIRECTA (SPIM → SEQM)
+      2. 📅 Día 10 a las 17:11 → 25 productos - DIRECTA (SPIM → SEQM)
+   📋 Resumen: Dividido en 2 vuelos: D10-08:10-300, D10-17:11-25
+──────────────────────────────────────────────────────────────────────
+
+🔄 PEDIDO DIVIDIDO: 06-02-29-UMMS-348-0000122
+   📍 Destino: UMMS
+   📦 Cantidad total: 348 productos
+   🏢 Sede origen: UBBB
+   ✈️  VUELOS INDIVIDUALES (horarios locales):
+      1. 📅 Día 6 a las 06:05 → 300 productos - DIRECTA (UBBB → UMMS)
+      2. 📅 Día 6 a las 13:15 → 48 productos - DIRECTA (UBBB → UMMS)
+   📋 Resumen: Dividido en 2 vuelos: D6-06:05-300, D6-13:15-48
+──────────────────────────────────────────────────────────────────────
+
+🔄 PEDIDO DIVIDIDO: 08-03-19-OAKB-332-0000126
+   📍 Destino: OAKB
+   📦 Cantidad total: 332 productos
+   🏢 Sede origen: UBBB
+   ✈️  VUELOS INDIVIDUALES (horarios locales):
+      1. 📅 Día 8 a las 09:37 → 300 productos - DIRECTA (UBBB → OAKB)
+      2. 📅 Día 8 a las 12:23 → 32 productos - DIRECTA (UBBB → OAKB)
+   📋 Resumen: Dividido en 2 vuelos: D8-09:37-300, D8-12:23-32
+──────────────────────────────────────────────────────────────────────
+
+🔄 PEDIDO DIVIDIDO: 29-07-44-OJAI-322-0000168
+   📍 Destino: OJAI
+   📦 Cantidad total: 322 productos
+   🏢 Sede origen: UBBB
+   ✈️  VUELOS INDIVIDUALES (horarios locales):
+      1. 📅 Día 29 a las 15:17 → 300 productos - DIRECTA (UBBB → OJAI)
+      2. 📅 Día 30 a las 15:17 → 22 productos - DIRECTA (UBBB → OJAI)
+   📋 Resumen: Dividido en 2 vuelos: D29-15:17-300, D30-15:17-22
+──────────────────────────────────────────────────────────────────────
+
+🔄 PEDIDO DIVIDIDO: 06-16-11-OAKB-329-0000171
+   📍 Destino: OAKB
+   📦 Cantidad total: 329 productos
+   🏢 Sede origen: UBBB
+   ✈️  VUELOS INDIVIDUALES (horarios locales):
+      1. 📅 Día 6 a las 18:21 → 320 productos - DIRECTA (UBBB → OAKB)
+      2. 📅 Día 7 a las 00:24 → 9 productos - DIRECTA (UBBB → OAKB)
+   📋 Resumen: Dividido en 2 vuelos: D6-18:21-320, D7-00:24-9
+──────────────────────────────────────────────────────────────────────
+
+🔄 PEDIDO DIVIDIDO: 06-18-23-SLLP-345-0000175
+   📍 Destino: SLLP
+   📦 Cantidad total: 345 productos
+   🏢 Sede origen: SPIM
+   ✈️  VUELOS INDIVIDUALES (horarios locales):
+      1. 📅 Día 7 a las 00:21 → 300 productos - DIRECTA (SPIM → SLLP)
+      2. 📅 Día 7 a las 09:22 → 45 productos - DIRECTA (SPIM → SLLP)
+   📋 Resumen: Dividido en 2 vuelos: D7-00:21-300, D7-09:22-45
+──────────────────────────────────────────────────────────────────────
+
+🔄 PEDIDO DIVIDIDO: 07-13-50-SCEL-349-0000194
+   📍 Destino: SCEL
+   📦 Cantidad total: 349 productos
+   🏢 Sede origen: SPIM
+   ✈️  VUELOS INDIVIDUALES (horarios locales):
+      1. 📅 Día 7 a las 19:34 → 300 productos - DIRECTA (SPIM → SCEL)
+      2. 📅 Día 8 a las 03:11 → 49 productos - DIRECTA (SPIM → SCEL)
+   📋 Resumen: Dividido en 2 vuelos: D7-19:34-300, D8-03:11-49
+──────────────────────────────────────────────────────────────────────
+
+🔄 PEDIDO DIVIDIDO: 19-01-23-LBSF-350-0000200
+   📍 Destino: LBSF
+   📦 Cantidad total: 350 productos
+   🏢 Sede origen: EBCI
+   ✈️  VUELOS INDIVIDUALES (horarios locales):
+      1. 📅 Día 19 a las 03:36 → 340 productos - DIRECTA (EBCI → LBSF)
+      2. 📅 Día 19 a las 11:48 → 10 productos - DIRECTA (EBCI → LBSF)
+   📋 Resumen: Dividido en 2 vuelos: D19-03:36-340, D19-11:48-10
+──────────────────────────────────────────────────────────────────────
+
+🔄 PEDIDO DIVIDIDO: 21-18-04-SCEL-341-0000205
+   📍 Destino: SCEL
+   📦 Cantidad total: 341 productos
+   🏢 Sede origen: SPIM
+   ✈️  VUELOS INDIVIDUALES (horarios locales):
+      1. 📅 Día 21 a las 19:34 → 300 productos - DIRECTA (SPIM → SCEL)
+      2. 📅 Día 22 a las 03:11 → 41 productos - DIRECTA (SPIM → SCEL)
+   📋 Resumen: Dividido en 2 vuelos: D21-19:34-300, D22-03:11-41
+──────────────────────────────────────────────────────────────────────
+
+🔄 PEDIDO DIVIDIDO: 27-22-36-OJAI-325-0000231
+   📍 Destino: OJAI
+   📦 Cantidad total: 325 productos
+   🏢 Sede origen: UBBB
+   ✈️  VUELOS INDIVIDUALES (horarios locales):
+      1. 📅 Día 28 a las 15:17 → 300 productos - DIRECTA (UBBB → OJAI)
+      2. 📅 Día 29 a las 15:17 → 25 productos - DIRECTA (UBBB → OJAI)
+   📋 Resumen: Dividido en 2 vuelos: D28-15:17-300, D29-15:17-25
+──────────────────────────────────────────────────────────────────────
+
+🔄 PEDIDO DIVIDIDO: 27-07-42-LKPR-334-0000255
+   📍 Destino: LKPR
+   📦 Cantidad total: 334 productos
+   🏢 Sede origen: EBCI
+   ✈️  VUELOS INDIVIDUALES (horarios locales):
+      1. 📅 Día 27 a las 09:10 → 300 productos - DIRECTA (EBCI → LKPR)
+      2. 📅 Día 27 a las 13:26 → 34 productos - DIRECTA (EBCI → LKPR)
+   📋 Resumen: Dividido en 2 vuelos: D27-09:10-300, D27-13:26-34
+──────────────────────────────────────────────────────────────────────
+
+🔄 PEDIDO DIVIDIDO: 29-09-54-OJAI-323-0000259
+   📍 Destino: OJAI
+   📦 Cantidad total: 323 productos
+   🏢 Sede origen: UBBB
+   ✈️  VUELOS INDIVIDUALES (horarios locales):
+      1. 📅 Día 29 a las 15:17 → 300 productos - DIRECTA (UBBB → OJAI)
+      2. 📅 Día 30 a las 15:17 → 23 productos - DIRECTA (UBBB → OJAI)
+   📋 Resumen: Dividido en 2 vuelos: D29-15:17-300, D30-15:17-23
+──────────────────────────────────────────────────────────────────────
+
+🔄 PEDIDO DIVIDIDO: 10-15-01-VIDP-341-0000267
+   📍 Destino: VIDP
+   📦 Cantidad total: 341 productos
+   🏢 Sede origen: UBBB
+   ✈️  VUELOS INDIVIDUALES (horarios locales):
+      1. 📅 Día 10 a las 21:03 → 320 productos - DIRECTA (UBBB → VIDP)
+      2. 📅 Día 11 a las 02:12 → 21 productos - DIRECTA (UBBB → VIDP)
+   📋 Resumen: Dividido en 2 vuelos: D10-21:03-320, D11-02:12-21
+──────────────────────────────────────────────────────────────────────
+
+🔄 PEDIDO DIVIDIDO: 15-20-49-SEQM-346-0000272
+   📍 Destino: SEQM
+   📦 Cantidad total: 346 productos
+   🏢 Sede origen: SPIM
+   ✈️  VUELOS INDIVIDUALES (horarios locales):
+      1. 📅 Día 15 a las 21:09 → 320 productos - DIRECTA (SPIM → SEQM)
+      2. 📅 Día 16 a las 00:13 → 26 productos - DIRECTA (SPIM → SEQM)
+   📋 Resumen: Dividido en 2 vuelos: D15-21:09-320, D16-00:13-26
+──────────────────────────────────────────────────────────────────────
+
+🔄 PEDIDO DIVIDIDO: 22-00-19-SLLP-346-0000276
+   📍 Destino: SLLP
+   📦 Cantidad total: 346 productos
+   🏢 Sede origen: SPIM
+   ✈️  VUELOS INDIVIDUALES (horarios locales):
+      1. 📅 Día 22 a las 09:22 → 320 productos - DIRECTA (SPIM → SLLP)
+      2. 📅 Día 22 a las 16:09 → 26 productos - DIRECTA (SPIM → SLLP)
+   📋 Resumen: Dividido en 2 vuelos: D22-09:22-320, D22-16:09-26
+──────────────────────────────────────────────────────────────────────
+
+🔄 PEDIDO DIVIDIDO: 12-07-30-SEQM-327-0000284
+   📍 Destino: SEQM
+   📦 Cantidad total: 327 productos
+   🏢 Sede origen: SPIM
+   ✈️  VUELOS INDIVIDUALES (horarios locales):
+      1. 📅 Día 12 a las 08:10 → 300 productos - DIRECTA (SPIM → SEQM)
+      2. 📅 Día 12 a las 17:11 → 27 productos - DIRECTA (SPIM → SEQM)
+   📋 Resumen: Dividido en 2 vuelos: D12-08:10-300, D12-17:11-27
+──────────────────────────────────────────────────────────────────────
+
+🔄 PEDIDO DIVIDIDO: 25-16-30-VIDP-331-0000303
+   📍 Destino: VIDP
+   📦 Cantidad total: 331 productos
+   🏢 Sede origen: UBBB
+   ✈️  VUELOS INDIVIDUALES (horarios locales):
+      1. 📅 Día 25 a las 21:03 → 320 productos - DIRECTA (UBBB → VIDP)
+      2. 📅 Día 26 a las 02:12 → 11 productos - DIRECTA (UBBB → VIDP)
+   📋 Resumen: Dividido en 2 vuelos: D25-21:03-320, D26-02:12-11
+──────────────────────────────────────────────────────────────────────
+
 📊 ESTADÍSTICAS DE DIVISIÓN:
 ═══════════════════════════
-Total productos en pedidos divididos: 4,336
-Promedio productos por pedido dividido: 333.5
-Porcentaje de pedidos que requirieron división: 6.2%
+Total productos en pedidos divididos: 13,484
+Promedio productos por pedido dividido: 337.1
+Porcentaje de pedidos que requirieron división: 8.0%

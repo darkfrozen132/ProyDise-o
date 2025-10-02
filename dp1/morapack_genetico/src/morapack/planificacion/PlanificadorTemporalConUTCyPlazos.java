@@ -5,18 +5,7 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
-/**
- * Planificador mejorado con lógica temporal realista, UTC y restricciones de plazos
- * 
- * MEJORAS IMPLEMENTADAS:
- * 1. ⏰ Considera horarios reales de pedidos vs vuelos
- * 2. 📅 Plan de vuelos diario repetitivo 
- * 3. ⌛ Tiempo de preparación de 30 minutos antes del vuelo
- * 4. 🌙 Lógica de vuelos nocturnos/siguiente día
- * 5. 📦 Gestión de capacidad por vuelo
- * 6. 🌍 Conversión a UTC 0 para todos los horarios
- * 7. 📆 Restricciones de plazos: 2 días continental, 3 días intercontinental
- */
+
 public class PlanificadorTemporalConUTCyPlazos {
     
     private static final int TIEMPO_PREPARACION_MINUTOS = 30; // 30 min antes del vuelo

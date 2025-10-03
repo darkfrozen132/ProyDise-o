@@ -282,12 +282,24 @@ public class ProblemaMoraPack extends Problema {
     private double calcularPenalizacionesCapacidad(SolucionMoraPack solucion) {
         double penalizacion = 0.0;
 
-        // Verificar capacidades de vuelos
+        // Verificar capacidades de vuelos (ACTUALIZADO: considerar instancias diarias)
         Map<String, Integer> usoVuelos = solucion.calcularUsoCapacidadVuelos();
         for (Map.Entry<String, Integer> uso : usoVuelos.entrySet()) {
-            Vuelo vuelo = red.getVuelo(uso.getKey());
-            if (vuelo != null && uso.getValue() > vuelo.getCapacidadMaxima()) {
-                penalizacion += penalizacionCapacidad * (uso.getValue() - vuelo.getCapacidadMaxima());
+            String idVueloOInstancia = uso.getKey();
+
+            // Intentar primero buscar como instancia (incluye fecha)
+            VueloInstancia instancia = red.getInstanciaVuelo(idVueloOInstancia);
+            if (instancia != null) {
+                // Es una instancia con fecha específica
+                if (uso.getValue() > instancia.getCapacidadMaxima()) {
+                    penalizacion += penalizacionCapacidad * (uso.getValue() - instancia.getCapacidadMaxima());
+                }
+            } else {
+                // Fallback: buscar como plantilla (retrocompatibilidad)
+                Vuelo vuelo = red.getVuelo(idVueloOInstancia);
+                if (vuelo != null && uso.getValue() > vuelo.getCapacidadMaxima()) {
+                    penalizacion += penalizacionCapacidad * (uso.getValue() - vuelo.getCapacidadMaxima());
+                }
             }
         }
 

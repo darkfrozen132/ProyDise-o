@@ -4,6 +4,7 @@ import morapack.colonia.algoritmo.AlgoritmoColoniaHormigas;
 import morapack.core.problema.ProblemaMoraPack;
 import morapack.core.solucion.Solucion;
 import morapack.core.solucion.SolucionMoraPack;
+import morapack.datos.modelos.Aeropuerto;
 import morapack.datos.modelos.Pedido;
 import morapack.datos.modelos.RedDistribucion;
 
@@ -67,7 +68,12 @@ public class Main {
 
             // PASO 4: Mostrar resultados
             System.out.println("=== PASO 4: RESULTADOS DE LA OPTIMIZACION ===");
-            mostrarResultados(mejorSolucion);
+            mostrarResultados(mejorSolucion, problema);
+            System.out.println();
+
+            // PASO 5: Mostrar detalles de los primeros 20 pedidos (para debugging)
+            System.out.println("=== PASO 5: DETALLES DE LOS PRIMEROS 20 PEDIDOS ===");
+            mostrarDetallesPedidos(mejorSolucion, problema, 400);
             System.out.println();
 
             System.out.println("==============================================================");
@@ -232,7 +238,7 @@ public class Main {
      *
      * @param solucion Mejor solucion encontrada por ACO
      */
-    private static void mostrarResultados(SolucionMoraPack solucion) {
+    private static void mostrarResultados(SolucionMoraPack solucion, ProblemaMoraPack problema) {
         if (solucion == null) {
             System.out.println("No se encontro solucion valida");
             return;
@@ -245,7 +251,14 @@ public class Main {
 
         // Fitness de la solucion (MAYOR = MEJOR)
         System.out.println("CALIDAD DE LA SOLUCION:");
-        System.out.println("   Fitness: " + String.format("%.2f", solucion.getFitness()));
+        double fitness = solucion.getFitness();
+        if (fitness < 0.01) {
+            System.out.println("   Fitness: " + String.format("%.6e", fitness) + " (notacion cientifica)");
+        } else if (fitness < 1.0) {
+            System.out.println("   Fitness: " + String.format("%.6f", fitness));
+        } else {
+            System.out.println("   Fitness: " + String.format("%.2f", fitness));
+        }
         System.out.println("   (Mayor fitness indica mejor solucion)");
         System.out.println();
 
@@ -268,16 +281,133 @@ public class Main {
         }
         System.out.println();
 
+        // Estadisticas de instancias de vuelos
+        System.out.println("USO DE VUELOS DIARIOS:");
+        System.out.println("   " + problema.getRed().getEstadisticasInstancias());
+        System.out.println();
+
         // Detalles adicionales
         System.out.println("DETALLES ADICIONALES:");
         System.out.println("   Tiempo de creacion: " + solucion.getTiempoCreacion());
         System.out.println();
+    }
 
-        // Nota sobre visualizacion
-        System.out.println("NOTA:");
-        System.out.println("   Para ver detalles de rutas especificas por pedido,");
-        System.out.println("   usa: solucion.getRutasProducto(idPedido)");
-        System.out.println("   Para mas ejemplos, consulta: morapack.ejemplos.EjemploEntregasParciales");
+    /**
+     * Muestra los detalles de las rutas de los primeros N pedidos
+     *
+     * @param solucion Solucion encontrada
+     * @param problema Problema con los datos
+     * @param numPedidos Numero de pedidos a mostrar
+     */
+    private static void mostrarDetallesPedidos(SolucionMoraPack solucion, ProblemaMoraPack problema, int numPedidos) {
+        if (solucion == null) {
+            System.out.println("No hay solucion para mostrar");
+            return;
+        }
+
+        List<Pedido> pedidos = problema.getPedidos();
+        RedDistribucion red = problema.getRed();
+
+        System.out.println();
+        System.out.println("==============================================================");
+        System.out.println("        DETALLES DE RUTAS - PRIMEROS " + numPedidos + " PEDIDOS");
+        System.out.println("==============================================================");
+        System.out.println();
+
+        int contador = 0;
+        for (Pedido pedido : pedidos) {
+            if (contador >= numPedidos) break;
+
+            // Obtener ID numerico del pedido (usando hash)
+            int idNumerico = pedido.getIdPedido().hashCode() & 0x7FFFFFFF;
+            List<SolucionMoraPack.RutaProducto> rutas = solucion.getRutasProducto(idNumerico);
+
+            if (rutas == null || rutas.isEmpty()) {
+                continue;
+            }
+
+            contador++;
+
+            System.out.println("------------------------------------------------------------------");
+            System.out.println("PEDIDO #" + contador + ": " + pedido.getIdPedido());
+            System.out.println("------------------------------------------------------------------");
+            System.out.println("Destino: " + pedido.getCodigoDestino());
+            System.out.println("Cantidad total: " + pedido.getCantidadProductos() + " productos");
+            System.out.println("Fecha limite: Dia " + pedido.getDia() + " a las " +
+                String.format("%02d:%02d", pedido.getHora(), pedido.getMinuto()));
+
+            Aeropuerto destino = red.getAeropuerto(pedido.getCodigoDestino());
+            if (destino != null && pedido.getTiempoLimiteEntrega() != null) {
+                System.out.println("Plazo calculado: " + pedido.getTiempoLimiteEntrega() +
+                    " (" + pedido.getDiasPlazo() + " dias)");
+            }
+            System.out.println();
+
+            // Mostrar cada entrega
+            System.out.println("Entregas planificadas: " + rutas.size());
+            System.out.println();
+
+            for (int i = 0; i < rutas.size(); i++) {
+                SolucionMoraPack.RutaProducto ruta = rutas.get(i);
+
+                System.out.println("  >>> ENTREGA " + (i + 1) + " de " + rutas.size());
+                System.out.println("      Cantidad: " + ruta.getCantidadTransportada() + " productos (" +
+                    String.format("%.1f%%", ruta.porcentajeCompletado() * 100.0) + " del total)");
+                System.out.println("      Origen: " + ruta.getAeropuertoOrigen());
+                System.out.println("      Destino: " + ruta.getAeropuertoDestino());
+                System.out.println("      Cumple plazo: " + (ruta.cumplePlazo() ? "SI" : "NO"));
+                System.out.println();
+
+                // Mostrar segmentos de vuelo
+                List<SolucionMoraPack.SegmentoVuelo> segmentos = ruta.getSegmentos();
+                System.out.println("      Ruta (" + segmentos.size() + " segmento" +
+                    (segmentos.size() > 1 ? "s" : "") + "):");
+
+                for (int j = 0; j < segmentos.size(); j++) {
+                    SolucionMoraPack.SegmentoVuelo seg = segmentos.get(j);
+                    System.out.println("        " + (j + 1) + ". " + seg.getAeropuertoOrigen() +
+                        " -> " + seg.getAeropuertoDestino());
+                    System.out.println("           Vuelo: " + seg.getIdVuelo());
+                    System.out.println("           Salida: " + seg.getHoraSalida());
+                    System.out.println("           Llegada: " + seg.getHoraLlegada());
+
+                    // Calcular duracion del segmento
+                    long duracionMinutos = java.time.Duration.between(seg.getHoraSalida(), seg.getHoraLlegada()).toMinutes();
+                    long horas = duracionMinutos / 60;
+                    long minutos = duracionMinutos % 60;
+                    System.out.println("           Duracion: " + horas + "h " + minutos + "m");
+                    System.out.println();
+                }
+
+                // Tiempos totales de la entrega
+                System.out.println("      Tiempo total de entrega:");
+                System.out.println("        Salida: " + ruta.getTiempoSalida());
+                System.out.println("        Llegada: " + ruta.getTiempoLlegada());
+
+                long duracionTotalMinutos = java.time.Duration.between(
+                    ruta.getTiempoSalida(), ruta.getTiempoLlegada()).toMinutes();
+                long horasTotal = duracionTotalMinutos / 60;
+                long minutosTotal = duracionTotalMinutos % 60;
+                System.out.println("        Duracion total: " + horasTotal + "h " + minutosTotal + "m");
+                System.out.println();
+            }
+
+            // Resumen del pedido
+            int cantidadEntregada = rutas.stream().mapToInt(r -> r.getCantidadTransportada()).sum();
+            boolean completado = cantidadEntregada == pedido.getCantidadProductos();
+            boolean cumplePlazos = rutas.stream().allMatch(r -> r.cumplePlazo());
+
+            System.out.println("RESUMEN DEL PEDIDO:");
+            System.out.println("  Cantidad entregada: " + cantidadEntregada + "/" + pedido.getCantidadProductos() +
+                " (" + String.format("%.1f%%", (cantidadEntregada * 100.0 / pedido.getCantidadProductos())) + ")");
+            System.out.println("  Estado: " + (completado ? "COMPLETO" : "PARCIAL"));
+            System.out.println("  Cumplimiento: " + (cumplePlazos ? "A TIEMPO" : "CON RETRASOS"));
+            System.out.println();
+        }
+
+        System.out.println("==============================================================");
+        System.out.println("Total de pedidos mostrados: " + contador + " de " + pedidos.size());
+        System.out.println("==============================================================");
     }
 
     /**

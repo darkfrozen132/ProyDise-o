@@ -5,6 +5,7 @@ import morapack.core.solucion.SolucionMoraPack;
 import morapack.core.problema.Problema;
 import morapack.core.problema.ProblemaMoraPack;
 import morapack.datos.modelos.*;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -154,39 +155,98 @@ public class Hormiga {
 
         List<String> sedesDisponibles = Arrays.asList("SPIM", "EBCI", "UBBB");
 
-        while (cantidadRestante > 0 && numeroEntrega <= 3) { // Máximo 3 entregas
+        int intentosSinExito = 0;
+        while (cantidadRestante > 0 && numeroEntrega <= 3 && intentosSinExito < sedesDisponibles.size()) {
             // Seleccionar sede origen usando heurística
             String sedeOrigen = seleccionarSedeOrigen(sedesDisponibles, destino, problema, heuristica);
 
-            // Determinar cantidad para esta entrega
-            int cantidadEntrega = determinarCantidadEntrega(cantidadRestante, numeroEntrega, red, sedeOrigen, destino);
+            // Intentar construir ruta con la cantidad restante
+            List<SolucionMoraPack.SegmentoVuelo> segmentos = construirRuta(sedeOrigen, destino, cantidadRestante, red, pedido);
 
-            if (cantidadEntrega > 0) {
-                // Buscar ruta desde sede a destino
-                List<SolucionMoraPack.SegmentoVuelo> segmentos = construirRuta(sedeOrigen, destino, red);
+            if (!segmentos.isEmpty()) {
+                // Determinar cuánto se transportó en esta ruta
+                int cantidadTransportada = calcularCantidadTransportada(segmentos, cantidadRestante, red);
 
-                if (!segmentos.isEmpty()) {
+                if (cantidadTransportada > 0) {
+                    // Registrar uso de capacidad en TODOS los segmentos de la ruta
+                    for (SolucionMoraPack.SegmentoVuelo segmento : segmentos) {
+                        solucionActual.registrarUsoCapacidad(segmento.getIdVuelo(), cantidadTransportada);
+                    }
+
                     // Crear entrega
                     LocalDateTime tiempoSalida = calcularTiempoSalida(segmentos);
                     LocalDateTime tiempoLlegada = calcularTiempoLlegada(segmentos);
                     boolean cumplePlazo = pedido.estaDentroPlazoUTC(tiempoLlegada, red.getAeropuerto(destino));
 
-                    // Usar hash del ID completo para generar un ID unico numerico
                     int idNumerico = pedido.getIdPedido().hashCode() & 0x7FFFFFFF;
 
                     SolucionMoraPack.RutaProducto ruta = new SolucionMoraPack.RutaProducto(
                         idNumerico,
-                        cantidadEntrega, cantidadTotal, numeroEntrega,
-                        cantidadEntrega < cantidadTotal, // es parcial
+                        cantidadTransportada, cantidadTotal, numeroEntrega,
+                        cantidadTransportada < cantidadTotal,
                         sedeOrigen, destino, segmentos, tiempoSalida, tiempoLlegada, cumplePlazo
                     );
 
                     solucionActual.agregarRutaProducto(idNumerico, ruta);
-                    cantidadRestante -= cantidadEntrega;
+                    cantidadRestante -= cantidadTransportada;
+                    numeroEntrega++;
+                    intentosSinExito = 0; // Reset en caso de éxito
+                } else {
+                    // No hay capacidad disponible, probar con otra sede
+                    intentosSinExito++;
                 }
+            } else {
+                // No se encontró ruta, probar con otra sede
+                intentosSinExito++;
             }
-            numeroEntrega++;
         }
+
+        // Si queda cantidad sin asignar, crear ruta dummy para evitar errores
+        // (será fuertemente penalizada en fitness)
+        if (cantidadRestante > 0 && solucionActual.getRutasProducto(pedido.getIdPedido().hashCode() & 0x7FFFFFFF).isEmpty()) {
+            // Crear una ruta vacía para que al menos el pedido exista en la solución
+            int idNumerico = pedido.getIdPedido().hashCode() & 0x7FFFFFFF;
+            String sedeOrigen = sedesDisponibles.get(0);
+
+            SolucionMoraPack.RutaProducto rutaDummy = new SolucionMoraPack.RutaProducto(
+                idNumerico,
+                0, cantidadTotal, 1,
+                true,
+                sedeOrigen, destino, new ArrayList<>(),
+                LocalDateTime.now(), LocalDateTime.now(), false
+            );
+
+            solucionActual.agregarRutaProducto(idNumerico, rutaDummy);
+        }
+    }
+
+    /**
+     * Calcula cuánta cantidad se puede transportar en una ruta dada
+     * Considera la capacidad disponible de todos los vuelos en la ruta
+     */
+    private int calcularCantidadTransportada(List<SolucionMoraPack.SegmentoVuelo> segmentos,
+                                             int cantidadDeseada, RedDistribucion red) {
+        if (segmentos.isEmpty()) {
+            return 0;
+        }
+
+        // En una ruta con escalas, la capacidad está limitada por el vuelo con menor capacidad
+        int capacidadMinima = Integer.MAX_VALUE;
+
+        for (SolucionMoraPack.SegmentoVuelo segmento : segmentos) {
+            String idVuelo = segmento.getIdVuelo();
+            morapack.datos.modelos.VueloInstancia instancia = red.getInstanciaVuelo(idVuelo);
+
+            if (instancia != null) {
+                int capacidadDisponible = solucionActual.getCapacidadDisponible(
+                    idVuelo,
+                    instancia.getCapacidadMaxima()
+                );
+                capacidadMinima = Math.min(capacidadMinima, capacidadDisponible);
+            }
+        }
+
+        return capacidadMinima == Integer.MAX_VALUE ? 0 : Math.min(cantidadDeseada, capacidadMinima);
     }
 
     /**
@@ -256,18 +316,20 @@ public class Hormiga {
             Aeropuerto aeropuertoDestino = problema.getRed().getAeropuerto(destino);
 
             if (aeropuertoSede != null && aeropuertoDestino != null) {
-                // Preferir sedes del mismo continente
-                double factorContinente = aeropuertoSede.getContinente().equals(aeropuertoDestino.getContinente()) ? 2.0 : 1.0;
+                // Preferir sedes del mismo continente (factor más balanceado)
+                double factorContinente = aeropuertoSede.getContinente().equals(aeropuertoDestino.getContinente()) ? 1.5 : 1.0;
 
-                // Preferir sedes con vuelos directos
+                // Considerar vuelos directos pero NO penalizar mucho las escalas
                 List<Vuelo> vuelosDirectos = problema.getRed().buscarVuelosDirectos(sede, destino);
-                double factorDirecto = vuelosDirectos.isEmpty() ? 0.5 : 1.5;
+                double factorDirecto = vuelosDirectos.isEmpty() ? 0.8 : 1.2; // Cambio: 0.8 vs 1.2 (antes 0.5 vs 1.5)
 
                 // Considerar capacidad disponible
-                double capacidadPromedio = vuelosDirectos.stream()
-                    .mapToDouble(Vuelo::getCapacidadDisponible)
-                    .average().orElse(100.0);
-                double factorCapacidad = Math.min(2.0, capacidadPromedio / 100.0);
+                double capacidadPromedio = vuelosDirectos.isEmpty()
+                    ? 200.0  // Asumir capacidad razonable si no hay directos
+                    : vuelosDirectos.stream()
+                        .mapToDouble(Vuelo::getCapacidadDisponible)
+                        .average().orElse(100.0);
+                double factorCapacidad = Math.min(1.5, capacidadPromedio / 150.0);
 
                 probabilidades[i] = factorContinente * factorDirecto * factorCapacidad;
                 suma += probabilidades[i];
@@ -289,36 +351,58 @@ public class Hormiga {
     }
 
     /**
-     * Determina cantidad para esta entrega basada en capacidades
+     * Determina cantidad para esta entrega basada en capacidades REALES disponibles
+     * ACTUALIZADO: Considera capacidad ya usada en esta solución
      */
-    private int determinarCantidadEntrega(int cantidadRestante, int numeroEntrega, RedDistribucion red, String origen, String destino) {
-        List<Vuelo> vuelosDisponibles = red.buscarVuelosDirectos(origen, destino);
+    private int determinarCantidadEntrega(int cantidadRestante, int numeroEntrega, RedDistribucion red,
+                                          String origen, String destino, Pedido pedido) {
+        // Calcular ventana temporal del pedido
+        LocalDate fechaInicio = pedido.getTiempoPedido() != null
+            ? pedido.getTiempoPedido().toLocalDate()
+            : LocalDate.of(red.getAnioOperacion(), red.getMesOperacion(), pedido.getDia());
+
+        LocalDate fechaLimite = pedido.getTiempoLimiteEntrega() != null
+            ? pedido.getTiempoLimiteEntrega().toLocalDate()
+            : fechaInicio.plusDays(2);
+
+        // Buscar vuelos en la ventana temporal del pedido
+        List<VueloInstancia> vuelosDisponibles = red.buscarVuelosDisponiblesEnRango(origen, destino, fechaInicio, fechaLimite);
 
         if (vuelosDisponibles.isEmpty()) {
             // Buscar ruta con escalas (simplificado)
             List<String> rutaMinima = red.buscarRutaMinima(origen, destino);
-            if (rutaMinima.size() <= 3) { // Máximo 2 escalas
-                return Math.min(cantidadRestante, 150); // Capacidad conservadora con escalas
+            if (rutaMinima != null && rutaMinima.size() <= 3) {
+                return Math.min(cantidadRestante, 150);
             }
             return 0;
         }
 
-        // Usar el vuelo con mayor capacidad disponible
-        int maxCapacidad = vuelosDisponibles.stream()
-            .mapToInt(Vuelo::getCapacidadDisponible)
-            .max().orElse(100);
-
-        // Estrategia de división inteligente
-        if (numeroEntrega == 1 && cantidadRestante <= maxCapacidad) {
-            return cantidadRestante; // Entrega completa si es posible
+        // Calcular capacidad disponible REAL considerando uso en esta solución
+        int maxCapacidadReal = 0;
+        for (VueloInstancia vuelo : vuelosDisponibles) {
+            int capacidadDisponible = solucionActual.getCapacidadDisponible(
+                vuelo.getIdInstancia(),
+                vuelo.getCapacidadMaxima()
+            );
+            maxCapacidadReal = Math.max(maxCapacidadReal, capacidadDisponible);
         }
 
-        // División balanceada
-        int cantidadEntrega = Math.min(cantidadRestante, maxCapacidad * 80 / 100); // 80% de capacidad
+        // Si no hay capacidad disponible, retornar 0 (forzará búsqueda de alternativas)
+        if (maxCapacidadReal == 0) {
+            return 0;
+        }
+
+        // ESTRATEGIA MEJORADA: Usar el 100% de la capacidad disponible
+        if (numeroEntrega == 1 && cantidadRestante <= maxCapacidadReal) {
+            return cantidadRestante; // Entrega completa si cabe
+        }
+
+        // Maximizar uso de capacidad (100% en lugar de 80%)
+        int cantidadEntrega = Math.min(cantidadRestante, maxCapacidadReal);
 
         // Evitar entregas muy pequeñas al final
         if (cantidadRestante - cantidadEntrega < 20 && cantidadRestante - cantidadEntrega > 0) {
-            cantidadEntrega = cantidadRestante; // Entregar todo
+            cantidadEntrega = cantidadRestante;
         }
 
         return Math.max(1, cantidadEntrega);
@@ -326,48 +410,212 @@ public class Hormiga {
 
     /**
      * Construye ruta entre dos aeropuertos (directo o con escalas)
+     * ACTUALIZADO: Considera capacidad disponible y usa VueloInstancia con fechas reales
+     *
+     * @param origen Aeropuerto origen
+     * @param destino Aeropuerto destino
+     * @param cantidad Cantidad de productos a transportar
+     * @param red Red de distribución
+     * @param pedido Pedido para restricciones temporales
+     * @return Lista de segmentos de vuelo
      */
-    private List<SolucionMoraPack.SegmentoVuelo> construirRuta(String origen, String destino, RedDistribucion red) {
+    private List<SolucionMoraPack.SegmentoVuelo> construirRuta(String origen, String destino, int cantidad,
+                                                                RedDistribucion red, Pedido pedido) {
         List<SolucionMoraPack.SegmentoVuelo> segmentos = new ArrayList<>();
 
-        // Intentar ruta directa primero
-        List<Vuelo> vuelosDirectos = red.buscarVuelosDirectos(origen, destino);
-        if (!vuelosDirectos.isEmpty()) {
-            Vuelo vueloSeleccionado = vuelosDirectos.get(random.nextInt(vuelosDirectos.size()));
-            LocalDateTime horaSalida = LocalDateTime.of(2025, 1, 1, vueloSeleccionado.getHoraSalida().getHour(), vueloSeleccionado.getHoraSalida().getMinute());
-            LocalDateTime horaLlegada = LocalDateTime.of(2025, 1, 1, vueloSeleccionado.getHoraLlegada().getHour(), vueloSeleccionado.getHoraLlegada().getMinute());
+        // Calcular ventana temporal válida para el pedido
+        LocalDate fechaInicio = pedido.getTiempoPedido() != null
+            ? pedido.getTiempoPedido().toLocalDate()
+            : LocalDate.of(red.getAnioOperacion(), red.getMesOperacion(), pedido.getDia());
 
-            segmentos.add(new SolucionMoraPack.SegmentoVuelo(
-                vueloSeleccionado.getIdVuelo(), origen, destino, horaSalida, horaLlegada
-            ));
-            return segmentos;
+        LocalDate fechaLimite = pedido.getTiempoLimiteEntrega() != null
+            ? pedido.getTiempoLimiteEntrega().toLocalDate()
+            : fechaInicio.plusDays(2);
+
+        // ESTRATEGIA 1: Buscar vuelo directo con capacidad suficiente
+        List<VueloInstancia> vuelosDirectos = red.buscarVuelosDisponiblesEnRango(origen, destino, fechaInicio, fechaLimite);
+
+        // Filtrar vuelos con capacidad suficiente CONSIDERANDO LO YA USADO EN ESTA SOLUCIÓN
+        List<VueloInstancia> vuelosConCapacidad = vuelosDirectos.stream()
+            .filter(v -> solucionActual.tieneCapacidadDisponible(v.getIdInstancia(), v.getCapacidadMaxima(), cantidad))
+            .collect(java.util.stream.Collectors.toList());
+
+        // Si hay vuelo directo con capacidad, SIEMPRE usarlo (es la mejor opción)
+        if (!vuelosConCapacidad.isEmpty()) {
+            VueloInstancia vueloSeleccionado = seleccionarVueloConPonderacion(vuelosConCapacidad, fechaInicio, fechaLimite);
+
+            if (vueloSeleccionado != null) {
+                // NO registrar capacidad aquí - se hará después en construirRutasParaPedido
+                // basándose en la cantidad REAL transportada
+
+                segmentos.add(new SolucionMoraPack.SegmentoVuelo(
+                    vueloSeleccionado.getIdInstancia(), origen, destino,
+                    vueloSeleccionado.getHorarioSalidaCompleto(),
+                    vueloSeleccionado.getHorarioLlegadaCompleto()
+                ));
+                return segmentos;
+            }
         }
 
-        // Buscar ruta con escalas
+        // ESTRATEGIA 2: Intentar ruta con escalas si:
+        // - No hay vuelos directos con capacidad suficiente
+        // - O decidimos explorar escalas (30% probabilidad)
         List<String> rutaMinima = red.buscarRutaMinima(origen, destino);
-        if (rutaMinima.size() > 1) {
-            LocalDateTime tiempoActual = LocalDateTime.of(2025, 1, 1, 8, 0); // Tiempo base
+        if (rutaMinima != null && rutaMinima.size() > 1 && rutaMinima.size() <= 4) {
+            LocalDate fechaInicioRuta = calcularFechaInicioOptima(rutaMinima, fechaInicio, fechaLimite, red);
 
-            for (int i = 0; i < rutaMinima.size() - 1; i++) {
-                String origenSegmento = rutaMinima.get(i);
-                String destinoSegmento = rutaMinima.get(i + 1);
+            if (fechaInicioRuta != null) {
+                // Intentar construir ruta con escalas verificando capacidad
+                LocalDateTime tiempoActual = fechaInicioRuta.atStartOfDay();
+                List<SolucionMoraPack.SegmentoVuelo> rutaEscalas = new ArrayList<>();
+                boolean rutaFactible = true;
 
-                List<Vuelo> vuelosSegmento = red.buscarVuelosDirectos(origenSegmento, destinoSegmento);
-                if (!vuelosSegmento.isEmpty()) {
-                    Vuelo vuelo = vuelosSegmento.get(0);
-                    LocalDateTime horaSalida = tiempoActual.plusHours(1); // 1 hora de conexión
-                    LocalDateTime horaLlegada = horaSalida.plusHours(2); // 2 horas de vuelo aproximado
+                for (int i = 0; i < rutaMinima.size() - 1; i++) {
+                    String origenSeg = rutaMinima.get(i);
+                    String destinoSeg = rutaMinima.get(i + 1);
 
-                    segmentos.add(new SolucionMoraPack.SegmentoVuelo(
-                        vuelo.getIdVuelo(), origenSegmento, destinoSegmento, horaSalida, horaLlegada
-                    ));
+                    // Buscar vuelos para este segmento
+                    List<VueloInstancia> vuelosSegmento = red.buscarVuelosDisponiblesEnRango(
+                        origenSeg, destinoSeg,
+                        tiempoActual.toLocalDate(), fechaLimite
+                    );
 
-                    tiempoActual = horaLlegada;
+                    // Filtrar por capacidad CONSIDERANDO USO EN ESTA SOLUCIÓN
+                    VueloInstancia vueloSegmento = vuelosSegmento.stream()
+                        .filter(v -> solucionActual.tieneCapacidadDisponible(v.getIdInstancia(), v.getCapacidadMaxima(), cantidad))
+                        .findFirst()
+                        .orElse(null);
+
+                    if (vueloSegmento != null) {
+                        rutaEscalas.add(new SolucionMoraPack.SegmentoVuelo(
+                            vueloSegmento.getIdInstancia(),
+                            origenSeg, destinoSeg,
+                            vueloSegmento.getHorarioSalidaCompleto(),
+                            vueloSegmento.getHorarioLlegadaCompleto()
+                        ));
+                        tiempoActual = vueloSegmento.getHorarioLlegadaCompleto();
+                    } else {
+                        rutaFactible = false;
+                        break;
+                    }
+                }
+
+                // Si logramos construir la ruta completa, usarla
+                if (rutaFactible && !rutaEscalas.isEmpty()) {
+                    return rutaEscalas;
+                }
+            }
+        }
+
+        // ESTRATEGIA 3: Fallback - usar cualquier vuelo directo disponible
+        // (aunque no tenga capacidad suficiente - será penalizado en fitness)
+        if (!vuelosDirectos.isEmpty()) {
+            VueloInstancia vueloSeleccionado = seleccionarVueloConPonderacion(vuelosDirectos, fechaInicio, fechaLimite);
+
+            if (vueloSeleccionado != null) {
+                segmentos.add(new SolucionMoraPack.SegmentoVuelo(
+                    vueloSeleccionado.getIdInstancia(), origen, destino,
+                    vueloSeleccionado.getHorarioSalidaCompleto(),
+                    vueloSeleccionado.getHorarioLlegadaCompleto()
+                ));
+                return segmentos;
+            }
+        }
+
+        // ESTRATEGIA 4: Último recurso - ruta con escalas sin validar capacidad
+        // (esto será penalizado en fitness pero al menos completa el pedido)
+        if (rutaMinima == null) {
+            rutaMinima = red.buscarRutaMinima(origen, destino);
+        }
+
+        if (rutaMinima != null && rutaMinima.size() > 1) {
+            LocalDate fechaInicioRuta = calcularFechaInicioOptima(rutaMinima, fechaInicio, fechaLimite, red);
+
+            if (fechaInicioRuta != null) {
+                List<VueloInstancia> rutaConEscalas = red.buscarRutasConConexiones(origen, destino, fechaInicioRuta, fechaLimite, 2)
+                    .stream()
+                    .findFirst()
+                    .orElse(null);
+
+                if (rutaConEscalas != null) {
+                    for (VueloInstancia instancia : rutaConEscalas) {
+                        segmentos.add(new SolucionMoraPack.SegmentoVuelo(
+                            instancia.getIdInstancia(),
+                            instancia.getAeropuertoOrigen(),
+                            instancia.getAeropuertoDestino(),
+                            instancia.getHorarioSalidaCompleto(),
+                            instancia.getHorarioLlegadaCompleto()
+                        ));
+                    }
                 }
             }
         }
 
         return segmentos;
+    }
+
+    /**
+     * Selecciona un vuelo con ponderación hacia fechas más tempranas
+     * pero considerando capacidad disponible
+     */
+    private VueloInstancia seleccionarVueloConPonderacion(List<VueloInstancia> vuelos, LocalDate fechaInicio, LocalDate fechaLimite) {
+        if (vuelos.isEmpty()) return null;
+
+        double[] pesos = new double[vuelos.size()];
+        double sumaPesos = 0.0;
+
+        for (int i = 0; i < vuelos.size(); i++) {
+            VueloInstancia vuelo = vuelos.get(i);
+
+            // Calcular días desde el inicio (fechas tempranas = mayor peso)
+            long diasDesdeInicio = java.time.temporal.ChronoUnit.DAYS.between(fechaInicio, vuelo.getFecha());
+            long diasTotales = java.time.temporal.ChronoUnit.DAYS.between(fechaInicio, fechaLimite);
+
+            // Ponderación: fechas tempranas tienen mayor peso
+            double factorTemporal = diasTotales > 0 ? 1.0 - (double) diasDesdeInicio / diasTotales : 1.0;
+
+            // Factor de capacidad: más capacidad = mayor peso
+            double factorCapacidad = (double) vuelo.getCapacidadDisponible() / vuelo.getCapacidadMaxima();
+
+            // Peso combinado
+            pesos[i] = (factorTemporal * 0.7 + factorCapacidad * 0.3) * (1.0 + random.nextDouble() * 0.2); // Añadir algo de aleatoriedad
+            sumaPesos += pesos[i];
+        }
+
+        // Normalizar pesos
+        if (sumaPesos > 0) {
+            for (int i = 0; i < pesos.length; i++) {
+                pesos[i] /= sumaPesos;
+            }
+        }
+
+        // Seleccionar por ruleta
+        int indice = seleccionarPorRuleta(pesos);
+        return vuelos.get(indice);
+    }
+
+    /**
+     * Calcula la fecha óptima para iniciar una ruta con escalas
+     */
+    private LocalDate calcularFechaInicioOptima(List<String> rutaAeropuertos, LocalDate fechaInicio, LocalDate fechaLimite, RedDistribucion red) {
+        // Estimar tiempo mínimo necesario para la ruta
+        int numSegmentos = rutaAeropuertos.size() - 1;
+        int diasEstimados = numSegmentos; // Aproximadamente 1 día por segmento
+
+        // Fecha óptima: lo más pronto posible pero con margen
+        LocalDate fechaOptima = fechaLimite.minusDays(diasEstimados + 1); // +1 día de margen
+
+        // Asegurar que no sea antes del inicio del mes
+        if (fechaOptima.isBefore(fechaInicio)) {
+            fechaOptima = fechaInicio;
+        }
+
+        // Verificar que haya tiempo suficiente
+        if (fechaOptima.isAfter(fechaLimite.minusDays(1))) {
+            return null; // No hay tiempo suficiente
+        }
+
+        return fechaOptima;
     }
 
     /**
@@ -388,7 +636,9 @@ public class Hormiga {
      * Calcula el fitness de la solución actual
      */
     private void calcularFitness(ProblemaMoraPack problema) {
-        this.fitness = problema.evaluarSolucion(solucionActual);
+        double fitnessCalculado = problema.evaluarSolucion(solucionActual);
+        this.fitness = fitnessCalculado;
+        solucionActual.setFitness(fitnessCalculado);  // ¡IMPORTANTE! Asignar fitness a la solución
     }
 
     // Getters y Setters

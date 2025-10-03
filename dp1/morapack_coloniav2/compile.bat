@@ -84,6 +84,13 @@ if %ERRORLEVEL% neq 0 (
     exit /b 1
 )
 
+javac -cp bin -d bin src\morapack\datos\modelos\VueloInstancia.java
+if %ERRORLEVEL% neq 0 (
+    echo [ERROR] Fallo al compilar VueloInstancia.java
+    pause
+    exit /b 1
+)
+
 echo [INFO] Compilando cargadores especificos...
 javac -cp bin -d bin src\morapack\datos\cargadores\CargadorAeropuertos.java
 if %ERRORLEVEL% neq 0 (

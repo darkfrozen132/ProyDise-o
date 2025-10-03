@@ -1,0 +1,60 @@
+[INFO] Ejecutando MoraPack Colonia v2...
+==============================================================
+          MORAPACK COLONIA V2 - ACO OPTIMIZER                
+   Sistema de Optimizacion de Rutas de Distribucion Global   
+==============================================================
+
+=== PASO 1: CARGA DE DATOS ===
+Cargando datos del sistema...
+   Mes: 1/2025
+
+Inicializando Red de Distribución MoraPack...
+Cargando aeropuertos...
+Cargando vuelos...
+Cargando pedidos...
+Validando integridad de datos...
+Construyendo índices de conectividad...
+Generando información de clientes...
+Calculando plazos de entrega...
+Pre-calculando cache de rutas minimas...
+   Cache construido: 90 rutas pre-calculadas
+Red de distribución inicializada exitosamente.
+
+=== ESTADÍSTICAS RED DE DISTRIBUCIÓN ===
+Aeropuertos: 30
+Vuelos: 2866
+Pedidos: 499
+Clientes: 314
+Rutas únicas: 870
+Conexiones totales: 870
+Sedes principales: 3
+Clientes VIP: 15
+Red de distribucion cargada exitosamente
+   Tiempo de referencia: 2025-01-01T00:00
+
+=== PASO 2: CONFIGURACION DEL PROBLEMA ===
+Configurando problema de optimizacion...
+   Total de pedidos a procesar: 499
+   Total de productos: 137256
+Problema configurado exitosamente
+   Funcion objetivo: MAXIMIZAR fitness
+   (Mayor fitness = Mejor solucion)
+
+=== PASO 3: EJECUCION DEL ALGORITMO ACO ===
+Inicializando colonia de hormigas...
+   Numero de hormigas: 5
+   Iteraciones maximas: 10
+   Tasa de evaporacion: 0.15
+
+[DEBUG] Creando algoritmo ACO...
+[DEBUG] Algoritmo creado exitosamente
+Ejecutando algoritmo ACO...
+   (Esto puede tomar varios minutos)
+
+[DEBUG] Llamando a algoritmo.ejecutar()...
+[DEBUG] Esto puede tardar dependiendo de la complejidad
+Iniciando algoritmo ACO...
+Problema: ProblemaMoraPack [30 aeropuertos, 499 pedidos, tiempo: 2025-01-01T00:00]
+Parámetros: 5 hormigas, 10 iteraciones
+[ERROR] Error durante la ejecucion
+Presione una tecla para continuar . . . 

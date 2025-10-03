@@ -1,0 +1,804 @@
+[INFO] Ejecutando MoraPack Colonia v2...
+==============================================================
+          MORAPACK COLONIA V2 - ACO OPTIMIZER                
+   Sistema de Optimizacion de Rutas de Distribucion Global   
+==============================================================
+
+=== PASO 1: CARGA DE DATOS ===
+Cargando datos del sistema...
+   Mes: 1/2025
+
+Inicializando Red de Distribución MoraPack...
+Cargando aeropuertos...
+Cargando vuelos...
+Cargando pedidos...
+Validando integridad de datos...
+Construyendo índices de conectividad...
+Generando información de clientes...
+Calculando plazos de entrega...
+Pre-calculando cache de rutas minimas...
+   Cache construido: 90 rutas pre-calculadas
+Red de distribución inicializada exitosamente.
+
+=== ESTADÍSTICAS RED DE DISTRIBUCIÓN ===
+Aeropuertos: 30
+Vuelos: 2866
+Pedidos: 499
+Clientes: 314
+Rutas únicas: 870
+Conexiones totales: 870
+Sedes principales: 3
+Clientes VIP: 15
+Red de distribucion cargada exitosamente
+   Tiempo de referencia: 2025-01-01T00:00
+
+=== PASO 2: CONFIGURACION DEL PROBLEMA ===
+Configurando problema de optimizacion...
+   Total de pedidos a procesar: 499
+   Total de productos: 137256
+Problema configurado exitosamente
+   Funcion objetivo: MAXIMIZAR fitness
+   (Mayor fitness = Mejor solucion)
+
+=== PASO 3: EJECUCION DEL ALGORITMO ACO ===
+Inicializando colonia de hormigas...
+   Numero de hormigas: 5
+   Iteraciones maximas: 10
+   Tasa de evaporacion: 0.15
+
+[DEBUG] Creando algoritmo ACO...
+[DEBUG] Algoritmo creado exitosamente
+Ejecutando algoritmo ACO...
+   (Esto puede tomar varios minutos)
+
+[DEBUG] Llamando a algoritmo.ejecutar()...
+[DEBUG] Esto puede tardar dependiendo de la complejidad
+Iniciando algoritmo ACO...
+Problema: ProblemaMoraPack [30 aeropuertos, 499 pedidos, tiempo: 2025-01-01T00:00]
+Parámetros: 5 hormigas, 10 iteraciones
+Iteración 10/10 - Mejor fitness: 963746.52 - Sin mejora: 0
+
+Algoritmo completado:
+Tiempo de ejecución: 4615 ms
+Iteraciones: 10
+Mejor solución: 963746.5161150858
+[DEBUG] algoritmo.ejecutar() retorno: solucion valida
+Algoritmo ACO completado
+
+=== PASO 4: RESULTADOS DE LA OPTIMIZACION ===
+==============================================================
+                    SOLUCION OPTIMA                           
+==============================================================
+
+CALIDAD DE LA SOLUCION:
+   Fitness: 963746.52
+   (Mayor fitness indica mejor solucion)
+
+ESTADISTICAS GENERALES:
+   Estadísticas: 499 pedidos, 499 completos (100.0%), 485 con plazo (97.2%), 1.1 entregas/pedido, 72 parciales, promedio 1.0 segmentos/entrega
+
+ENTREGAS PARCIALES:
+   Entregas Parciales: 137256 productos transportados, 39216.0% eficiencia, máx 2 entregas/pedido
+
+CUMPLIMIENTO:
+   Algunos pedidos tienen retrasos
+
+USO DE VUELOS DIARIOS:
+   Instancias de Vuelos: 8773 creadas | 0 usadas | 0.0% ocupación
+
+DETALLES ADICIONALES:
+   Tiempo de creacion: 1759366522305
+
+
+=== PASO 5: DETALLES DE LOS PRIMEROS 20 PEDIDOS ===
+
+==============================================================
+        DETALLES DE RUTAS - PRIMEROS 20 PEDIDOS
+==============================================================
+
+------------------------------------------------------------------
+PEDIDO #1: 08-03-19-OAKB-332-0000126
+------------------------------------------------------------------
+Destino: OAKB
+Cantidad total: 332 productos
+Fecha limite: Dia 8 a las 03:19
+Plazo calculado: 2025-01-10T03:19 (2 dias)
+
+Entregas planificadas: 2
+
+  >>> ENTREGA 1 de 2
+      Cantidad: 256 productos (77.1% del total)
+      Origen: UBBB
+      Destino: OAKB
+      Cumple plazo: SI
+
+      Ruta (1 segmento):
+        1. UBBB -> OAKB
+           Vuelo: UBBB-OAKB-0937-20250108
+           Salida: 2025-01-08T09:37
+           Llegada: 2025-01-08T15:53
+           Duracion: 6h 16m
+
+      Tiempo total de entrega:
+        Salida: 2025-01-08T09:37
+        Llegada: 2025-01-08T15:53
+        Duracion total: 6h 16m
+
+  >>> ENTREGA 2 de 2
+      Cantidad: 76 productos (22.9% del total)
+      Origen: UBBB
+      Destino: OAKB
+      Cumple plazo: NO
+
+      Ruta (1 segmento):
+        1. UBBB -> OAKB
+           Vuelo: UBBB-OAKB-1821-20250109
+           Salida: 2025-01-09T18:21
+           Llegada: 2025-01-10T00:37
+           Duracion: 6h 16m
+
+      Tiempo total de entrega:
+        Salida: 2025-01-09T18:21
+        Llegada: 2025-01-10T00:37
+        Duracion total: 6h 16m
+
+RESUMEN DEL PEDIDO:
+  Cantidad entregada: 332/332 (100.0%)
+  Estado: COMPLETO
+  Cumplimiento: CON RETRASOS
+
+------------------------------------------------------------------
+PEDIDO #2: 25-07-19-OJAI-232-0000301
+------------------------------------------------------------------
+Destino: OJAI
+Cantidad total: 232 productos
+Fecha limite: Dia 25 a las 07:19
+Plazo calculado: 2025-01-27T07:19 (2 dias)
+
+Entregas planificadas: 1
+
+  >>> ENTREGA 1 de 1
+      Cantidad: 232 productos (100.0% del total)
+      Origen: EBCI
+      Destino: OJAI
+      Cumple plazo: SI
+
+      Ruta (1 segmento):
+        1. EBCI -> OJAI
+           Vuelo: EBCI-OJAI-1729-20250126
+           Salida: 2025-01-26T17:29
+           Llegada: 2025-01-27T00:40
+           Duracion: 7h 11m
+
+      Tiempo total de entrega:
+        Salida: 2025-01-26T17:29
+        Llegada: 2025-01-27T00:40
+        Duracion total: 7h 11m
+
+RESUMEN DEL PEDIDO:
+  Cantidad entregada: 232/232 (100.0%)
+  Estado: COMPLETO
+  Cumplimiento: A TIEMPO
+
+------------------------------------------------------------------
+PEDIDO #3: 14-13-00-SEQM-224-0000297
+------------------------------------------------------------------
+Destino: SEQM
+Cantidad total: 224 productos
+Fecha limite: Dia 14 a las 13:00
+Plazo calculado: 2025-01-16T13:00 (2 dias)
+
+Entregas planificadas: 1
+
+  >>> ENTREGA 1 de 1
+      Cantidad: 224 productos (100.0% del total)
+      Origen: SPIM
+      Destino: SEQM
+      Cumple plazo: SI
+
+      Ruta (1 segmento):
+        1. SPIM -> SEQM
+           Vuelo: SPIM-SEQM-0013-20250114
+           Salida: 2025-01-14T00:13
+           Llegada: 2025-01-14T03:54
+           Duracion: 3h 41m
+
+      Tiempo total de entrega:
+        Salida: 2025-01-14T00:13
+        Llegada: 2025-01-14T03:54
+        Duracion total: 3h 41m
+
+RESUMEN DEL PEDIDO:
+  Cantidad entregada: 224/224 (100.0%)
+  Estado: COMPLETO
+  Cumplimiento: A TIEMPO
+
+------------------------------------------------------------------
+PEDIDO #4: 06-04-31-SVMI-349-0000011
+------------------------------------------------------------------
+Destino: SVMI
+Cantidad total: 349 productos
+Fecha limite: Dia 6 a las 04:31
+Plazo calculado: 2025-01-08T04:31 (2 dias)
+
+Entregas planificadas: 1
+
+  >>> ENTREGA 1 de 1
+      Cantidad: 349 productos (100.0% del total)
+      Origen: UBBB
+      Destino: SVMI
+      Cumple plazo: SI
+
+      Ruta (1 segmento):
+        1. UBBB -> SVMI
+           Vuelo: UBBB-SVMI-1327-20250107
+           Salida: 2025-01-07T13:27
+           Llegada: 2025-01-07T23:48
+           Duracion: 10h 21m
+
+      Tiempo total de entrega:
+        Salida: 2025-01-07T13:27
+        Llegada: 2025-01-07T23:48
+        Duracion total: 10h 21m
+
+RESUMEN DEL PEDIDO:
+  Cantidad entregada: 349/349 (100.0%)
+  Estado: COMPLETO
+  Cumplimiento: A TIEMPO
+
+------------------------------------------------------------------
+PEDIDO #5: 12-21-58-OMDB-229-0000021
+------------------------------------------------------------------
+Destino: OMDB
+Cantidad total: 229 productos
+Fecha limite: Dia 12 a las 21:58
+Plazo calculado: 2025-01-14T21:58 (2 dias)
+
+Entregas planificadas: 1
+
+  >>> ENTREGA 1 de 1
+      Cantidad: 229 productos (100.0% del total)
+      Origen: SPIM
+      Destino: OMDB
+      Cumple plazo: SI
+
+      Ruta (1 segmento):
+        1. SPIM -> OMDB
+           Vuelo: SPIM-OMDB-1057-20250112
+           Salida: 2025-01-12T10:57
+           Llegada: 2025-01-12T15:32
+           Duracion: 4h 35m
+
+      Tiempo total de entrega:
+        Salida: 2025-01-12T10:57
+        Llegada: 2025-01-12T15:32
+        Duracion total: 4h 35m
+
+RESUMEN DEL PEDIDO:
+  Cantidad entregada: 229/229 (100.0%)
+  Estado: COMPLETO
+  Cumplimiento: A TIEMPO
+
+------------------------------------------------------------------
+PEDIDO #6: 26-14-11-OSDI-250-0000153
+------------------------------------------------------------------
+Destino: OSDI
+Cantidad total: 250 productos
+Fecha limite: Dia 26 a las 14:11
+Plazo calculado: 2025-01-28T14:11 (2 dias)
+
+Entregas planificadas: 1
+
+  >>> ENTREGA 1 de 1
+      Cantidad: 250 productos (100.0% del total)
+      Origen: EBCI
+      Destino: OSDI
+      Cumple plazo: SI
+
+      Ruta (1 segmento):
+        1. EBCI -> OSDI
+           Vuelo: EBCI-OSDI-1559-20250126
+           Salida: 2025-01-26T15:59
+           Llegada: 2025-01-26T22:02
+           Duracion: 6h 3m
+
+      Tiempo total de entrega:
+        Salida: 2025-01-26T15:59
+        Llegada: 2025-01-26T22:02
+        Duracion total: 6h 3m
+
+RESUMEN DEL PEDIDO:
+  Cantidad entregada: 250/250 (100.0%)
+  Estado: COMPLETO
+  Cumplimiento: A TIEMPO
+
+------------------------------------------------------------------
+PEDIDO #7: 18-21-12-SABE-303-0000004
+------------------------------------------------------------------
+Destino: SABE
+Cantidad total: 303 productos
+Fecha limite: Dia 18 a las 21:12
+Plazo calculado: 2025-01-20T21:12 (2 dias)
+
+Entregas planificadas: 1
+
+  >>> ENTREGA 1 de 1
+      Cantidad: 303 productos (100.0% del total)
+      Origen: UBBB
+      Destino: SABE
+      Cumple plazo: SI
+
+      Ruta (1 segmento):
+        1. UBBB -> SABE
+           Vuelo: UBBB-SABE-2206-20250118
+           Salida: 2025-01-18T22:06
+           Llegada: 2025-01-19T12:24
+           Duracion: 14h 18m
+
+      Tiempo total de entrega:
+        Salida: 2025-01-18T22:06
+        Llegada: 2025-01-19T12:24
+        Duracion total: 14h 18m
+
+RESUMEN DEL PEDIDO:
+  Cantidad entregada: 303/303 (100.0%)
+  Estado: COMPLETO
+  Cumplimiento: A TIEMPO
+
+------------------------------------------------------------------
+PEDIDO #8: 24-23-29-UMMS-314-0000236
+------------------------------------------------------------------
+Destino: UMMS
+Cantidad total: 314 productos
+Fecha limite: Dia 24 a las 23:29
+Plazo calculado: 2025-01-26T23:29 (2 dias)
+
+Entregas planificadas: 1
+
+  >>> ENTREGA 1 de 1
+      Cantidad: 314 productos (100.0% del total)
+      Origen: UBBB
+      Destino: UMMS
+      Cumple plazo: SI
+
+      Ruta (1 segmento):
+        1. UBBB -> UMMS
+           Vuelo: UBBB-UMMS-1825-20250125
+           Salida: 2025-01-25T18:25
+           Llegada: 2025-01-25T23:11
+           Duracion: 4h 46m
+
+      Tiempo total de entrega:
+        Salida: 2025-01-25T18:25
+        Llegada: 2025-01-25T23:11
+        Duracion total: 4h 46m
+
+RESUMEN DEL PEDIDO:
+  Cantidad entregada: 314/314 (100.0%)
+  Estado: COMPLETO
+  Cumplimiento: A TIEMPO
+
+------------------------------------------------------------------
+PEDIDO #9: 13-14-58-VIDP-210-0000234
+------------------------------------------------------------------
+Destino: VIDP
+Cantidad total: 210 productos
+Fecha limite: Dia 13 a las 14:58
+Plazo calculado: 2025-01-15T14:58 (2 dias)
+
+Entregas planificadas: 1
+
+  >>> ENTREGA 1 de 1
+      Cantidad: 210 productos (100.0% del total)
+      Origen: UBBB
+      Destino: VIDP
+      Cumple plazo: SI
+
+      Ruta (1 segmento):
+        1. UBBB -> VIDP
+           Vuelo: UBBB-VIDP-0212-20250113
+           Salida: 2025-01-13T02:12
+           Llegada: 2025-01-13T10:43
+           Duracion: 8h 31m
+
+      Tiempo total de entrega:
+        Salida: 2025-01-13T02:12
+        Llegada: 2025-01-13T10:43
+        Duracion total: 8h 31m
+
+RESUMEN DEL PEDIDO:
+  Cantidad entregada: 210/210 (100.0%)
+  Estado: COMPLETO
+  Cumplimiento: A TIEMPO
+
+------------------------------------------------------------------
+PEDIDO #10: 12-07-30-SEQM-327-0000284
+------------------------------------------------------------------
+Destino: SEQM
+Cantidad total: 327 productos
+Fecha limite: Dia 12 a las 07:30
+Plazo calculado: 2025-01-14T07:30 (2 dias)
+
+Entregas planificadas: 2
+
+  >>> ENTREGA 1 de 2
+      Cantidad: 256 productos (78.3% del total)
+      Origen: EBCI
+      Destino: SEQM
+      Cumple plazo: SI
+
+      Ruta (1 segmento):
+        1. EBCI -> SEQM
+           Vuelo: EBCI-SEQM-0455-20250112
+           Salida: 2025-01-12T04:55
+           Llegada: 2025-01-12T10:47
+           Duracion: 5h 52m
+
+      Tiempo total de entrega:
+        Salida: 2025-01-12T04:55
+        Llegada: 2025-01-12T10:47
+        Duracion total: 5h 52m
+
+  >>> ENTREGA 2 de 2
+      Cantidad: 71 productos (21.7% del total)
+      Origen: EBCI
+      Destino: SEQM
+      Cumple plazo: SI
+
+      Ruta (1 segmento):
+        1. EBCI -> SEQM
+           Vuelo: EBCI-SEQM-0455-20250113
+           Salida: 2025-01-13T04:55
+           Llegada: 2025-01-13T10:47
+           Duracion: 5h 52m
+
+      Tiempo total de entrega:
+        Salida: 2025-01-13T04:55
+        Llegada: 2025-01-13T10:47
+        Duracion total: 5h 52m
+
+RESUMEN DEL PEDIDO:
+  Cantidad entregada: 327/327 (100.0%)
+  Estado: COMPLETO
+  Cumplimiento: A TIEMPO
+
+------------------------------------------------------------------
+PEDIDO #11: 02-05-12-EDDI-277-0000312
+------------------------------------------------------------------
+Destino: EDDI
+Cantidad total: 277 productos
+Fecha limite: Dia 2 a las 05:12
+Plazo calculado: 2025-01-04T05:12 (2 dias)
+
+Entregas planificadas: 1
+
+  >>> ENTREGA 1 de 1
+      Cantidad: 277 productos (100.0% del total)
+      Origen: UBBB
+      Destino: EDDI
+      Cumple plazo: SI
+
+      Ruta (1 segmento):
+        1. UBBB -> EDDI
+           Vuelo: UBBB-EDDI-1930-20250102
+           Salida: 2025-01-02T19:30
+           Llegada: 2025-01-03T00:24
+           Duracion: 4h 54m
+
+      Tiempo total de entrega:
+        Salida: 2025-01-02T19:30
+        Llegada: 2025-01-03T00:24
+        Duracion total: 4h 54m
+
+RESUMEN DEL PEDIDO:
+  Cantidad entregada: 277/277 (100.0%)
+  Estado: COMPLETO
+  Cumplimiento: A TIEMPO
+
+------------------------------------------------------------------
+PEDIDO #12: 11-23-22-SGAS-255-0000009
+------------------------------------------------------------------
+Destino: SGAS
+Cantidad total: 255 productos
+Fecha limite: Dia 11 a las 23:22
+Plazo calculado: 2025-01-13T23:22 (2 dias)
+
+Entregas planificadas: 1
+
+  >>> ENTREGA 1 de 1
+      Cantidad: 255 productos (100.0% del total)
+      Origen: EBCI
+      Destino: SGAS
+      Cumple plazo: SI
+
+      Ruta (1 segmento):
+        1. EBCI -> SGAS
+           Vuelo: EBCI-SGAS-1005-20250111
+           Salida: 2025-01-11T10:05
+           Llegada: 2025-01-11T18:00
+           Duracion: 7h 55m
+
+      Tiempo total de entrega:
+        Salida: 2025-01-11T10:05
+        Llegada: 2025-01-11T18:00
+        Duracion total: 7h 55m
+
+RESUMEN DEL PEDIDO:
+  Cantidad entregada: 255/255 (100.0%)
+  Estado: COMPLETO
+  Cumplimiento: A TIEMPO
+
+------------------------------------------------------------------
+PEDIDO #13: 08-22-39-OAKB-230-0000006
+------------------------------------------------------------------
+Destino: OAKB
+Cantidad total: 230 productos
+Fecha limite: Dia 8 a las 22:39
+Plazo calculado: 2025-01-10T22:39 (2 dias)
+
+Entregas planificadas: 1
+
+  >>> ENTREGA 1 de 1
+      Cantidad: 230 productos (100.0% del total)
+      Origen: UBBB
+      Destino: OAKB
+      Cumple plazo: SI
+
+      Ruta (1 segmento):
+        1. UBBB -> OAKB
+           Vuelo: UBBB-OAKB-1223-20250109
+           Salida: 2025-01-09T12:23
+           Llegada: 2025-01-09T18:39
+           Duracion: 6h 16m
+
+      Tiempo total de entrega:
+        Salida: 2025-01-09T12:23
+        Llegada: 2025-01-09T18:39
+        Duracion total: 6h 16m
+
+RESUMEN DEL PEDIDO:
+  Cantidad entregada: 230/230 (100.0%)
+  Estado: COMPLETO
+  Cumplimiento: A TIEMPO
+
+------------------------------------------------------------------
+PEDIDO #14: 28-10-33-OJAI-237-0000283
+------------------------------------------------------------------
+Destino: OJAI
+Cantidad total: 237 productos
+Fecha limite: Dia 28 a las 10:33
+Plazo calculado: 2025-01-30T10:33 (2 dias)
+
+Entregas planificadas: 1
+
+  >>> ENTREGA 1 de 1
+      Cantidad: 237 productos (100.0% del total)
+      Origen: UBBB
+      Destino: OJAI
+      Cumple plazo: SI
+
+      Ruta (1 segmento):
+        1. UBBB -> OJAI
+           Vuelo: UBBB-OJAI-1517-20250128
+           Salida: 2025-01-28T15:17
+           Llegada: 2025-01-28T20:24
+           Duracion: 5h 7m
+
+      Tiempo total de entrega:
+        Salida: 2025-01-28T15:17
+        Llegada: 2025-01-28T20:24
+        Duracion total: 5h 7m
+
+RESUMEN DEL PEDIDO:
+  Cantidad entregada: 237/237 (100.0%)
+  Estado: COMPLETO
+  Cumplimiento: A TIEMPO
+
+------------------------------------------------------------------
+PEDIDO #15: 13-18-10-OAKB-210-0000001
+------------------------------------------------------------------
+Destino: OAKB
+Cantidad total: 210 productos
+Fecha limite: Dia 13 a las 18:10
+Plazo calculado: 2025-01-15T18:10 (2 dias)
+
+Entregas planificadas: 1
+
+  >>> ENTREGA 1 de 1
+      Cantidad: 210 productos (100.0% del total)
+      Origen: EBCI
+      Destino: OAKB
+      Cumple plazo: SI
+
+      Ruta (1 segmento):
+        1. EBCI -> OAKB
+           Vuelo: EBCI-OAKB-0023-20250113
+           Salida: 2025-01-13T00:23
+           Llegada: 2025-01-13T10:15
+           Duracion: 9h 52m
+
+      Tiempo total de entrega:
+        Salida: 2025-01-13T00:23
+        Llegada: 2025-01-13T10:15
+        Duracion total: 9h 52m
+
+RESUMEN DEL PEDIDO:
+  Cantidad entregada: 210/210 (100.0%)
+  Estado: COMPLETO
+  Cumplimiento: A TIEMPO
+
+------------------------------------------------------------------
+PEDIDO #16: 15-01-20-OSDI-330-0000127
+------------------------------------------------------------------
+Destino: OSDI
+Cantidad total: 330 productos
+Fecha limite: Dia 15 a las 01:20
+Plazo calculado: 2025-01-17T01:20 (2 dias)
+
+Entregas planificadas: 1
+
+  >>> ENTREGA 1 de 1
+      Cantidad: 330 productos (100.0% del total)
+      Origen: SPIM
+      Destino: OSDI
+      Cumple plazo: SI
+
+      Ruta (1 segmento):
+        1. SPIM -> OSDI
+           Vuelo: SPIM-OSDI-1718-20250115
+           Salida: 2025-01-15T17:18
+           Llegada: 2025-01-15T19:29
+           Duracion: 2h 11m
+
+      Tiempo total de entrega:
+        Salida: 2025-01-15T17:18
+        Llegada: 2025-01-15T19:29
+        Duracion total: 2h 11m
+
+RESUMEN DEL PEDIDO:
+  Cantidad entregada: 330/330 (100.0%)
+  Estado: COMPLETO
+  Cumplimiento: A TIEMPO
+
+------------------------------------------------------------------
+PEDIDO #17: 18-01-38-SEQM-230-0000174
+------------------------------------------------------------------
+Destino: SEQM
+Cantidad total: 230 productos
+Fecha limite: Dia 18 a las 01:38
+Plazo calculado: 2025-01-20T01:38 (2 dias)
+
+Entregas planificadas: 1
+
+  >>> ENTREGA 1 de 1
+      Cantidad: 230 productos (100.0% del total)
+      Origen: EBCI
+      Destino: SEQM
+      Cumple plazo: SI
+
+      Ruta (1 segmento):
+        1. EBCI -> SEQM
+           Vuelo: EBCI-SEQM-0455-20250118
+           Salida: 2025-01-18T04:55
+           Llegada: 2025-01-18T10:47
+           Duracion: 5h 52m
+
+      Tiempo total de entrega:
+        Salida: 2025-01-18T04:55
+        Llegada: 2025-01-18T10:47
+        Duracion total: 5h 52m
+
+RESUMEN DEL PEDIDO:
+  Cantidad entregada: 230/230 (100.0%)
+  Estado: COMPLETO
+  Cumplimiento: A TIEMPO
+
+------------------------------------------------------------------
+PEDIDO #18: 26-03-03-OYSN-293-0000004
+------------------------------------------------------------------
+Destino: OYSN
+Cantidad total: 293 productos
+Fecha limite: Dia 26 a las 03:03
+Plazo calculado: 2025-01-28T03:03 (2 dias)
+
+Entregas planificadas: 1
+
+  >>> ENTREGA 1 de 1
+      Cantidad: 293 productos (100.0% del total)
+      Origen: SPIM
+      Destino: OYSN
+      Cumple plazo: SI
+
+      Ruta (1 segmento):
+        1. SPIM -> OYSN
+           Vuelo: SPIM-OYSN-1938-20250126
+           Salida: 2025-01-26T19:38
+           Llegada: 2025-01-26T22:48
+           Duracion: 3h 10m
+
+      Tiempo total de entrega:
+        Salida: 2025-01-26T19:38
+        Llegada: 2025-01-26T22:48
+        Duracion total: 3h 10m
+
+RESUMEN DEL PEDIDO:
+  Cantidad entregada: 293/293 (100.0%)
+  Estado: COMPLETO
+  Cumplimiento: A TIEMPO
+
+------------------------------------------------------------------
+PEDIDO #19: 21-17-08-LATI-325-0000002
+------------------------------------------------------------------
+Destino: LATI
+Cantidad total: 325 productos
+Fecha limite: Dia 21 a las 17:08
+Plazo calculado: 2025-01-23T17:08 (2 dias)
+
+Entregas planificadas: 1
+
+  >>> ENTREGA 1 de 1
+      Cantidad: 325 productos (100.0% del total)
+      Origen: EBCI
+      Destino: LATI
+      Cumple plazo: SI
+
+      Ruta (1 segmento):
+        1. EBCI -> LATI
+           Vuelo: EBCI-LATI-1839-20250122
+           Salida: 2025-01-22T18:39
+           Llegada: 2025-01-22T21:34
+           Duracion: 2h 55m
+
+      Tiempo total de entrega:
+        Salida: 2025-01-22T18:39
+        Llegada: 2025-01-22T21:34
+        Duracion total: 2h 55m
+
+RESUMEN DEL PEDIDO:
+  Cantidad entregada: 325/325 (100.0%)
+  Estado: COMPLETO
+  Cumplimiento: A TIEMPO
+
+------------------------------------------------------------------
+PEDIDO #20: 06-14-26-SLLP-247-0000212
+------------------------------------------------------------------
+Destino: SLLP
+Cantidad total: 247 productos
+Fecha limite: Dia 6 a las 14:26
+Plazo calculado: 2025-01-08T14:26 (2 dias)
+
+Entregas planificadas: 1
+
+  >>> ENTREGA 1 de 1
+      Cantidad: 247 productos (100.0% del total)
+      Origen: UBBB
+      Destino: SLLP
+      Cumple plazo: SI
+
+      Ruta (1 segmento):
+        1. UBBB -> SLLP
+           Vuelo: UBBB-SLLP-0933-20250106
+           Salida: 2025-01-06T09:33
+           Llegada: 2025-01-06T22:33
+           Duracion: 13h 0m
+
+      Tiempo total de entrega:
+        Salida: 2025-01-06T09:33
+        Llegada: 2025-01-06T22:33
+        Duracion total: 13h 0m
+
+RESUMEN DEL PEDIDO:
+  Cantidad entregada: 247/247 (100.0%)
+  Estado: COMPLETO
+  Cumplimiento: A TIEMPO
+
+==============================================================
+Total de pedidos mostrados: 20 de 499
+==============================================================
+
+==============================================================
+                  EJECUCION COMPLETADA                        
+==============================================================
+
+[INFO] Ejecucion completada
+Presione una tecla para continuar . . . 

@@ -6,6 +6,7 @@ import morapack.datos.cargadores.CargadorPedidos;
 import morapack.datos.cargadores.CargadorException;
 
 import java.io.IOException;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -36,6 +37,11 @@ public class RedDistribucion {
     private Map<String, List<String>> cacheRutasMinimas;
     private boolean cacheRutasConstruido = false;
 
+    // NUEVO: Gestión de instancias de vuelos diarios
+    private Map<String, VueloInstancia> instanciasVuelos; // Key: idInstancia (vuelo-fecha)
+    private int mesOperacion;
+    private int anioOperacion;
+
     // Configuración
     private int tiempoMinimoConexion = 60; // minutos
     private LocalDateTime tiempoReferencia;
@@ -51,6 +57,7 @@ public class RedDistribucion {
         this.grafoConectividad = new HashMap<>();
         this.vuelosPorRuta = new HashMap<>();
         this.cacheRutasMinimas = new HashMap<>();
+        this.instanciasVuelos = new HashMap<>();
         this.tiempoReferencia = LocalDateTime.now();
     }
 
@@ -67,6 +74,10 @@ public class RedDistribucion {
                            int mes, int anio) throws Exception {
 
         System.out.println("Inicializando Red de Distribución MoraPack...");
+
+        // Guardar mes y año de operación
+        this.mesOperacion = mes;
+        this.anioOperacion = anio;
 
         // Cargar aeropuertos
         System.out.println("Cargando aeropuertos...");
@@ -470,4 +481,296 @@ public class RedDistribucion {
     public void setTiempoReferencia(LocalDateTime tiempoReferencia) {
         this.tiempoReferencia = tiempoReferencia;
     }
+
+    // ========================================================================
+    // MÉTODOS NUEVOS: Gestión de vuelos diarios con VueloInstancia
+    // ========================================================================
+
+    /**
+     * Busca instancias de vuelos disponibles en un rango de fechas.
+     * Considera que cada plan de vuelo se repite diariamente.
+     *
+     * @param origen Código ICAO del aeropuerto origen
+     * @param destino Código ICAO del aeropuerto destino
+     * @param fechaInicio Fecha de inicio de búsqueda (inclusive)
+     * @param fechaFin Fecha de fin de búsqueda (exclusive)
+     * @return Lista de instancias de vuelos disponibles
+     */
+    public List<VueloInstancia> buscarVuelosDisponiblesEnRango(String origen, String destino,
+                                                                LocalDate fechaInicio, LocalDate fechaFin) {
+        List<VueloInstancia> instancias = new ArrayList<>();
+
+        // Obtener plantillas de vuelos para esta ruta
+        List<Vuelo> plantillas = buscarVuelosDirectos(origen, destino);
+
+        // Expandir cada plantilla para todos los días en el rango
+        for (Vuelo plantilla : plantillas) {
+            for (LocalDate fecha = fechaInicio; fecha.isBefore(fechaFin); fecha = fecha.plusDays(1)) {
+                VueloInstancia instancia = obtenerOCrearInstancia(plantilla, fecha);
+                if (instancia.getCapacidadDisponible() > 0) {
+                    instancias.add(instancia);
+                }
+            }
+        }
+
+        return instancias;
+    }
+
+    /**
+     * Busca instancias de vuelos disponibles para una fecha específica.
+     *
+     * @param origen Código ICAO del aeropuerto origen
+     * @param destino Código ICAO del aeropuerto destino
+     * @param fecha Fecha específica
+     * @return Lista de instancias de vuelos disponibles ese día
+     */
+    public List<VueloInstancia> buscarVuelosDisponiblesEnFecha(String origen, String destino, LocalDate fecha) {
+        return buscarVuelosDisponiblesEnRango(origen, destino, fecha, fecha.plusDays(1));
+    }
+
+    /**
+     * Obtiene o crea una instancia de vuelo para una fecha específica.
+     * Implementa patrón lazy loading con caché.
+     *
+     * @param plantilla Vuelo plantilla del plan de vuelo
+     * @param fecha Fecha específica
+     * @return Instancia de vuelo para esa fecha
+     */
+    public VueloInstancia obtenerOCrearInstancia(Vuelo plantilla, LocalDate fecha) {
+        if (plantilla == null || fecha == null) {
+            throw new IllegalArgumentException("Plantilla y fecha no pueden ser null");
+        }
+
+        // Generar ID de instancia
+        String idInstancia = String.format("%s-%04d%02d%02d",
+            plantilla.getIdVuelo(),
+            fecha.getYear(),
+            fecha.getMonthValue(),
+            fecha.getDayOfMonth()
+        );
+
+        // Buscar en caché o crear nueva instancia
+        return instanciasVuelos.computeIfAbsent(idInstancia,
+            k -> new VueloInstancia(plantilla, fecha)
+        );
+    }
+
+    /**
+     * Obtiene una instancia de vuelo específica si existe.
+     *
+     * @param idInstancia ID de la instancia (formato: VUELO-YYYYMMDD)
+     * @return Instancia de vuelo o null si no existe
+     */
+    public VueloInstancia getInstanciaVuelo(String idInstancia) {
+        return instanciasVuelos.get(idInstancia);
+    }
+
+    /**
+     * Reserva capacidad en una instancia específica de vuelo.
+     *
+     * @param instancia Instancia de vuelo
+     * @param cantidad Cantidad a reservar
+     * @return true si se pudo reservar
+     */
+    public boolean reservarCapacidadEnInstancia(VueloInstancia instancia, int cantidad) {
+        if (instancia == null) {
+            return false;
+        }
+
+        return instancia.reservarCapacidad(cantidad);
+    }
+
+    /**
+     * Libera capacidad en una instancia específica de vuelo.
+     *
+     * @param instancia Instancia de vuelo
+     * @param cantidad Cantidad a liberar
+     */
+    public void liberarCapacidadEnInstancia(VueloInstancia instancia, int cantidad) {
+        if (instancia != null) {
+            instancia.liberarCapacidad(cantidad);
+        }
+    }
+
+    /**
+     * Reinicia las capacidades de todas las instancias de vuelos creadas.
+     * También reinicia capacidades de vuelos plantilla y aeropuertos.
+     */
+    public void reiniciarTodasLasCapacidades() {
+        // Reiniciar instancias
+        for (VueloInstancia instancia : instanciasVuelos.values()) {
+            instancia.reiniciarCapacidad();
+        }
+
+        // Reiniciar plantillas
+        for (Vuelo vuelo : vuelos.values()) {
+            vuelo.reiniciarCapacidad();
+        }
+
+        // Reiniciar aeropuertos
+        for (Aeropuerto aeropuerto : aeropuertos.values()) {
+            aeropuerto.reiniciarCapacidad();
+        }
+    }
+
+    /**
+     * Busca rutas con conexiones considerando ventanas temporales.
+     * Permite encontrar rutas que requieren múltiples días.
+     *
+     * @param origen Código ICAO del aeropuerto origen
+     * @param destino Código ICAO del aeropuerto destino
+     * @param fechaInicio Fecha de inicio de búsqueda
+     * @param fechaLimite Fecha límite de entrega
+     * @param maxEscalas Número máximo de escalas permitidas
+     * @return Lista de rutas posibles con instancias de vuelos
+     */
+    public List<List<VueloInstancia>> buscarRutasConConexiones(String origen, String destino,
+                                                                LocalDate fechaInicio, LocalDate fechaLimite,
+                                                                int maxEscalas) {
+        List<List<VueloInstancia>> rutasEncontradas = new ArrayList<>();
+
+        // Primero intentar vuelos directos en todo el rango
+        List<VueloInstancia> vuelosDirectos = buscarVuelosDisponiblesEnRango(origen, destino, fechaInicio, fechaLimite);
+        for (VueloInstancia vuelo : vuelosDirectos) {
+            List<VueloInstancia> ruta = new ArrayList<>();
+            ruta.add(vuelo);
+            rutasEncontradas.add(ruta);
+        }
+
+        // Si no hay vuelos directos o se permiten escalas, buscar rutas con conexiones
+        if (maxEscalas > 0) {
+            List<String> rutaMinima = buscarRutaMinima(origen, destino);
+            if (rutaMinima != null && rutaMinima.size() > 1 && rutaMinima.size() <= maxEscalas + 2) {
+                // Construir rutas con escalas para diferentes fechas
+                for (LocalDate fecha = fechaInicio; fecha.isBefore(fechaLimite.minusDays(1)); fecha = fecha.plusDays(1)) {
+                    List<VueloInstancia> rutaConEscalas = construirRutaConEscalas(rutaMinima, fecha, fechaLimite);
+                    if (rutaConEscalas != null && !rutaConEscalas.isEmpty()) {
+                        rutasEncontradas.add(rutaConEscalas);
+                    }
+                }
+            }
+        }
+
+        return rutasEncontradas;
+    }
+
+    /**
+     * Construye una ruta con escalas para una fecha de inicio específica.
+     * Verifica tiempos de conexión y llegada dentro del límite.
+     *
+     * @param rutaAeropuertos Lista de aeropuertos en la ruta
+     * @param fechaInicio Fecha de inicio del primer vuelo
+     * @param fechaLimite Fecha límite de llegada
+     * @return Lista de instancias de vuelos o null si no es factible
+     */
+    private List<VueloInstancia> construirRutaConEscalas(List<String> rutaAeropuertos,
+                                                         LocalDate fechaInicio, LocalDate fechaLimite) {
+        List<VueloInstancia> segmentos = new ArrayList<>();
+        LocalDateTime tiempoActual = fechaInicio.atStartOfDay();
+
+        for (int i = 0; i < rutaAeropuertos.size() - 1; i++) {
+            String origenSegmento = rutaAeropuertos.get(i);
+            String destinoSegmento = rutaAeropuertos.get(i + 1);
+
+            // Buscar vuelos disponibles desde el tiempo actual
+            LocalDate fechaBusqueda = tiempoActual.toLocalDate();
+            List<VueloInstancia> vuelosDisponibles = buscarVuelosDisponiblesEnFecha(
+                origenSegmento, destinoSegmento, fechaBusqueda
+            );
+
+            // Filtrar vuelos que salen después del tiempo actual
+            VueloInstancia vueloSeleccionado = null;
+            for (VueloInstancia vuelo : vuelosDisponibles) {
+                if (vuelo.getHorarioSalidaCompleto().isAfter(tiempoActual.plusMinutes(tiempoMinimoConexion))) {
+                    vueloSeleccionado = vuelo;
+                    break;
+                }
+            }
+
+            if (vueloSeleccionado == null) {
+                // Intentar al día siguiente
+                fechaBusqueda = fechaBusqueda.plusDays(1);
+                if (fechaBusqueda.isAfter(fechaLimite)) {
+                    return null; // No hay tiempo suficiente
+                }
+
+                vuelosDisponibles = buscarVuelosDisponiblesEnFecha(origenSegmento, destinoSegmento, fechaBusqueda);
+                if (!vuelosDisponibles.isEmpty()) {
+                    vueloSeleccionado = vuelosDisponibles.get(0);
+                } else {
+                    return null; // No hay vuelos disponibles
+                }
+            }
+
+            segmentos.add(vueloSeleccionado);
+            tiempoActual = vueloSeleccionado.getHorarioLlegadaCompleto();
+
+            // Verificar que no exceda el límite
+            if (tiempoActual.toLocalDate().isAfter(fechaLimite)) {
+                return null;
+            }
+        }
+
+        return segmentos;
+    }
+
+    /**
+     * Obtiene estadísticas de uso de instancias de vuelos.
+     *
+     * @return String con estadísticas de instancias creadas y utilizadas
+     */
+    public String getEstadisticasInstancias() {
+        int totalInstancias = instanciasVuelos.size();
+        long instanciasUsadas = instanciasVuelos.values().stream()
+            .filter(inst -> inst.getCapacidadDisponible() < inst.getCapacidadMaxima())
+            .count();
+
+        int capacidadTotalDisponible = instanciasVuelos.values().stream()
+            .mapToInt(VueloInstancia::getCapacidadDisponible)
+            .sum();
+
+        int capacidadTotalMaxima = instanciasVuelos.values().stream()
+            .mapToInt(VueloInstancia::getCapacidadMaxima)
+            .sum();
+
+        double porcentajeUso = capacidadTotalMaxima > 0
+            ? ((double)(capacidadTotalMaxima - capacidadTotalDisponible) / capacidadTotalMaxima) * 100.0
+            : 0.0;
+
+        return String.format("Instancias de Vuelos: %d creadas | %d usadas | %.1f%% ocupación",
+            totalInstancias, instanciasUsadas, porcentajeUso);
+    }
+
+    /**
+     * Calcula el número de días del mes de operación.
+     *
+     * @return Número de días en el mes
+     */
+    public int getDiasDelMes() {
+        LocalDate primerDia = LocalDate.of(anioOperacion, mesOperacion, 1);
+        return primerDia.lengthOfMonth();
+    }
+
+    /**
+     * Obtiene la fecha de inicio del mes de operación.
+     *
+     * @return Fecha del primer día del mes
+     */
+    public LocalDate getFechaInicioMes() {
+        return LocalDate.of(anioOperacion, mesOperacion, 1);
+    }
+
+    /**
+     * Obtiene la fecha de fin del mes de operación.
+     *
+     * @return Fecha del último día del mes
+     */
+    public LocalDate getFechaFinMes() {
+        return LocalDate.of(anioOperacion, mesOperacion, getDiasDelMes());
+    }
+
+    // Getters adicionales
+    public int getMesOperacion() { return mesOperacion; }
+    public int getAnioOperacion() { return anioOperacion; }
+    public Map<String, VueloInstancia> getInstanciasVuelos() { return new HashMap<>(instanciasVuelos); }
 }

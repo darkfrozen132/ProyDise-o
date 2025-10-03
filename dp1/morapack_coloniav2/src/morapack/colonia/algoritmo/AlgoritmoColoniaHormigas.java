@@ -178,10 +178,13 @@ public class AlgoritmoColoniaHormigas {
 
         // 2. Construcción de soluciones
         List<Solucion> solucionesIteracion = new ArrayList<>();
+        int solucionesRechazadas = 0;
         for (Hormiga hormiga : colonia) {
             Solucion solucion = hormiga.construirSolucion(problema, feromona, heuristica);
             if (problema.esSolucionValida(solucion)) {
                 solucionesIteracion.add(solucion);
+            } else {
+                solucionesRechazadas++;
             }
         }
 
@@ -400,10 +403,17 @@ public class AlgoritmoColoniaHormigas {
      * Muestra el progreso del algoritmo
      */
     private void mostrarProgreso() {
-        System.out.printf("Iteración %d/%d - Mejor fitness: %.4f - Sin mejora: %d%n",
-            iteracionActual, maxIteraciones,
-            mejorSolucionGlobal != null ? mejorSolucionGlobal.getFitness() : Double.MIN_VALUE,
-            iteracionesSinMejora);
+        double fitnessActual = mejorSolucionGlobal != null ? mejorSolucionGlobal.getFitness() : 0.0;
+        String fitnessStr;
+        if (fitnessActual < 0.01) {
+            fitnessStr = String.format("%.4e", fitnessActual);
+        } else if (fitnessActual < 100) {
+            fitnessStr = String.format("%.4f", fitnessActual);
+        } else {
+            fitnessStr = String.format("%.2f", fitnessActual);
+        }
+        System.out.printf("Iteración %d/%d - Mejor fitness: %s - Sin mejora: %d%n",
+            iteracionActual, maxIteraciones, fitnessStr, iteracionesSinMejora);
     }
 
     /**

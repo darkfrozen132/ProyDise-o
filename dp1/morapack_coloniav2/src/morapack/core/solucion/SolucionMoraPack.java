@@ -17,6 +17,9 @@ public class SolucionMoraPack extends Solucion {
     private boolean cumplePlazos;
     private boolean validacionRealizada;
 
+    // RASTREO DE CAPACIDAD: Mapa de ID de vuelo instancia -> cantidad usada en esta solución
+    private final Map<String, Integer> capacidadUsadaPorVuelo;
+
     /**
      * Constructor por defecto
      */
@@ -26,6 +29,7 @@ public class SolucionMoraPack extends Solucion {
         this.tiempoCreacion = LocalDateTime.now();
         this.cumplePlazos = true;
         this.validacionRealizada = false;
+        this.capacidadUsadaPorVuelo = new HashMap<>();
     }
 
     /**
@@ -38,6 +42,7 @@ public class SolucionMoraPack extends Solucion {
         this.tiempoCreacion = LocalDateTime.now();
         this.cumplePlazos = otra.cumplePlazos;
         this.validacionRealizada = otra.validacionRealizada;
+        this.capacidadUsadaPorVuelo = new HashMap<>(otra.capacidadUsadaPorVuelo);
 
         // Copiar rutas profundamente
         for (Map.Entry<Integer, List<RutaProducto>> entrada : otra.rutasPorPedido.entrySet()) {
@@ -508,5 +513,55 @@ public class SolucionMoraPack extends Solucion {
         public String toString() {
             return String.format("%s (%s->%s)", idVuelo, aeropuertoOrigen, aeropuertoDestino);
         }
+    }
+
+    // ==================== MÉTODOS DE RASTREO DE CAPACIDAD ====================
+
+    /**
+     * Registra el uso de capacidad en un vuelo específico
+     * @param idVueloInstancia ID de la instancia de vuelo
+     * @param cantidad Cantidad de productos a transportar
+     */
+    public void registrarUsoCapacidad(String idVueloInstancia, int cantidad) {
+        capacidadUsadaPorVuelo.merge(idVueloInstancia, cantidad, Integer::sum);
+    }
+
+    /**
+     * Obtiene la capacidad ya usada en un vuelo en esta solución
+     * @param idVueloInstancia ID de la instancia de vuelo
+     * @return Cantidad de productos ya asignados a este vuelo
+     */
+    public int getCapacidadUsada(String idVueloInstancia) {
+        return capacidadUsadaPorVuelo.getOrDefault(idVueloInstancia, 0);
+    }
+
+    /**
+     * Calcula la capacidad disponible restante en un vuelo para esta solución
+     * @param idVueloInstancia ID de la instancia de vuelo
+     * @param capacidadMaxima Capacidad máxima del vuelo
+     * @return Capacidad disponible (capacidadMaxima - capacidadUsada)
+     */
+    public int getCapacidadDisponible(String idVueloInstancia, int capacidadMaxima) {
+        int usada = getCapacidadUsada(idVueloInstancia);
+        return Math.max(0, capacidadMaxima - usada);
+    }
+
+    /**
+     * Verifica si un vuelo tiene capacidad suficiente para una cantidad
+     * @param idVueloInstancia ID de la instancia de vuelo
+     * @param capacidadMaxima Capacidad máxima del vuelo
+     * @param cantidadRequerida Cantidad que se desea transportar
+     * @return true si hay capacidad suficiente
+     */
+    public boolean tieneCapacidadDisponible(String idVueloInstancia, int capacidadMaxima, int cantidadRequerida) {
+        return getCapacidadDisponible(idVueloInstancia, capacidadMaxima) >= cantidadRequerida;
+    }
+
+    /**
+     * Obtiene el mapa completo de uso de capacidad (para debugging/validación)
+     * @return Mapa inmutable de ID vuelo -> cantidad usada
+     */
+    public Map<String, Integer> getCapacidadUsadaPorVuelo() {
+        return Collections.unmodifiableMap(capacidadUsadaPorVuelo);
     }
 }

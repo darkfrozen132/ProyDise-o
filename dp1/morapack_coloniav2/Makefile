@@ -14,8 +14,9 @@ MAIN_SRC = $(SRCDIR)/morapack/main
 
 # Archivos Java
 CORE_FILES = $(CORE_SRC)/solucion/Solucion.java \
+             $(CORE_SRC)/solucion/SolucionMoraPack.java \
              $(CORE_SRC)/problema/Problema.java \
-             $(CORE_SRC)/problema/ProblemaTSP.java
+             $(CORE_SRC)/problema/ProblemaMoraPack.java
 
 COLONIA_FILES = $(COLONIA_SRC)/componentes/Hormiga.java \
                 $(COLONIA_SRC)/componentes/Feromona.java \

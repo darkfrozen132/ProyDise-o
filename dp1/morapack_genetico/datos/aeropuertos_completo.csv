@@ -1,0 +1,30 @@
+Numero,CodigoICAO,Ciudad,Pais,CodigoCiudad,HusoHorario,Capacidad,Latitud,Longitud,Continente
+01,SKBO,Bogota,Colombia,bogo,-5,430,4.701389,-74.146944,America_del_Sur
+02,SEQM,Quito,Ecuador,quit,-5,410,0.113333,-78.358611,America_del_Sur
+03,SVMI,Caracas,Venezuela,cara,-4,400,10.603056,-66.990556,America_del_Sur
+04,SBBR,Brasilia,Brasil,bras,-3,480,-15.864722,-47.918056,America_del_Sur
+05,SPIM,Lima,Perú,lima,-5,440,-12.021944,-77.114444,America_del_Sur
+06,SLLP,La Paz,Bolivia,lapa,-4,420,-16.513056,-68.192222,America_del_Sur
+07,SCEL,Santiago de Chile,Chile,sant,-3,460,-33.396389,-70.794722,America_del_Sur
+08,SABE,Buenos Aires,Argentina,buen,-3,460,-34.559167,-58.415556,America_del_Sur
+09,SGAS,Asunción,Paraguay,asun,-4,400,-25.240000,-57.520000,America_del_Sur
+10,SUAA,Motenvideo,Uruguay,mont,-3,400,-34.789167,-56.264722,America_del_Sur
+11,LATI,Tirana,Albania,tira,+2,410,41.414722,19.720556,Europa
+12,EDDI,Berlin,Alemania,berl,+2,480,52.473611,13.401667,Europa
+13,LOWW,Viena,Austria,vien,+2,430,48.110833,16.570833,Europa
+14,EBCI,Bruselas,Belgica,brus,+2,440,50.459167,4.453611,Europa
+15,UMMS,Minsk,Bielorrusia,mins,+3,400,53.882500,28.032500,Europa
+16,LBSF,Sofia,Bulgaria,sofi,+3,400,42.690278,23.404722,Europa
+17,LKPR,Praga,Checa,prag,+2,400,50.101389,14.265556,Europa
+18,LDZA,Zagreb,Croacia,zagr,+2,420,45.742778,16.068611,Europa
+19,EKCH,Copenhague,Dinamarca,cope,+2,480,55.618056,12.656111,Europa
+20,EHAM,Amsterdam,Holanda,amst,+2,480,52.300000,4.765000,Europa
+21,VIDP,Delhi,India,delh,+5,480,28.566389,77.103056,Asia
+22,OSDI,Damasco,Siria,dama,+3,400,33.411389,36.515556,Asia
+23,OERK,Riad                Arabia,Saudita,riad,+3,420,24.957778,46.698889,Asia
+24,OAKB,Kabul,Afganistan,kabu,+4,480,34.565556,69.210833,Asia
+25,OOMS,Mascate,Oman,masc,+4,460,23.589444,58.284167,Asia
+26,OYSN,Sana,Yemen,sana,+3,420,15.476111,44.219722,Asia
+27,OPKC,Karachi,Pakistan,kara,+5,410,0.0,67.150000,Asia
+28,UBBB,Baku,Azerbaiyan,baku,+2,400,40.467222,50.046667,Asia
+29,OJAI,Aman,Jordania,aman,+3,400,31.722500,35.993333,Asia

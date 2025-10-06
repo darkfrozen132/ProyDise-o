@@ -53,7 +53,8 @@ public class Producto {
         this.pedidoOrigenId = pedidoOriginal.getId();
         this.numeroSecuencial = numeroSecuencial;
         this.totalProductosEnPedido = totalProductos;
-        this.aeropuertoOrigenId = pedidoOriginal.getAeropuertoOrigenId();
+    // Puede no existir origen explícito aún; se permitirá null y se usará destino como fallback para tiempos
+    this.aeropuertoOrigenId = pedidoOriginal.getAeropuertoOrigenId();
         this.aeropuertoDestinoId = pedidoOriginal.getAeropuertoDestinoId();
         this.estado = "PENDIENTE";
         this.tipoRuta = "PENDIENTE_ASIGNACION";
@@ -70,27 +71,42 @@ public class Producto {
      * Convierte los tiempos del pedido original a UTC considerando zonas horarias
      */
     private void convertirTiemposAUTC(Pedido pedido, ZoneId zonaOrigen, ZoneId zonaDestino) {
-        
-        // Hora de creación del producto (usando zona del origen)
+        // Fallback: si no hay zona origen usar zona destino; si tampoco, UTC
+        ZoneId zonaBaseOrigen = zonaOrigen != null ? zonaOrigen : (zonaDestino != null ? zonaDestino : ZoneId.of("UTC"));
+        ZoneId zonaBaseDestino = zonaDestino != null ? zonaDestino : zonaBaseOrigen;
+
         LocalDateTime fechaCreacion = pedido.getFechaCreacion();
-        this.horaCreacionUTC = ZonedDateTime.of(fechaCreacion, zonaOrigen).withZoneSameInstant(ZoneId.of("UTC"));
-        
-        // Hora mínima de partida: hora del pedido + tiempo preparación (zona origen)
+        if (fechaCreacion == null) {
+            fechaCreacion = LocalDateTime.now();
+        }
+
+        // Normalizar día a longitud del mes
+        int diaAjustado;
+        try {
+            diaAjustado = Math.min(pedido.getDia(), fechaCreacion.toLocalDate().lengthOfMonth());
+            if (diaAjustado < 1) diaAjustado = 1;
+        } catch (Exception ex) {
+            diaAjustado = Math.min(28, Math.max(1, pedido.getDia()));
+        }
+
+        this.horaCreacionUTC = ZonedDateTime.of(fechaCreacion, zonaBaseOrigen).withZoneSameInstant(ZoneId.of("UTC"));
+
         LocalDateTime fechaPedido = LocalDateTime.of(
-            fechaCreacion.getYear(), 
+            fechaCreacion.getYear(),
             fechaCreacion.getMonth(),
-            pedido.getDia(), 
-            pedido.getHora(), 
+            diaAjustado,
+            pedido.getHora(),
             pedido.getMinuto()
         );
-        
-        // Agregar 30 minutos de preparación
+
         LocalDateTime fechaMinimaPartida = fechaPedido.plusMinutes(30);
-        this.horaMinimaPartidaUTC = ZonedDateTime.of(fechaMinimaPartida, zonaOrigen).withZoneSameInstant(ZoneId.of("UTC"));
-        
-        // Hora máxima de llegada (zona destino)
+        this.horaMinimaPartidaUTC = ZonedDateTime.of(fechaMinimaPartida, zonaBaseOrigen).withZoneSameInstant(ZoneId.of("UTC"));
+
         LocalDateTime fechaLimite = pedido.getFechaLimiteEntrega();
-        this.horaMaximaLlegadaUTC = ZonedDateTime.of(fechaLimite, zonaDestino).withZoneSameInstant(ZoneId.of("UTC"));
+        if (fechaLimite == null) {
+            fechaLimite = fechaPedido.plusDays(3);
+        }
+        this.horaMaximaLlegadaUTC = ZonedDateTime.of(fechaLimite, zonaBaseDestino).withZoneSameInstant(ZoneId.of("UTC"));
     }
     
     /**

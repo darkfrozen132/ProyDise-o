@@ -8,9 +8,8 @@ import java.util.*;
 
 public class PlanificadorTemporalConUTCyPlazos {
     
-    private static final int TIEMPO_PREPARACION_MINUTOS = 30; // 30 min antes del vuelo
-    private static final int MIN_CONEXION_MINUTOS = 30;       // Tiempo mínimo entre conexiones
-    private static final int MAX_ESCALAS = 3;                 // Máximo 3 escalas
+    private static final int TIEMPO_PREPARACION_MINUTOS = 30; // Preparación antes de primer vuelo y entre conexiones
+    private static final int MAX_ESCALAS = 6;                 // Hasta 6 escalas permitidas
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
     
     private final Map<String, List<Vuelo>> vuelosPorOrigen;
@@ -81,152 +80,80 @@ public class PlanificadorTemporalConUTCyPlazos {
             System.out.println("   🌙 Pedido nocturno detectado (UTC)");
         }
         
-        return construirRutaTemporalConPlazos(sedeOrigen, destino, cantidad, 
-                                            tiempoMinimoSalidaUTC, new HashSet<>(), 
-                                            pedido.getDia(), esNocturno, plazoMaximo, 
-                                            horaPedidoUTC, pedido.getDia());
+        // Backtracking: explorar todas las rutas viables y elegir la de llegada más temprana
+        List<RutaEvaluada> candidatas = new ArrayList<>();
+        explorarRutas(sedeOrigen, destino, cantidad, tiempoMinimoSalidaUTC, new LinkedHashSet<>(),
+                pedido.getDia(), esNocturno, plazoMaximo, horaPedidoUTC, pedido.getDia(), candidatas, 0);
+
+        if (candidatas.isEmpty()) return null;
+        candidatas.sort(Comparator.comparingLong(r -> r.minutoLlegadaAbsoluto));
+        return candidatas.get(0).ruta;
     }
     
-    /**
-     * Construye una ruta temporal considerando plazos máximos
-     */
-    private RutaCompleta construirRutaTemporalConPlazos(String origen, String destino, int cantidad,
-                                                      int tiempoMinimo, Set<String> visitados, 
-                                                      int diaInicial, boolean esNocturno, int plazoMaximo,
-                                                      LocalTime horaPedidoUTC, int diaPedido) {
-        
-        // Prevenir ciclos infinitos
-        if (visitados.contains(origen) || visitados.size() >= MAX_ESCALAS) {
-            return null;
-        }
-        
+    // Estructura para evaluar rutas
+    private static class RutaEvaluada { RutaCompleta ruta; long minutoLlegadaAbsoluto; RutaEvaluada(RutaCompleta r,long m){ruta=r;minutoLlegadaAbsoluto=m;} }
+
+    private void explorarRutas(String origen, String destino, int cantidad, int tiempoMinimoUTC,
+                                LinkedHashSet<String> visitados, int diaActual, boolean esNocturno,
+                                int plazoMaximo, LocalTime horaPedidoUTC, int diaPedido,
+                                List<RutaEvaluada> candidatas, int profundidad) {
+
+        if (visitados.contains(origen) || profundidad > MAX_ESCALAS) return;
         visitados.add(origen);
-        
-        // Buscar vuelos desde el origen
+
         List<Vuelo> vuelosDesdeOrigen = vuelosPorOrigen.get(origen);
-        if (vuelosDesdeOrigen == null || vuelosDesdeOrigen.isEmpty()) {
-            return null;
-        }
-        
-        // 🎯 BÚSQUEDA DIRECTA: Buscar vuelo directo al destino
+        if (vuelosDesdeOrigen == null) { visitados.remove(origen); return; }
+
         for (Vuelo vuelo : vuelosDesdeOrigen) {
+            LocalTime horaSalidaLocal = LocalTime.parse(vuelo.getHoraSalida());
+            LocalTime horaLlegadaLocal = LocalTime.parse(vuelo.getHoraLlegada());
+            LocalTime horaSalidaUTC = GestorUTCyContinentesCSV.convertirAUTC(origen, horaSalidaLocal);
+            LocalTime horaLlegadaUTC = GestorUTCyContinentesCSV.convertirAUTC(vuelo.getDestino(), horaLlegadaLocal);
+
+            int minutosSalidaUTC = horaSalidaUTC.getHour()*60 + horaSalidaUTC.getMinute();
+            int minutosLlegadaUTC = horaLlegadaUTC.getHour()*60 + horaLlegadaUTC.getMinute();
+
+            boolean disponible = (esNocturno || tiempoMinimoUTC > 24*60) || minutosSalidaUTC >= tiempoMinimoUTC;
+            if (!disponible) continue;
+
+            // Día de llegada (suma 1 si cruza medianoche en UTC)
+            int diaLlegada = diaActual + ((horaLlegadaUTC.isBefore(horaSalidaUTC)) ? 1 : 0);
+
+            // Validar plazo (llegada global)
+            boolean cumplePlazo = GestorUTCyContinentesCSV.validarPlazoRuta(
+                origen, vuelo.getDestino(), horaPedidoUTC, diaPedido, horaLlegadaUTC, diaLlegada);
+            if (!cumplePlazo) continue;
+
+            // Capacidad (no parcial todavía)
+            String clave = vuelo.getOrigen()+"-"+vuelo.getDestino()+"-"+vuelo.getHoraSalida()+"-"+diaActual;
+            int usada = capacidadUsada.getOrDefault(clave,0);
+            if (vuelo.getCapacidad() - usada < cantidad) continue;
+
+            // Clonar ruta base
+            RutaCompleta rutaParcial = new RutaCompleta();
+            rutaParcial.agregarVuelo(vuelo);
+
             if (vuelo.getDestino().equals(destino)) {
-                
-                // Convertir horarios del vuelo a UTC
-                LocalTime horaSalidaLocal = LocalTime.parse(vuelo.getHoraSalida());
-                LocalTime horaLlegadaLocal = LocalTime.parse(vuelo.getHoraLlegada());
-                
-                LocalTime horaSalidaUTC = GestorUTCyContinentesCSV.convertirAUTC(origen, horaSalidaLocal);
-                LocalTime horaLlegadaUTC = GestorUTCyContinentesCSV.convertirAUTC(destino, horaLlegadaLocal);
-                
-                if (esVueloDisponibleEnTiempoUTC(vuelo, tiempoMinimo, cantidad, diaInicial, esNocturno)) {
-                    
-                    // 📆 VALIDAR PLAZO: Verificar que la entrega esté dentro del plazo
-                    int diaLlegada = calcularDiaLlegada(diaInicial, horaSalidaUTC, horaLlegadaUTC, esNocturno);
-                    
-                    boolean cumplePlazo = GestorUTCyContinentesCSV.validarPlazoRuta(
-                        origen, destino, horaPedidoUTC, diaPedido, horaLlegadaUTC, diaLlegada
-                    );
-                    
-                    if (!cumplePlazo) {
-                        System.out.printf("   ❌ Vuelo directo excede plazo: %s→%s\n", origen, destino);
-                        continue; // Buscar otra opción
-                    }
-                    
-                    System.out.printf("     ✅ Vuelo %s %s→%s (Cap: %d/%d, Paquetes: %d)\n", 
-                              vuelo.getHoraSalida(), origen, destino, 
-                              vuelo.getCapacidad(), vuelo.getCapacidad(), cantidad);
-                    System.out.println("   ✈️ Ruta directa encontrada: " + origen + " → " + destino);
-                    System.out.printf("   📆 Entrega en %d días (dentro del plazo de %d días)\n", 
-                                    GestorUTCyContinentesCSV.calcularDiasTranscurridos(horaPedidoUTC, diaPedido, horaLlegadaUTC, diaLlegada),
-                                    plazoMaximo);
-                    
-                    // Crear ruta directa exitosa
-                    RutaCompleta ruta = new RutaCompleta();
-                    ruta.agregarVuelo(vuelo);
-                    ruta.setTipoRuta("DIRECTO");
-                    
-                    // Actualizar capacidad usada
-                    String claveVuelo = vuelo.getOrigen() + "-" + vuelo.getDestino() + "-" + vuelo.getHoraSalida() + "-" + diaInicial;
-                    capacidadUsada.merge(claveVuelo, cantidad, Integer::sum);
-                    
-                    return ruta;
-                }
-            }
-        }
-        
-        // 🔄 BÚSQUEDA CON ESCALAS: Si no hay vuelo directo, buscar con conexiones
-        for (Vuelo vuelo : vuelosDesdeOrigen) {
-            String aeropuertoConexion = vuelo.getDestino();
-            
-            // No hacer escala en el destino final ni en el origen
-            if (aeropuertoConexion.equals(destino) || aeropuertoConexion.equals(origen)) {
+                int escalas = rutaParcial.getVuelos().size()-1;
+                if (escalas==0) rutaParcial.setTipoRuta("DIRECTO");
+                else if (escalas==1) rutaParcial.setTipoRuta("UNA_CONEXION");
+                else if (escalas==2) rutaParcial.setTipoRuta("DOS_CONEXIONES");
+                else rutaParcial.setTipoRuta("ESCALAS_"+escalas);
+
+                long minutoAbsolutoLlegada = diaLlegada*24L*60L + minutosLlegadaUTC;
+                candidatas.add(new RutaEvaluada(rutaParcial, minutoAbsolutoLlegada));
                 continue;
             }
-            
-            if (esVueloDisponibleEnTiempoUTC(vuelo, tiempoMinimo, cantidad, diaInicial, esNocturno)) {
-                
-                // Calcular tiempo de llegada a la escala para la conexión
-                LocalTime horaLlegadaEscala = LocalTime.parse(vuelo.getHoraLlegada());
-                LocalTime horaLlegadaEscalaUTC = GestorUTCyContinentesCSV.convertirAUTC(aeropuertoConexion, horaLlegadaEscala);
-                
-                int tiempoLlegadaEscala = horaLlegadaEscalaUTC.getHour() * 60 + horaLlegadaEscalaUTC.getMinute();
-                int tiempoMinimoConexion = tiempoLlegadaEscala + MIN_CONEXION_MINUTOS;
-                
-                int diaConexion = calcularDiaLlegada(diaInicial, 
-                    GestorUTCyContinentesCSV.convertirAUTC(origen, LocalTime.parse(vuelo.getHoraSalida())), 
-                    horaLlegadaEscalaUTC, esNocturno);
-                
-                // Validar que la escala no exceda el plazo
-                int diasHastaEscala = GestorUTCyContinentesCSV.calcularDiasTranscurridos(
-                    horaPedidoUTC, diaPedido, horaLlegadaEscalaUTC, diaConexion
-                );
-                
-                if (diasHastaEscala >= plazoMaximo) {
-                    continue; // Esta escala ya excede el plazo
-                }
-                
-                // Buscar recursivamente desde la escala
-                RutaCompleta rutaConexion = construirRutaTemporalConPlazos(
-                    aeropuertoConexion, destino, cantidad, tiempoMinimoConexion, 
-                    new HashSet<>(visitados), diaConexion, false, plazoMaximo, horaPedidoUTC, diaPedido
-                );
-                
-                if (rutaConexion != null && rutaConexion.esViable()) {
-                    System.out.printf("     🔄 Escala: %s→%s→... (%d paquetes)\n", 
-                                    origen, aeropuertoConexion, cantidad);
-                    System.out.println("   🔄 Ruta con escalas encontrada");
-                    
-                    // Crear ruta con escalas
-                    RutaCompleta rutaCompleta = new RutaCompleta();
-                    rutaCompleta.agregarVuelo(vuelo);
-                    
-                    // Agregar vuelos de la conexión
-                    for (Vuelo vueloConexion : rutaConexion.getVuelos()) {
-                        rutaCompleta.agregarVuelo(vueloConexion);
-                    }
-                    
-                    // Determinar tipo de ruta
-                    int numEscalas = rutaCompleta.getVuelos().size() - 1;
-                    if (numEscalas == 1) {
-                        rutaCompleta.setTipoRuta("UNA_CONEXION");
-                        rutaCompleta.getEscalas().add(aeropuertoConexion);
-                    } else if (numEscalas == 2) {
-                        rutaCompleta.setTipoRuta("DOS_CONEXIONES");
-                        rutaCompleta.getEscalas().addAll(rutaConexion.getEscalas());
-                        rutaCompleta.getEscalas().add(0, aeropuertoConexion);
-                    }
-                    
-                    // Actualizar capacidad usada
-                    String claveVuelo = vuelo.getOrigen() + "-" + vuelo.getDestino() + "-" + vuelo.getHoraSalida() + "-" + diaInicial;
-                    capacidadUsada.merge(claveVuelo, cantidad, Integer::sum);
-                    
-                    return rutaCompleta;
-                }
-            }
+
+            // Preparar exploración siguiente tramo
+            int nuevoTiempoMinimo = minutosLlegadaUTC + TIEMPO_PREPARACION_MINUTOS;
+            int nuevoDia = diaLlegada;
+            LinkedHashSet<String> copiaVisitados = new LinkedHashSet<>(visitados);
+            explorarRutas(vuelo.getDestino(), destino, cantidad, nuevoTiempoMinimo, copiaVisitados,
+                    nuevoDia, false, plazoMaximo, horaPedidoUTC, diaPedido, candidatas, profundidad+1);
         }
-        
-        return null; // No se encontró ruta viable
+
+        visitados.remove(origen);
     }
     
     /**

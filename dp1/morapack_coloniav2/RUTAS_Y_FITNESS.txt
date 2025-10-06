@@ -1,0 +1,33 @@
+=== REPORTE DE RUTAS Y FITNESS ===
+Generado: 05/10/2025 19:47:27
+Total pedidos: 0
+Total vuelos disponibles: 48
+Total aeropuertos: 30
+
+=== ANÁLISIS DE PEDIDOS Y RUTAS ===
+
+=== CÁLCULO DE FITNESS ===
+
+FITNESS COBERTURA (40%): NaN
+FITNESS EFICIENCIA (30%): 25.00
+FITNESS DISTRIBUCIÓN (20%): 0.00
+FITNESS CAPACIDAD (10%): 0.00
+---
+🎯 FITNESS TOTAL: NaN 🎯
+
+=== ESTADÍSTICAS GENERALES ===
+Pedidos domésticos: 0
+Pedidos internacionales: 0
+Total carga: 0 paquetes
+Aeropuertos disponibles: 30
+Vuelos disponibles: 48
+Pedidos con rutas encontradas: 0 de 0
+Cobertura de rutas: NaN%
+
+=== REPORTE DE VUELOS UTILIZADOS ===
+
+=== RESUMEN DE VUELOS ===
+Vuelos continentales utilizados: 0
+Vuelos intercontinentales utilizados: 0
+Total vuelos utilizados: 0 de 48
+Total paquetes transportados: 0

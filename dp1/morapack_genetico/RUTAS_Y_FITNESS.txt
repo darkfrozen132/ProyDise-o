@@ -1,0 +1,621 @@
+=== REPORTE DE RUTAS Y FITNESS ===
+Generado: 05/10/2025 19:48:59
+Total pedidos: 500
+Total vuelos disponibles: 2866
+Total aeropuertos: 29
+
+=== ANÁLISIS DE PEDIDOS Y RUTAS ===
+
+PEDIDO: 17-15-47-SKBO-324-0000015
+  Origen: SPIM → Destino: SKBO
+  Cantidad: 324 paquetes
+  ✅ RUTA ASIGNADA: SPIM → SKBO (CONTINENTAL DIRECTO, 04:35-08:51, Carga: 324/340 paq)
+
+PEDIDO: 17-14-05-OJAI-303-0000023
+  Origen: UBBB → Destino: OJAI
+  Cantidad: 303 paquetes
+  ✅ RUTA ASIGNADA: UBBB → SKBO → OJAI (ESCALA INTERCONTINENTAL: V1:INTERCONTINENTAL 06:37-16:21[303/360], V2:INTERCONTINENTAL 05:19-05:52[303/360])
+
+PEDIDO: 19-16-32-LATI-210-0000008
+  Origen: EBCI → Destino: LATI
+  Cantidad: 210 paquetes
+  ✅ RUTA ASIGNADA: EBCI → LATI (CONTINENTAL DIRECTO, 02:04-05:59, Carga: 210/300 paq)
+
+PEDIDO: 01-00-22-SGAS-217-0000007
+  Origen: SPIM → Destino: SGAS
+  Cantidad: 217 paquetes
+  ✅ RUTA ASIGNADA: SPIM → SGAS (CONTINENTAL DIRECTO, 01:32-07:44, Carga: 217/320 paq)
+
+PEDIDO: 13-07-20-LOWW-313-0000010
+  Origen: EBCI → Destino: LOWW
+  Cantidad: 313 paquetes
+  ✅ RUTA ASIGNADA: EBCI → LOWW (CONTINENTAL DIRECTO, 01:56-04:04, Carga: 313/360 paq)
+
+PEDIDO: 14-08-36-SKBO-341-0000001
+  Origen: SPIM → Destino: SKBO
+  Cantidad: 341 paquetes
+  ✅ RUTA ASIGNADA: SPIM → SABE → SKBO (ESCALA INTERCONTINENTAL: V1:CONTINENTAL 06:35-13:29[341/360], V2:INTERCONTINENTAL 12:35-17:18[341/360])
+
+PEDIDO: 22-09-44-UMMS-223-0000013
+  Origen: EBCI → Destino: UMMS
+  Cantidad: 223 paquetes
+  ✅ RUTA ASIGNADA: EBCI → UMMS (CONTINENTAL DIRECTO, 05:51-10:58, Carga: 223/300 paq)
+
+PEDIDO: 04-11-49-SEQM-224-0000015
+  Origen: SPIM → Destino: SEQM
+  Cantidad: 224 paquetes
+  ✅ RUTA ASIGNADA: SPIM → SEQM (CONTINENTAL DIRECTO, 00:13-03:54, Carga: 224/320 paq)
+
+PEDIDO: 02-16-09-OERK-325-0000014
+  Origen: UBBB → Destino: OERK
+  Cantidad: 325 paquetes
+  ✅ RUTA ASIGNADA: UBBB → OERK (CONTINENTAL DIRECTO, 00:32-05:49, Carga: 325/340 paq)
+
+PEDIDO: 01-07-21-OPKC-288-0000003
+  Origen: UBBB → Destino: OPKC
+  Cantidad: 288 paquetes
+  ✅ RUTA ASIGNADA: UBBB → OPKC (INTERCONTINENTAL DIRECTO, 03:16-11:16, Carga: 288/340 paq)
+
+PEDIDO: 04-14-52-EHAM-324-0000007
+  Origen: EBCI → Destino: EHAM
+  Cantidad: 324 paquetes
+  ✅ RUTA ASIGNADA: EBCI → EHAM (CONTINENTAL DIRECTO, 03:48-05:04, Carga: 324/360 paq)
+
+PEDIDO: 06-20-04-SABE-225-0000010
+  Origen: SPIM → Destino: SABE
+  Cantidad: 225 paquetes
+  ✅ RUTA ASIGNADA: SPIM → SABE (CONTINENTAL DIRECTO, 05:20-12:14, Carga: 225/300 paq)
+
+PEDIDO: 15-08-53-OERK-249-0000015
+  Origen: UBBB → Destino: OERK
+  Cantidad: 249 paquetes
+  ✅ RUTA ASIGNADA: UBBB → OERK (CONTINENTAL DIRECTO, 15:46-20:03, Carga: 249/340 paq)
+
+PEDIDO: 20-08-53-SKBO-206-0000015
+  Origen: SPIM → Destino: SKBO
+  Cantidad: 206 paquetes
+  ✅ RUTA ASIGNADA: SPIM → SKBO (CONTINENTAL DIRECTO, 08:02-12:18, Carga: 206/300 paq)
+
+PEDIDO: 28-20-04-OJAI-277-0000015
+  Origen: UBBB → Destino: OJAI
+  Cantidad: 277 paquetes
+  ✅ RUTA ASIGNADA: UBBB → OJAI (CONTINENTAL DIRECTO, 15:17-20:24, Carga: 277/300 paq)
+
+PEDIDO: 22-05-50-SVMI-301-0000011
+  Origen: SPIM → Destino: SVMI
+  Cantidad: 301 paquetes
+  ✅ RUTA ASIGNADA: SPIM → SVMI (CONTINENTAL DIRECTO, 05:24-11:50, Carga: 301/320 paq)
+
+PEDIDO: 18-16-30-SGAS-329-0000012
+  Origen: SPIM → Destino: SGAS
+  Cantidad: 329 paquetes
+  ✅ RUTA ASIGNADA: SPIM → SGAS (CONTINENTAL DIRECTO, 21:32-03:44, Carga: 329/360 paq)
+
+PEDIDO: 02-01-52-LOWW-215-0000001
+  Origen: EBCI → Destino: LOWW
+  Cantidad: 215 paquetes
+  ✅ RUTA ASIGNADA: EBCI → LOWW (CONTINENTAL DIRECTO, 07:10-10:18, Carga: 215/320 paq)
+
+PEDIDO: 19-17-24-EHAM-289-0000005
+  Origen: EBCI → Destino: EHAM
+  Cantidad: 289 paquetes
+  ✅ RUTA ASIGNADA: EBCI → EHAM (CONTINENTAL DIRECTO, 07:13-09:29, Carga: 289/340 paq)
+
+PEDIDO: 11-00-55-LKPR-267-0000019
+  Origen: EBCI → Destino: LKPR
+  Cantidad: 267 paquetes
+  ✅ RUTA ASIGNADA: EBCI → LKPR (CONTINENTAL DIRECTO, 05:23-07:16, Carga: 267/300 paq)
+
+... (480 pedidos adicionales procesados)
+
+=== CÁLCULO DE FITNESS ===
+
+FITNESS COBERTURA (40%): 56.60
+FITNESS EFICIENCIA (30%): 25.00
+FITNESS DISTRIBUCIÓN (20%): 0.00
+FITNESS CAPACIDAD (10%): 14.54
+---
+🎯 FITNESS TOTAL: 31.59 🎯
+
+=== ESTADÍSTICAS GENERALES ===
+Pedidos domésticos: 466
+Pedidos internacionales: 34
+Total carga: 137580 paquetes
+Aeropuertos disponibles: 29
+Vuelos disponibles: 2866
+Pedidos con rutas encontradas: 283 de 500
+Cobertura de rutas: 56.6%
+
+=== REPORTE DE VUELOS UTILIZADOS ===
+Vuelo: SPIM-OYSN-13:28 | Tipo: INTERCONTINENTAL | Carga: 325/340 (95.6%) | Disponible: 15
+Vuelo: UBBB-UMMS-02:26 | Tipo: CONTINENTAL | Carga: 236/300 (78.7%) | Disponible: 64
+Vuelo: EKCH-SGAS-04:03 | Tipo: INTERCONTINENTAL | Carga: 233/360 (64.7%) | Disponible: 127
+Vuelo: UBBB-EBCI-16:26 | Tipo: CONTINENTAL | Carga: 344/360 (95.6%) | Disponible: 16
+Vuelo: UBBB-SKBO-23:41 | Tipo: INTERCONTINENTAL | Carga: 314/320 (98.1%) | Disponible: 6
+Vuelo: SPIM-OJAI-08:47 | Tipo: INTERCONTINENTAL | Carga: 332/360 (92.2%) | Disponible: 28
+Vuelo: OJAI-SUAA-09:31 | Tipo: INTERCONTINENTAL | Carga: 332/340 (97.6%) | Disponible: 8
+Vuelo: LBSF-OJAI-07:10 | Tipo: CONTINENTAL | Carga: 255/360 (70.8%) | Disponible: 105
+Vuelo: UBBB-OERK-15:46 | Tipo: CONTINENTAL | Carga: 249/340 (73.2%) | Disponible: 91
+Vuelo: EBCI-SCEL-03:05 | Tipo: INTERCONTINENTAL | Carga: 245/300 (81.7%) | Disponible: 55
+Vuelo: UBBB-OMDB-19:15 | Tipo: DESCONOCIDO | Carga: 292/320 (91.3%) | Disponible: 28
+Vuelo: SKBO-EDDI-02:00 | Tipo: INTERCONTINENTAL | Carga: 306/360 (85.0%) | Disponible: 54
+Vuelo: UBBB-OYSN-07:35 | Tipo: CONTINENTAL | Carga: 293/360 (81.4%) | Disponible: 67
+Vuelo: SPIM-OJAI-21:18 | Tipo: INTERCONTINENTAL | Carga: 279/360 (77.5%) | Disponible: 81
+Vuelo: EBCI-SVMI-00:21 | Tipo: INTERCONTINENTAL | Carga: 274/300 (91.3%) | Disponible: 26
+Vuelo: SPIM-VIDP-02:23 | Tipo: INTERCONTINENTAL | Carga: 338/360 (93.9%) | Disponible: 22
+Vuelo: LDZA-OMDB-02:27 | Tipo: DESCONOCIDO | Carga: 230/300 (76.7%) | Disponible: 70
+Vuelo: SKBO-SABE-12:41 | Tipo: INTERCONTINENTAL | Carga: 335/360 (93.1%) | Disponible: 25
+Vuelo: SLLP-UMMS-01:36 | Tipo: INTERCONTINENTAL | Carga: 285/320 (89.1%) | Disponible: 35
+Vuelo: SUAA-LDZA-04:11 | Tipo: INTERCONTINENTAL | Carga: 299/300 (99.7%) | Disponible: 1
+Vuelo: LBSF-EHAM-08:24 | Tipo: CONTINENTAL | Carga: 206/360 (57.2%) | Disponible: 154
+Vuelo: OMDB-EKCH-02:17 | Tipo: DESCONOCIDO | Carga: 246/300 (82.0%) | Disponible: 54
+Vuelo: EBCI-SLLP-11:11 | Tipo: INTERCONTINENTAL | Carga: 349/360 (96.9%) | Disponible: 11
+Vuelo: LATI-SABE-19:26 | Tipo: INTERCONTINENTAL | Carga: 248/300 (82.7%) | Disponible: 52
+Vuelo: EBCI-OSDI-02:03 | Tipo: CONTINENTAL | Carga: 277/320 (86.6%) | Disponible: 43
+Vuelo: OSDI-LOWW-05:43 | Tipo: CONTINENTAL | Carga: 277/300 (92.3%) | Disponible: 23
+Vuelo: SPIM-OMDB-02:04 | Tipo: DESCONOCIDO | Carga: 229/340 (67.4%) | Disponible: 111
+Vuelo: EBCI-SBBR-13:29 | Tipo: INTERCONTINENTAL | Carga: 216/300 (72.0%) | Disponible: 84
+Vuelo: EBCI-OERK-12:07 | Tipo: CONTINENTAL | Carga: 346/360 (96.1%) | Disponible: 14
+Vuelo: EBCI-EDDI-04:41 | Tipo: CONTINENTAL | Carga: 268/360 (74.4%) | Disponible: 92
+Vuelo: SPIM-SABE-15:03 | Tipo: CONTINENTAL | Carga: 223/340 (65.6%) | Disponible: 117
+Vuelo: UBBB-SKBO-01:25 | Tipo: INTERCONTINENTAL | Carga: 245/300 (81.7%) | Disponible: 55
+Vuelo: EHAM-SABE-01:52 | Tipo: INTERCONTINENTAL | Carga: 211/340 (62.1%) | Disponible: 129
+Vuelo: OAKB-SKBO-05:52 | Tipo: INTERCONTINENTAL | Carga: 238/360 (66.1%) | Disponible: 122
+Vuelo: SCEL-OERK-05:45 | Tipo: INTERCONTINENTAL | Carga: 289/360 (80.3%) | Disponible: 71
+Vuelo: OERK-EDDI-09:45 | Tipo: CONTINENTAL | Carga: 204/320 (63.7%) | Disponible: 116
+Vuelo: LDZA-OAKB-06:31 | Tipo: CONTINENTAL | Carga: 268/340 (78.8%) | Disponible: 72
+Vuelo: SUAA-OSDI-03:25 | Tipo: INTERCONTINENTAL | Carga: 256/320 (80.0%) | Disponible: 64
+Vuelo: UBBB-EDDI-19:30 | Tipo: CONTINENTAL | Carga: 200/300 (66.7%) | Disponible: 100
+Vuelo: EBCI-LATI-02:04 | Tipo: CONTINENTAL | Carga: 210/300 (70.0%) | Disponible: 90
+Vuelo: EDDI-OAKB-23:14 | Tipo: CONTINENTAL | Carga: 285/320 (89.1%) | Disponible: 35
+Vuelo: UBBB-LBSF-19:28 | Tipo: CONTINENTAL | Carga: 320/320 (100.0%) | Disponible: 0
+Vuelo: OMDB-LBSF-13:09 | Tipo: DESCONOCIDO | Carga: 229/300 (76.3%) | Disponible: 71
+Vuelo: LDZA-OMDB-13:13 | Tipo: DESCONOCIDO | Carga: 230/300 (76.7%) | Disponible: 70
+Vuelo: SBBR-VIDP-14:24 | Tipo: INTERCONTINENTAL | Carga: 334/360 (92.8%) | Disponible: 26
+Vuelo: EBCI-SBBR-23:47 | Tipo: INTERCONTINENTAL | Carga: 324/360 (90.0%) | Disponible: 36
+Vuelo: SPIM-VIDP-13:05 | Tipo: INTERCONTINENTAL | Carga: 264/320 (82.5%) | Disponible: 56
+Vuelo: EBCI-VIDP-02:55 | Tipo: INTERCONTINENTAL | Carga: 336/340 (98.8%) | Disponible: 4
+Vuelo: EBCI-LATI-12:28 | Tipo: CONTINENTAL | Carga: 204/320 (63.7%) | Disponible: 116
+Vuelo: UBBB-OSDI-16:43 | Tipo: CONTINENTAL | Carga: 306/360 (85.0%) | Disponible: 54
+Vuelo: EBCI-LBSF-03:36 | Tipo: CONTINENTAL | Carga: 310/340 (91.2%) | Disponible: 30
+Vuelo: SPIM-OMDB-23:35 | Tipo: DESCONOCIDO | Carga: 325/360 (90.3%) | Disponible: 35
+Vuelo: EBCI-SABE-04:36 | Tipo: INTERCONTINENTAL | Carga: 282/340 (82.9%) | Disponible: 58
+Vuelo: OYSN-SKBO-12:43 | Tipo: INTERCONTINENTAL | Carga: 325/360 (90.3%) | Disponible: 35
+Vuelo: OSDI-LDZA-03:08 | Tipo: CONTINENTAL | Carga: 264/360 (73.3%) | Disponible: 96
+Vuelo: UBBB-OPKC-15:30 | Tipo: INTERCONTINENTAL | Carga: 260/320 (81.3%) | Disponible: 60
+Vuelo: LBSF-OAKB-17:21 | Tipo: CONTINENTAL | Carga: 320/320 (100.0%) | Disponible: 0
+Vuelo: LKPR-SGAS-04:41 | Tipo: INTERCONTINENTAL | Carga: 232/340 (68.2%) | Disponible: 108
+Vuelo: UBBB-LDZA-05:33 | Tipo: CONTINENTAL | Carga: 253/300 (84.3%) | Disponible: 47
+Vuelo: SPIM-LATI-11:01 | Tipo: INTERCONTINENTAL | Carga: 297/360 (82.5%) | Disponible: 63
+Vuelo: SKBO-LKPR-05:32 | Tipo: INTERCONTINENTAL | Carga: 333/360 (92.5%) | Disponible: 27
+Vuelo: SPIM-UBBB-10:01 | Tipo: INTERCONTINENTAL | Carga: 203/300 (67.7%) | Disponible: 97
+Vuelo: EBCI-OERK-11:56 | Tipo: CONTINENTAL | Carga: 204/320 (63.7%) | Disponible: 116
+Vuelo: SABE-OYSN-04:57 | Tipo: INTERCONTINENTAL | Carga: 219/340 (64.4%) | Disponible: 121
+Vuelo: OERK-LBSF-18:49 | Tipo: CONTINENTAL | Carga: 346/360 (96.1%) | Disponible: 14
+Vuelo: EBCI-UMMS-23:13 | Tipo: CONTINENTAL | Carga: 264/340 (77.6%) | Disponible: 76
+Vuelo: SPIM-LDZA-00:00 | Tipo: INTERCONTINENTAL | Carga: 230/360 (63.9%) | Disponible: 130
+Vuelo: UBBB-SKBO-14:02 | Tipo: INTERCONTINENTAL | Carga: 281/300 (93.7%) | Disponible: 19
+Vuelo: OJAI-SUAA-07:51 | Tipo: INTERCONTINENTAL | Carga: 233/320 (72.8%) | Disponible: 87
+Vuelo: LBSF-SLLP-07:30 | Tipo: INTERCONTINENTAL | Carga: 225/360 (62.5%) | Disponible: 135
+Vuelo: UBBB-LATI-18:00 | Tipo: CONTINENTAL | Carga: 270/360 (75.0%) | Disponible: 90
+Vuelo: SPIM-SKBO-04:35 | Tipo: CONTINENTAL | Carga: 324/340 (95.3%) | Disponible: 16
+Vuelo: LOWW-OOMS-12:57 | Tipo: CONTINENTAL | Carga: 258/340 (75.9%) | Disponible: 82
+Vuelo: EBCI-LKPR-09:10 | Tipo: CONTINENTAL | Carga: 244/300 (81.3%) | Disponible: 56
+Vuelo: UBBB-OAKB-12:23 | Tipo: CONTINENTAL | Carga: 249/300 (83.0%) | Disponible: 51
+Vuelo: SKBO-OJAI-17:32 | Tipo: INTERCONTINENTAL | Carga: 314/360 (87.2%) | Disponible: 46
+Vuelo: EDDI-OJAI-01:01 | Tipo: CONTINENTAL | Carga: 200/340 (58.8%) | Disponible: 140
+Vuelo: EBCI-SCEL-13:13 | Tipo: INTERCONTINENTAL | Carga: 298/360 (82.8%) | Disponible: 62
+Vuelo: UBBB-OMDB-07:01 | Tipo: DESCONOCIDO | Carga: 203/300 (67.7%) | Disponible: 97
+Vuelo: SVMI-LATI-01:01 | Tipo: INTERCONTINENTAL | Carga: 274/360 (76.1%) | Disponible: 86
+Vuelo: LDZA-OSDI-01:26 | Tipo: CONTINENTAL | Carga: 253/300 (84.3%) | Disponible: 47
+Vuelo: LOWW-OOMS-01:43 | Tipo: CONTINENTAL | Carga: 305/320 (95.3%) | Disponible: 15
+Vuelo: EKCH-SLLP-00:54 | Tipo: INTERCONTINENTAL | Carga: 268/320 (83.8%) | Disponible: 52
+Vuelo: EBCI-EKCH-15:54 | Tipo: CONTINENTAL | Carga: 305/360 (84.7%) | Disponible: 55
+Vuelo: UBBB-OAKB-00:24 | Tipo: CONTINENTAL | Carga: 292/320 (91.3%) | Disponible: 28
+Vuelo: SPIM-LBSF-15:16 | Tipo: INTERCONTINENTAL | Carga: 287/340 (84.4%) | Disponible: 53
+Vuelo: OMDB-LBSF-01:38 | Tipo: DESCONOCIDO | Carga: 342/360 (95.0%) | Disponible: 18
+Vuelo: SPIM-SCEL-08:59 | Tipo: CONTINENTAL | Carga: 263/340 (77.4%) | Disponible: 77
+Vuelo: EBCI-OOMS-21:54 | Tipo: CONTINENTAL | Carga: 283/300 (94.3%) | Disponible: 17
+Vuelo: SPIM-UMMS-09:12 | Tipo: INTERCONTINENTAL | Carga: 254/320 (79.4%) | Disponible: 66
+Vuelo: EHAM-OAKB-06:55 | Tipo: INTERCONTINENTAL | Carga: 302/320 (94.4%) | Disponible: 18
+Vuelo: EKCH-SBBR-02:04 | Tipo: INTERCONTINENTAL | Carga: 299/320 (93.4%) | Disponible: 21
+Vuelo: EDDI-SVMI-14:03 | Tipo: INTERCONTINENTAL | Carga: 349/360 (96.9%) | Disponible: 11
+Vuelo: EBCI-OOMS-10:45 | Tipo: CONTINENTAL | Carga: 276/340 (81.2%) | Disponible: 64
+Vuelo: SLLP-EKCH-08:29 | Tipo: INTERCONTINENTAL | Carga: 349/360 (96.9%) | Disponible: 11
+Vuelo: UBBB-SCEL-19:43 | Tipo: INTERCONTINENTAL | Carga: 257/320 (80.3%) | Disponible: 63
+Vuelo: UBBB-UMMS-13:15 | Tipo: CONTINENTAL | Carga: 215/300 (71.7%) | Disponible: 85
+Vuelo: SLLP-SEQM-04:24 | Tipo: CONTINENTAL | Carga: 255/360 (70.8%) | Disponible: 105
+Vuelo: VIDP-SUAA-04:28 | Tipo: INTERCONTINENTAL | Carga: 266/340 (78.2%) | Disponible: 74
+Vuelo: UBBB-OJAI-15:17 | Tipo: CONTINENTAL | Carga: 277/300 (92.3%) | Disponible: 23
+Vuelo: EBCI-LKPR-13:26 | Tipo: CONTINENTAL | Carga: 274/300 (91.3%) | Disponible: 26
+Vuelo: SGAS-LOWW-00:43 | Tipo: INTERCONTINENTAL | Carga: 292/300 (97.3%) | Disponible: 8
+Vuelo: EBCI-SPIM-07:36 | Tipo: INTERCONTINENTAL | Carga: 256/340 (75.3%) | Disponible: 84
+Vuelo: UBBB-SGAS-22:10 | Tipo: INTERCONTINENTAL | Carga: 230/300 (76.7%) | Disponible: 70
+Vuelo: SPIM-SLLP-18:05 | Tipo: CONTINENTAL | Carga: 255/320 (79.7%) | Disponible: 65
+Vuelo: SPIM-OSDI-23:04 | Tipo: INTERCONTINENTAL | Carga: 299/320 (93.4%) | Disponible: 21
+Vuelo: LBSF-SABE-00:43 | Tipo: INTERCONTINENTAL | Carga: 287/320 (89.7%) | Disponible: 33
+Vuelo: EBCI-OYSN-03:39 | Tipo: INTERCONTINENTAL | Carga: 268/300 (89.3%) | Disponible: 32
+Vuelo: SPIM-OOMS-18:54 | Tipo: INTERCONTINENTAL | Carga: 233/320 (72.8%) | Disponible: 87
+Vuelo: SEQM-OAKB-07:54 | Tipo: INTERCONTINENTAL | Carga: 272/340 (80.0%) | Disponible: 68
+Vuelo: SPIM-SBBR-00:48 | Tipo: CONTINENTAL | Carga: 207/300 (69.0%) | Disponible: 93
+Vuelo: SEQM-SGAS-07:22 | Tipo: CONTINENTAL | Carga: 220/300 (73.3%) | Disponible: 80
+Vuelo: SPIM-SGAS-01:32 | Tipo: CONTINENTAL | Carga: 217/320 (67.8%) | Disponible: 103
+Vuelo: UBBB-VIDP-09:12 | Tipo: CONTINENTAL | Carga: 307/320 (95.9%) | Disponible: 13
+Vuelo: LATI-OERK-15:07 | Tipo: CONTINENTAL | Carga: 345/360 (95.8%) | Disponible: 15
+Vuelo: OAKB-SGAS-03:06 | Tipo: INTERCONTINENTAL | Carga: 329/360 (91.4%) | Disponible: 31
+Vuelo: OOMS-LBSF-01:43 | Tipo: CONTINENTAL | Carga: 276/300 (92.0%) | Disponible: 24
+Vuelo: UBBB-VIDP-21:03 | Tipo: CONTINENTAL | Carga: 240/320 (75.0%) | Disponible: 80
+Vuelo: UBBB-OPKC-03:16 | Tipo: INTERCONTINENTAL | Carga: 288/340 (84.7%) | Disponible: 52
+Vuelo: LDZA-OSDI-12:15 | Tipo: CONTINENTAL | Carga: 311/320 (97.2%) | Disponible: 9
+Vuelo: UBBB-SABE-07:48 | Tipo: INTERCONTINENTAL | Carga: 333/360 (92.5%) | Disponible: 27
+Vuelo: UBBB-SEQM-10:03 | Tipo: INTERCONTINENTAL | Carga: 248/360 (68.9%) | Disponible: 112
+Vuelo: OOMS-OMDB-01:13 | Tipo: DESCONOCIDO | Carga: 233/300 (77.7%) | Disponible: 67
+Vuelo: SPIM-SEQM-00:13 | Tipo: CONTINENTAL | Carga: 224/320 (70.0%) | Disponible: 96
+Vuelo: UBBB-LDZA-22:00 | Tipo: CONTINENTAL | Carga: 311/320 (97.2%) | Disponible: 9
+Vuelo: SPIM-SUAA-15:55 | Tipo: CONTINENTAL | Carga: 297/340 (87.4%) | Disponible: 43
+Vuelo: SUAA-LATI-04:56 | Tipo: INTERCONTINENTAL | Carga: 256/340 (75.3%) | Disponible: 84
+Vuelo: UBBB-SEQM-21:42 | Tipo: INTERCONTINENTAL | Carga: 252/300 (84.0%) | Disponible: 48
+Vuelo: UBBB-SBBR-13:42 | Tipo: INTERCONTINENTAL | Carga: 269/360 (74.7%) | Disponible: 91
+Vuelo: EKCH-OOMS-04:50 | Tipo: INTERCONTINENTAL | Carga: 347/360 (96.4%) | Disponible: 13
+Vuelo: OJAI-EHAM-03:43 | Tipo: CONTINENTAL | Carga: 267/360 (74.2%) | Disponible: 93
+Vuelo: SPIM-LDZA-14:50 | Tipo: INTERCONTINENTAL | Carga: 230/320 (71.9%) | Disponible: 90
+Vuelo: OAKB-SLLP-01:23 | Tipo: INTERCONTINENTAL | Carga: 260/360 (72.2%) | Disponible: 100
+Vuelo: EBCI-OPKC-03:04 | Tipo: INTERCONTINENTAL | Carga: 286/320 (89.4%) | Disponible: 34
+Vuelo: SPIM-SCEL-03:11 | Tipo: CONTINENTAL | Carga: 336/340 (98.8%) | Disponible: 4
+Vuelo: SBBR-LATI-02:14 | Tipo: INTERCONTINENTAL | Carga: 295/300 (98.3%) | Disponible: 5
+Vuelo: SEQM-OSDI-05:30 | Tipo: INTERCONTINENTAL | Carga: 252/320 (78.8%) | Disponible: 68
+Vuelo: EBCI-SGAS-17:51 | Tipo: INTERCONTINENTAL | Carga: 272/300 (90.7%) | Disponible: 28
+Vuelo: SBBR-SUAA-05:25 | Tipo: CONTINENTAL | Carga: 285/360 (79.2%) | Disponible: 75
+Vuelo: OERK-SVMI-00:52 | Tipo: INTERCONTINENTAL | Carga: 258/320 (80.6%) | Disponible: 62
+Vuelo: SCEL-OSDI-04:02 | Tipo: INTERCONTINENTAL | Carga: 302/340 (88.8%) | Disponible: 38
+Vuelo: UMMS-SVMI-14:08 | Tipo: INTERCONTINENTAL | Carga: 324/360 (90.0%) | Disponible: 36
+Vuelo: SPIM-OAKB-05:01 | Tipo: INTERCONTINENTAL | Carga: 329/360 (91.4%) | Disponible: 31
+Vuelo: EBCI-LDZA-05:43 | Tipo: CONTINENTAL | Carga: 247/340 (72.6%) | Disponible: 93
+Vuelo: SBBR-LKPR-05:37 | Tipo: INTERCONTINENTAL | Carga: 216/300 (72.0%) | Disponible: 84
+Vuelo: LBSF-SUAA-02:40 | Tipo: INTERCONTINENTAL | Carga: 253/340 (74.4%) | Disponible: 87
+Vuelo: SPIM-SVMI-12:15 | Tipo: CONTINENTAL | Carga: 281/320 (87.8%) | Disponible: 39
+Vuelo: OJAI-LOWW-02:46 | Tipo: CONTINENTAL | Carga: 335/360 (93.1%) | Disponible: 25
+Vuelo: OOMS-UMMS-07:30 | Tipo: INTERCONTINENTAL | Carga: 283/360 (78.6%) | Disponible: 77
+Vuelo: SLLP-EDDI-05:53 | Tipo: INTERCONTINENTAL | Carga: 204/360 (56.7%) | Disponible: 156
+Vuelo: LATI-OOMS-07:40 | Tipo: CONTINENTAL | Carga: 270/320 (84.4%) | Disponible: 50
+Vuelo: EBCI-SUAA-06:34 | Tipo: INTERCONTINENTAL | Carga: 304/360 (84.4%) | Disponible: 56
+Vuelo: EBCI-OPKC-13:56 | Tipo: INTERCONTINENTAL | Carga: 226/340 (66.5%) | Disponible: 114
+Vuelo: EBCI-SEQM-04:55 | Tipo: INTERCONTINENTAL | Carga: 310/320 (96.9%) | Disponible: 10
+Vuelo: UBBB-SABE-05:47 | Tipo: INTERCONTINENTAL | Carga: 219/300 (73.0%) | Disponible: 81
+Vuelo: LBSF-UMMS-01:44 | Tipo: CONTINENTAL | Carga: 200/340 (58.8%) | Disponible: 140
+Vuelo: SPIM-OOMS-09:07 | Tipo: INTERCONTINENTAL | Carga: 223/300 (74.3%) | Disponible: 77
+Vuelo: EKCH-OSDI-15:08 | Tipo: CONTINENTAL | Carga: 279/320 (87.2%) | Disponible: 41
+Vuelo: UBBB-UMMS-06:05 | Tipo: CONTINENTAL | Carga: 290/300 (96.7%) | Disponible: 10
+Vuelo: UBBB-OOMS-22:10 | Tipo: CONTINENTAL | Carga: 343/360 (95.3%) | Disponible: 17
+Vuelo: EBCI-SLLP-19:09 | Tipo: INTERCONTINENTAL | Carga: 204/320 (63.7%) | Disponible: 116
+Vuelo: LBSF-OJAI-02:53 | Tipo: CONTINENTAL | Carga: 342/360 (95.0%) | Disponible: 18
+Vuelo: EBCI-LBSF-12:40 | Tipo: CONTINENTAL | Carga: 268/340 (78.8%) | Disponible: 72
+Vuelo: EBCI-OJAI-07:45 | Tipo: CONTINENTAL | Carga: 267/300 (89.0%) | Disponible: 33
+Vuelo: SGAS-EHAM-02:06 | Tipo: INTERCONTINENTAL | Carga: 202/320 (63.1%) | Disponible: 118
+Vuelo: SPIM-LBSF-09:51 | Tipo: INTERCONTINENTAL | Carga: 253/340 (74.4%) | Disponible: 87
+Vuelo: UBBB-LATI-02:49 | Tipo: CONTINENTAL | Carga: 244/300 (81.3%) | Disponible: 56
+Vuelo: EBCI-OOMS-00:44 | Tipo: CONTINENTAL | Carga: 299/360 (83.1%) | Disponible: 61
+Vuelo: UBBB-OPKC-23:53 | Tipo: INTERCONTINENTAL | Carga: 249/340 (73.2%) | Disponible: 91
+Vuelo: UBBB-SVMI-13:27 | Tipo: INTERCONTINENTAL | Carga: 322/360 (89.4%) | Disponible: 38
+Vuelo: SPIM-EDDI-05:21 | Tipo: INTERCONTINENTAL | Carga: 301/340 (88.5%) | Disponible: 39
+Vuelo: SPIM-SABE-05:20 | Tipo: CONTINENTAL | Carga: 225/300 (75.0%) | Disponible: 75
+Vuelo: SPIM-EKCH-13:25 | Tipo: INTERCONTINENTAL | Carga: 233/340 (68.5%) | Disponible: 107
+Vuelo: LATI-OJAI-01:31 | Tipo: CONTINENTAL | Carga: 280/300 (93.3%) | Disponible: 20
+Vuelo: SKBO-OJAI-05:19 | Tipo: INTERCONTINENTAL | Carga: 303/360 (84.2%) | Disponible: 57
+Vuelo: LDZA-SABE-01:02 | Tipo: INTERCONTINENTAL | Carga: 241/300 (80.3%) | Disponible: 59
+Vuelo: EBCI-EDDI-21:21 | Tipo: CONTINENTAL | Carga: 212/360 (58.9%) | Disponible: 148
+Vuelo: EBCI-SGAS-19:08 | Tipo: INTERCONTINENTAL | Carga: 292/300 (97.3%) | Disponible: 8
+Vuelo: SPIM-EHAM-18:05 | Tipo: INTERCONTINENTAL | Carga: 235/300 (78.3%) | Disponible: 65
+Vuelo: EBCI-UMMS-05:51 | Tipo: CONTINENTAL | Carga: 223/300 (74.3%) | Disponible: 77
+Vuelo: SPIM-LOWW-02:01 | Tipo: INTERCONTINENTAL | Carga: 225/300 (75.0%) | Disponible: 75
+Vuelo: SBBR-LOWW-06:10 | Tipo: INTERCONTINENTAL | Carga: 223/360 (61.9%) | Disponible: 137
+Vuelo: OSDI-SEQM-00:09 | Tipo: INTERCONTINENTAL | Carga: 205/340 (60.3%) | Disponible: 135
+Vuelo: UBBB-SBBR-00:49 | Tipo: INTERCONTINENTAL | Carga: 334/340 (98.2%) | Disponible: 6
+Vuelo: EBCI-LDZA-15:40 | Tipo: CONTINENTAL | Carga: 284/360 (78.9%) | Disponible: 76
+Vuelo: OYSN-UMMS-00:41 | Tipo: INTERCONTINENTAL | Carga: 307/340 (90.3%) | Disponible: 33
+Vuelo: UBBB-LBSF-09:43 | Tipo: CONTINENTAL | Carga: 342/360 (95.0%) | Disponible: 18
+Vuelo: EBCI-SABE-09:14 | Tipo: INTERCONTINENTAL | Carga: 287/360 (79.7%) | Disponible: 73
+Vuelo: EBCI-SBBR-04:53 | Tipo: INTERCONTINENTAL | Carga: 295/320 (92.2%) | Disponible: 25
+Vuelo: SLLP-OERK-06:09 | Tipo: INTERCONTINENTAL | Carga: 292/300 (97.3%) | Disponible: 8
+Vuelo: LATI-SABE-01:30 | Tipo: INTERCONTINENTAL | Carga: 266/340 (78.2%) | Disponible: 74
+Vuelo: UBBB-SBBR-23:38 | Tipo: INTERCONTINENTAL | Carga: 226/300 (75.3%) | Disponible: 74
+Vuelo: SEQM-OJAI-03:30 | Tipo: INTERCONTINENTAL | Carga: 248/320 (77.5%) | Disponible: 72
+Vuelo: UBBB-LATI-15:29 | Tipo: CONTINENTAL | Carga: 345/360 (95.8%) | Disponible: 15
+Vuelo: VIDP-SABE-01:45 | Tipo: INTERCONTINENTAL | Carga: 264/360 (73.3%) | Disponible: 96
+Vuelo: EBCI-OMDB-01:51 | Tipo: DESCONOCIDO | Carga: 348/360 (96.7%) | Disponible: 12
+Vuelo: SABE-OAKB-04:27 | Tipo: INTERCONTINENTAL | Carga: 210/360 (58.3%) | Disponible: 150
+Vuelo: EBCI-SABE-20:46 | Tipo: INTERCONTINENTAL | Carga: 317/340 (93.2%) | Disponible: 23
+Vuelo: UBBB-EDDI-05:25 | Tipo: CONTINENTAL | Carga: 285/340 (83.8%) | Disponible: 55
+Vuelo: EBCI-VIDP-16:39 | Tipo: INTERCONTINENTAL | Carga: 336/340 (98.8%) | Disponible: 4
+Vuelo: SPIM-SLLP-16:09 | Tipo: CONTINENTAL | Carga: 243/300 (81.0%) | Disponible: 57
+Vuelo: SPIM-OPKC-00:58 | Tipo: INTERCONTINENTAL | Carga: 257/360 (71.4%) | Disponible: 103
+Vuelo: EBCI-SVMI-15:20 | Tipo: INTERCONTINENTAL | Carga: 215/300 (71.7%) | Disponible: 85
+Vuelo: SPIM-OSDI-09:18 | Tipo: INTERCONTINENTAL | Carga: 268/300 (89.3%) | Disponible: 32
+Vuelo: SBBR-LOWW-19:23 | Tipo: INTERCONTINENTAL | Carga: 324/360 (90.0%) | Disponible: 36
+Vuelo: UBBB-SUAA-04:25 | Tipo: INTERCONTINENTAL | Carga: 256/300 (85.3%) | Disponible: 44
+Vuelo: SUAA-LDZA-12:25 | Tipo: INTERCONTINENTAL | Carga: 304/340 (89.4%) | Disponible: 36
+Vuelo: SABE-SKBO-12:35 | Tipo: INTERCONTINENTAL | Carga: 341/360 (94.7%) | Disponible: 19
+Vuelo: SPIM-OAKB-06:04 | Tipo: INTERCONTINENTAL | Carga: 238/320 (74.4%) | Disponible: 82
+Vuelo: UBBB-EHAM-06:47 | Tipo: CONTINENTAL | Carga: 343/360 (95.3%) | Disponible: 17
+Vuelo: SPIM-EKCH-23:00 | Tipo: INTERCONTINENTAL | Carga: 268/340 (78.8%) | Disponible: 72
+Vuelo: UBBB-SVMI-11:32 | Tipo: INTERCONTINENTAL | Carga: 276/320 (86.3%) | Disponible: 44
+Vuelo: OYSN-SABE-02:04 | Tipo: INTERCONTINENTAL | Carga: 271/300 (90.3%) | Disponible: 29
+Vuelo: EBCI-OAKB-18:40 | Tipo: INTERCONTINENTAL | Carga: 282/300 (94.0%) | Disponible: 18
+Vuelo: OJAI-LKPR-02:53 | Tipo: CONTINENTAL | Carga: 299/320 (93.4%) | Disponible: 21
+Vuelo: SPIM-SUAA-17:51 | Tipo: CONTINENTAL | Carga: 275/360 (76.4%) | Disponible: 85
+Vuelo: UMMS-VIDP-02:39 | Tipo: CONTINENTAL | Carga: 309/340 (90.9%) | Disponible: 31
+Vuelo: LATI-OERK-00:29 | Tipo: CONTINENTAL | Carga: 244/340 (71.8%) | Disponible: 96
+Vuelo: EBCI-LATI-18:39 | Tipo: CONTINENTAL | Carga: 229/360 (63.6%) | Disponible: 131
+Vuelo: UBBB-SEQM-00:46 | Tipo: INTERCONTINENTAL | Carga: 339/340 (99.7%) | Disponible: 1
+Vuelo: SPIM-LKPR-20:04 | Tipo: INTERCONTINENTAL | Carga: 255/320 (79.7%) | Disponible: 65
+Vuelo: UMMS-SKBO-10:52 | Tipo: INTERCONTINENTAL | Carga: 291/360 (80.8%) | Disponible: 69
+Vuelo: UBBB-OYSN-19:06 | Tipo: CONTINENTAL | Carga: 210/320 (65.6%) | Disponible: 110
+Vuelo: EBCI-OYSN-12:24 | Tipo: INTERCONTINENTAL | Carga: 307/360 (85.3%) | Disponible: 53
+Vuelo: SPIM-SABE-18:02 | Tipo: CONTINENTAL | Carga: 303/340 (89.1%) | Disponible: 37
+Vuelo: SPIM-OMDB-10:57 | Tipo: DESCONOCIDO | Carga: 257/320 (80.3%) | Disponible: 63
+Vuelo: UBBB-LOWW-21:26 | Tipo: CONTINENTAL | Carga: 258/300 (86.0%) | Disponible: 42
+Vuelo: SPIM-EBCI-14:50 | Tipo: INTERCONTINENTAL | Carga: 282/360 (78.3%) | Disponible: 78
+Vuelo: EBCI-EKCH-03:00 | Tipo: CONTINENTAL | Carga: 210/300 (70.0%) | Disponible: 90
+Vuelo: EBCI-UMMS-06:51 | Tipo: CONTINENTAL | Carga: 247/320 (77.2%) | Disponible: 73
+Vuelo: SVMI-EDDI-05:02 | Tipo: INTERCONTINENTAL | Carga: 215/340 (63.2%) | Disponible: 125
+Vuelo: SPIM-SABE-06:35 | Tipo: CONTINENTAL | Carga: 341/360 (94.7%) | Disponible: 19
+Vuelo: EBCI-OJAI-22:01 | Tipo: CONTINENTAL | Carga: 299/340 (87.9%) | Disponible: 41
+Vuelo: SABE-OSDI-08:24 | Tipo: INTERCONTINENTAL | Carga: 333/340 (97.9%) | Disponible: 7
+Vuelo: UMMS-OJAI-06:51 | Tipo: CONTINENTAL | Carga: 290/300 (96.7%) | Disponible: 10
+Vuelo: EDDI-OSDI-00:05 | Tipo: CONTINENTAL | Carga: 238/300 (79.3%) | Disponible: 62
+Vuelo: SPIM-LKPR-08:39 | Tipo: INTERCONTINENTAL | Carga: 281/340 (82.6%) | Disponible: 59
+Vuelo: SABE-EHAM-18:48 | Tipo: INTERCONTINENTAL | Carga: 287/300 (95.7%) | Disponible: 13
+Vuelo: EDDI-SGAS-06:22 | Tipo: INTERCONTINENTAL | Carga: 301/320 (94.1%) | Disponible: 19
+Vuelo: UBBB-LOWW-09:20 | Tipo: CONTINENTAL | Carga: 211/320 (65.9%) | Disponible: 109
+Vuelo: EBCI-LOWW-01:56 | Tipo: CONTINENTAL | Carga: 313/360 (86.9%) | Disponible: 47
+Vuelo: UBBB-SLLP-12:53 | Tipo: INTERCONTINENTAL | Carga: 297/300 (99.0%) | Disponible: 3
+Vuelo: OERK-UMMS-05:18 | Tipo: CONTINENTAL | Carga: 334/360 (92.8%) | Disponible: 26
+Vuelo: SPIM-SUAA-07:09 | Tipo: CONTINENTAL | Carga: 238/300 (79.3%) | Disponible: 62
+Vuelo: UBBB-SCEL-12:20 | Tipo: INTERCONTINENTAL | Carga: 289/300 (96.3%) | Disponible: 11
+Vuelo: EBCI-OJAI-17:29 | Tipo: CONTINENTAL | Carga: 344/360 (95.6%) | Disponible: 16
+Vuelo: UBBB-OOMS-05:58 | Tipo: CONTINENTAL | Carga: 220/360 (61.1%) | Disponible: 140
+Vuelo: UBBB-OYSN-14:13 | Tipo: CONTINENTAL | Carga: 303/340 (89.1%) | Disponible: 37
+Vuelo: UBBB-SABE-15:06 | Tipo: INTERCONTINENTAL | Carga: 332/360 (92.2%) | Disponible: 28
+Vuelo: EBCI-LATI-06:28 | Tipo: CONTINENTAL | Carga: 269/340 (79.1%) | Disponible: 71
+Vuelo: OAKB-OMDB-08:17 | Tipo: DESCONOCIDO | Carga: 251/360 (69.7%) | Disponible: 109
+Vuelo: LKPR-SGAS-11:16 | Tipo: INTERCONTINENTAL | Carga: 255/320 (79.7%) | Disponible: 65
+Vuelo: SGAS-LATI-14:58 | Tipo: INTERCONTINENTAL | Carga: 272/340 (80.0%) | Disponible: 68
+Vuelo: VIDP-LOWW-10:04 | Tipo: INTERCONTINENTAL | Carga: 314/360 (87.2%) | Disponible: 46
+Vuelo: UBBB-OMDB-14:17 | Tipo: DESCONOCIDO | Carga: 263/300 (87.7%) | Disponible: 37
+Vuelo: OPKC-LBSF-04:16 | Tipo: INTERCONTINENTAL | Carga: 226/300 (75.3%) | Disponible: 74
+Vuelo: EBCI-SGAS-10:05 | Tipo: INTERCONTINENTAL | Carga: 202/340 (59.4%) | Disponible: 138
+Vuelo: UBBB-SPIM-17:53 | Tipo: INTERCONTINENTAL | Carga: 257/300 (85.7%) | Disponible: 43
+Vuelo: LDZA-OMDB-07:36 | Tipo: DESCONOCIDO | Carga: 261/300 (87.0%) | Disponible: 39
+Vuelo: UBBB-EHAM-22:30 | Tipo: CONTINENTAL | Carga: 346/360 (96.1%) | Disponible: 14
+Vuelo: EBCI-LOWW-23:46 | Tipo: CONTINENTAL | Carga: 210/320 (65.6%) | Disponible: 110
+Vuelo: EHAM-OYSN-18:06 | Tipo: INTERCONTINENTAL | Carga: 346/360 (96.1%) | Disponible: 14
+Vuelo: EBCI-SKBO-01:49 | Tipo: INTERCONTINENTAL | Carga: 333/360 (92.5%) | Disponible: 27
+Vuelo: UBBB-OSDI-00:00 | Tipo: CONTINENTAL | Carga: 335/340 (98.5%) | Disponible: 5
+Vuelo: OAKB-LKPR-04:04 | Tipo: CONTINENTAL | Carga: 316/340 (92.9%) | Disponible: 24
+Vuelo: UBBB-LKPR-19:57 | Tipo: CONTINENTAL | Carga: 227/320 (70.9%) | Disponible: 93
+Vuelo: EBCI-EDDI-10:37 | Tipo: CONTINENTAL | Carga: 256/300 (85.3%) | Disponible: 44
+Vuelo: UBBB-SKBO-06:37 | Tipo: INTERCONTINENTAL | Carga: 303/360 (84.2%) | Disponible: 57
+Vuelo: SPIM-EDDI-19:27 | Tipo: INTERCONTINENTAL | Carga: 349/360 (96.9%) | Disponible: 11
+Vuelo: UBBB-VIDP-02:12 | Tipo: CONTINENTAL | Carga: 299/300 (99.7%) | Disponible: 1
+Vuelo: VIDP-UMMS-00:52 | Tipo: CONTINENTAL | Carga: 258/320 (80.6%) | Disponible: 62
+Vuelo: SPIM-EHAM-04:14 | Tipo: INTERCONTINENTAL | Carga: 314/340 (92.4%) | Disponible: 26
+Vuelo: SUAA-LKPR-05:30 | Tipo: INTERCONTINENTAL | Carga: 208/360 (57.8%) | Disponible: 152
+Vuelo: UBBB-OOMS-06:09 | Tipo: CONTINENTAL | Carga: 227/300 (75.7%) | Disponible: 73
+Vuelo: UBBB-OAKB-18:21 | Tipo: CONTINENTAL | Carga: 307/320 (95.9%) | Disponible: 13
+Vuelo: SPIM-LATI-05:13 | Tipo: INTERCONTINENTAL | Carga: 266/320 (83.1%) | Disponible: 54
+Vuelo: SPIM-OERK-16:15 | Tipo: INTERCONTINENTAL | Carga: 258/320 (80.6%) | Disponible: 62
+Vuelo: EBCI-UMMS-15:14 | Tipo: CONTINENTAL | Carga: 212/340 (62.4%) | Disponible: 128
+Vuelo: EBCI-OJAI-04:55 | Tipo: CONTINENTAL | Carga: 335/340 (98.5%) | Disponible: 5
+Vuelo: SCEL-OYSN-03:35 | Tipo: INTERCONTINENTAL | Carga: 257/320 (80.3%) | Disponible: 63
+Vuelo: UBBB-LOWW-05:17 | Tipo: CONTINENTAL | Carga: 305/320 (95.3%) | Disponible: 15
+Vuelo: EBCI-SUAA-00:02 | Tipo: INTERCONTINENTAL | Carga: 208/340 (61.2%) | Disponible: 132
+Vuelo: UBBB-OPKC-09:27 | Tipo: INTERCONTINENTAL | Carga: 298/320 (93.1%) | Disponible: 22
+Vuelo: UBBB-OERK-22:47 | Tipo: CONTINENTAL | Carga: 250/360 (69.4%) | Disponible: 110
+Vuelo: SUAA-OOMS-04:41 | Tipo: INTERCONTINENTAL | Carga: 308/320 (96.3%) | Disponible: 12
+Vuelo: SPIM-OYSN-19:38 | Tipo: INTERCONTINENTAL | Carga: 305/360 (84.7%) | Disponible: 55
+Vuelo: LBSF-VIDP-05:56 | Tipo: CONTINENTAL | Carga: 284/320 (88.8%) | Disponible: 36
+Vuelo: UMMS-SVMI-04:02 | Tipo: INTERCONTINENTAL | Carga: 254/300 (84.7%) | Disponible: 46
+Vuelo: EBCI-LOWW-12:22 | Tipo: CONTINENTAL | Carga: 258/320 (80.6%) | Disponible: 62
+Vuelo: OJAI-SEQM-03:30 | Tipo: INTERCONTINENTAL | Carga: 273/320 (85.3%) | Disponible: 47
+Vuelo: UBBB-EDDI-14:37 | Tipo: CONTINENTAL | Carga: 238/320 (74.4%) | Disponible: 82
+Vuelo: EBCI-SGAS-00:01 | Tipo: INTERCONTINENTAL | Carga: 326/340 (95.9%) | Disponible: 14
+Vuelo: SLLP-OSDI-08:52 | Tipo: INTERCONTINENTAL | Carga: 315/320 (98.4%) | Disponible: 5
+Vuelo: SLLP-VIDP-02:55 | Tipo: INTERCONTINENTAL | Carga: 297/320 (92.8%) | Disponible: 23
+Vuelo: OJAI-SBBR-01:30 | Tipo: INTERCONTINENTAL | Carga: 279/300 (93.0%) | Disponible: 21
+Vuelo: SPIM-UBBB-03:34 | Tipo: INTERCONTINENTAL | Carga: 203/340 (59.7%) | Disponible: 137
+Vuelo: EBCI-LDZA-21:17 | Tipo: CONTINENTAL | Carga: 221/360 (61.4%) | Disponible: 139
+Vuelo: SPIM-OAKB-23:25 | Tipo: INTERCONTINENTAL | Carga: 260/320 (81.3%) | Disponible: 60
+Vuelo: OYSN-SUAA-02:26 | Tipo: INTERCONTINENTAL | Carga: 207/360 (57.5%) | Disponible: 153
+Vuelo: EKCH-OSDI-05:32 | Tipo: CONTINENTAL | Carga: 209/300 (69.7%) | Disponible: 91
+Vuelo: EBCI-EHAM-19:32 | Tipo: CONTINENTAL | Carga: 306/340 (90.0%) | Disponible: 34
+Vuelo: EKCH-OYSN-09:23 | Tipo: INTERCONTINENTAL | Carga: 263/300 (87.7%) | Disponible: 37
+Vuelo: SCEL-SEQM-01:17 | Tipo: INTERCONTINENTAL | Carga: 336/360 (93.3%) | Disponible: 24
+Vuelo: EBCI-SLLP-03:41 | Tipo: INTERCONTINENTAL | Carga: 285/320 (89.1%) | Disponible: 35
+Vuelo: SABE-LATI-08:09 | Tipo: INTERCONTINENTAL | Carga: 325/340 (95.6%) | Disponible: 15
+Vuelo: EBCI-OPKC-18:19 | Tipo: INTERCONTINENTAL | Carga: 291/300 (97.0%) | Disponible: 9
+Vuelo: OSDI-EKCH-02:21 | Tipo: CONTINENTAL | Carga: 322/340 (94.7%) | Disponible: 18
+Vuelo: LKPR-SVMI-05:20 | Tipo: INTERCONTINENTAL | Carga: 281/360 (78.1%) | Disponible: 79
+Vuelo: LOWW-VIDP-03:26 | Tipo: INTERCONTINENTAL | Carga: 262/300 (87.3%) | Disponible: 38
+Vuelo: EBCI-OYSN-19:38 | Tipo: INTERCONTINENTAL | Carga: 299/300 (99.7%) | Disponible: 1
+Vuelo: SPIM-EHAM-06:16 | Tipo: INTERCONTINENTAL | Carga: 256/360 (71.1%) | Disponible: 104
+Vuelo: EBCI-LBSF-11:48 | Tipo: CONTINENTAL | Carga: 200/320 (62.5%) | Disponible: 120
+Vuelo: UBBB-SEQM-15:08 | Tipo: INTERCONTINENTAL | Carga: 272/340 (80.0%) | Disponible: 68
+Vuelo: OMDB-OSDI-04:18 | Tipo: DESCONOCIDO | Carga: 292/360 (81.1%) | Disponible: 68
+Vuelo: UBBB-OERK-00:32 | Tipo: CONTINENTAL | Carga: 325/340 (95.6%) | Disponible: 15
+Vuelo: EBCI-OMDB-11:10 | Tipo: DESCONOCIDO | Carga: 246/340 (72.4%) | Disponible: 94
+Vuelo: SPIM-SEQM-17:11 | Tipo: CONTINENTAL | Carga: 275/300 (91.7%) | Disponible: 25
+Vuelo: UBBB-SVMI-20:29 | Tipo: INTERCONTINENTAL | Carga: 294/320 (91.9%) | Disponible: 26
+Vuelo: UBBB-SPIM-08:26 | Tipo: INTERCONTINENTAL | Carga: 268/320 (83.8%) | Disponible: 52
+Vuelo: LBSF-EHAM-01:27 | Tipo: CONTINENTAL | Carga: 268/300 (89.3%) | Disponible: 32
+Vuelo: UBBB-SLLP-00:16 | Tipo: INTERCONTINENTAL | Carga: 292/320 (91.3%) | Disponible: 28
+Vuelo: SPIM-SBBR-18:19 | Tipo: CONTINENTAL | Carga: 285/340 (83.8%) | Disponible: 55
+Vuelo: UBBB-LBSF-14:09 | Tipo: CONTINENTAL | Carga: 284/300 (94.7%) | Disponible: 16
+Vuelo: EBCI-SKBO-15:43 | Tipo: INTERCONTINENTAL | Carga: 306/340 (90.0%) | Disponible: 34
+Vuelo: UMMS-OERK-02:58 | Tipo: CONTINENTAL | Carga: 215/320 (67.2%) | Disponible: 105
+Vuelo: SBBR-OJAI-05:42 | Tipo: INTERCONTINENTAL | Carga: 226/340 (66.5%) | Disponible: 114
+Vuelo: SPIM-OAKB-14:22 | Tipo: INTERCONTINENTAL | Carga: 251/320 (78.4%) | Disponible: 69
+Vuelo: EBCI-SKBO-16:18 | Tipo: INTERCONTINENTAL | Carga: 203/300 (67.7%) | Disponible: 97
+Vuelo: VIDP-LDZA-16:23 | Tipo: INTERCONTINENTAL | Carga: 336/360 (93.3%) | Disponible: 24
+Vuelo: UBBB-OOMS-17:23 | Tipo: CONTINENTAL | Carga: 245/340 (72.1%) | Disponible: 95
+Vuelo: UBBB-OYSN-00:25 | Tipo: CONTINENTAL | Carga: 299/320 (93.4%) | Disponible: 21
+Vuelo: UBBB-SLLP-09:33 | Tipo: INTERCONTINENTAL | Carga: 201/300 (67.0%) | Disponible: 99
+Vuelo: OOMS-LATI-02:12 | Tipo: CONTINENTAL | Carga: 299/340 (87.9%) | Disponible: 41
+Vuelo: EBCI-OYSN-08:38 | Tipo: INTERCONTINENTAL | Carga: 262/320 (81.9%) | Disponible: 58
+Vuelo: UBBB-SGAS-00:27 | Tipo: INTERCONTINENTAL | Carga: 336/340 (98.8%) | Disponible: 4
+Vuelo: LKPR-VIDP-11:09 | Tipo: INTERCONTINENTAL | Carga: 307/320 (95.9%) | Disponible: 13
+Vuelo: LKPR-SKBO-02:50 | Tipo: INTERCONTINENTAL | Carga: 262/320 (81.9%) | Disponible: 58
+Vuelo: EBCI-OMDB-21:12 | Tipo: DESCONOCIDO | Carga: 229/360 (63.6%) | Disponible: 131
+Vuelo: OPKC-LOWW-05:23 | Tipo: INTERCONTINENTAL | Carga: 291/340 (85.6%) | Disponible: 49
+Vuelo: EBCI-LKPR-18:38 | Tipo: CONTINENTAL | Carga: 295/320 (92.2%) | Disponible: 25
+Vuelo: EBCI-EKCH-10:47 | Tipo: CONTINENTAL | Carga: 332/340 (97.6%) | Disponible: 8
+Vuelo: UBBB-EBCI-00:10 | Tipo: CONTINENTAL | Carga: 286/340 (84.1%) | Disponible: 54
+Vuelo: UBBB-LKPR-10:11 | Tipo: CONTINENTAL | Carga: 204/320 (63.7%) | Disponible: 116
+Vuelo: UBBB-UMMS-18:25 | Tipo: CONTINENTAL | Carga: 309/340 (90.9%) | Disponible: 31
+Vuelo: OYSN-LDZA-10:46 | Tipo: INTERCONTINENTAL | Carga: 299/300 (99.7%) | Disponible: 1
+Vuelo: UBBB-SUAA-13:26 | Tipo: INTERCONTINENTAL | Carga: 295/300 (98.3%) | Disponible: 5
+Vuelo: SPIM-UBBB-17:08 | Tipo: INTERCONTINENTAL | Carga: 263/340 (77.4%) | Disponible: 77
+Vuelo: SPIM-OYSN-07:16 | Tipo: INTERCONTINENTAL | Carga: 207/300 (69.0%) | Disponible: 93
+Vuelo: UBBB-LBSF-01:43 | Tipo: CONTINENTAL | Carga: 255/320 (79.7%) | Disponible: 65
+Vuelo: EBCI-OERK-04:46 | Tipo: CONTINENTAL | Carga: 258/340 (75.9%) | Disponible: 82
+Vuelo: SEQM-SKBO-04:29 | Tipo: CONTINENTAL | Carga: 318/340 (93.5%) | Disponible: 22
+Vuelo: EBCI-SUAA-12:13 | Tipo: INTERCONTINENTAL | Carga: 256/360 (71.1%) | Disponible: 104
+Vuelo: SGAS-LATI-00:55 | Tipo: INTERCONTINENTAL | Carga: 326/340 (95.9%) | Disponible: 14
+Vuelo: SPIM-SVMI-05:24 | Tipo: CONTINENTAL | Carga: 301/320 (94.1%) | Disponible: 19
+Vuelo: SPIM-OJAI-15:56 | Tipo: INTERCONTINENTAL | Carga: 233/360 (64.7%) | Disponible: 127
+Vuelo: EBCI-EHAM-07:13 | Tipo: CONTINENTAL | Carga: 289/340 (85.0%) | Disponible: 51
+Vuelo: SVMI-OYSN-11:01 | Tipo: INTERCONTINENTAL | Carga: 333/360 (92.5%) | Disponible: 27
+Vuelo: UBBB-EBCI-10:55 | Tipo: CONTINENTAL | Carga: 268/320 (83.8%) | Disponible: 52
+Vuelo: UBBB-VIDP-14:49 | Tipo: CONTINENTAL | Carga: 263/320 (82.2%) | Disponible: 57
+Vuelo: SPIM-OSDI-17:18 | Tipo: INTERCONTINENTAL | Carga: 205/360 (56.9%) | Disponible: 155
+Vuelo: EBCI-SABE-12:16 | Tipo: INTERCONTINENTAL | Carga: 325/340 (95.6%) | Disponible: 15
+Vuelo: SPIM-LBSF-20:23 | Tipo: INTERCONTINENTAL | Carga: 281/360 (78.1%) | Disponible: 79
+Vuelo: EBCI-SVMI-07:55 | Tipo: INTERCONTINENTAL | Carga: 349/360 (96.9%) | Disponible: 11
+Vuelo: OYSN-SGAS-16:30 | Tipo: INTERCONTINENTAL | Carga: 305/360 (84.7%) | Disponible: 55
+Vuelo: UBBB-EKCH-06:37 | Tipo: CONTINENTAL | Carga: 209/340 (61.5%) | Disponible: 131
+Vuelo: EHAM-OJAI-17:05 | Tipo: CONTINENTAL | Carga: 343/360 (95.3%) | Disponible: 17
+Vuelo: SPIM-EDDI-11:41 | Tipo: INTERCONTINENTAL | Carga: 276/320 (86.3%) | Disponible: 44
+Vuelo: EBCI-EHAM-03:48 | Tipo: CONTINENTAL | Carga: 324/360 (90.0%) | Disponible: 36
+Vuelo: UBBB-SPIM-04:01 | Tipo: INTERCONTINENTAL | Carga: 307/340 (90.3%) | Disponible: 33
+Vuelo: SKBO-OJAI-10:44 | Tipo: INTERCONTINENTAL | Carga: 245/300 (81.7%) | Disponible: 55
+Vuelo: EBCI-SCEL-11:32 | Tipo: INTERCONTINENTAL | Carga: 291/320 (90.9%) | Disponible: 29
+Vuelo: SPIM-OMDB-16:03 | Tipo: DESCONOCIDO | Carga: 262/320 (81.9%) | Disponible: 58
+Vuelo: SPIM-EBCI-00:58 | Tipo: INTERCONTINENTAL | Carga: 343/360 (95.3%) | Disponible: 17
+Vuelo: LOWW-SBBR-06:35 | Tipo: INTERCONTINENTAL | Carga: 225/320 (70.3%) | Disponible: 95
+Vuelo: UBBB-OAKB-09:37 | Tipo: CONTINENTAL | Carga: 249/300 (83.0%) | Disponible: 51
+Vuelo: SPIM-LDZA-10:11 | Tipo: INTERCONTINENTAL | Carga: 261/360 (72.5%) | Disponible: 99
+Vuelo: SLLP-LKPR-01:00 | Tipo: INTERCONTINENTAL | Carga: 267/360 (74.2%) | Disponible: 93
+Vuelo: EHAM-OAKB-15:03 | Tipo: INTERCONTINENTAL | Carga: 332/340 (97.6%) | Disponible: 8
+Vuelo: EBCI-SBBR-09:43 | Tipo: INTERCONTINENTAL | Carga: 223/340 (65.6%) | Disponible: 117
+Vuelo: SPIM-OSDI-02:28 | Tipo: INTERCONTINENTAL | Carga: 307/320 (95.9%) | Disponible: 13
+Vuelo: SCEL-LKPR-00:42 | Tipo: INTERCONTINENTAL | Carga: 275/340 (80.9%) | Disponible: 65
+Vuelo: EBCI-VIDP-18:43 | Tipo: INTERCONTINENTAL | Carga: 314/320 (98.1%) | Disponible: 6
+Vuelo: LKPR-OPKC-10:22 | Tipo: INTERCONTINENTAL | Carga: 227/340 (66.8%) | Disponible: 113
+Vuelo: EBCI-SVMI-19:20 | Tipo: INTERCONTINENTAL | Carga: 343/360 (95.3%) | Disponible: 17
+Vuelo: SABE-OPKC-16:22 | Tipo: INTERCONTINENTAL | Carga: 332/360 (92.2%) | Disponible: 28
+Vuelo: SGAS-OJAI-05:42 | Tipo: INTERCONTINENTAL | Carga: 336/360 (93.3%) | Disponible: 24
+Vuelo: SPIM-SLLP-00:21 | Tipo: CONTINENTAL | Carga: 243/300 (81.0%) | Disponible: 57
+Vuelo: SPIM-UMMS-00:01 | Tipo: INTERCONTINENTAL | Carga: 299/320 (93.4%) | Disponible: 21
+Vuelo: OSDI-OMDB-01:25 | Tipo: DESCONOCIDO | Carga: 299/340 (87.9%) | Disponible: 41
+Vuelo: EBCI-LDZA-11:39 | Tipo: CONTINENTAL | Carga: 235/300 (78.3%) | Disponible: 65
+Vuelo: SBBR-OAKB-05:02 | Tipo: INTERCONTINENTAL | Carga: 269/320 (84.1%) | Disponible: 51
+Vuelo: OOMS-SUAA-03:24 | Tipo: INTERCONTINENTAL | Carga: 223/340 (65.6%) | Disponible: 117
+Vuelo: SPIM-EBCI-08:07 | Tipo: INTERCONTINENTAL | Carga: 245/320 (76.6%) | Disponible: 75
+Vuelo: SPIM-OJAI-02:02 | Tipo: INTERCONTINENTAL | Carga: 273/300 (91.0%) | Disponible: 27
+Vuelo: SVMI-OSDI-01:42 | Tipo: INTERCONTINENTAL | Carga: 276/340 (81.2%) | Disponible: 64
+Vuelo: SPIM-SEQM-21:09 | Tipo: CONTINENTAL | Carga: 318/320 (99.4%) | Disponible: 2
+Vuelo: EBCI-EKCH-20:55 | Tipo: CONTINENTAL | Carga: 327/340 (96.2%) | Disponible: 13
+Vuelo: UBBB-EHAM-13:27 | Tipo: CONTINENTAL | Carga: 332/340 (97.6%) | Disponible: 8
+Vuelo: SPIM-OYSN-04:58 | Tipo: INTERCONTINENTAL | Carga: 271/320 (84.7%) | Disponible: 49
+Vuelo: VIDP-LOWW-01:39 | Tipo: INTERCONTINENTAL | Carga: 336/340 (98.8%) | Disponible: 4
+Vuelo: OAKB-LATI-10:01 | Tipo: CONTINENTAL | Carga: 282/300 (94.0%) | Disponible: 18
+Vuelo: EBCI-OMDB-17:21 | Tipo: DESCONOCIDO | Carga: 342/360 (95.0%) | Disponible: 18
+Vuelo: SLLP-SUAA-10:13 | Tipo: CONTINENTAL | Carga: 318/360 (88.3%) | Disponible: 42
+Vuelo: UBBB-EKCH-18:02 | Tipo: CONTINENTAL | Carga: 279/320 (87.2%) | Disponible: 41
+Vuelo: SLLP-OJAI-00:30 | Tipo: INTERCONTINENTAL | Carga: 201/320 (62.8%) | Disponible: 119
+Vuelo: SPIM-SCEL-19:34 | Tipo: CONTINENTAL | Carga: 237/300 (79.0%) | Disponible: 63
+Vuelo: SPIM-SKBO-08:02 | Tipo: CONTINENTAL | Carga: 206/300 (68.7%) | Disponible: 94
+Vuelo: UBBB-LDZA-17:04 | Tipo: CONTINENTAL | Carga: 326/340 (95.9%) | Disponible: 14
+Vuelo: SEQM-VIDP-16:00 | Tipo: INTERCONTINENTAL | Carga: 339/340 (99.7%) | Disponible: 1
+Vuelo: LOWW-OYSN-04:17 | Tipo: INTERCONTINENTAL | Carga: 211/300 (70.3%) | Disponible: 89
+Vuelo: LKPR-VIDP-02:51 | Tipo: INTERCONTINENTAL | Carga: 346/360 (96.1%) | Disponible: 14
+Vuelo: UMMS-OYSN-15:49 | Tipo: INTERCONTINENTAL | Carga: 236/300 (78.7%) | Disponible: 64
+Vuelo: SPIM-LKPR-04:31 | Tipo: INTERCONTINENTAL | Carga: 232/360 (64.4%) | Disponible: 128
+Vuelo: EBCI-OAKB-00:23 | Tipo: INTERCONTINENTAL | Carga: 316/360 (87.8%) | Disponible: 44
+Vuelo: EBCI-SUAA-23:55 | Tipo: INTERCONTINENTAL | Carga: 299/320 (93.4%) | Disponible: 21
+Vuelo: UMMS-SKBO-05:38 | Tipo: INTERCONTINENTAL | Carga: 299/320 (93.4%) | Disponible: 21
+Vuelo: SPIM-SEQM-08:10 | Tipo: CONTINENTAL | Carga: 220/300 (73.3%) | Disponible: 80
+Vuelo: EBCI-VIDP-11:36 | Tipo: INTERCONTINENTAL | Carga: 258/300 (86.0%) | Disponible: 42
+Vuelo: VIDP-SVMI-13:36 | Tipo: INTERCONTINENTAL | Carga: 338/340 (99.4%) | Disponible: 2
+Vuelo: SPIM-EDDI-12:58 | Tipo: INTERCONTINENTAL | Carga: 304/320 (95.0%) | Disponible: 16
+Vuelo: SVMI-OYSN-23:47 | Tipo: INTERCONTINENTAL | Carga: 322/360 (89.4%) | Disponible: 38
+Vuelo: SPIM-UMMS-12:11 | Tipo: INTERCONTINENTAL | Carga: 324/360 (90.0%) | Disponible: 36
+Vuelo: EBCI-SLLP-12:35 | Tipo: INTERCONTINENTAL | Carga: 267/300 (89.0%) | Disponible: 33
+Vuelo: UBBB-SUAA-21:28 | Tipo: INTERCONTINENTAL | Carga: 308/360 (85.6%) | Disponible: 52
+Vuelo: UBBB-EKCH-04:50 | Tipo: CONTINENTAL | Carga: 263/320 (82.2%) | Disponible: 57
+Vuelo: SCEL-SUAA-19:05 | Tipo: CONTINENTAL | Carga: 237/300 (79.0%) | Disponible: 63
+Vuelo: EDDI-OERK-15:07 | Tipo: CONTINENTAL | Carga: 287/320 (89.7%) | Disponible: 33
+Vuelo: EDDI-SEQM-00:28 | Tipo: INTERCONTINENTAL | Carga: 276/300 (92.0%) | Disponible: 24
+Vuelo: UBBB-EHAM-00:53 | Tipo: CONTINENTAL | Carga: 302/340 (88.8%) | Disponible: 38
+Vuelo: UBBB-LOWW-14:24 | Tipo: CONTINENTAL | Carga: 262/340 (77.1%) | Disponible: 78
+Vuelo: UBBB-SCEL-04:39 | Tipo: INTERCONTINENTAL | Carga: 302/320 (94.4%) | Disponible: 18
+Vuelo: SGAS-OAKB-02:09 | Tipo: INTERCONTINENTAL | Carga: 230/360 (63.9%) | Disponible: 130
+Vuelo: UBBB-LATI-08:44 | Tipo: CONTINENTAL | Carga: 280/300 (93.3%) | Disponible: 20
+Vuelo: EBCI-OSDI-17:06 | Tipo: CONTINENTAL | Carga: 264/320 (82.5%) | Disponible: 56
+Vuelo: SKBO-OERK-05:45 | Tipo: INTERCONTINENTAL | Carga: 281/360 (78.1%) | Disponible: 79
+Vuelo: EBCI-LOWW-07:10 | Tipo: CONTINENTAL | Carga: 215/320 (67.2%) | Disponible: 105
+Vuelo: UBBB-SGAS-08:38 | Tipo: INTERCONTINENTAL | Carga: 239/320 (74.7%) | Disponible: 81
+Vuelo: SPIM-EKCH-05:28 | Tipo: INTERCONTINENTAL | Carga: 299/340 (87.9%) | Disponible: 41
+Vuelo: UBBB-OMDB-04:13 | Tipo: DESCONOCIDO | Carga: 203/360 (56.4%) | Disponible: 157
+Vuelo: EBCI-SCEL-22:08 | Tipo: INTERCONTINENTAL | Carga: 275/300 (91.7%) | Disponible: 25
+Vuelo: UBBB-OSDI-11:58 | Tipo: CONTINENTAL | Carga: 347/360 (96.4%) | Disponible: 13
+Vuelo: SEQM-EHAM-07:32 | Tipo: INTERCONTINENTAL | Carga: 310/340 (91.2%) | Disponible: 30
+Vuelo: EDDI-SKBO-19:47 | Tipo: INTERCONTINENTAL | Carga: 304/340 (89.4%) | Disponible: 36
+Vuelo: SPIM-EHAM-14:25 | Tipo: INTERCONTINENTAL | Carga: 211/300 (70.3%) | Disponible: 89
+Vuelo: UBBB-SLLP-19:25 | Tipo: INTERCONTINENTAL | Carga: 315/320 (98.4%) | Disponible: 5
+Vuelo: OMDB-UMMS-21:19 | Tipo: DESCONOCIDO | Carga: 348/360 (96.7%) | Disponible: 12
+Vuelo: UBBB-LDZA-08:01 | Tipo: CONTINENTAL | Carga: 268/300 (89.3%) | Disponible: 32
+Vuelo: EHAM-SBBR-02:03 | Tipo: INTERCONTINENTAL | Carga: 235/320 (73.4%) | Disponible: 85
+Vuelo: UBBB-SABE-22:06 | Tipo: INTERCONTINENTAL | Carga: 210/320 (65.6%) | Disponible: 110
+Vuelo: SUAA-OYSN-03:29 | Tipo: INTERCONTINENTAL | Carga: 295/340 (86.8%) | Disponible: 45
+Vuelo: UBBB-SVMI-05:41 | Tipo: INTERCONTINENTAL | Carga: 333/360 (92.5%) | Disponible: 27
+Vuelo: SPIM-EBCI-21:20 | Tipo: INTERCONTINENTAL | Carga: 291/320 (90.9%) | Disponible: 29
+Vuelo: SPIM-LKPR-15:18 | Tipo: INTERCONTINENTAL | Carga: 262/360 (72.8%) | Disponible: 98
+Vuelo: SGAS-VIDP-11:49 | Tipo: INTERCONTINENTAL | Carga: 239/360 (66.4%) | Disponible: 121
+Vuelo: SPIM-SLLP-09:22 | Tipo: CONTINENTAL | Carga: 318/320 (99.4%) | Disponible: 2
+Vuelo: SBBR-OERK-07:30 | Tipo: INTERCONTINENTAL | Carga: 325/360 (90.3%) | Disponible: 35
+Vuelo: UBBB-EDDI-10:28 | Tipo: CONTINENTAL | Carga: 287/340 (84.4%) | Disponible: 53
+Vuelo: EBCI-OERK-23:56 | Tipo: CONTINENTAL | Carga: 334/340 (98.2%) | Disponible: 6
+Vuelo: SPIM-LATI-23:03 | Tipo: INTERCONTINENTAL | Carga: 248/300 (82.7%) | Disponible: 52
+Vuelo: SPIM-SGAS-21:32 | Tipo: CONTINENTAL | Carga: 329/360 (91.4%) | Disponible: 31
+Vuelo: SPIM-LDZA-20:37 | Tipo: INTERCONTINENTAL | Carga: 241/320 (75.3%) | Disponible: 79
+Vuelo: SVMI-EHAM-12:14 | Tipo: INTERCONTINENTAL | Carga: 349/360 (96.9%) | Disponible: 11
+Vuelo: SCEL-SGAS-05:19 | Tipo: CONTINENTAL | Carga: 263/320 (82.2%) | Disponible: 57
+Vuelo: SKBO-LOWW-01:34 | Tipo: INTERCONTINENTAL | Carga: 203/360 (56.4%) | Disponible: 157
+Vuelo: UBBB-EKCH-15:52 | Tipo: CONTINENTAL | Carga: 347/360 (96.4%) | Disponible: 13
+Vuelo: SPIM-SKBO-18:09 | Tipo: CONTINENTAL | Carga: 335/340 (98.5%) | Disponible: 5
+Vuelo: UBBB-SBBR-07:13 | Tipo: INTERCONTINENTAL | Carga: 325/340 (95.6%) | Disponible: 15
+Vuelo: EBCI-LKPR-05:23 | Tipo: CONTINENTAL | Carga: 267/300 (89.0%) | Disponible: 33
+Vuelo: SPIM-LBSF-05:38 | Tipo: INTERCONTINENTAL | Carga: 225/360 (62.5%) | Disponible: 135
+Vuelo: EBCI-EHAM-14:56 | Tipo: CONTINENTAL | Carga: 296/320 (92.5%) | Disponible: 24
+Vuelo: SVMI-OSDI-11:55 | Tipo: INTERCONTINENTAL | Carga: 294/340 (86.5%) | Disponible: 46
+Vuelo: SCEL-UMMS-06:43 | Tipo: INTERCONTINENTAL | Carga: 298/360 (82.8%) | Disponible: 62
+Vuelo: SPIM-VIDP-19:22 | Tipo: INTERCONTINENTAL | Carga: 266/300 (88.7%) | Disponible: 34
+Vuelo: UBBB-LKPR-12:47 | Tipo: CONTINENTAL | Carga: 307/320 (95.9%) | Disponible: 13
+Vuelo: EBCI-LBSF-19:24 | Tipo: CONTINENTAL | Carga: 206/340 (60.6%) | Disponible: 134
+Vuelo: SABE-LOWW-04:56 | Tipo: INTERCONTINENTAL | Carga: 317/360 (88.1%) | Disponible: 43
+Vuelo: UBBB-EBCI-20:17 | Tipo: CONTINENTAL | Carga: 258/360 (71.7%) | Disponible: 102
+Vuelo: LATI-SVMI-02:48 | Tipo: INTERCONTINENTAL | Carga: 297/340 (87.4%) | Disponible: 43
+Vuelo: LBSF-SABE-08:50 | Tipo: INTERCONTINENTAL | Carga: 281/360 (78.1%) | Disponible: 79
+Vuelo: SPIM-UMMS-23:08 | Tipo: INTERCONTINENTAL | Carga: 291/320 (90.9%) | Disponible: 29
+Vuelo: LKPR-OPKC-01:20 | Tipo: INTERCONTINENTAL | Carga: 204/300 (68.0%) | Disponible: 96
+Vuelo: OYSN-EHAM-07:27 | Tipo: INTERCONTINENTAL | Carga: 262/320 (81.9%) | Disponible: 58
+Vuelo: EBCI-OSDI-15:59 | Tipo: CONTINENTAL | Carga: 322/360 (89.4%) | Disponible: 38
+Vuelo: EBCI-SPIM-04:38 | Tipo: INTERCONTINENTAL | Carga: 314/320 (98.1%) | Disponible: 6
+Vuelo: UBBB-LKPR-02:06 | Tipo: CONTINENTAL | Carga: 346/360 (96.1%) | Disponible: 14
+Vuelo: LDZA-VIDP-03:15 | Tipo: INTERCONTINENTAL | Carga: 326/340 (95.9%) | Disponible: 14
+
+=== RESUMEN DE VUELOS ===
+Vuelos continentales utilizados: 186
+Vuelos intercontinentales utilizados: 277
+Total vuelos utilizados: 486 de 2866
+Total paquetes transportados: 134418

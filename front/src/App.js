@@ -14,7 +14,7 @@ import './App.css';
 
 function AppContent() {
   const location = useLocation();
-  const isSimulador = location.pathname.startsWith('/simulador');
+  const isSimulador = location.pathname.startsWith('/login');
 
   return (
     <div className="app-container">
@@ -30,7 +30,7 @@ function AppContent() {
           <Route path="/simulador-semanal" element={<SimuladorSemanal />} />
           <Route path="/simulador-colapso" element={<SimuladorColapso />} />
           <Route path="/pedidos" element={<Pedidos />} />
-          <Route path="/" element={<Navigate to="/simulador" replace />} />
+          <Route path="/" element={<Navigate to="/login" replace />} />
         </Routes>
       </main>
     </div>

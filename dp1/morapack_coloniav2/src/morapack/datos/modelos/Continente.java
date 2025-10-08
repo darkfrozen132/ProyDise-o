@@ -4,12 +4,15 @@ package morapack.datos.modelos;
  * Enumeración que representa los tres continentes soportados
  * por el sistema de distribución MoraPack.
  */
+
+
 public enum Continente {
 
     SAM("SAM", "América del Sur"),
     EUR("EUR", "Europa"),
     ASI("ASI", "Asia");
-
+    private static final int MISMO_CONTINENTE = 2;
+    private static final int DISTINTO_CONTINENTE = 3;
     private final String codigo;
     private final String nombre;
 
@@ -48,9 +51,9 @@ public enum Continente {
      */
     public static int calcularPlazoEntrega(Continente origen, Continente destino) {
         if (origen == destino) {
-            return 2; // Mismo continente
+            return MISMO_CONTINENTE; // Mismo continente
         } else {
-            return 3; // Diferente continente
+            return DISTINTO_CONTINENTE; // Diferente continente
         }
     }
 

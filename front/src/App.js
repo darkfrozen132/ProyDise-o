@@ -11,6 +11,7 @@ import SimuladorColapso from './pages/simulacion/Simulador/SimuladorColapso';
 import Clientes from './pages/clientes/Clientes';
 import Pedidos from './pages/pedidos/Pedidos';
 import './styles/global.css';
+import Seleccion from './pages/simulacion/Seleccion';
 
 // Layout que SÍ muestra Header/Nav (para rutas privadas)
 function AppLayout() {
@@ -41,18 +42,21 @@ function AppContent() {
           <Route path="/login" element={<Login />} />
 
           <Route element={<AppLayout />}>
-          {/* Rutas privadas - Administración */}
-          <Route path="/configuracion" element={<Configuracion />} />
-          <Route path="/usuarios" element={<Usuarios />} />
+            {/* Rutas privadas - Administración */}
+            <Route path="/configuracion" element={<Configuracion />} />
+            <Route path="/usuarios" element={<Usuarios />} />
 
-          {/* Rutas privadas - Operaciones */}
-          <Route path="/clientes" element={<Clientes />} />
-          <Route path="/pedidos" element={<Pedidos />} />
+            {/* Rutas privadas - Clientes y Pedidos */}
+            <Route path="/clientes" element={<Clientes />} />
+            <Route path="/pedidos" element={<Pedidos />} />
 
-          {/* Rutas privadas - Simuladores */}
-          <Route path="/simulador" element={<Simulador />} />
-          <Route path="/simulador-semanal" element={<SimuladorSemanal />} />
-          <Route path="/simulador-colapso" element={<SimuladorColapso />} />
+            {/* Rutas privadas - Operaciones */}
+            <Route path="/operaciones">
+              <Route index element={<Seleccion />} />
+              <Route path="monitoreo" element={<Simulador />} />
+              <Route path="simulador-semanal" element={<SimuladorSemanal />} />
+              <Route path="simulador-colapso" element={<SimuladorColapso />} />
+            </Route>
           </Route>
 
           {/* Redirección por defecto */}

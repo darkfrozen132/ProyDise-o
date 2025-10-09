@@ -7,15 +7,15 @@ const Navigation = () => {
     <nav className="nav-tabs">
       <NavLink to="/configuracion" className="nav-tab">
         <i className="fas fa-cog"></i>
-        Configuración Inicial
+        Configuración
       </NavLink>
       <NavLink to="/usuarios" className="nav-tab">
         <i className="fas fa-users"></i>
         Usuarios
       </NavLink>
-      <NavLink to="/simulador" className="nav-tab">
+      <NavLink to="/operaciones" className="nav-tab">
         <i className="fas fa-plane"></i>
-        Simulación
+        Operaciones
       </NavLink>
       <NavLink to="/clientes" className="nav-tab">
         <i className="fas fa-box"></i>

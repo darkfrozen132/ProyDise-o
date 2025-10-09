@@ -8,10 +8,15 @@
   --morapack-text-light: #6c757d;
 }
 
+/* Reset básico */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
 }
 
 body {
@@ -24,6 +29,7 @@ body {
   overflow-y: auto;
 }
 
+/* Contenedor de la app*/
 .app-container {
   width: 100vw;
   height: 100vh;
@@ -35,6 +41,7 @@ body {
   left: 0;
 }
 
+/* Zona central: toma el espacio restante y gestiona el scroll */
 .main-content {
   flex: 1;
   overflow-y: auto;
@@ -43,6 +50,7 @@ body {
   height: calc(100vh - 100px);
 }
 
+/*Desactivar scroll interno en ciertas pantallas*/
 .main-content.simulador-mode {
   overflow: hidden;
 }

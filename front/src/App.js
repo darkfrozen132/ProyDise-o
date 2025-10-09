@@ -10,7 +10,7 @@ import SimuladorSemanal from './pages/simulacion/Simulador/SimuladorSemanal';
 import SimuladorColapso from './pages/simulacion/Simulador/SimuladorColapso';
 import Clientes from './pages/clientes/Clientes';
 import Pedidos from './pages/pedidos/Pedidos';
-import './App.css';
+import './styles/global.css';
 
 // Layout que SÍ muestra Header/Nav (para rutas privadas)
 function AppLayout() {

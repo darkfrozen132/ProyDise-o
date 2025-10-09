@@ -1,76 +1,98 @@
 package morapack.datos;
 
-import morapack.modelo.Pedido;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import morapack.modelo.Pedido;
 
 /**
- * Cargador simple de pedidos desde CSV
+ * Cargador de pedidos desde archivo de texto
+ * Lee pedidos en formato: dd-hh-mm-dest-###-IdClien
  */
 public class CargadorPedidos {
     
     /**
-     * Carga pedidos desde un archivo CSV
-     * @param nombreArchivo ruta del archivo CSV
-     * @return lista de pedidos
+     * Carga pedidos desde archivo de texto
      */
-    public static List<Pedido> cargarDesdeArchivo(String nombreArchivo) {
+    public static List<Pedido> cargarPedidosDesdeArchivo(String rutaArchivo) {
         List<Pedido> pedidos = new ArrayList<>();
         
-        try (BufferedReader br = new BufferedReader(new FileReader(nombreArchivo))) {
+        try (BufferedReader reader = new BufferedReader(new FileReader(rutaArchivo))) {
             String linea;
-            boolean primeraLinea = true;
+            int numeroLinea = 0;
             
-            while ((linea = br.readLine()) != null) {
-                if (primeraLinea) {
-                    primeraLinea = false; // Saltar cabecera
+            while ((linea = reader.readLine()) != null) {
+                numeroLinea++;
+                linea = linea.trim();
+                
+                // Saltar líneas vacías o comentarios
+                if (linea.isEmpty() || linea.startsWith("#") || linea.startsWith("//")) {
                     continue;
                 }
                 
-                linea = linea.trim();
-                if (!linea.isEmpty()) {
-                    Pedido pedido = parsearPedido(linea);
-                    if (pedido != null) {
-                        pedidos.add(pedido);
+                try {
+                    // Crear pedido usando el constructor que acepta ID
+                    Pedido pedido = new Pedido(linea);
+                    pedidos.add(pedido);
+                    
+                    if (pedidos.size() % 50 == 0) {
+                        System.out.println("   📦 Pedidos cargados: " + pedidos.size());
                     }
+                    
+                } catch (Exception e) {
+                    System.err.println("❌ Error procesando línea " + numeroLinea + 
+                                     " '" + linea + "': " + e.getMessage());
                 }
             }
             
         } catch (IOException e) {
-            System.err.println("Error al cargar pedidos: " + e.getMessage());
+            System.err.println("❌ Error leyendo archivo: " + e.getMessage());
         }
         
         return pedidos;
     }
     
     /**
-     * Parsea una línea del CSV para crear un pedido
-     * Formato esperado: dd-hh-mm-DEST-cantidad-clienteId
+     * Muestra estadísticas de los pedidos cargados
      */
-    private static Pedido parsearPedido(String linea) {
-        try {
-            // Formato: 30-09-15-SEQM-145-0054321
-            String[] partes = linea.split("-");
-            
-            if (partes.length >= 6) {
-                String destino = partes[3]; // SEQM
-                int cantidad = Integer.parseInt(partes[4]); // 145
-                
-                Pedido pedido = new Pedido();
-                pedido.setId(linea); // Usar toda la línea como ID
-                pedido.setAeropuertoDestinoId(destino);
-                pedido.setCantidadProductos(cantidad);
-                
-                return pedido;
-            }
-            
-        } catch (Exception e) {
-            System.err.println("Error parseando pedido: " + linea + " - " + e.getMessage());
+    public static void mostrarEstadisticasPedidos(List<Pedido> pedidos) {
+        if (pedidos.isEmpty()) {
+            System.out.println("📊 No hay pedidos para mostrar estadísticas");
+            return;
         }
         
-        return null;
+        System.out.println("\n📊 ESTADÍSTICAS DE PEDIDOS CARGADOS:");
+        System.out.println("   Total pedidos: " + pedidos.size());
+        
+        // Contar pedidos por destino
+        System.out.println("   📍 Destinos más frecuentes:");
+        pedidos.stream()
+            .collect(java.util.stream.Collectors.groupingBy(
+                Pedido::getAeropuertoDestinoId,
+                java.util.stream.Collectors.counting()
+            ))
+            .entrySet()
+            .stream()
+            .sorted((e1, e2) -> Long.compare(e2.getValue(), e1.getValue()))
+            .limit(5)
+            .forEach(entry -> 
+                System.out.println("     " + entry.getKey() + ": " + entry.getValue() + " pedidos"));
+        
+        // Rango de horas
+        int minHora = pedidos.stream().mapToInt(Pedido::getHora).min().orElse(0);
+        int maxHora = pedidos.stream().mapToInt(Pedido::getHora).max().orElse(0);
+        System.out.println("   ⏰ Rango horario: " + 
+                          String.format("%02d:00", minHora) + " - " + 
+                          String.format("%02d:00", maxHora));
+        
+        // Rango de cantidades
+        int minCant = pedidos.stream().mapToInt(Pedido::getCantidadProductos).min().orElse(0);
+        int maxCant = pedidos.stream().mapToInt(Pedido::getCantidadProductos).max().orElse(0);
+        double promCant = pedidos.stream().mapToInt(Pedido::getCantidadProductos).average().orElse(0);
+        System.out.println("   📦 Cantidades: Min=" + minCant + 
+                          ", Max=" + maxCant + 
+                          ", Promedio=" + String.format("%.1f", promCant));
     }
 }

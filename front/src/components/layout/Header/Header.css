@@ -1,0 +1,79 @@
+:root {
+  --morapack-primary: #2c4a6b;
+  --morapack-secondary: #1e3a57;
+  --morapack-accent: #00d4ff;
+  --morapack-white: #ffffff;
+}
+
+.app-header {
+  background: linear-gradient(135deg, var(--morapack-primary) 0%, var(--morapack-secondary) 100%);
+  color: var(--morapack-white);
+  padding: 8px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  position: relative;
+  z-index: 1000;
+  min-height: 50px;
+  max-height: 50px;
+}
+
+.brand-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.brand-logo:hover {
+  transform: scale(1.02);
+}
+
+.brand-logo i {
+  font-size: 24px;
+  color: var(--morapack-accent);
+  filter: drop-shadow(0 0 8px rgba(0, 212, 255, 0.5));
+  animation: pulse-glow 3s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 8px rgba(0, 212, 255, 0.5));
+  }
+  50% {
+    filter: drop-shadow(0 0 15px rgba(0, 212, 255, 0.8));
+  }
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.brand-name {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--morapack-white);
+  line-height: 1;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.brand-subtitle {
+  font-size: 12px;
+  color: var(--morapack-accent);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  line-height: 1;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.header-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--morapack-white);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  letter-spacing: 0.5px;
+}

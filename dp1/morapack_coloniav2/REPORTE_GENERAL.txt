@@ -1,0 +1,28 @@
+=========================================================================
+                     REPORTE GENERAL - SISTEMA MORAPACK
+=========================================================================
+Archivo fuente: pedidoUltrafinal.txt
+Fecha generación: Wed Oct 01 20:12:05 PET 2025
+Total pedidos procesados: 211
+⏰ NOTA: Horarios en tiempo local de cada aeropuerto (no UTC)
+=========================================================================
+
+📊 ESTADÍSTICAS GENERALES:
+═══════════════════════════
+✅ Total pedidos exitosos: 211 (100.0%)
+❌ Total pedidos fallidos: 0 (0.0%)
+🛫 Rutas directas: 198 (93.8% del total exitoso)
+🔄 Rutas con escalas: 0 (0.0% del total exitoso)
+📦 Pedidos divididos: 13 (6.2% del total exitoso)
+
+📦 ANÁLISIS DE PRODUCTOS:
+═════════════════════════
+Total productos procesados: 57,752
+Promedio productos por pedido: 273.7
+
+🎯 EFICIENCIA DEL SISTEMA:
+═══════════════════════════
+Tasa de éxito global: 100.0%
+🏆 EXCELENTE: Sistema altamente eficiente
+
+=========================================================================

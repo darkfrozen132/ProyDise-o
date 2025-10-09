@@ -1,0 +1,287 @@
+=========================================================================
+                 REPORTE: PEDIDOS AGRUPADOS POR PLANES DE VUELO
+=========================================================================
+
+✈️  DISTRIBUCIÓN DE PEDIDOS POR VUELO:
+═══════════════════════════════════════
+
+🛫 VUELO: SPIM-SABE (13 pedidos - 3,437 productos)
+────────────────────────────────────────────────────────────────────────────────
+   📦 06-20-04-SABE-225-0000010 → SABE (225 productos)
+   📦 25-10-08-SABE-223-0000010 → SABE (223 productos)
+   📦 18-21-12-SABE-303-0000004 → SABE (303 productos)
+   📦 04-11-24-SABE-335-0000017 → SABE (335 productos)
+   📦 02-21-05-SABE-266-0000006 → SABE (266 productos)
+   📦 06-20-23-SABE-248-0000007 → SABE (248 productos)
+   📦 18-15-45-SABE-282-0000012 → SABE (282 productos)
+   📦 16-04-55-SABE-287-0000006 → SABE (287 productos)
+   📦 21-16-02-SABE-281-0000001 → SABE (281 productos)
+   📦 29-18-42-SABE-241-0000010 → SABE (241 productos)
+   📦 03-10-00-SABE-211-0000004 → SABE (211 productos)
+   📦 07-06-31-SABE-264-0000011 → SABE (264 productos)
+   📦 29-12-51-SABE-271-0000007 → SABE (271 productos)
+
+🛫 VUELO: UBBB-OSDI (12 pedidos - 3,591 productos)
+────────────────────────────────────────────────────────────────────────────────
+   📦 06-17-25-OSDI-347-0000012 → OSDI (347 productos)
+   📦 16-08-20-OSDI-335-0000016 → OSDI (335 productos)
+   📦 04-22-56-OSDI-306-0000010 → OSDI (306 productos)
+   📦 08-17-47-OSDI-252-0000015 → OSDI (252 productos)
+   📦 09-02-55-OSDI-276-0000001 → OSDI (276 productos)
+   📦 04-15-56-OSDI-294-0000008 → OSDI (294 productos)
+   📦 17-23-42-OSDI-307-0000004 → OSDI (307 productos)
+   📦 15-17-44-OSDI-268-0000021 → OSDI (268 productos)
+   📦 16-14-31-OSDI-333-0000008 → OSDI (333 productos)
+   📦 14-15-03-OSDI-315-0000015 → OSDI (315 productos)
+   📦 12-18-55-OSDI-302-0000018 → OSDI (302 productos)
+   📦 30-11-16-OSDI-256-0000019 → OSDI (256 productos)
+
+🛫 VUELO: SPIM-SUAA (12 pedidos - 3,164 productos)
+────────────────────────────────────────────────────────────────────────────────
+   📦 02-05-05-SUAA-238-0000022 → SUAA (238 productos)
+   📦 25-01-07-SUAA-297-0000025 → SUAA (297 productos)
+   📦 21-17-46-SUAA-275-0000013 → SUAA (275 productos)
+   📦 21-12-00-SUAA-285-0000008 → SUAA (285 productos)
+   📦 22-17-45-SUAA-318-0000024 → SUAA (318 productos)
+   📦 01-15-37-SUAA-237-0000015 → SUAA (237 productos)
+   📦 03-03-22-SUAA-253-0000002 → SUAA (253 productos)
+   📦 01-09-38-SUAA-266-0000015 → SUAA (266 productos)
+   📦 06-09-07-SUAA-223-0000023 → SUAA (223 productos)
+   📦 26-01-26-SUAA-207-0000010 → SUAA (207 productos)
+   📦 02-00-02-SUAA-332-0000021 → SUAA (332 productos)
+   📦 19-05-42-SUAA-233-0000002 → SUAA (233 productos)
+
+🛫 VUELO: EBCI-LATI (10 pedidos - 2,660 productos)
+────────────────────────────────────────────────────────────────────────────────
+   📦 19-16-32-LATI-210-0000008 → LATI (210 productos)
+   📦 11-01-51-LATI-269-0000017 → LATI (269 productos)
+   📦 03-22-13-LATI-204-0000006 → LATI (204 productos)
+   📦 07-18-18-LATI-229-0000017 → LATI (229 productos)
+   📦 28-19-28-LATI-274-0000024 → LATI (274 productos)
+   📦 05-12-11-LATI-295-0000004 → LATI (295 productos)
+   📦 21-17-08-LATI-325-0000002 → LATI (325 productos)
+   📦 13-11-42-LATI-326-0000013 → LATI (326 productos)
+   📦 14-01-21-LATI-272-0000009 → LATI (272 productos)
+   📦 23-08-11-LATI-256-0000014 → LATI (256 productos)
+
+🛫 VUELO: SPIM-SGAS (10 pedidos - 2,684 productos)
+────────────────────────────────────────────────────────────────────────────────
+   📦 01-00-22-SGAS-217-0000007 → SGAS (217 productos)
+   📦 18-16-30-SGAS-329-0000012 → SGAS (329 productos)
+   📦 06-03-15-SGAS-220-0000016 → SGAS (220 productos)
+   📦 03-07-29-SGAS-263-0000025 → SGAS (263 productos)
+   📦 20-00-04-SGAS-301-0000013 → SGAS (301 productos)
+   📦 07-04-57-SGAS-232-0000008 → SGAS (232 productos)
+   📦 11-23-22-SGAS-255-0000009 → SGAS (255 productos)
+   📦 12-14-26-SGAS-233-0000008 → SGAS (233 productos)
+   📦 09-00-45-SGAS-329-0000004 → SGAS (329 productos)
+   📦 22-00-17-SGAS-305-0000007 → SGAS (305 productos)
+
+🛫 VUELO: EBCI-EHAM (10 pedidos - 2,933 productos)
+────────────────────────────────────────────────────────────────────────────────
+   📦 04-14-52-EHAM-324-0000007 → EHAM (324 productos)
+   📦 19-17-24-EHAM-289-0000005 → EHAM (289 productos)
+   📦 21-02-50-EHAM-296-0000016 → EHAM (296 productos)
+   📦 09-01-02-EHAM-349-0000013 → EHAM (349 productos)
+   📦 12-16-30-EHAM-306-0000012 → EHAM (306 productos)
+   📦 06-18-19-EHAM-310-0000018 → EHAM (310 productos)
+   📦 20-06-18-EHAM-314-0000012 → EHAM (314 productos)
+   📦 03-23-22-EHAM-256-0000022 → EHAM (256 productos)
+   📦 01-00-08-EHAM-287-0000011 → EHAM (287 productos)
+   📦 30-21-31-EHAM-202-0000019 → EHAM (202 productos)
+
+🛫 VUELO: UBBB-OMDB (10 pedidos - 2,577 productos)
+────────────────────────────────────────────────────────────────────────────────
+   📦 12-21-58-OMDB-229-0000021 → OMDB (229 productos)
+   📦 24-10-04-OMDB-257-0000008 → OMDB (257 productos)
+   📦 23-12-06-OMDB-325-0000024 → OMDB (325 productos)
+   📦 15-03-16-OMDB-262-0000001 → OMDB (262 productos)
+   📦 06-15-05-OMDB-230-0000018 → OMDB (230 productos)
+   📦 11-05-51-OMDB-261-0000007 → OMDB (261 productos)
+   📦 11-16-08-OMDB-230-0000021 → OMDB (230 productos)
+   📦 20-23-24-OMDB-299-0000023 → OMDB (299 productos)
+   📦 01-01-33-OMDB-251-0000011 → OMDB (251 productos)
+   📦 19-05-22-OMDB-233-0000018 → OMDB (233 productos)
+
+🛫 VUELO: SPIM-SKBO (9 pedidos - 2,567 productos)
+────────────────────────────────────────────────────────────────────────────────
+   📦 17-15-47-SKBO-324-0000015 → SKBO (324 productos)
+   📦 20-08-53-SKBO-206-0000015 → SKBO (206 productos)
+   📦 10-17-43-SKBO-318-0000024 → SKBO (318 productos)
+   📦 04-21-39-SKBO-304-0000004 → SKBO (304 productos)
+   📦 25-22-26-SKBO-299-0000012 → SKBO (299 productos)
+   📦 22-06-31-SKBO-291-0000002 → SKBO (291 productos)
+   📦 10-05-48-SKBO-262-0000019 → SKBO (262 productos)
+   📦 18-14-25-SKBO-238-0000018 → SKBO (238 productos)
+   📦 01-13-50-SKBO-325-0000025 → SKBO (325 productos)
+
+🛫 VUELO: EBCI-LOWW (9 pedidos - 2,355 productos)
+────────────────────────────────────────────────────────────────────────────────
+   📦 13-07-20-LOWW-313-0000010 → LOWW (313 productos)
+   📦 02-01-52-LOWW-215-0000001 → LOWW (215 productos)
+   📦 24-11-09-LOWW-258-0000009 → LOWW (258 productos)
+   📦 13-23-39-LOWW-210-0000024 → LOWW (210 productos)
+   📦 08-14-21-LOWW-203-0000018 → LOWW (203 productos)
+   📦 14-16-57-LOWW-223-0000005 → LOWW (223 productos)
+   📦 21-21-13-LOWW-324-0000021 → LOWW (324 productos)
+   📦 03-23-25-LOWW-317-0000017 → LOWW (317 productos)
+   📦 14-00-17-LOWW-292-0000024 → LOWW (292 productos)
+
+🛫 VUELO: UBBB-OYSN (9 pedidos - 2,531 productos)
+────────────────────────────────────────────────────────────────────────────────
+   📦 29-03-03-OYSN-299-0000001 → OYSN (299 productos)
+   📦 26-03-03-OYSN-293-0000004 → OYSN (293 productos)
+   📦 17-19-13-OYSN-303-0000016 → OYSN (303 productos)
+   📦 06-09-27-OYSN-333-0000023 → OYSN (333 productos)
+   📦 19-23-28-OYSN-322-0000017 → OYSN (322 productos)
+   📦 28-08-19-OYSN-210-0000018 → OYSN (210 productos)
+   📦 04-16-49-OYSN-257-0000003 → OYSN (257 productos)
+   📦 21-22-12-OYSN-219-0000001 → OYSN (219 productos)
+   📦 04-04-40-OYSN-295-0000018 → OYSN (295 productos)
+
+🛫 VUELO: UBBB-OERK (9 pedidos - 2,600 productos)
+────────────────────────────────────────────────────────────────────────────────
+   📦 02-16-09-OERK-325-0000014 → OERK (325 productos)
+   📦 15-08-53-OERK-249-0000015 → OERK (249 productos)
+   📦 25-01-17-OERK-250-0000020 → OERK (250 productos)
+   📦 25-06-36-OERK-281-0000025 → OERK (281 productos)
+   📦 22-11-54-OERK-325-0000003 → OERK (325 productos)
+   📦 19-05-17-OERK-345-0000008 → OERK (345 productos)
+   📦 21-22-54-OERK-292-0000006 → OERK (292 productos)
+   📦 09-03-17-OERK-289-0000015 → OERK (289 productos)
+   📦 09-20-38-OERK-244-0000008 → OERK (244 productos)
+
+🛫 VUELO: UBBB-OAKB (8 pedidos - 2,078 productos)
+────────────────────────────────────────────────────────────────────────────────
+   📦 20-20-02-OAKB-292-0000018 → OAKB (292 productos)
+   📦 18-11-46-OAKB-307-0000014 → OAKB (307 productos)
+   📦 17-18-36-OAKB-249-0000003 → OAKB (249 productos)
+   📦 04-15-33-OAKB-249-0000018 → OAKB (249 productos)
+   📦 19-12-51-OAKB-272-0000019 → OAKB (272 productos)
+   📦 11-17-07-OAKB-269-0000017 → OAKB (269 productos)
+   📦 13-18-10-OAKB-210-0000001 → OAKB (210 productos)
+   📦 08-22-39-OAKB-230-0000006 → OAKB (230 productos)
+
+🛫 VUELO: EBCI-LKPR (8 pedidos - 2,046 productos)
+────────────────────────────────────────────────────────────────────────────────
+   📦 11-00-55-LKPR-267-0000019 → LKPR (267 productos)
+   📦 06-05-28-LKPR-244-0000019 → LKPR (244 productos)
+   📦 12-05-07-LKPR-274-0000021 → LKPR (274 productos)
+   📦 26-18-02-LKPR-295-0000017 → LKPR (295 productos)
+   📦 20-22-26-LKPR-216-0000012 → LKPR (216 productos)
+   📦 20-07-18-LKPR-267-0000003 → LKPR (267 productos)
+   📦 02-04-33-LKPR-275-0000019 → LKPR (275 productos)
+   📦 28-15-42-LKPR-208-0000017 → LKPR (208 productos)
+
+🛫 VUELO: UBBB-UMMS (7 pedidos - 1,729 productos)
+────────────────────────────────────────────────────────────────────────────────
+   📦 22-09-44-UMMS-223-0000013 → UMMS (223 productos)
+   📦 17-03-09-UMMS-247-0000009 → UMMS (247 productos)
+   📦 05-11-28-UMMS-212-0000012 → UMMS (212 productos)
+   📦 15-09-37-UMMS-264-0000012 → UMMS (264 productos)
+   📦 05-12-16-UMMS-285-0000005 → UMMS (285 productos)
+   📦 16-04-34-UMMS-298-0000021 → UMMS (298 productos)
+   📦 28-12-57-UMMS-200-0000023 → UMMS (200 productos)
+
+🛫 VUELO: SPIM-SEQM (6 pedidos - 1,508 productos)
+────────────────────────────────────────────────────────────────────────────────
+   📦 04-11-49-SEQM-224-0000015 → SEQM (224 productos)
+   📦 29-06-47-SEQM-275-0000018 → SEQM (275 productos)
+   📦 13-05-14-SEQM-255-0000016 → SEQM (255 productos)
+   📦 20-18-40-SEQM-276-0000022 → SEQM (276 productos)
+   📦 19-16-47-SEQM-205-0000003 → SEQM (205 productos)
+   📦 12-10-34-SEQM-273-0000012 → SEQM (273 productos)
+
+🛫 VUELO: EBCI-EDDI (6 pedidos - 1,461 productos)
+────────────────────────────────────────────────────────────────────────────────
+   📦 06-04-45-EDDI-268-0000011 → EDDI (268 productos)
+   📦 19-00-14-EDDI-256-0000015 → EDDI (256 productos)
+   📦 17-00-43-EDDI-212-0000022 → EDDI (212 productos)
+   📦 12-04-29-EDDI-306-0000009 → EDDI (306 productos)
+   📦 06-01-26-EDDI-215-0000015 → EDDI (215 productos)
+   📦 30-13-37-EDDI-204-0000006 → EDDI (204 productos)
+
+🛫 VUELO: EBCI-LDZA (6 pedidos - 1,590 productos)
+────────────────────────────────────────────────────────────────────────────────
+   📦 22-06-50-LDZA-247-0000002 → LDZA (247 productos)
+   📦 15-02-21-LDZA-235-0000007 → LDZA (235 productos)
+   📦 30-16-46-LDZA-284-0000001 → LDZA (284 productos)
+   📦 27-19-37-LDZA-221-0000009 → LDZA (221 productos)
+   📦 25-00-34-LDZA-304-0000008 → LDZA (304 productos)
+   📦 10-22-10-LDZA-299-0000007 → LDZA (299 productos)
+
+🛫 VUELO: UBBB-OPKC (6 pedidos - 1,684 productos)
+────────────────────────────────────────────────────────────────────────────────
+   📦 01-07-21-OPKC-288-0000003 → OPKC (288 productos)
+   📦 06-19-10-OPKC-298-0000011 → OPKC (298 productos)
+   📦 16-12-22-OPKC-260-0000015 → OPKC (260 productos)
+   📦 23-06-41-OPKC-249-0000014 → OPKC (249 productos)
+   📦 19-00-34-OPKC-257-0000008 → OPKC (257 productos)
+   📦 26-20-45-OPKC-332-0000001 → OPKC (332 productos)
+
+🛫 VUELO: UBBB-VIDP (6 pedidos - 1,645 productos)
+────────────────────────────────────────────────────────────────────────────────
+   📦 02-01-39-VIDP-307-0000007 → VIDP (307 productos)
+   📦 14-03-53-VIDP-299-0000004 → VIDP (299 productos)
+   📦 12-17-05-VIDP-263-0000009 → VIDP (263 productos)
+   📦 14-10-23-VIDP-240-0000025 → VIDP (240 productos)
+   📦 02-23-50-VIDP-297-0000020 → VIDP (297 productos)
+   📦 16-12-49-VIDP-239-0000017 → VIDP (239 productos)
+
+🛫 VUELO: SPIM-SVMI (6 pedidos - 1,672 productos)
+────────────────────────────────────────────────────────────────────────────────
+   📦 22-05-50-SVMI-301-0000011 → SVMI (301 productos)
+   📦 06-11-05-SVMI-281-0000024 → SVMI (281 productos)
+   📦 27-16-26-SVMI-297-0000007 → SVMI (297 productos)
+   📦 16-19-44-SVMI-254-0000016 → SVMI (254 productos)
+   📦 21-14-47-SVMI-281-0000024 → SVMI (281 productos)
+   📦 25-12-34-SVMI-258-0000006 → SVMI (258 productos)
+
+🛫 VUELO: SPIM-SLLP (5 pedidos - 1,239 productos)
+────────────────────────────────────────────────────────────────────────────────
+   📦 21-22-29-SLLP-243-0000002 → SLLP (243 productos)
+   📦 08-06-47-SLLP-243-0000025 → SLLP (243 productos)
+   📦 03-08-44-SLLP-225-0000021 → SLLP (225 productos)
+   📦 23-09-19-SLLP-268-0000008 → SLLP (268 productos)
+   📦 03-02-33-SLLP-260-0000021 → SLLP (260 productos)
+
+🛫 VUELO: UBBB-OJAI (5 pedidos - 1,197 productos)
+────────────────────────────────────────────────────────────────────────────────
+   📦 28-20-04-OJAI-277-0000015 → OJAI (277 productos)
+   📦 03-08-21-OJAI-245-0000012 → OJAI (245 productos)
+   📦 24-03-46-OJAI-248-0000018 → OJAI (248 productos)
+   📦 16-07-09-OJAI-226-0000001 → OJAI (226 productos)
+   📦 05-19-30-OJAI-201-0000011 → OJAI (201 productos)
+
+🛫 VUELO: UBBB-OOMS (5 pedidos - 1,343 productos)
+────────────────────────────────────────────────────────────────────────────────
+   📦 14-19-56-OOMS-220-0000001 → OOMS (220 productos)
+   📦 10-12-15-OOMS-227-0000023 → OOMS (227 productos)
+   📦 06-02-38-OOMS-343-0000012 → OOMS (343 productos)
+   📦 04-14-09-OOMS-245-0000015 → OOMS (245 productos)
+   📦 21-09-46-OOMS-308-0000013 → OOMS (308 productos)
+
+🛫 VUELO: SPIM-SBBR (4 pedidos - 966 productos)
+────────────────────────────────────────────────────────────────────────────────
+   📦 27-01-30-SBBR-207-0000013 → SBBR (207 productos)
+   📦 30-04-06-SBBR-225-0000025 → SBBR (225 productos)
+   📦 15-20-23-SBBR-299-0000021 → SBBR (299 productos)
+   📦 20-20-33-SBBR-235-0000006 → SBBR (235 productos)
+
+🛫 VUELO: EBCI-EKCH (4 pedidos - 1,313 productos)
+────────────────────────────────────────────────────────────────────────────────
+   📦 16-16-18-EKCH-332-0000008 → EKCH (332 productos)
+   📦 02-09-57-EKCH-305-0000014 → EKCH (305 productos)
+   📦 07-13-41-EKCH-327-0000019 → EKCH (327 productos)
+   📦 18-22-15-EKCH-349-0000025 → EKCH (349 productos)
+
+🛫 VUELO: SPIM-SCEL (2 pedidos - 536 productos)
+────────────────────────────────────────────────────────────────────────────────
+   📦 30-14-52-SCEL-245-0000021 → SCEL (245 productos)
+   📦 28-19-16-SCEL-291-0000015 → SCEL (291 productos)
+
+🛫 VUELO: EBCI-LBSF (1 pedidos - 310 productos)
+────────────────────────────────────────────────────────────────────────────────
+   📦 12-06-23-LBSF-310-0000023 → LBSF (310 productos)
+
+📊 RESUMEN: 27 vuelos diferentes transportando pedidos

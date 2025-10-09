@@ -1,0 +1,483 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css');
+
+/* Reusar los estilos del simulador para el semanal */
+:root {
+    --morapack-primary: #2c4a6b;
+    --morapack-secondary: #1e3a57;
+    --morapack-light: #f8f9fa;
+    --morapack-white: #ffffff;
+    --morapack-text: #333;
+    --morapack-text-light: #6c757d;
+    --color-low: #00C851;
+    --color-medium: #FFD54F;
+    --color-high: #FF4444;
+    --sede-primary: #FF6B35;
+    --sede-gold: #FFD700;
+    --border-color: #dee2e6;
+    --box-shadow: 0 4px 12px rgba(0, 0, 0, .08);
+}
+
+html,
+body,
+#root {
+    min-height: 100%;
+    margin: 0;
+    padding: 0;
+    font-family: 'Inter', sans-serif;
+    background: var(--morapack-light);
+}
+
+.section-content {
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+.simulation-sidebar {
+    width: 320px;
+    background: var(--morapack-white);
+    /*border-right: 1px solid var(--border-color);*/
+    box-shadow: none;
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    box-sizing: border-box;
+    flex-shrink: 0;
+    height: 100vh;
+    overflow-y: auto;
+}
+
+.sidebar-header h3 {
+    font-size: 1.2rem;
+    color: var(--morapack-primary);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+}
+
+.sidebar-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 30px;
+}
+
+.sidebar-item {
+    background: var(--morapack-light);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 12px 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    font-size: .95rem;
+    color: var(--morapack-text);
+    transition: all .2s ease-in-out;
+    font-weight: 500;
+}
+
+.sidebar-item:hover,
+.sidebar-item.active {
+    background: var(--morapack-primary);
+    color: var(--morapack-white);
+    border-color: var(--morapack-primary);
+}
+
+.sidebar-legend {
+    margin-top: auto;
+    border-top: 1px solid var(--border-color);
+    padding-top: 20px;
+    margin-top: 20px;
+}
+
+.legend-header h4 {
+    font-size: 1.1rem;
+    color: var(--morapack-text-light);
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+}
+
+.legend-category {
+    margin-bottom: 15px;
+}
+
+.legend-category h5 {
+    font-size: .9rem;
+    color: var(--morapack-text);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-weight: 600;
+}
+
+.legend-items {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-left: 10px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: .85rem;
+    color: var(--morapack-text-light);
+}
+
+.legend-icon {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 2px solid var(--morapack-white);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .2);
+    flex-shrink: 0;
+}
+
+.legend-icon.sede-icon {
+    background: var(--sede-primary);
+    border-color: var(--sede-gold);
+}
+
+.legend-icon.airport-low,
+.legend-icon.plane-low {
+    background: var(--color-low);
+}
+
+.legend-icon.airport-medium,
+.legend-icon.plane-medium {
+    background: var(--color-medium);
+}
+
+.legend-icon.airport-high,
+.legend-icon.plane-high {
+    background: var(--color-high);
+}
+
+.simulation-main-content {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    /*padding: 20px;*/
+    box-sizing: border-box;
+    height: 100vh;
+    overflow-y: auto;
+}
+
+.content-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.control-panel {
+    background: var(--morapack-white);
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: var(--box-shadow);
+    margin-bottom: 20px;
+    flex-shrink: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 5;
+}
+
+.control-panel h2 {
+    font-size: 1.5rem;
+    color: var(--morapack-primary);
+    margin: 0;
+    font-weight: 600;
+}
+
+.status-section {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1rem;
+}
+
+.status-label {
+    font-weight: 600;
+    color: var(--morapack-text-light);
+}
+
+.status-text {
+    font-weight: 600;
+    color: var(--morapack-primary);
+}
+
+.simulation-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.simulation-controls h3 {
+    font-size: 1.1rem;
+    color: var(--morapack-secondary);
+    margin: 0;
+    font-weight: 600;
+}
+
+.control-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.sim-control-btn {
+    padding: 10px 15px;
+    border: none;
+    border-radius: 8px;
+    color: #fff;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, .1);
+}
+
+.sim-control-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, .15);
+}
+
+.sim-control-btn.play-btn {
+    background: var(--color-low);
+}
+
+.sim-control-btn.pause-btn {
+    background: var(--color-medium);
+}
+
+.sim-control-btn.stop-btn {
+    background: var(--color-high);
+}
+
+.sim-control-btn.speed-btn {
+    background: var(--morapack-primary);
+}
+
+.sim-control-btn.restart-btn {
+    background: var(--morapack-secondary);
+}
+
+.map-controls-panel {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 15px;
+    padding: 15px;
+    background: var(--morapack-white);
+    border-radius: 12px;
+    box-shadow: var(--box-shadow);
+    margin-bottom: 20px;
+    flex-shrink: 0;
+}
+
+.map-btn {
+    padding: 12px 20px;
+    border: none;
+    border-radius: 25px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .3s ease;
+    color: var(--morapack-primary);
+    background: var(--morapack-light);
+}
+
+.map-btn:hover,
+.map-btn.active {
+    background: var(--morapack-primary);
+    color: #fff;
+}
+
+.map-container {
+    flex-grow: 1;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: var(--box-shadow);
+    min-height: 400px;
+    height: 70vh;
+    position: relative;
+}
+
+.flight-map,
+.leaflet-container {
+    height: 100%;
+    width: 100%;
+}
+
+.simulation-info-panel {
+    width: 350px;
+    background: var(--morapack-white);
+    border-left: 1px solid var(--border-color);
+    box-shadow: -2px 0 10px rgba(0, 0, 0, .05);
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+}
+
+.info-header {
+    padding: 20px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.info-header h3 {
+    font-size: 1.2rem;
+    color: var(--morapack-primary);
+    margin: 0;
+    font-weight: 600;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    color: var(--morapack-text-light);
+    cursor: pointer;
+    transition: color .2s ease;
+}
+
+.close-btn:hover {
+    color: var(--color-high);
+}
+
+.info-content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.time-section,
+.stats-section,
+.airport-section,
+.system-alerts {
+    padding: 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.time-display,
+.time-counter {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--morapack-text);
+}
+
+.metrics-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.metric-card {
+    background: var(--morapack-light);
+    border-radius: 12px;
+    padding: 15px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, .05);
+}
+
+.metric-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--morapack-primary);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+}
+
+.airport-info {
+    margin-top: 15px;
+    padding: 15px;
+    background: var(--morapack-light);
+    border-radius: 12px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, .05);
+}
+
+.saturation-highlight {
+    color: var(--color-high);
+    font-weight: 700;
+    font-size: 1rem;
+    margin-top: 5px;
+}
+
+.system-alerts {
+    padding: 15px;
+    background: var(--color-medium);
+    border-radius: 12px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, .1);
+    margin-top: 20px;
+    color: #856404;
+    font-weight: bold;
+}
+
+.modes-container-scrollable {
+    max-height: 200px;
+    overflow-y: auto;
+    padding-right: 15px;
+}
+
+.modes-container-scrollable::-webkit-scrollbar {
+    width: 8px;
+}
+
+.modes-container-scrollable::-webkit-scrollbar-track {
+    background: var(--morapack-light);
+    border-radius: 10px;
+}
+
+.modes-container-scrollable::-webkit-scrollbar-thumb {
+    background: var(--morapack-primary);
+    border-radius: 10px;
+}
+
+/***** Estilos para el botón de alternar el sidebar *****/
+.edge-toggle {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    left: -12px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 0;
+    background: #ff7a00;
+    color: #fff;
+    font-weight: 700;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, .25);
+    cursor: pointer;
+    transition: left 0.3s ease;
+}
+
+/* se mueve con el sidebar abierto */
+.section-content.sidebar-open .edge-toggle {
+    left: 268px;
+    /* 280 - 12 */
+}

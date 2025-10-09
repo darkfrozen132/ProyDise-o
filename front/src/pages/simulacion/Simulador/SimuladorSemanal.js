@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer } from 'react-leaflet';
+import { IoArrowBackOutline } from "react-icons/io5";
+import Button from '@mui/material/Button';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import './SimuladorSemanl.css';
+import './SimuladorSemanal.css';
 
-// Fix for default markers
+/* Reparar iconos por defecto de Leaflet */
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
 	iconRetinaUrl: require('leaflet/dist/images/marker-icon-2x.png'),
@@ -13,7 +15,7 @@ L.Icon.Default.mergeOptions({
 	shadowUrl: require('leaflet/dist/images/marker-shadow.png'),
 });
 
-// Custom airplane icon
+/* Iconos de aviones personalizados como SVG dentro de divIcon */
 const createAirplaneIcon = (type, color, rotation = 0) => {
 	const iconSvg = {
 		'boeing737': `<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -42,6 +44,7 @@ const createAirplaneIcon = (type, color, rotation = 0) => {
 		</svg>`
 	};
 
+	/* Crear divIcon con el SVG correspondiente */
 	return L.divIcon({
 		html: `<div style="transform: rotate(${rotation}deg); display: flex; align-items: center; justify-content: center; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));">${iconSvg[type]}</div>`,
 		className: 'airplane-icon',
@@ -51,29 +54,34 @@ const createAirplaneIcon = (type, color, rotation = 0) => {
 	});
 };
 
-// Custom airport icon
+/* Iconos de aeropuertos personalizados */
 const createAirportIcon = (isSede = false, saturation = 0) => {
 	let size, color, borderColor, borderWidth, shadow;
+	/* Color y tamaño según tipo y saturación */
 	if (isSede) {
 		size = 32; color = '#dc3545'; borderColor = '#FFD700'; borderWidth = 4; shadow = '0 4px 16px rgba(220, 53, 69, 0.6)';
 	} else {
 		size = 22; borderColor = '#ffffff'; borderWidth = 3; shadow = '0 3px 10px rgba(0,0,0,0.4)';
 		if (saturation >= 80) color = '#dc3545'; else if (saturation >= 50) color = '#ffc107'; else color = '#28a745';
 	}
+	/* Crear divIcon con estilos */
 	return new L.DivIcon({
 		className: 'airport-marker',
 		html: `<div style="background: ${color}; border: ${borderWidth}px solid ${borderColor}; border-radius: 50%; width: ${size}px; height: ${size}px; display:flex;align-items:center;justify-content:center; box-shadow:${shadow}; position:relative; cursor:pointer; transition: all .3s ease;">
 			<i class="fas fa-${isSede ? 'building' : 'plane'}" style="color:white; font-size:${size * 0.4}px; ${isSede ? '' : 'transform: rotate(45deg);'} text-shadow:0 1px 3px rgba(0,0,0,.5);"></i>
 		</div>`,
-		iconSize: [size, size], iconAnchor: [size/2, size/2], popupAnchor: [0, -size/2]
+		iconSize: [size, size], iconAnchor: [size / 2, size / 2], popupAnchor: [0, -size / 2]
 	});
 };
 
+/* Componente para manejar marcadores dinámicos en el mapa */
 function DynamicMarkers({ flights, airports, activeView, showRoutes }) {
 	const map = (0, require('react-leaflet').useMap)();
+	/* Actualizar marcadores cuando cambian vuelos, aeropuertos, vista activa o rutas */
 	React.useEffect(() => {
 		const airportMarkers = []; const flightMarkers = [];
 		map.eachLayer(layer => { if (layer instanceof L.Marker || layer instanceof L.Polyline) map.removeLayer(layer); });
+		/* Añadir marcadores de aeropuertos si la vista es 'airports' o 'flights' */
 		if (activeView === 'airports' || activeView === 'flights') {
 			airports.forEach(airport => {
 				const isUnlimited = airport.capacity === 'ILIMITADO';
@@ -83,6 +91,7 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes }) {
 				marker.addTo(map); airportMarkers.push(marker);
 			});
 		}
+		/* Añadir marcadores de vuelos y rutas si la vista es 'flights' o 'routes' */
 		if (activeView === 'flights' || activeView === 'routes') {
 			flights.forEach(flight => {
 				const icon = createAirplaneIcon(flight.aircraftType, flight.aircraftColor, flight.rotation);
@@ -94,6 +103,7 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes }) {
 				}
 			});
 		}
+		/* Limpiar marcadores al desmontar o actualizar */
 		return () => { airportMarkers.forEach(m => map.removeLayer(m)); flightMarkers.forEach(m => map.removeLayer(m)); };
 	}, [flights, airports, activeView, showRoutes, map]);
 	return null;
@@ -110,6 +120,7 @@ const SimuladorSemanal = () => {
 	const [simulationStatus, setSimulationStatus] = useState('Monitoreo semanal activo');
 	const [activeView, setActiveView] = useState('flights');
 	const [showRoutes, setShowRoutes] = useState(false);
+	/* Datos estáticos de aeropuertos */
 	const [airports, setAirports] = useState([
 		{ name: 'Lima-Jorge Chávez', code: 'LIM', lat: -12.0219, lng: -77.1143, capacity: 'ILIMITADO', packages: 980, isSede: true, region: 'América del Sur', country: 'Perú', operationType: 'Sede Principal - Hub Sudamericano' },
 		{ name: 'Bogotá-El Dorado', code: 'BOG', lat: 4.7016, lng: -74.1469, capacity: 900, packages: 720, region: 'América del Sur', country: 'Colombia', operationType: 'Aeropuerto Regional' },
@@ -124,8 +135,9 @@ const SimuladorSemanal = () => {
 		{ name: 'Londres-Heathrow', code: 'LHR', lat: 51.4700, lng: -0.4543, capacity: 1400, packages: 1120, region: 'Europa', country: 'Reino Unido', operationType: 'Aeropuerto Regional' },
 		{ name: 'Frankfurt', code: 'FRA', lat: 50.0379, lng: 8.5622, capacity: 1250, packages: 1000, region: 'Europa', country: 'Alemania', operationType: 'Aeropuerto Regional' }
 	]);
-	const intervalRef = useRef();
+	const intervalRef = useRef(); /* Referencia para el intervalo de simulación */
 
+	/* Generar vuelos iniciales con lógica de origen, destino, tipo de avión, capacidad y carga */
 	const generateInitialFlights = useCallback(() => {
 		const flightCount = 402; const newFlights = []; const sedes = airports.filter(a => a.isSede);
 		const flightTypes = [
@@ -166,16 +178,22 @@ const SimuladorSemanal = () => {
 		setFlightsInAir(initialInAir);
 	}, [airports]);
 
+	/* Generar vuelos iniciales al montar el componente */
 	useEffect(() => { generateInitialFlights(); }, [generateInitialFlights]);
 
+	/* Lógica de simulación que avanza el tiempo y actualiza vuelos cada segundo */
 	useEffect(() => {
 		if (isRunning) {
+			/* Avance semanal cada segundo */
 			intervalRef.current = setInterval(() => {
+				/* Avanzar tiempo actual */
 				setCurrentTime(prev => { const newTime = new Date(prev); newTime.setDate(newTime.getDate() + 7 * speed); return newTime; });
+				/* Actualizar tiempo transcurrido */
 				setElapsedTime(prev => {
 					const totalMinutes = prev.days * 24 * 60 + prev.hours * 60 + prev.minutes + 7 * 24 * 60 * speed;
 					return { days: Math.floor(totalMinutes / (24 * 60)), hours: Math.floor((totalMinutes % (24 * 60)) / 60), minutes: totalMinutes % 60 };
 				});
+				/* Actualizar estado de vuelos */
 				setFlights(prevFlights => {
 					const deltas = {}; const addDelta = (code, amount) => { if (!code || !Number.isFinite(amount)) return; deltas[code] = (deltas[code] || 0) + amount; };
 					const nextFlights = prevFlights.map(flight => {
@@ -186,6 +204,7 @@ const SimuladorSemanal = () => {
 						if (newProgress < 0.1) { newAltitude = newProgress * 100000; newSpeed = newProgress * 2500; }
 						else if (newProgress < 0.9) { newAltitude = 30000 + Math.random() * 10000; newSpeed = 450 + Math.random() * 200; }
 						else { const landingProgress = (newProgress - 0.9) / 0.1; newAltitude = 30000 * (1 - landingProgress); newSpeed = 450 * (1 - landingProgress * 0.6); }
+						/* Si el vuelo ha llegado a su destino, actualizar paquetes y reasignar vuelo */
 						if (newProgress >= 1) {
 							addDelta(flight.destination.code, flight.currentPackages);
 							addDelta(flight.origin.code, -flight.currentPackages);
@@ -202,10 +221,12 @@ const SimuladorSemanal = () => {
 						}
 						return { ...flight, progress: newProgress, altitude: newAltitude, speed: newSpeed, currentLat: newLat, currentLng: newLng };
 					});
+					/* Actualizar paquetes en aeropuertos según deltas calculados */
 					const codes = Object.keys(deltas);
 					if (codes.length > 0) {
 						setAirports(prev => prev.map(a => { const delta = deltas[a.code] || 0; if (!delta) return a; let nextPackages = a.packages + delta; if (nextPackages < 0) nextPackages = 0; if (typeof a.capacity === 'number') nextPackages = Math.min(nextPackages, a.capacity); return { ...a, packages: nextPackages }; }));
 					}
+					/* Contar vuelos en el aire */
 					const inAir = nextFlights.reduce((acc, f) => acc + (f.altitude > 1000 ? 1 : 0), 0);
 					setFlightsInAir(inAir);
 					return nextFlights;
@@ -221,6 +242,7 @@ const SimuladorSemanal = () => {
 	const handleSpeedChange = () => { const speeds = [1, 2, 4, 8]; const currentIndex = speeds.indexOf(speed); const nextSpeed = speeds[(currentIndex + 1) % speeds.length]; setSpeed(nextSpeed); };
 	const handleRestart = () => { setIsRunning(false); setElapsedTime({ days: 0, hours: 0, minutes: 0 }); setCurrentTime(new Date(2024, 7, 27, 8, 0, 0)); generateInitialFlights(); setSimulationStatus('Sistema reiniciado'); setTimeout(() => { setSimulationStatus('Monitoreo semanal activo'); }, 2000); };
 	const formatTime = (timeObj) => `${timeObj.days.toString().padStart(2, '0')} : ${timeObj.hours.toString().padStart(2, '0')} : ${timeObj.minutes.toString().padStart(2, '0')}`;
+	/* Calcular métricas de saturación de aeropuertos */
 	const getSaturation = () => {
 		const regularAirports = airports.filter(airport => !airport.isSede);
 		if (regularAirports.length === 0) return "0.00";
@@ -229,6 +251,7 @@ const SimuladorSemanal = () => {
 		if (totalCapacity === 0) return "0.00";
 		return ((totalPackages / totalCapacity) * 100).toFixed(2);
 	};
+	/* Encontrar aeropuerto más saturado */
 	const getMostSaturatedAirport = () => {
 		const regularAirports = airports.filter(airport => !airport.isSede && typeof airport.capacity === 'number');
 		if (regularAirports.length === 0) return { name: 'N/A', capacity: 0, packages: 0, saturation: 0 };
@@ -238,6 +261,7 @@ const SimuladorSemanal = () => {
 			return saturation > maxSaturation ? airport : max;
 		});
 	};
+	/* Obtener aeropuerto más saturado */
 	const mostSaturatedAirport = getMostSaturatedAirport();
 	const getFlightsByAltitude = () => flightsInAir;
 
@@ -254,22 +278,31 @@ const SimuladorSemanal = () => {
 							<div className="time-display">Semana {elapsedTime.days + 1}</div>
 						</div>
 					</div>
-					<div className="modes-section">
-						<h4><i className="fas fa-cogs"></i> Modos de Operación</h4>
-						<div className="modes-sidebar-container">
-							<button className="mode-sidebar-chip" onClick={() => navigate('/simulador')}>
-								<i className="fas fa-broadcast-tower"></i>
-								<span>Monitoreo en Tiempo Real</span>
-							</button>
-							<button className="mode-sidebar-chip active" onClick={() => navigate('/simulador-semanal')}>
-								<i className="fas fa-calendar-week"></i>
-								<span>Simulación Semanal</span>
-							</button>
-							<button className="mode-sidebar-chip" onClick={() => navigate('/simulador-colapso')}>
-								<i className="fas fa-exclamation-triangle"></i>
-								<span>Simulación de Colapso</span>
-							</button>
-						</div>
+					<div className="modes-sidebar-container">
+						<Button
+							variant="outlined"
+							size="small"
+							startIcon={<IoArrowBackOutline />}  
+							sx={{
+								textTransform: 'none',            
+								color: '#333',
+								borderColor: '#b3b3b3',
+								backgroundColor: '#f9f9f9',
+								fontWeight: 500,
+								borderRadius: '20px',
+								px: 2,                             
+								py: 0.5,                           
+								'&:hover': {
+									backgroundColor: '#e0e0e0',
+									borderColor: '#999',
+								},
+								width: 'auto',
+								minWidth: 'unset',
+							}}
+							onClick={() => navigate('/operaciones')}
+						>
+							Regresar
+						</Button>
 					</div>
 					<div className="stats-section">
 						<h4><i className="fas fa-chart-line"></i> Métricas de Saturación</h4>
@@ -349,18 +382,6 @@ const SimuladorSemanal = () => {
 							<div className="control-buttons">
 								<button className="sim-control-btn play-btn" onClick={handlePlay}>
 									<i className="fas fa-play"></i> Iniciar
-								</button>
-								<button className="sim-control-btn pause-btn" onClick={handlePause}>
-									<i className="fas fa-pause"></i> Pausar
-								</button>
-								<button className="sim-control-btn stop-btn" onClick={handleStop}>
-									<i className="fas fa-stop"></i> Detener
-								</button>
-								<button className="sim-control-btn speed-btn" onClick={handleSpeedChange}>
-									<i className="fas fa-tachometer-alt"></i> Velocidad x{speed}
-								</button>
-								<button className="sim-control-btn restart-btn" onClick={handleRestart}>
-									<i className="fas fa-redo"></i> Reiniciar
 								</button>
 							</div>
 						</div>

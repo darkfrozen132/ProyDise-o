@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer } from 'react-leaflet';
-import { IoArrowBackOutline } from "react-icons/io5";
-import Button from '@mui/material/Button';
+import BackButton from '../../../components/ui/BackButton';
+import { Drawer, IconButton } from '@mui/material';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import './SimuladorSemanal.css';
@@ -265,132 +267,178 @@ const SimuladorSemanal = () => {
 	const mostSaturatedAirport = getMostSaturatedAirport();
 	const getFlightsByAltitude = () => flightsInAir;
 
+	/* Estado y lógica para el drawer lateral */
+	const drawerWidth = 300; // ancho del drawer
+	const [open, setOpen] = useState(false);
+
 	return (
 		<div className="section-content" id="simulationSection">
-			<div className="simulation-sidebar">
-				<div className="sidebar-header">
-					<h3><i className="fas fa-info-circle"></i> Información del Sistema</h3>
+			{/* Botón semicircular pegado al borde */}
+			<IconButton
+				onClick={() => setOpen(v => !v)}
+				aria-label="toggle drawer"
+				sx={{
+					position: 'fixed',
+					top: '50%',
+					transform: 'translateY(-50%)',
+					left: open ? drawerWidth - 30 : 0,
+					zIndex: 1201,
+					width: 36,
+					height: 72,
+					borderRadius: open ? '36px 0 0 36px' : '0 36px 36px 0',
+					backgroundColor: '#2c4a6b',
+					color: '#fff',
+					boxShadow: '0 6px 18px rgba(0,0,0,0.25)',
+					transition: 'left .35s ease, border-radius .35s ease, background-color .2s ease',
+					display: 'flex',
+					alignItems: 'center',
+					justifyContent: 'center',
+					'&:hover': { backgroundColor: '#496c92ff' },
+				}}
+			>
+				{open ? <ChevronLeftIcon /> : <ChevronRightIcon />}
+			</IconButton>
+			{/* Drawer lateral */}
+			<Drawer
+				variant="persistent"
+				anchor="left"
+				open={open}
+				sx={{
+					width: open ? drawerWidth : 0,
+					flexShrink: 0,
+					'& .MuiDrawer-paper': {
+						width: drawerWidth,
+						boxSizing: 'border-box',
+						padding: 0,
+						position: 'relative',
+						overflow: 'visible',
+					},
+				}}
+			>
+				{/* Barra lateral con información y controles */}
+				<div className="simulation-sidebar">
+					<div className="modes-sidebar-container"
+						style={{
+							display: 'flex',
+							justifyContent: 'center',
+							alignItems: 'flex-start',
+							width: '100%',
+							paddingTop: '2px',
+							paddingBottom: '20px',
+						}}>
+						{/* Botón para regresar a operaciones */}
+						<BackButton to="/operaciones" label="Regresar" width="50%" />
+					</div>
+					<div className="sidebar-header">
+						<h3><i className="fas fa-info-circle"></i> Información del Sistema</h3>
+					</div>
+					<div className="sidebar-content">
+						<div className="time-section">
+							<div className="current-time">
+								<label>Semana actual:</label>
+								<div className="time-display">Semana {elapsedTime.days + 1}</div>
+							</div>
+						</div>
+
+						{/* Controles de simulación */}
+						<div className="stats-section">
+							<h4><i className="fas fa-chart-line"></i> Métricas de Saturación</h4>
+							<div className="metrics-grid">
+								<div className="metric-card">
+									<div className="metric-icon"><i className="fas fa-plane"></i></div>
+									<div className="metric-content">
+										<div className="metric-label">Vuelos en el aire</div>
+										<div className="metric-value">{flights.length}</div>
+										<div className="metric-sublabel">de 402 total</div>
+									</div>
+								</div>
+								<div className="metric-card">
+									<div className="metric-icon aircraft"><i className="fas fa-tachometer-alt"></i></div>
+									<div className="metric-content">
+										<div className="metric-label">Saturación de aviones</div>
+										<div className="metric-value">{((flights.length / 402) * 100).toFixed(1)}%</div>
+										<div className="metric-sublabel">capacidad aérea</div>
+									</div>
+								</div>
+								<div className="metric-card">
+									<div className="metric-icon airport"><i className="fas fa-warehouse"></i></div>
+									<div className="metric-content">
+										<div className="metric-label">Saturación aeropuertos</div>
+										<div className="metric-value">{getSaturation()}%</div>
+										<div className="metric-sublabel">almacenes regulares</div>
+									</div>
+								</div>
+								<div className="metric-card sede">
+									<div className="metric-icon"><i className="fas fa-building"></i></div>
+									<div className="metric-content">
+										<div className="metric-label">Sedes principales</div>
+										<div className="metric-value">3/3</div>
+										<div className="metric-sublabel">operativas</div>
+									</div>
+								</div>
+								<div className="metric-card">
+									<div className="metric-icon"><i className="fas fa-infinity"></i></div>
+									<div className="metric-content">
+										<div className="metric-label">Capacidad total</div>
+										<div className="metric-value">∞</div>
+										<div className="metric-sublabel">ilimitada</div>
+									</div>
+								</div>
+							</div>
+						</div>
+						{/* Aeropuerto más saturado */}
+						<div className="airport-section">
+							<h4>Aeropuertos más saturados</h4>
+							<div className="airport-info">
+								<div className="airport-name">{mostSaturatedAirport.name}</div>
+								<div className="airport-details">
+									<div>Capacidad: {mostSaturatedAirport.capacity.toLocaleString()}</div>
+									<div>Paquetes: {mostSaturatedAirport.packages.toLocaleString()}</div>
+									<div className="saturation-highlight">Saturación: {((mostSaturatedAirport.packages / mostSaturatedAirport.capacity) * 100).toFixed(2)}%</div>
+								</div>
+							</div>
+						</div>
+					</div>
 				</div>
-				<div className="sidebar-content">
-					<div className="time-section">
-						<div className="current-time">
-							<label>Semana actual:</label>
-							<div className="time-display">Semana {elapsedTime.days + 1}</div>
-						</div>
-					</div>
-					<div className="modes-sidebar-container">
-						<Button
-							variant="outlined"
-							size="small"
-							startIcon={<IoArrowBackOutline />}  
-							sx={{
-								textTransform: 'none',            
-								color: '#333',
-								borderColor: '#b3b3b3',
-								backgroundColor: '#f9f9f9',
-								fontWeight: 500,
-								borderRadius: '20px',
-								px: 2,                             
-								py: 0.5,                           
-								'&:hover': {
-									backgroundColor: '#e0e0e0',
-									borderColor: '#999',
-								},
-								width: 'auto',
-								minWidth: 'unset',
-							}}
-							onClick={() => navigate('/operaciones')}
-						>
-							Regresar
-						</Button>
-					</div>
-					<div className="stats-section">
-						<h4><i className="fas fa-chart-line"></i> Métricas de Saturación</h4>
-						<div className="metrics-grid">
-							<div className="metric-card">
-								<div className="metric-icon"><i className="fas fa-plane"></i></div>
-								<div className="metric-content">
-									<div className="metric-label">Vuelos en el aire</div>
-									<div className="metric-value">{flights.length}</div>
-									<div className="metric-sublabel">de 402 total</div>
-								</div>
+			</Drawer>
+
+			{/* Contenedor principal que se ajusta al ancho del drawer */}
+			<div
+				style={{
+					flexGrow: 1,
+					minWidth: 0,
+					transition: 'margin 0.2s ease', //
+					marginLeft: 0,
+					paddingLeft: 0,
+					boxSizing: 'border-box',
+				}}
+			>
+				{/* Contenido principal con mapa*/}
+				<div className="simulation-main-content">
+					<div className="content-wrapper">
+						<div className="control-panel">
+							<h2>Simulación Semanal</h2>
+							<div className="status-section">
+								<span className="status-label">Estado de la Simulación:</span>
+								<span className="status-text">{simulationStatus}</span>
 							</div>
-							<div className="metric-card">
-								<div className="metric-icon aircraft"><i className="fas fa-tachometer-alt"></i></div>
-								<div className="metric-content">
-									<div className="metric-label">Saturación de aviones</div>
-									<div className="metric-value">{((flights.length / 402) * 100).toFixed(1)}%</div>
-									<div className="metric-sublabel">capacidad aérea</div>
-								</div>
-							</div>
-							<div className="metric-card">
-								<div className="metric-icon airport"><i className="fas fa-warehouse"></i></div>
-								<div className="metric-content">
-									<div className="metric-label">Saturación aeropuertos</div>
-									<div className="metric-value">{getSaturation()}%</div>
-									<div className="metric-sublabel">almacenes regulares</div>
-								</div>
-							</div>
-							<div className="metric-card sede">
-								<div className="metric-icon"><i className="fas fa-building"></i></div>
-								<div className="metric-content">
-									<div className="metric-label">Sedes principales</div>
-									<div className="metric-value">3/3</div>
-									<div className="metric-sublabel">operativas</div>
-								</div>
-							</div>
-							<div className="metric-card">
-								<div className="metric-icon"><i className="fas fa-infinity"></i></div>
-								<div className="metric-content">
-									<div className="metric-label">Capacidad total</div>
-									<div className="metric-value">∞</div>
-									<div className="metric-sublabel">ilimitada</div>
+							<div className="simulation-controls">
+								<div className="control-buttons">
+									<button className="sim-control-btn play-btn" onClick={handlePlay}>
+										<i className="fas fa-play"></i> Iniciar
+									</button>
+									<button className="sim-control-btn stop-btn" onClick={handleStop}>
+										<i className="fas fa-stop"></i> Detener
+									</button>
 								</div>
 							</div>
 						</div>
-					</div>
-					<div className="airport-section">
-						<h4>Aeropuertos más saturados</h4>
-						<div className="airport-info">
-							<div className="airport-name">{mostSaturatedAirport.name}</div>
-							<div className="airport-details">
-								<div>Capacidad: {mostSaturatedAirport.capacity.toLocaleString()}</div>
-								<div>Paquetes: {mostSaturatedAirport.packages.toLocaleString()}</div>
-								<div className="saturation-highlight">Saturación: {((mostSaturatedAirport.packages / mostSaturatedAirport.capacity) * 100).toFixed(2)}%</div>
-							</div>
+						<div className="map-container">
+							<MapContainer center={[20.0, 10.0]} zoom={3} className="flight-map" scrollWheelZoom={false} minZoom={2} maxZoom={10} zoomControl={true} doubleClickZoom={true} boxZoom={true} keyboard={true} touchZoom={true}>
+								<TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='© OpenStreetMap contributors' noWrap={true} />
+								<DynamicMarkers flights={flights} airports={airports} activeView={activeView} showRoutes={showRoutes} />
+							</MapContainer>
 						</div>
-					</div>
-					<div className="system-alerts">
-						<div className="alert-header">⚠️ ALERTAS DEL SISTEMA</div>
-						<div className="alert-list">
-							<p>• Simulación semanal en progreso</p>
-							<p>• Replanificación automática activada</p>
-							<p>• Control de capacidades por semanas</p>
-						</div>
-					</div>
-				</div>
-			</div>
-			<div className="simulation-main-content">
-				<div className="content-wrapper">
-					<div className="control-panel">
-						<h2>Simulación Semanal</h2>
-						<div className="status-section">
-							<span className="status-label">Estado de la Simulación:</span>
-							<span className="status-text">{simulationStatus}</span>
-						</div>
-						<div className="simulation-controls">
-							<div className="control-buttons">
-								<button className="sim-control-btn play-btn" onClick={handlePlay}>
-									<i className="fas fa-play"></i> Iniciar
-								</button>
-							</div>
-						</div>
-					</div>
-					<div className="map-container">
-						<MapContainer center={[20.0, 10.0]} zoom={3} className="flight-map" scrollWheelZoom={false} minZoom={2} maxZoom={10} zoomControl={true} doubleClickZoom={true} boxZoom={true} keyboard={true} touchZoom={true}>
-							<TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='© OpenStreetMap contributors' noWrap={true} />
-							<DynamicMarkers flights={flights} airports={airports} activeView={activeView} showRoutes={showRoutes} />
-						</MapContainer>
 					</div>
 				</div>
 			</div>

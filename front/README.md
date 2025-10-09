@@ -26,8 +26,6 @@ Este README está pensado para desarrolladores que quieran clonar, ejecutar y co
 - Versión: `0.1.0`
 - Tecnologías principales: React, React Router, Leaflet, React-Leaflet
 
-> Nota: el backend no está incluido en este repositorio. Asegúrate de disponer de las APIs necesarias o configurar variables de entorno para apuntar al backend correspondiente.
-
 ## Requisitos
 
 - Node.js (recomendado: 14.x / 16.x / 18.x)
@@ -209,8 +207,6 @@ Las dependencias más relevantes incluidas en `package.json` son:
 - `react-router-dom` — Enrutado
 - `leaflet`, `react-leaflet` — Mapas e interacción geoespacial
 - `react-scripts` — Herramientas de build de Create React App
-
-(Consulta `package.json` para la lista completa y versiones exactas.)
 
 
 

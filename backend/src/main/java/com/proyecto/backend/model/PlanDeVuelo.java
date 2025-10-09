@@ -24,7 +24,7 @@ public class PlanDeVuelo {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
+    //dia mes y año
     @Column(name = "aeropuerto_origen", nullable = false, length = 4)
     @NotNull(message = "El aeropuerto de origen es obligatorio")
     private String aeropuertoOrigen;

@@ -45,6 +45,8 @@ public class AeropuertoService {
     @Transactional
     public List<Aeropuerto> cargarDesdeArchivo() {
         List<Aeropuerto> aeropuertosCargados = new ArrayList<>();
+        List<Aeropuerto> batch = new ArrayList<>();
+        final int BATCH_SIZE = 100; // Guardar en lotes de 100
         String continenteActual = "Desconocido";
 
         try {
@@ -78,15 +80,17 @@ public class AeropuertoService {
                         Aeropuerto aeropuerto = parsearLineaAeropuerto(linea, continenteActual);
 
                         if (aeropuerto != null) {
-                            // Verificar si ya existe antes de guardar
+                            // Verificar si ya existe antes de agregar al batch
                             if (!aeropuertoRepository.existsByCodigoICAO(aeropuerto.getCodigoICAO())) {
-                                Aeropuerto guardado = aeropuertoRepository.save(aeropuerto);
-                                aeropuertosCargados.add(guardado);
-                                log.info("Aeropuerto cargado: {} - {} ({}) - {}",
-                                    guardado.getCodigoICAO(),
-                                    guardado.getCiudad(),
-                                    guardado.getPais(),
-                                    guardado.getContinente());
+                                batch.add(aeropuerto);
+                                
+                                // Guardar en batch cada BATCH_SIZE registros
+                                if (batch.size() >= BATCH_SIZE) {
+                                    List<Aeropuerto> guardados = aeropuertoRepository.saveAll(batch);
+                                    aeropuertosCargados.addAll(guardados);
+                                    log.info("Guardados {} aeropuertos (total: {})", batch.size(), aeropuertosCargados.size());
+                                    batch.clear();
+                                }
                             } else {
                                 log.debug("Aeropuerto {} ya existe, omitiendo", aeropuerto.getCodigoICAO());
                             }
@@ -95,6 +99,14 @@ public class AeropuertoService {
                     } catch (Exception e) {
                         log.debug("Linea {} no es aeropuerto (probablemente encabezado): {}", lineaNumero, lineaTrimmed);
                     }
+                }
+
+                // Guardar el ultimo lote (los que quedaron)
+                if (!batch.isEmpty()) {
+                    List<Aeropuerto> guardados = aeropuertoRepository.saveAll(batch);
+                    aeropuertosCargados.addAll(guardados);
+                    log.info("Guardados {} aeropuertos finales (total: {})", batch.size(), aeropuertosCargados.size());
+                    batch.clear();
                 }
 
                 log.info("Total de aeropuertos cargados: {}", aeropuertosCargados.size());

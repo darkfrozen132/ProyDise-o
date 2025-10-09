@@ -1,4 +1,4 @@
-# MoraPack Dashboard — Frontend
+# MoraPack — Frontend
 
 Este repositorio contiene el frontend de "MoraPack Dashboard", una interfaz web construida con Create React App y React.
 

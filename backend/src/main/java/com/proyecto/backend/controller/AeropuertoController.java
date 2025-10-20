@@ -21,6 +21,7 @@ public class AeropuertoController {
 
     /**
      * Carga aeropuertos desde el archivo de texto
+     * IMPORTANTE: Limpia la BD antes de cargar automáticamente
      * POST /api/aeropuertos/cargar
      */
     @PostMapping("/cargar")
@@ -29,7 +30,7 @@ public class AeropuertoController {
             List<Aeropuerto> aeropuertos = aeropuertoService.cargarDesdeArchivo();
 
             Map<String, Object> response = new HashMap<>();
-            response.put("mensaje", "Aeropuertos cargados exitosamente");
+            response.put("mensaje", "Aeropuertos cargados exitosamente (BD limpiada automáticamente)");
             response.put("cantidad", aeropuertos.size());
             response.put("aeropuertos", aeropuertos);
 
@@ -110,31 +111,6 @@ public class AeropuertoController {
             error.put("exitoso", false);
             error.put("error", "Error al cargar aeropuertos");
             error.put("detalle", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
-        }
-    }
-
-    /**
-     * Recarga aeropuertos: Limpia la BD y carga desde el archivo
-     * POST /api/aeropuertos/recargar
-     */
-    @PostMapping("/recargar")
-    public ResponseEntity<Map<String, Object>> recargarAeropuertos() {
-        try {
-            List<Aeropuerto> aeropuertos = aeropuertoService.recargarDesdeArchivo();
-
-            Map<String, Object> response = new HashMap<>();
-            response.put("mensaje", "Aeropuertos recargados exitosamente (BD limpiada y recargada)");
-            response.put("cantidad", aeropuertos.size());
-            response.put("aeropuertos", aeropuertos);
-
-            return ResponseEntity.ok(response);
-
-        } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "Error al recargar aeropuertos");
-            error.put("detalle", e.getMessage());
-
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
         }
     }

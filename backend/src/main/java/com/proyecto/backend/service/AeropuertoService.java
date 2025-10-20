@@ -40,23 +40,29 @@ public class AeropuertoService {
 
     /**
      * Carga aeropuertos desde el archivo de texto
+     * IMPORTANTE: Limpia la BD antes de cargar para evitar duplicados
      * @return Lista de aeropuertos cargados
      */
     @Transactional
     public List<Aeropuerto> cargarDesdeArchivo() {
-        List<Aeropuerto> aeropuertosCargados = new ArrayList<>();
-        List<Aeropuerto> batch = new ArrayList<>();
-        final int BATCH_SIZE = 100; // Guardar en lotes de 100
+        // Limpiar la base de datos antes de cargar
+        log.info("Limpiando aeropuertos existentes...");
+        limpiarAeropuertos();
+        
+        List<Aeropuerto> aeropuertosParaGuardar = new ArrayList<>();
         String continenteActual = "Desconocido";
 
         try {
+            log.info("Iniciando lectura de archivo de aeropuertos...");
             ClassPathResource resource = new ClassPathResource("datos/Aeropuertos.txt");
 
+            // PASO 1: Leer TODO el archivo primero
             try (BufferedReader reader = new BufferedReader(
                     new InputStreamReader(resource.getInputStream(), "UTF-16"))) {
 
                 String linea;
                 int lineaNumero = 0;
+                int aeropuertosParsados = 0;
 
                 while ((linea = reader.readLine()) != null) {
                     lineaNumero++;
@@ -80,20 +86,8 @@ public class AeropuertoService {
                         Aeropuerto aeropuerto = parsearLineaAeropuerto(linea, continenteActual);
 
                         if (aeropuerto != null) {
-                            // Verificar si ya existe antes de agregar al batch
-                            if (!aeropuertoRepository.existsByCodigoICAO(aeropuerto.getCodigoICAO())) {
-                                batch.add(aeropuerto);
-                                
-                                // Guardar en batch cada BATCH_SIZE registros
-                                if (batch.size() >= BATCH_SIZE) {
-                                    List<Aeropuerto> guardados = aeropuertoRepository.saveAll(batch);
-                                    aeropuertosCargados.addAll(guardados);
-                                    log.info("Guardados {} aeropuertos (total: {})", batch.size(), aeropuertosCargados.size());
-                                    batch.clear();
-                                }
-                            } else {
-                                log.debug("Aeropuerto {} ya existe, omitiendo", aeropuerto.getCodigoICAO());
-                            }
+                            aeropuertosParaGuardar.add(aeropuerto);
+                            aeropuertosParsados++;
                         }
 
                     } catch (Exception e) {
@@ -101,24 +95,32 @@ public class AeropuertoService {
                     }
                 }
 
-                // Guardar el ultimo lote (los que quedaron)
-                if (!batch.isEmpty()) {
-                    List<Aeropuerto> guardados = aeropuertoRepository.saveAll(batch);
-                    aeropuertosCargados.addAll(guardados);
-                    log.info("Guardados {} aeropuertos finales (total: {})", batch.size(), aeropuertosCargados.size());
-                    batch.clear();
-                }
+                log.info("Lectura completada. {} aeropuertos parseados de {} líneas", aeropuertosParsados, lineaNumero);
+            }
 
-                log.info("Total de aeropuertos cargados: {}", aeropuertosCargados.size());
-
+            // PASO 2: Guardar todos (ya no necesitamos verificar existentes porque limpiamos primero)
+            if (!aeropuertosParaGuardar.isEmpty()) {
+                log.info("Guardando {} aeropuertos en la base de datos...", aeropuertosParaGuardar.size());
+                List<Aeropuerto> guardados = guardarAeropuertos(aeropuertosParaGuardar);
+                log.info("✓ Total de aeropuertos guardados: {}", guardados.size());
+                return guardados;
+            } else {
+                log.info("No hay aeropuertos para guardar");
+                return new ArrayList<>();
             }
 
         } catch (IOException e) {
             log.error("Error leyendo archivo de aeropuertos: {}", e.getMessage());
             throw new RuntimeException("No se pudo cargar el archivo de aeropuertos", e);
         }
+    }
 
-        return aeropuertosCargados;
+    /**
+     * Guarda aeropuertos en una transacción separada
+     */
+    @Transactional
+    private List<Aeropuerto> guardarAeropuertos(List<Aeropuerto> aeropuertos) {
+        return aeropuertoRepository.saveAll(aeropuertos);
     }
 
     /**
@@ -250,23 +252,13 @@ public class AeropuertoService {
     }
 
     /**
-     * Limpia todos los aeropuertos de la base de datos
+     * Limpia todos los aeropuertos de la base de datos con DELETE nativo optimizado
      */
-    @Transactional
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public void limpiarAeropuertos() {
         long count = aeropuertoRepository.count();
-        aeropuertoRepository.deleteAll();
-        log.info("Se eliminaron {} aeropuertos de la base de datos", count);
-    }
-
-    /**
-     * Recarga aeropuertos: limpia la BD y carga desde el archivo
-     */
-    @Transactional
-    public List<Aeropuerto> recargarDesdeArchivo() {
-        log.info("Iniciando recarga de aeropuertos...");
-        limpiarAeropuertos();
-        return cargarDesdeArchivo();
+        aeropuertoRepository.deleteAllNative(); // DELETE masivo con SQL nativo
+        log.info("Se eliminaron {} aeropuertos de la base de datos (DELETE nativo)", count);
     }
 
 }

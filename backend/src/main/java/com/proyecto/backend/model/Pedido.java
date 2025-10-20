@@ -25,7 +25,13 @@ import java.time.LocalDateTime;
 public class Pedido {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "pedido_seq")
+    @SequenceGenerator(
+        name = "pedido_seq",
+        sequenceName = "pedido_sequence",
+        initialValue = 100000,  // Empieza desde 100000 para evitar conflictos
+        allocationSize = 100    // Pre-asigna 100 IDs en memoria (antes 50)
+    )
     private Long id;
 
     @Column(nullable = false)

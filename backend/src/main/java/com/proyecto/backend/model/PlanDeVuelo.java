@@ -22,9 +22,15 @@ import java.time.LocalTime;
 public class PlanDeVuelo {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "plan_vuelo_seq")
+    @SequenceGenerator(
+        name = "plan_vuelo_seq",
+        sequenceName = "plan_vuelo_sequence",
+        initialValue = 100000,  // Empieza desde 100000 para evitar conflictos
+        allocationSize = 100    // Pre-asigna 100 IDs en memoria (antes 50)
+    )
     private Long id;
-
+    //dia mes y año
     @Column(name = "aeropuerto_origen", nullable = false, length = 4)
     @NotNull(message = "El aeropuerto de origen es obligatorio")
     private String aeropuertoOrigen;

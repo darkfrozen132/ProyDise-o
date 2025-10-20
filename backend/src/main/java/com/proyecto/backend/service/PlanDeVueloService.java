@@ -102,30 +102,35 @@ public class PlanDeVueloService {
     }
 
     /**
-     * Limpia todos los planes de vuelo de la base de datos
+     * Limpia todos los planes de vuelo de la base de datos con DELETE nativo optimizado
      */
-    @Transactional
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public void limpiarPlanesDeVuelo() {
         long count = planDeVueloRepository.count();
-        planDeVueloRepository.deleteAll();
-        log.info("Se eliminaron {} planes de vuelo de la base de datos", count);
+        planDeVueloRepository.deleteAllNative(); // DELETE masivo con SQL nativo
+        log.info("Se eliminaron {} planes de vuelo de la base de datos (DELETE nativo)", count);
     }
 
     /**
      * Carga planes de vuelo desde el archivo de texto
+     * IMPORTANTE: Limpia la BD antes de cargar para evitar duplicados
      * Formato: ORIGEN-DESTINO-HORA_SALIDA-HORA_LLEGADA-CAPACIDAD
      * Ejemplo: SKBO-SEQM-03:34-05:21-0300
      * @return Lista de planes de vuelo cargados
      */
     @Transactional
     public List<PlanDeVuelo> cargarDesdeArchivo() {
-        List<PlanDeVuelo> planesDeVueloCargados = new ArrayList<>();
-        List<PlanDeVuelo> batch = new ArrayList<>();
-        final int BATCH_SIZE = 1000; // Guardar en lotes de 1000
+        // Limpiar la base de datos antes de cargar
+        log.info("Limpiando planes de vuelo existentes...");
+        limpiarPlanesDeVuelo();
+        
+        List<PlanDeVuelo> planesParaGuardar = new ArrayList<>();
 
         try {
+            log.info("Iniciando lectura de archivo de planes de vuelo...");
             ClassPathResource resource = new ClassPathResource("datos/PlanesDeVuelo.txt");
 
+            // PASO 1: Leer TODO el archivo primero (solo I/O, sin BD)
             try (BufferedReader reader = new BufferedReader(
                     new InputStreamReader(resource.getInputStream(), "UTF-8"))) {
 
@@ -142,42 +147,57 @@ public class PlanDeVueloService {
 
                     try {
                         PlanDeVuelo planDeVuelo = parsearLineaPlanDeVuelo(linea);
-
                         if (planDeVuelo != null) {
-                            batch.add(planDeVuelo);
-
-                            // Guardar en batch cada BATCH_SIZE registros
-                            if (batch.size() >= BATCH_SIZE) {
-                                List<PlanDeVuelo> guardados = planDeVueloRepository.saveAll(batch);
-                                planesDeVueloCargados.addAll(guardados);
-                                log.info("Guardados {} planes de vuelo (total: {})", batch.size(), planesDeVueloCargados.size());
-                                batch.clear();
-                            }
+                            planesParaGuardar.add(planDeVuelo);
                         }
-
                     } catch (Exception e) {
                         log.error("Error procesando linea {}: {} - {}", lineaNumero, linea, e.getMessage());
                     }
                 }
 
-                // Guardar el ultimo lote (los que quedaron)
-                if (!batch.isEmpty()) {
-                    List<PlanDeVuelo> guardados = planDeVueloRepository.saveAll(batch);
-                    planesDeVueloCargados.addAll(guardados);
-                    log.info("Guardados {} planes de vuelo finales (total: {})", batch.size(), planesDeVueloCargados.size());
-                    batch.clear();
+                log.info("✓ Lectura completada: {} planes parseados de {} líneas", planesParaGuardar.size(), lineaNumero);
+            }
+
+            // PASO 2: Guardar en batches con transacciones separadas (evita timeout)
+            if (!planesParaGuardar.isEmpty()) {
+                log.info("Guardando {} planes de vuelo...", planesParaGuardar.size());
+                
+                int batchSize = 2000; // Batches grandes para máxima velocidad
+                int totalGuardados = 0;
+                int totalBatches = (planesParaGuardar.size() + batchSize - 1) / batchSize;
+                
+                for (int i = 0; i < planesParaGuardar.size(); i += batchSize) {
+                    int end = Math.min(i + batchSize, planesParaGuardar.size());
+                    List<PlanDeVuelo> batch = planesParaGuardar.subList(i, end);
+                    
+                    guardarBatch(batch);
+                    totalGuardados += batch.size();
+                    
+                    int batchNum = (i / batchSize) + 1;
+                    log.info("Batch {}/{}: {} planes guardados (total: {})", 
+                        batchNum, totalBatches, batch.size(), totalGuardados);
                 }
-
-                log.info("Total de planes de vuelo cargados: {}", planesDeVueloCargados.size());
-
+                
+                log.info("✓ Carga completada: {} planes de vuelo guardados", totalGuardados);
+                return planesParaGuardar;
+            } else {
+                log.info("No hay planes de vuelo para guardar");
+                return new ArrayList<>();
             }
 
         } catch (IOException e) {
             log.error("Error leyendo archivo de planes de vuelo: {}", e.getMessage());
             throw new RuntimeException("No se pudo cargar el archivo de planes de vuelo", e);
         }
+    }
 
-        return planesDeVueloCargados;
+    /**
+     * Guarda un batch de planes de vuelo en una transacción separada
+     * Esto evita timeouts en transacciones muy largas
+     */
+    @Transactional
+    private void guardarBatch(List<PlanDeVuelo> batch) {
+        planDeVueloRepository.saveAll(batch);
     }
 
     /**

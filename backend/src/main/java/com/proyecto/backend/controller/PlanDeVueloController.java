@@ -30,16 +30,53 @@ public class PlanDeVueloController {
     }
 
     /**
-     * Busca un plan de vuelo por ID
-     * GET /api/planesdevuelo/{id}
+     * Carga planes de vuelo desde el archivo de texto
+     * IMPORTANTE: Limpia la BD antes de cargar automáticamente
+     * POST /api/planesdevuelo/cargar
+     * NOTA: Debe estar ANTES de /{id} para evitar conflictos de rutas
      */
-    @GetMapping("/{id}")
-    public ResponseEntity<PlanDeVuelo> buscarPorId(@PathVariable Long id) {
+    @PostMapping("/cargar")
+    public ResponseEntity<Map<String, Object>> cargarPlanesDeVuelo() {
         try {
-            PlanDeVuelo planDeVuelo = planDeVueloService.buscarPorId(id);
-            return ResponseEntity.ok(planDeVuelo);
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
+            List<PlanDeVuelo> planesDeVuelo = planDeVueloService.cargarDesdeArchivo();
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("mensaje", "Planes de vuelo cargados exitosamente (BD limpiada automáticamente)");
+            response.put("cantidad", planesDeVuelo.size());
+            response.put("planesDeVuelo", planesDeVuelo);
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Error al cargar planes de vuelo");
+            error.put("detalle", e.getMessage());
+
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
+
+    /**
+     * Limpia todos los planes de vuelo de la BD
+     * DELETE /api/planesdevuelo/limpiar
+     * NOTA: Debe estar ANTES de /{id} para evitar conflictos de rutas
+     */
+    @DeleteMapping("/limpiar")
+    public ResponseEntity<Map<String, Object>> limpiarPlanesDeVuelo() {
+        try {
+            planDeVueloService.limpiarPlanesDeVuelo();
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("mensaje", "Todos los planes de vuelo han sido eliminados de la base de datos");
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Error al limpiar planes de vuelo");
+            error.put("detalle", e.getMessage());
+
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
         }
     }
 
@@ -122,75 +159,17 @@ public class PlanDeVueloController {
     }
 
     /**
-     * Limpia todos los planes de vuelo de la BD
-     * DELETE /api/planesdevuelo/limpiar
+     * Busca un plan de vuelo por ID
+     * GET /api/planesdevuelo/{id}
+     * NOTA: Debe estar AL FINAL para que las rutas específicas se evalúen primero
      */
-    @DeleteMapping("/limpiar")
-    public ResponseEntity<Map<String, Object>> limpiarPlanesDeVuelo() {
+    @GetMapping("/{id}")
+    public ResponseEntity<PlanDeVuelo> buscarPorId(@PathVariable Long id) {
         try {
-            planDeVueloService.limpiarPlanesDeVuelo();
-
-            Map<String, Object> response = new HashMap<>();
-            response.put("mensaje", "Todos los planes de vuelo han sido eliminados de la base de datos");
-
-            return ResponseEntity.ok(response);
-
-        } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "Error al limpiar planes de vuelo");
-            error.put("detalle", e.getMessage());
-
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
-        }
-    }
-
-    /**
-     * Carga planes de vuelo desde el archivo de texto
-     * POST /api/planesdevuelo/cargar
-     */
-    @PostMapping("/cargar")
-    public ResponseEntity<Map<String, Object>> cargarPlanesDeVuelo() {
-        try {
-            List<PlanDeVuelo> planesDeVuelo = planDeVueloService.cargarDesdeArchivo();
-
-            Map<String, Object> response = new HashMap<>();
-            response.put("mensaje", "Planes de vuelo cargados exitosamente");
-            response.put("cantidad", planesDeVuelo.size());
-            response.put("planesDeVuelo", planesDeVuelo);
-
-            return ResponseEntity.ok(response);
-
-        } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "Error al cargar planes de vuelo");
-            error.put("detalle", e.getMessage());
-
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
-        }
-    }
-
-    /**
-     * Recarga planes de vuelo: Limpia la BD y carga desde el archivo
-     * POST /api/planesdevuelo/recargar
-     */
-    @PostMapping("/recargar")
-    public ResponseEntity<Map<String, Object>> recargarPlanesDeVuelo() {
-        try {
-            List<PlanDeVuelo> planesDeVuelo = planDeVueloService.recargarDesdeArchivo();
-
-            Map<String, Object> response = new HashMap<>();
-            response.put("mensaje", "Planes de vuelo recargados exitosamente (BD limpiada y recargada)");
-            response.put("cantidad", planesDeVuelo.size());
-            response.put("planesDeVuelo", planesDeVuelo);
-
-            return ResponseEntity.ok(response);
-
-        } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "Error al recargar planes de vuelo");
-            error.put("detalle", e.getMessage());
-
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+            PlanDeVuelo planDeVuelo = planDeVueloService.buscarPorId(id);
+            return ResponseEntity.ok(planDeVuelo);
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
         }
     }
 

@@ -188,11 +188,19 @@ body,
     flex-shrink: 0;
     display: flex;
     flex-wrap: wrap;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
+    flex-direction: column;
+    gap: 1rem;
     position: sticky;
     top: 0;
     z-index: 5;
+}
+
+.control-panel>* {
+    align-self: flex-start;
+    text-align: left;
+    margin: 0;
 }
 
 .control-panel h2 {
@@ -200,12 +208,48 @@ body,
     color: var(--morapack-primary);
     margin: 0;
     font-weight: 600;
+    text-align: left;
+    align-self: flex-start;
 }
+
+.status-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px;
+    background: #f9fafb;
+    border-radius: 8px;
+    margin-bottom: 24px;
+}
+
+.status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+}
+
+.status-dot.active {
+    background: #10b981;
+    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2);
+}
+
+.status-dot.stopped {
+    background: #ef4444;
+    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.2);
+}
+
 
 .status-section {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 50px;
     font-size: 1rem;
 }
 
@@ -217,6 +261,20 @@ body,
 .status-text {
     font-weight: 600;
     color: var(--morapack-primary);
+}
+
+.status-and-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.status-and-controls>* {
+    display: flex;
+    align-items: center;
+    line-height: 1.2;
+    margin: 0;
 }
 
 .simulation-controls {
@@ -246,7 +304,7 @@ body,
     font-weight: 600;
     cursor: pointer;
     transition: all .3s ease;
-    display: flex;
+    display: inline-flex;
     align-items: center;
     gap: 8px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, .1);
@@ -480,4 +538,133 @@ body,
 .section-content.sidebar-open .edge-toggle {
     left: 268px;
     /* 280 - 12 */
+}
+
+.date-field {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.form-label {
+    display: inline-flex;
+    white-space: nowrap;
+    margin: 0;
+    font-weight: 600;
+    color: #333;
+}
+
+.date-input {
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    font-size: 0.95rem;
+}
+
+.form-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 1rem;
+}
+
+/* ===== PANEL DE CONTROL SUPERIOR =====*/
+/* === Base (mobile-first) === */
+.status-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+}
+
+.status-and-controls {
+    display: flex;
+    flex-direction: column;
+    /*apilado*/
+    gap: 12px;
+}
+
+.form-group,
+.status-and-controls,
+.status-container,
+.simulation-controls,
+.control-buttons,
+.sim-control-btn {
+    width: auto;
+}
+
+/* === Desktop y tablets === */
+@media (min-width: 800px) {
+    .status-section {
+        display: flex;
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 16px;
+    }
+
+    .status-section .status-and-controls {
+        display: flex;
+        flex-direction: row !important;
+        /* fuerza fila */
+        flex-wrap: nowrap !important;
+        /* no permitir salto de línea */
+        gap: 12px;
+        flex: 1 1 auto;
+        width: auto;
+        /* ya no 100% */
+        max-width: none;
+    }
+
+    /* CLAVE: los hijos ya NO ocupan 100% en desktop */
+    .status-section .status-and-controls>* {
+        flex: 0 0 auto;
+        /* tamaño natural, no crecer a 100% */
+        width: auto !important;
+        max-width: none !important;
+        margin: 0;
+    }
+
+    /* Por si heredaron 100% de antes */
+    .status-section .status-container,
+    .status-section .simulation-controls,
+    .status-section .control-buttons {
+        width: auto !important;
+        max-width: none !important;
+    }
+
+    .status-section .control-buttons {
+        display: flex;
+        flex-wrap: nowrap;
+        gap: 10px;
+    }
+
+    .status-section .sim-control-btn {
+        width: auto !important;
+    }
+}
+
+/* === Boton Regresar === */
+.btn-back {
+    background: none;
+    border: none;
+    color: #979797;
+    padding: 0;
+    cursor: pointer;
+    font-size: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    line-height: 1;
+}
+
+.btn-back:hover {
+    color: #646464;
+    transform: scale(1.1);
+}
+
+.header-control-panel{
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
 }

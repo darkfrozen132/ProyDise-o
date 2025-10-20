@@ -3,7 +3,7 @@ import Button from '@mui/material/Button';
 import { IoArrowBackOutline } from 'react-icons/io5';
 import { useNavigate } from 'react-router-dom';
 
-const BackButton = ({ to, label = 'Regresar', width = 'auto' }) => {
+const BackButton = ({ to, label = '', width = 'auto' }) => {
     const navigate = useNavigate();
 
     const handleClick = () => {

@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer } from 'react-leaflet';
-import BackButton from '../../../components/ui/BackButton';
 import { Drawer, IconButton } from '@mui/material';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import { IoArrowBackCircleOutline } from "react-icons/io5";
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import './SimuladorSemanal.css';
@@ -122,6 +122,7 @@ const SimuladorSemanal = () => {
 	const [simulationStatus, setSimulationStatus] = useState('Monitoreo semanal activo');
 	const [activeView, setActiveView] = useState('flights');
 	const [showRoutes, setShowRoutes] = useState(false);
+	const [startDate, setStartDate] = useState("");
 	/* Datos estáticos de aeropuertos */
 	const [airports, setAirports] = useState([
 		{ name: 'Lima-Jorge Chávez', code: 'LIM', lat: -12.0219, lng: -77.1143, capacity: 'ILIMITADO', packages: 980, isSede: true, region: 'América del Sur', country: 'Perú', operationType: 'Sede Principal - Hub Sudamericano' },
@@ -148,24 +149,52 @@ const SimuladorSemanal = () => {
 			{ type: 'boeing777', name: 'Boeing 777', capacity: [300, 400] },
 			{ type: 'cargo', name: 'Cargo', capacity: [50, 150] }
 		];
+		/* Generar cada vuelo */
 		for (let i = 0; i < flightCount; i++) {
 			let origin, destination;
+			/* 60% de probabilidad de que el vuelo involucre una sede */
 			if (Math.random() < 0.6) {
 				const sede = sedes[Math.floor(Math.random() * sedes.length)];
 				const otherAirports = airports.filter(a => a.region === sede.region && a !== sede);
 				if (Math.random() < 0.5) { origin = sede; destination = otherAirports.length > 0 ? otherAirports[Math.floor(Math.random() * otherAirports.length)] : airports[Math.floor(Math.random() * airports.length)]; }
 				else { destination = sede; origin = otherAirports.length > 0 ? otherAirports[Math.floor(Math.random() * otherAirports.length)] : airports[Math.floor(Math.random() * airports.length)]; }
-			} else { origin = airports[Math.floor(Math.random() * airports.length)]; destination = airports[Math.floor(Math.random() * airports.length)]; }
-			while (destination === origin) destination = airports[Math.floor(Math.random() * airports.length)];
+			}
+			/* 40% de probabilidad de vuelos entre aeropuertos regulares */
+			else {
+				origin = airports[Math.floor(Math.random() * airports.length)];
+				destination = airports[Math.floor(Math.random() * airports.length)];
+			}
+			/* Asegurar que origen y destino no sean iguales */
+			while (destination === origin)
+				destination = airports[Math.floor(Math.random() * airports.length)];
+			/* Seleccionar tipo de avión y calcular capacidad y carga */
 			const selectedType = flightTypes[Math.floor(Math.random() * flightTypes.length)];
 			const [minCap, maxCap] = selectedType.capacity; const packageCapacity = Math.floor(Math.random() * (maxCap - minCap + 1)) + minCap;
 			const loadFactor = 0.7 + Math.random() * 0.3; const currentPackages = Math.floor(packageCapacity * loadFactor);
-			const loadPercentage = (currentPackages / packageCapacity) * 100; let aircraftColor; if (loadPercentage >= 80) aircraftColor = '#dc3545'; else if (loadPercentage >= 50) aircraftColor = '#ffc107'; else aircraftColor = '#28a745';
+			const loadPercentage = (currentPackages / packageCapacity) * 100; let aircraftColor;
+			/* Determinar color del avión según carga */
+			if (loadPercentage >= 80) aircraftColor = '#dc3545';
+			else if (loadPercentage >= 50) aircraftColor = '#ffc107';
+			else aircraftColor = '#28a745';
+			/* Calcular rotación y posición inicial del vuelo */
 			const deltaLat = destination.lat - origin.lat; const deltaLng = destination.lng - origin.lng; const rotation = Math.atan2(deltaLng, deltaLat) * (180 / Math.PI);
 			const initialProgress = Math.random(); const initialLat = origin.lat + deltaLat * initialProgress; const initialLng = origin.lng + deltaLng * initialProgress;
-			let initialAltitude, initialSpeed; if (initialProgress < 0.1) { initialAltitude = initialProgress * 100000; initialSpeed = initialProgress * 2500; }
-			else if (initialProgress < 0.9) { initialAltitude = 35000; initialSpeed = 500; }
-			else { const landingProgress = (initialProgress - 0.9) / 0.1; initialAltitude = 30000 * (1 - landingProgress); initialSpeed = 450 * (1 - landingProgress * 0.6); }
+			let initialAltitude, initialSpeed;
+			/* Calcular altitud y velocidad inicial según progreso */
+			if (initialProgress < 0.1) {
+				initialAltitude = initialProgress * 100000;
+				initialSpeed = initialProgress * 2500;
+			}
+			else if (initialProgress < 0.9) {
+				initialAltitude = 35000;
+				initialSpeed = 500;
+			}
+			else {
+				const landingProgress = (initialProgress - 0.9) / 0.1;
+				initialAltitude = 30000 * (1 - landingProgress);
+				initialSpeed = 450 * (1 - landingProgress * 0.6);
+			}
+			/* Crear objeto de vuelo */
 			const flight = {
 				id: `MP${String(i + 1).padStart(4, '0')}`,
 				origin, destination, progress: initialProgress, altitude: initialAltitude, speed: initialSpeed, status: 'active',
@@ -175,6 +204,7 @@ const SimuladorSemanal = () => {
 			};
 			newFlights.push(flight);
 		}
+		/* Actualizar estado con los vuelos generados */
 		setFlights(newFlights);
 		const initialInAir = newFlights.reduce((acc, f) => acc + (f.altitude > 1000 ? 1 : 0), 0);
 		setFlightsInAir(initialInAir);
@@ -238,12 +268,22 @@ const SimuladorSemanal = () => {
 		} else { clearInterval(intervalRef.current); }
 	}, [isRunning, speed, airports]);
 
-	const handlePlay = () => { setIsRunning(true); setSimulationStatus('Simulación semanal en ejecución'); };
-	const handlePause = () => { setIsRunning(false); setSimulationStatus('Simulación semanal pausada'); };
-	const handleStop = () => { setIsRunning(false); setSimulationStatus('Simulación semanal detenida'); };
+	const handlePlay = () => {
+		if (!startDate) {
+			alert("Por favor selecciona una fecha de inicio");
+			return;
+		}
+		setIsRunning(true);
+		setSimulationStatus('Simulación semanal en ejecución');
+	};
+	const handleStop = () => {
+		setIsRunning(false);
+		setSimulationStatus('Simulación semanal detenida');
+	};
 	const handleSpeedChange = () => { const speeds = [1, 2, 4, 8]; const currentIndex = speeds.indexOf(speed); const nextSpeed = speeds[(currentIndex + 1) % speeds.length]; setSpeed(nextSpeed); };
 	const handleRestart = () => { setIsRunning(false); setElapsedTime({ days: 0, hours: 0, minutes: 0 }); setCurrentTime(new Date(2024, 7, 27, 8, 0, 0)); generateInitialFlights(); setSimulationStatus('Sistema reiniciado'); setTimeout(() => { setSimulationStatus('Monitoreo semanal activo'); }, 2000); };
 	const formatTime = (timeObj) => `${timeObj.days.toString().padStart(2, '0')} : ${timeObj.hours.toString().padStart(2, '0')} : ${timeObj.minutes.toString().padStart(2, '0')}`;
+
 	/* Calcular métricas de saturación de aeropuertos */
 	const getSaturation = () => {
 		const regularAirports = airports.filter(airport => !airport.isSede);
@@ -270,6 +310,11 @@ const SimuladorSemanal = () => {
 	/* Estado y lógica para el drawer lateral */
 	const drawerWidth = 300; // ancho del drawer
 	const [open, setOpen] = useState(false);
+
+	/* Accion de boton de Regresar */
+	const goBack = () => {
+		window.history.back(); // retrocede una página
+	};
 
 	return (
 		<div className="section-content" id="simulationSection">
@@ -326,8 +371,6 @@ const SimuladorSemanal = () => {
 							paddingTop: '2px',
 							paddingBottom: '20px',
 						}}>
-						{/* Botón para regresar a operaciones */}
-						<BackButton to="/operaciones" label="Regresar" width="50%" />
 					</div>
 					<div className="sidebar-header">
 						<h3><i className="fas fa-info-circle"></i> Información del Sistema</h3>
@@ -336,7 +379,7 @@ const SimuladorSemanal = () => {
 						<div className="time-section">
 							<div className="current-time">
 								<label>Semana actual:</label>
-								<div className="time-display">Semana {elapsedTime.days + 1}</div>
+								<div className="time-display">Semana {elapsedTime.days}</div>
 							</div>
 						</div>
 
@@ -407,7 +450,7 @@ const SimuladorSemanal = () => {
 				style={{
 					flexGrow: 1,
 					minWidth: 0,
-					transition: 'margin 0.2s ease', //
+					transition: 'margin 0.2s ease', // transición suave al abrir/cerrar el drawer
 					marginLeft: 0,
 					paddingLeft: 0,
 					boxSizing: 'border-box',
@@ -416,23 +459,55 @@ const SimuladorSemanal = () => {
 				{/* Contenido principal con mapa*/}
 				<div className="simulation-main-content">
 					<div className="content-wrapper">
+						{/* Panel de control superior */}
 						<div className="control-panel">
-							<h2>Simulación Semanal</h2>
-							<div className="status-section">
-								<span className="status-label">Estado de la Simulación:</span>
-								<span className="status-text">{simulationStatus}</span>
+							<div className="header-control-panel">
+								{/* Botón para regresar a operaciones */}
+								<button className="btn-back" onClick={goBack} title="Regresar">
+									<IoArrowBackCircleOutline size={32} />
+								</button>
+								<h2>Simulación Semanal</h2>
 							</div>
-							<div className="simulation-controls">
-								<div className="control-buttons">
-									<button className="sim-control-btn play-btn" onClick={handlePlay}>
-										<i className="fas fa-play"></i> Iniciar
-									</button>
-									<button className="sim-control-btn stop-btn" onClick={handleStop}>
-										<i className="fas fa-stop"></i> Detener
-									</button>
+							<div>
+								<div className="status-section">
+									{/* Selector de fecha de inicio */}
+									<div className="form-group">
+										<label className="form-label" for="fecha-inicio">
+											Fecha de Inicio:
+										</label>
+										<input
+											type="date"
+											id="fecha-inicio"
+											className="date-input"
+											value={startDate}
+											onChange={(e) => setStartDate(e.target.value)}
+										/>
+									</div>
+									{/* Controles de estado y reproducción */}
+									<div className="status-and-controls" style={{ display: 'flex', flexDirection: 'row' }}>
+										<div className="status-container">
+											<span className="status-label">Estado:</span>
+											<div className="status-indicator">
+												<span className={`status-dot ${isRunning ? "active" : "stopped"}`} />
+												<span className="status-text">{simulationStatus}</span>
+											</div>
+										</div>
+										{/* Controles de simulación */}
+										<div className="simulation-controls">
+											<div className="control-buttons">
+												<button className="sim-control-btn play-btn" onClick={handlePlay}>
+													<i className="fas fa-play"></i> Iniciar
+												</button>
+												<button className="sim-control-btn stop-btn" onClick={handleStop}>
+													<i className="fas fa-stop"></i> Detener
+												</button>
+											</div>
+										</div>
+									</div>
 								</div>
 							</div>
 						</div>
+						{/* Mapa interactivo */}
 						<div className="map-container">
 							<MapContainer center={[20.0, 10.0]} zoom={3} className="flight-map" scrollWheelZoom={false} minZoom={2} maxZoom={10} zoomControl={true} doubleClickZoom={true} boxZoom={true} keyboard={true} touchZoom={true}>
 								<TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='© OpenStreetMap contributors' noWrap={true} />

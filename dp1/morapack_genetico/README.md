@@ -1,58 +1,192 @@
-# MoraPack - Algoritmo Genético para Optimización de Rutas
+# 🧬 MORAPACK - Sistema Genético
 
-## 🎯 Descripción
-Sistema de optimización de rutas de entrega usando algoritmos genéticos para la empresa MoraPack. El sistema planifica rutas eficientes desde las sedes principales hacia destinos internacionales.
+> **Sistema de Optimización de Rutas usando Algoritmos Genéticos**  
+> Planificación inteligente de envíos con análisis de consolidación
 
-## 🏢 Sedes MoraPack
-- **SPIM** - Lima, Perú (Sede principal Sudamérica)
-- **EBCI** - Bruselas, Bélgica (Sede principal Europa)  
-- **UBBB** - Bakú, Azerbaiyán (Sede principal Asia)
+---
+
+## 📋 Características
+
+✅ **Algoritmo Genético Avanzado** - Optimización evolutiva de rutas  
+✅ **Planificación Temporal** - Gestión UTC y plazos continentales  
+✅ **Análisis de Consolidación** - Reporte de vuelos con múltiples pedidos  
+✅ **Salida Limpia** - Sin iconos, formato profesional  
+✅ **Multiplataforma** - Compatible con Linux y Windows  
+
+---
 
 ## 🚀 Ejecución Rápida
-```bash
-# Compilar
-javac -d bin -cp bin src/morapack/main/MainRapido.java
 
-# Ejecutar
-java -cp bin morapack.main.MainRapido
+### **Linux/Mac:**
+```bash
+chmod +x ejecutar_genetico_sin_iconos.sh
+./ejecutar_genetico_sin_iconos.sh
 ```
 
-## 📁 Estructura del Proyecto
+### **Windows:**
+```cmd
+ejecutar_genetico_sin_iconos.bat
+```
 
-### Core del Sistema
-- **`MainRapido.java`** - Programa principal optimizado
-- **`AlgoritmoGeneticoIntegrado.java`** - Algoritmo genético principal
-- **`IndividuoIntegrado.java`** - Representación de soluciones
-- **`PlanificadorAvanzadoEscalas.java`** - Planificador de rutas con escalas
+### **Demo Independiente:**
+```bash
+# Linux/Mac
+cd morapack_genetico
+javac -d bin src/morapack/main/DemoGeneticoSinIconos.java
+java -cp bin morapack.main.DemoGeneticoSinIconos
 
-### Datos y Modelos
-- **`CargadorDatosCSV.java`** - Carga vuelos desde CSV
-- **`CargadorPedidosSimple.java`** - Carga pedidos desde CSV
-- **`Vuelo.java`** - Modelo de vuelo
-- **`Pedido.java`** - Modelo de pedido
-- **`RutaCompleta.java`** - Representación de rutas planificadas
+```
 
-### Optimización
-- **`FuncionObjetivoOptimizada.java`** - Función de fitness optimizada
+```cmd
+REM Windows
+cd morapack_genetico
+javac -d bin src\morapack\main\DemoGeneticoSinIconos.java
+java -cp bin morapack.main.DemoGeneticoSinIconos
+```
 
-## 📊 Datos de Entrada
-- **Vuelos:** `datos/vuelos_simple.csv` (2,866 vuelos)
-- **Pedidos:** `datos/pedidos/pedidos_02.csv` (100 pedidos)
+---
 
-## 🎯 Resultados Típicos
-- **Tiempo de ejecución:** ~2.2 segundos
-- **Porcentaje de éxito:** ~94%
-- **Rutas directas:** ~92
-- **Rutas con escalas:** ~0-3
-- **Sin planificar:** ~6
+## � Reporte de Consolidación
 
-## 🧬 Parámetros del Algoritmo
-- **Población:** 25 individuos
-- **Generaciones:** 30
-- **Cruce:** 80%
-- **Mutación:** 10%
-- **Máximo escalas:** 2
-- **Máximo candidatos por escala:** 5
+El sistema genera un **análisis detallado** de eficiencia operativa:
+
+```
+================ REPORTE DE CONSOLIDACION ================
+VUELOS CON CONSOLIDACION DE PEDIDOS:
+Vuelo               Pedidos  Paquetes  Capacidad  Eficiencia  Estado
+-------------------------------------------------------------------
+SLLP-SABE          13       336       346        97.1%       OPTIMO
+SLLP-SCEL          12       307       307        100.0%      OPTIMO
+SPIM-SEQM          12       354       330        107.3%      OPTIMO
+
+============= ESTADISTICAS DE CONSOLIDACION =============
+Total de vuelos utilizados: 21
+Vuelos con multiples pedidos: 8
+Tasa de consolidacion: 38.1%
+Vuelos ahorrados por consolidacion: 55
+
+================ BENEFICIOS OBTENIDOS ================
+✓ Reduccion de vuelos: 55 vuelos menos (72.4% menos operaciones)
+✓ Mejor utilizacion de capacidad de aeronaves
+✓ Reduccion significativa de costos operativos  
+✓ Menor impacto ambiental por menos vuelos
+```
+
+---
+
+## 🗂️ Estructura del Proyecto
+
+```
+morapack_genetico/
+├── 📁 src/morapack/
+│   ├── 📁 main/              # Clases principales
+│   │   ├── DemoGeneticoSinIconos.java
+│   │   └── MainGeneticoSinIconos.java
+│   ├── 📁 modelo/            # Modelos de datos
+│   ├── � datos/             # Cargadores de datos
+│   ├── � genetico/          # Algoritmo genético
+│   └── � planificacion/     # Planificador temporal
+├── � bin/                   # Archivos compilados
+├── � datos/                 # Archivos CSV
+├── 🔧 ejecutar_genetico_sin_iconos.sh    # Script Linux
+├── 🔧 ejecutar_genetico_sin_iconos.bat   # Script Windows  
+└── 📖 README.md              # Este archivo
+```
+
+---
+
+## 💡 Interpretación de Resultados
+
+| Eficiencia | Estado | Descripción |
+|-----------|--------|-------------|
+| **≥ 90%** | 🟢 ÓPTIMO | Excelente utilización de capacidad |
+| **70-89%** | 🟡 BUENO | Buena utilización, margen de mejora |
+| **50-69%** | 🟠 REGULAR | Utilización moderada |
+| **< 50%** | 🔴 BAJO | Baja utilización, revisar asignación |
+
+### **Tasa de Consolidación:**
+- **≥ 40%**: 🟢 Excelente consolidación
+- **25-39%**: 🟡 Buena consolidación  
+- **15-24%**: 🟠 Regular consolidación
+- **< 15%**: 🔴 Baja consolidación
+
+---
+
+## ⚙️ Requisitos del Sistema
+
+- **Java JDK 8+** (OpenJDK recomendado)
+- **4GB RAM** mínimo
+- **Sistema Operativo:** Linux, Windows, macOS
+
+### **Verificar Instalación:**
+```bash
+java -version
+javac -version
+```
+
+---
+
+## � Resolución de Problemas
+
+### **Error: "Java no encontrado"**
+```bash
+# Ubuntu/Debian
+sudo apt update && sudo apt install openjdk-11-jdk
+
+# Windows
+# Descargar e instalar desde: https://adoptium.net/
+```
+
+### **Error de Compilación:**
+```bash
+# Limpiar y recompilar
+rm -rf bin && mkdir bin
+javac -d bin src/morapack/main/DemoGeneticoSinIconos.java
+```
+
+### **Problema de Permisos (Linux):**
+```bash
+chmod +x *.sh
+```
+
+---
+
+## 📈 Métricas de Rendimiento
+
+| Métrica | Valor Típico | Descripción |
+|---------|--------------|-------------|
+| **Tasa de Éxito** | 95-98% | Pedidos procesados exitosamente |
+| **Rutas Directas** | 70-75% | Porcentaje de rutas sin escalas |
+| **Consolidación** | 25-40% | Vuelos con múltiples pedidos |
+| **Tiempo Procesamiento** | < 2 seg | Para 80 pedidos promedio |
+
+---
+
+## 🔄 Actualizaciones Recientes
+
+### **v2.1** - Sistema Sin Iconos + Consolidación
+- ✅ Eliminación completa de iconos en salidas
+- ✅ Reporte detallado de consolidación de vuelos
+- ✅ Análisis de eficiencia operativa
+- ✅ Métricas de ahorro y beneficios ambientales
+
+### **v2.0** - Planificador Temporal Mejorado
+- ✅ Gestión UTC integrada
+- ✅ Plazos continentales automáticos
+- ✅ Validación de aeropuertos en tiempo real
+
+---
+
+## 📞 Soporte
+
+Para reportar problemas o sugerencias:
+- 📧 Crear issue en el repositorio
+- 📋 Incluir salida completa del error
+- 💻 Especificar sistema operativo y versión de Java
+
+---
+
+**© 2025 MoraPack Project - Optimización Logística Inteligente**
 
 ## ✅ Características
 - ✅ Planificación de rutas directas y con escalas

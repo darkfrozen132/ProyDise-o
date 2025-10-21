@@ -1,0 +1,87 @@
+Reporte de rutas MoraPack GA
+Generado: 2025-10-20 21:07:59
+
+Pedido destino SKBO qty=324 releaseUTC=15:47 delivered=324 day=17 client=0000015
+  Subruta #1 hub=SPIM qty=324 arrivalUTC=03:25
+    SPIM->SKBO D16 depUTC=23:09 arrUTC=03:25 qty=324
+
+Pedido destino OJAI qty=303 releaseUTC=14:46 delivered=303 day=17 client=0000023
+  Subruta #1 hub=EBCI qty=303 arrivalUTC=21:40
+    EBCI->OJAI D16 depUTC=15:29 arrUTC=21:40 qty=303
+
+Pedido destino LATI qty=210 releaseUTC=16:32 delivered=210 day=19 client=0000008
+  Subruta #1 hub=EBCI qty=210 arrivalUTC=03:59
+    EBCI->LATI D19 depUTC=00:04 arrUTC=03:59 qty=210
+
+Pedido destino SGAS qty=217 releaseUTC=00:22 delivered=217 day=1 client=0000007
+  Subruta #1 hub=SPIM qty=217 arrivalUTC=11:44
+    SPIM->SGAS D0 depUTC=06:32 arrUTC=11:44 qty=217
+
+Pedido destino LOWW qty=313 releaseUTC=07:20 delivered=313 day=13 client=0000010
+  Subruta #1 hub=EBCI qty=313 arrivalUTC=13:30
+    EBCI->LOWW D12 depUTC=10:22 arrUTC=13:30 qty=313
+
+Pedido destino SKBO qty=341 releaseUTC=08:36 delivered=341 day=14 client=0000001
+  Subruta #1 hub=SPIM qty=340 arrivalUTC=13:51
+    SPIM->SKBO D13 depUTC=09:35 arrUTC=13:51 qty=340
+  Subruta #2 hub=SPIM qty=1 arrivalUTC=17:18
+    SPIM->SKBO D13 depUTC=13:02 arrUTC=17:18 qty=1
+
+Pedido destino UMMS qty=223 releaseUTC=09:44 delivered=223 day=22 client=0000013
+  Subruta #1 hub=UBBB qty=223 arrivalUTC=15:01
+    UBBB->UMMS D21 depUTC=11:15 arrUTC=15:01 qty=223
+
+Pedido destino SEQM qty=224 releaseUTC=11:49 delivered=224 day=4 client=0000015
+  Subruta #1 hub=SPIM qty=224 arrivalUTC=16:51
+    SPIM->SEQM D3 depUTC=13:10 arrUTC=16:51 qty=224
+
+Pedido destino OERK qty=325 releaseUTC=16:09 delivered=325 day=2 client=0000014
+  Subruta #1 hub=UBBB qty=325 arrivalUTC=00:04
+    UBBB->OERK D1 depUTC=20:47 arrUTC=00:04 qty=325
+
+Pedido destino OPKC qty=288 releaseUTC=07:21 delivered=288 day=1 client=0000003
+  Subruta #1 hub=UBBB qty=288 arrivalUTC=18:30
+    UBBB->OPKC D0 depUTC=13:30 arrUTC=18:30 qty=288
+
+Pedido destino EHAM qty=324 releaseUTC=14:52 delivered=324 day=4 client=0000007
+  Subruta #1 hub=EBCI qty=324 arrivalUTC=19:48
+    EBCI->EHAM D3 depUTC=17:32 arrUTC=19:48 qty=324
+
+Pedido destino SABE qty=225 releaseUTC=20:04 delivered=225 day=6 client=0000010
+  Subruta #1 hub=SPIM qty=225 arrivalUTC=04:56
+    SPIM->SABE D5 depUTC=23:02 arrUTC=04:56 qty=225
+
+Pedido destino OERK qty=249 releaseUTC=08:53 delivered=249 day=15 client=0000015
+  Subruta #1 hub=EBCI qty=249 arrivalUTC=16:45
+    EBCI->OERK D14 depUTC=09:56 arrUTC=16:45 qty=249
+
+Pedido destino SKBO qty=206 releaseUTC=08:53 delivered=206 day=20 client=0000015
+  Subruta #1 hub=SPIM qty=206 arrivalUTC=13:51
+    SPIM->SKBO D19 depUTC=09:35 arrUTC=13:51 qty=206
+
+Pedido destino OJAI qty=277 releaseUTC=20:04 delivered=277 day=28 client=0000015
+  Subruta #1 hub=EBCI qty=277 arrivalUTC=08:06
+    EBCI->OJAI D28 depUTC=02:55 arrUTC=08:06 qty=277
+
+Pedido destino SVMI qty=301 releaseUTC=05:50 delivered=301 day=22 client=0000011
+  Subruta #1 hub=SPIM qty=301 arrivalUTC=15:50
+    SPIM->SVMI D21 depUTC=10:24 arrUTC=15:50 qty=301
+
+Pedido destino SGAS qty=329 releaseUTC=16:30 delivered=329 day=18 client=0000012
+  Subruta #1 hub=EBCI qty=71 arrivalUTC=07:03
+    EBCI->SGAS D17 depUTC=17:08 arrUTC=07:03 qty=71
+  Subruta #2 hub=UBBB qty=258 arrivalUTC=16:00
+    UBBB->SGAS D18 depUTC=22:27 arrUTC=16:00 qty=258
+
+Pedido destino LOWW qty=215 releaseUTC=01:52 delivered=215 day=2 client=0000001
+  Subruta #1 hub=EBCI qty=215 arrivalUTC=08:18
+    EBCI->LOWW D1 depUTC=05:10 arrUTC=08:18 qty=215
+
+Pedido destino EHAM qty=289 releaseUTC=17:24 delivered=289 day=19 client=0000005
+  Subruta #1 hub=UBBB qty=289 arrivalUTC=02:11
+    UBBB->EHAM D18 depUTC=20:30 arrUTC=02:11 qty=289
+
+Pedido destino LKPR qty=267 releaseUTC=00:55 delivered=267 day=11 client=0000019
+  Subruta #1 hub=EBCI qty=267 arrivalUTC=05:16
+    EBCI->LKPR D10 depUTC=03:23 arrUTC=05:16 qty=267
+

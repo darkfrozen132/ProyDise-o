@@ -1,0 +1,123 @@
+/*
+ * Login.css - Versión corregida
+ * Este archivo establece los estilos para el formulario de login,
+ * garantizando un diseño limpio, centrado y profesional.
+ */
+
+/* Importación de fuentes y variables de estilo para consistencia */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css');
+
+:root {
+  --morapack-primary: #2c4a6b;
+  --morapack-secondary: #1e3a57;
+  --morapack-accent: #00d4ff;
+  --morapack-light: #f8f9fa;
+  --morapack-white: #ffffff;
+  --morapack-text: #333333;
+  --morapack-text-light: #6c757d;
+  --border-color: #e9ecef;
+  --box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+body, html {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', sans-serif;
+}
+
+.login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh; /* Usa vh para asegurar que ocupe toda la altura de la ventana */
+  background: linear-gradient(135deg, var(--morapack-primary) 0%, var(--morapack-secondary) 100%);
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.login-form {
+  background: var(--morapack-white);
+  padding: 40px;
+  border-radius: 12px;
+  box-shadow: var(--box-shadow);
+  max-width: 400px;
+  width: 100%;
+  box-sizing: border-box;
+  transform: translateY(-5%); /* Sutil ajuste para centrado visual */
+}
+
+.login-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.login-header i {
+  font-size: 48px;
+  color: var(--morapack-primary); /* Usando el color primario para consistencia */
+  margin-bottom: 15px;
+}
+
+.login-header h2 {
+  color: var(--morapack-primary);
+  margin-bottom: 5px;
+  font-weight: 700;
+}
+
+.login-header p {
+  color: var(--morapack-text-light);
+  font-size: 14px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: var(--morapack-text);
+  font-size: 14px;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--border-color); /* Borde más fino para un look moderno */
+  border-radius: 6px;
+  font-size: 14px;
+  color: var(--morapack-text);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  box-sizing: border-box;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: var(--morapack-primary);
+  box-shadow: 0 0 0 3px rgba(44, 74, 107, 0.2);
+}
+
+.login-button {
+  width: 100%;
+  background: var(--morapack-primary);
+  color: var(--morapack-white);
+  border: none;
+  padding: 15px;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.login-button:hover {
+  background: var(--morapack-secondary);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}

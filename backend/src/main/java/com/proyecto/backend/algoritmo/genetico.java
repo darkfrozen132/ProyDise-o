@@ -1,808 +1,1206 @@
-package com.proyecto.backend.algoritmo;
+// package com.proyecto.backend.algoritmo;
 
-import com.proyecto.backend.model.Aeropuerto;
-import com.proyecto.backend.model.Pedido;
-import com.proyecto.backend.model.PlanDeVuelo;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.extern.slf4j.Slf4j;
+// Versión STANDALONE - ejecutar con: java genetico.java
 
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.time.LocalTime;
 import java.util.*;
 
-/**
- * Algoritmo Genético para optimizar la asignación de pedidos a vuelos
+/*
+ * ALGORITMO: Genetic Algorithm con Decoder Greedy + Control de Capacidad
  * 
- * NUEVA REPRESENTACIÓN CON ESCALAS:
+ * CROMOSOMA: double[] keys (1 valor por vuelo plantilla)
  * 
- * - Gen: Clase RutaPedido que contiene una lista de VueloInstancia
- * - Cromosoma: Array de genes (RutaPedido[])
- * - Cada pedido puede usar 1, 2 o 3 vuelos (directo, 1 escala, 2 escalas)
+ * FITNESS: 1.0*onTime - 1.5*late - 4.0*capViol + 0.001*slack
  * 
- * Ejemplo:
- * Pedidos: [P0, P1, P2]
+ * DECODER (buildSubrouteFromHub):
+ *   1. Para cada pedido (ordenados por release time):
+ *      a. Para cada hub exportador:
+ *         i.   Construir subruta hub→destino (greedy expansión)
+ *         ii.  En cada paso:
+ *              - Enumerar vuelos factibles (tiempo, capacidad)
+ *              - Filtrar revisitas (Set<visited>)
+ *              - Puntuar con: key + early + geo + direct + twoHop
+ *              - Validar capacidad de almacén si hay espera
+ *         iii. Seleccionar mejor por score
+ *      b. Elegir hub con arribo más temprano
+ *      c. Repetir hasta servir cantidad completa
  * 
- * Cromosoma:
- *   genes[0] = RutaPedido([VueloInstancia(5, 278)])                                          // P0: Directo
- *   genes[1] = RutaPedido([VueloInstancia(2, 278), VueloInstancia(8, 278)])                  // P1: 1 escala
- *   genes[2] = RutaPedido([VueloInstancia(1, 280), VueloInstancia(4, 280), VueloInstancia(9, 280)])  // P2: 2 escalas
+ * HEURÍSTICA CLAVE:
+ *   - wDirect=50.0:  Gran bonus si vuelo va directo al destino
+ *   - wTwoHop=5.0:   Bonus si next hop tiene directo a destino
+ *   - wGeo=0.05:     Progreso Haversine hacia destino
+ *   - wEarly=0.1:    Prioriza llegadas tempranas
+ *   - wKey=1.0:      Valor del gen (exploración GA)
  */
-@Slf4j
 public class genetico {
 
-    // ============================================
-    // CONSTANTES DEL ALGORITMO GENÉTICO
-    // ============================================
-    
-    private static final int TAMANIO_POBLACION = 100;      // Cantidad de individuos en la población
-    private static final int GENERACIONES_MAX = 500;       // Número máximo de generaciones
-    private static final double TASA_MUTACION = 0.15;      // 15% de probabilidad de mutación
-    private static final double TASA_CRUCE = 0.8;          // 80% de probabilidad de cruce
-    private static final int ELITISMO = 5;                 // Los 5 mejores pasan automáticamente
-    private static final double PENALIZACION_SOBRECAPACIDAD = 1000.0;  // Penalización por exceder capacidad
-    private static final double PENALIZACION_TIEMPO = 10.0;            // Penalización por tiempo de espera
-    private static final double PENALIZACION_ESCALA = 5.0;             // Penalización por cada escala adicional
-    private static final int TIEMPO_MINIMO_ESCALA = 120;               // 2 horas entre vuelos (escala)
-    private static final int MAX_ESCALAS = 2;                          // Máximo 2 escalas (3 vuelos)
-    
-    // ============================================
-    // PARÁMETROS DE TIEMPO Y RESTRICCIONES
-    // ============================================
-    
-    /**
-     * Tiempo mínimo que debe llegar un pedido antes de la salida del vuelo (en minutos)
-     * Los pedidos deben estar 30 minutos antes del vuelo
-     */
-    private static final int TIEMPO_ANTICIPACION_VUELO = 30; // minutos
-    
-    /**
-     * Tiempo de procesamiento/entrega para vuelos continentales (en días)
-     * Vuelos dentro del mismo continente
-     */
-    private static final int TIEMPO_PROCESAMIENTO_CONTINENTAL = 2; // días
-    
-    /**
-     * Tiempo de procesamiento/entrega para vuelos intercontinentales (en días)
-     * Vuelos entre diferentes continentes
-     */
-    private static final int TIEMPO_PROCESAMIENTO_INTERCONTINENTAL = 5; // días
-    
-    /**
-     * Minutos en un día (para conversiones)
-     */
-    private static final int MINUTOS_POR_DIA = 1440; // 24 * 60
-    
-    /**
-     * Año base para cálculos
-     */
-    private int anioBase = 2025;
-    
-    // ============================================
-    // DATOS DEL PROBLEMA
-    // ============================================
-    
-    private List<Pedido> pedidos;
-    private List<PlanDeVuelo> vuelos;
-    private Map<String, Aeropuerto> aeropuertos; // Mapa código ICAO -> Aeropuerto
+    // ===================== Parámetros de negocio =====================
+    private static final int MIN_TURN_MIN = 30;               // conexión mínima
+    private static final int DUE_SAME_MIN = 2 * 24 * 60;      // 2 días
+    private static final int DUE_CROSS_MIN = 3 * 24 * 60;     // 3 días
+    private static final int PICKUP_WINDOW_MIN = 120;         // 2 horas de recojo
+
+    // ===================== Parámetros GA =============================
+    private static final int POP_SIZE = 50;
+    private static final int MAX_GEN  = 200;
+    private static final double PCROSS = 0.8;
+    private static final double PMUT   = 0.05;
+    private static final int ELITE_K   = 4;
+    private static final int NO_IMPROV_LIMIT = 40;
+
+    // Objetivo
+    private static final double LAMBDA_ONTIME = 1.0;
+    private static final double LAMBDA_LATE   = 1.5;
+    private static final double LAMBDA_CAPVIO = 4.0;
+    private static final double LAMBDA_SLACK  = 0.001;
+
+    // Stock/Almacén
+    private static final int SLOT_MIN = 60;
+    private static final int TOPK_CANDIDATES = 2000;
+
+    // Exportadores
+    private Set<String> exportHubs = new HashSet<>(Arrays.asList("SPIM", "EBCI", "UBBB"));
+
+    // Datos del problema
+    private List<PedidoInput> pedidos;
+    private List<PlanDeVueloInput> vuelos;
+    private Map<String, AeropuertoInput> aeropuertos;
+    private World world;
+    private int horizonDays = 31;
     private Random random;
+
+    // ===================== Clases de datos de entrada (simples) =====================
     
-    // ============================================
-    // CONSTRUCTOR
-    // ============================================
-    
-    /**
-     * Constructor del algoritmo genético
-     * 
-     * @param pedidos Lista de pedidos a asignar
-     * @param vuelos Lista de planes de vuelo disponibles
-     * @param aeropuertos Mapa de aeropuertos (código ICAO -> Aeropuerto)
-     */
-    public genetico(List<Pedido> pedidos, List<PlanDeVuelo> vuelos, Map<String, Aeropuerto> aeropuertos) {
-        this.pedidos = pedidos;
-        this.vuelos = vuelos;
-        this.aeropuertos = aeropuertos;
-        this.random = new Random();
-    }
-    
-    // ============================================
-    // MÉTODOS AUXILIARES PARA FECHAS Y TIEMPOS
-    // ============================================
-    
-    /**
-     * Convierte una fecha (día, mes, año) a día del año (1-365/366)
-     * 
-     * @param dia Día del mes (1-31)
-     * @param mes Mes (1-12)
-     * @param anio Año
-     * @return Día del año (1-365 o 1-366 si es bisiesto)
-     */
-    private int obtenerDiaDelAnio(int dia, int mes, int anio) {
-        int[] diasPorMes = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
-        
-        // Verificar si es año bisiesto
-        boolean esBisiesto = (anio % 4 == 0 && anio % 100 != 0) || (anio % 400 == 0);
-        if (esBisiesto) {
-            diasPorMes[1] = 29;
-        }
-        
-        int diaDelAnio = dia;
-        for (int i = 0; i < mes - 1; i++) {
-            diaDelAnio += diasPorMes[i];
-        }
-        
-        return diaDelAnio;
-    }
-    
-    /**
-     * Verifica si un aeropuerto es continental (América) o intercontinental
-     * 
-     * @param codigoICAO Código ICAO del aeropuerto
-     * @return true si es continental (primera letra del código es K, M, S, o T)
-     */
-    private boolean esContinental(String codigoICAO) {
-        if (codigoICAO == null || codigoICAO.isEmpty()) {
-            return false;
-        }
-        char primeraLetra = codigoICAO.charAt(0);
-        // K = USA, M = México/Centroamérica, S = Sudamérica, T = Caribe
-        return primeraLetra == 'K' || primeraLetra == 'M' || 
-               primeraLetra == 'S' || primeraLetra == 'T';
-    }
-    
-    /**
-     * Calcula el tiempo de procesamiento requerido según el tipo de vuelo
-     * 
-     * @param origen Código ICAO del aeropuerto de origen
-     * @param destino Código ICAO del aeropuerto de destino
-     * @return Días de procesamiento requeridos
-     */
-    private int obtenerTiempoProcesamiento(String origen, String destino) {
-        boolean origenContinental = esContinental(origen);
-        boolean destinoContinental = esContinental(destino);
-        
-        // Si ambos son continentales, es vuelo continental
-        if (origenContinental && destinoContinental) {
-            return TIEMPO_PROCESAMIENTO_CONTINENTAL;
-        } else {
-            return TIEMPO_PROCESAMIENTO_INTERCONTINENTAL;
+    static class AeropuertoInput {
+        String codigo;
+        String ciudad;
+        double latitud;
+        double longitud;
+        int zonaHoraria;
+        int capacidadAlmacenamiento;
+
+        public String getCodigo() { return codigo; }
+        public void setCodigo(String codigo) { this.codigo = codigo; }
+        public String getCiudad() { return ciudad; }
+        public void setCiudad(String ciudad) { this.ciudad = ciudad; }
+        public double getLatitud() { return latitud; }
+        public void setLatitud(double latitud) { this.latitud = latitud; }
+        public double getLongitud() { return longitud; }
+        public void setLongitud(double longitud) { this.longitud = longitud; }
+        public int getZonaHoraria() { return zonaHoraria; }
+        public void setZonaHoraria(int zonaHoraria) { this.zonaHoraria = zonaHoraria; }
+        public int getCapacidadAlmacenamiento() { return capacidadAlmacenamiento; }
+        public void setCapacidadAlmacenamiento(int capacidadAlmacenamiento) { 
+            this.capacidadAlmacenamiento = capacidadAlmacenamiento; 
         }
     }
-    
-    // ============================================
-    // CLASE INTERNA: CROMOSOMA (INDIVIDUO)
-    // ============================================
-    
-    /**
-     * Representa una solución (asignación de pedidos a vuelos)
-     */
-    @Getter
-    @Setter
-    public static class Cromosoma implements Comparable<Cromosoma> {
-        private int[] genes;           // genes[i] = índice del vuelo asignado al pedido i
-        private double fitness;        // Calidad de la solución (menor es mejor)
-        private boolean esValido;      // Si respeta todas las restricciones
-        
-        public Cromosoma(int numeroPedidos) {
-            this.genes = new int[numeroPedidos];
-            this.fitness = Double.MAX_VALUE;
-            this.esValido = true;
+
+    static class PlanDeVueloInput {
+        String aeropuertoOrigen;
+        String aeropuertoDestino;
+        LocalTime horaSalida;
+        LocalTime horaLlegada;
+        int capacidad;
+
+        public String getAeropuertoOrigen() { return aeropuertoOrigen; }
+        public void setAeropuertoOrigen(String aeropuertoOrigen) { 
+            this.aeropuertoOrigen = aeropuertoOrigen; 
         }
-        
-        public Cromosoma(int[] genes) {
-            this.genes = genes.clone();
-            this.fitness = Double.MAX_VALUE;
-            this.esValido = true;
+        public String getAeropuertoDestino() { return aeropuertoDestino; }
+        public void setAeropuertoDestino(String aeropuertoDestino) { 
+            this.aeropuertoDestino = aeropuertoDestino; 
         }
-        
-        /**
-         * Crea una copia profunda del cromosoma
-         */
-        public Cromosoma clonar() {
-            Cromosoma clon = new Cromosoma(this.genes);
-            clon.fitness = this.fitness;
-            clon.esValido = this.esValido;
-            return clon;
+        public LocalTime getHoraSalida() { return horaSalida; }
+        public void setHoraSalida(LocalTime horaSalida) { this.horaSalida = horaSalida; }
+        public LocalTime getHoraLlegada() { return horaLlegada; }
+        public void setHoraLlegada(LocalTime horaLlegada) { this.horaLlegada = horaLlegada; }
+        public int getCapacidad() { return capacidad; }
+        public void setCapacidad(int capacidad) { this.capacidad = capacidad; }
+    }
+
+    static class PedidoInput {
+        int dia;
+        int hora;
+        int minuto;
+        String aeropuertoDestino;
+        int cantidadProductos;
+        String clienteId;
+
+        public int getDia() { return dia; }
+        public void setDia(int dia) { this.dia = dia; }
+        public int getHora() { return hora; }
+        public void setHora(int hora) { this.hora = hora; }
+        public int getMinuto() { return minuto; }
+        public void setMinuto(int minuto) { this.minuto = minuto; }
+        public String getAeropuertoDestino() { return aeropuertoDestino; }
+        public void setAeropuertoDestino(String aeropuertoDestino) { 
+            this.aeropuertoDestino = aeropuertoDestino; 
         }
-        
-        @Override
-        public int compareTo(Cromosoma otro) {
-            return Double.compare(this.fitness, otro.fitness);
+        public int getCantidadProductos() { return cantidadProductos; }
+        public void setCantidadProductos(int cantidadProductos) { 
+            this.cantidadProductos = cantidadProductos; 
         }
-        
-        @Override
-        public String toString() {
-            return String.format("Cromosoma[fitness=%.2f, valido=%s, genes=%s]", 
-                fitness, esValido, Arrays.toString(genes));
+        public String getClienteId() { return clienteId; }
+        public void setClienteId(String clienteId) { this.clienteId = clienteId; }
+    }
+
+    // ===================== Modelos de datos ==========================
+    enum Continent { SOUTH_AMERICA, EUROPE, ASIA, OTHER }
+
+    static class Airport {
+        String code;
+        int gmt;
+        int storageCap;
+        double lat, lon;
+        Continent continent;
+        boolean isExporter;
+
+        public Airport(String code, int gmt, int storageCap, double lat, double lon, boolean isExporter) {
+            this.code = code;
+            this.gmt = gmt;
+            this.storageCap = storageCap;
+            this.lat = lat;
+            this.lon = lon;
+            this.continent = inferContinent(code);
+            this.isExporter = isExporter;
         }
     }
-    
-    // ============================================
-    // CONSTRUCTOR
-    // ============================================
-    
+
+    static Continent inferContinent(String icao) {
+        if (icao == null || icao.isEmpty()) return Continent.OTHER;
+        char c = icao.charAt(0);
+        if (c == 'S') return Continent.SOUTH_AMERICA;
+        if (c == 'E' || c == 'L' || c == 'U') return Continent.EUROPE;
+        if (c == 'O' || c == 'V') return Continent.ASIA;
+        return Continent.OTHER;
+    }
+
+    static class Flight {
+        String orig, dest;
+        int depLocalMin;
+        int arrLocalMin;
+        int capacity;
+        public Flight(String o, String d, int dep, int arr, int cap) {
+            orig=o; dest=d; depLocalMin=dep; arrLocalMin=arr; capacity=cap;
+        }
+    }
+
+    static class Order {
+        String dest;
+        int qty;
+        int releaseMinUTC;
+        int dayOfMonth;
+        String clientId;
+
+        public Order(String dest, int qty, int releaseMinUTC, int dayOfMonth, String clientId) {
+            this.dest = dest;
+            this.qty = qty;
+            this.releaseMinUTC = releaseMinUTC;
+            this.dayOfMonth = dayOfMonth;
+            this.clientId = clientId;
+        }
+    }
+
+    static class FlightUse {
+        Flight flight;
+        int dayIndex;
+        int depUTC, arrUTC;
+        int qtyAssigned;
+        public FlightUse(Flight f, int d, int depUTC, int arrUTC, int qty) {
+            this.flight=f; this.dayIndex=d; this.depUTC=depUTC; this.arrUTC=arrUTC; this.qtyAssigned=qty;
+        }
+    }
+
+    static class SubRoute {
+        String originHub;
+        List<FlightUse> legs = new ArrayList<>(8);
+        int qty;
+        int arrivalUTC;
+    }
+
+    static class Solution {
+        Map<Order, List<SubRoute>> routes = new HashMap<>();
+        Map<String,Integer> capUsed = new HashMap<>();
+        int servedOnTime, servedLate, capViol, avgSlack;
+        double objective;
+    }
+
+    static class World {
+        Map<String,Airport> airports = new HashMap<>();
+        List<Flight> flights = new ArrayList<>();
+        Map<String,List<Flight>> outByAirport = new HashMap<>();
+        List<String> hubList = new ArrayList<>();
+    }
+
+    // ===================== Precomputación ============================
+    static class Precomp {
+        final int[][] depUTC;
+        final int[][] arrUTC;
+        final Map<Flight,Integer> flightIndex = new HashMap<>();
+        final Map<String,int[]> outIdxByAirport = new HashMap<>();
+
+        Precomp(int numFlights, int horizonDays){
+            depUTC = new int[numFlights][horizonDays];
+            arrUTC = new int[numFlights][horizonDays];
+        }
+    }
+
+    static Precomp precompute(World W, int horizonDays){
+        int n = W.flights.size();
+        Precomp P = new Precomp(n, horizonDays);
+
+        for (int i=0;i<n;i++) P.flightIndex.put(W.flights.get(i), i);
+
+        for (int fi=0; fi<n; fi++){
+            Flight f = W.flights.get(fi);
+            Airport aO = W.airports.get(f.orig), aD = W.airports.get(f.dest);
+            int baseDep = toUTCFromLocal(aO, f.depLocalMin);
+            int baseArr = toUTCFromLocal(aD, f.arrLocalMin);
+            for (int d=0; d<horizonDays; d++){
+                int dep = baseDep + d*1440;
+                int arr = baseArr + d*1440;
+                if (arr<dep) arr += 1440;
+                P.depUTC[fi][d]=dep;
+                P.arrUTC[fi][d]=arr;
+            }
+        }
+        for (Map.Entry<String,List<Flight>> e: W.outByAirport.entrySet()){
+            String ap = e.getKey();
+            List<Flight> lst = e.getValue();
+            int[] idx = new int[lst.size()];
+            for (int i=0;i<idx.length;i++) idx[i] = P.flightIndex.get(lst.get(i));
+            P.outIdxByAirport.put(ap, idx);
+        }
+        return P;
+    }
+
+    // ===================== Stock Tracker =============================
+    static class StockTracker {
+        static class Store {
+            final int[] delta;
+            final int[] pref;
+            boolean dirty = true;
+            Store(int n){ delta=new int[n+1]; pref=new int[n+1]; }
+        }
+        final int numSlots;
+        final World W;
+        final Map<String,Store> stores = new HashMap<>();
+
+        StockTracker(World W, int horizonDays){
+            this.W = W;
+            this.numSlots = (horizonDays*1440)/SLOT_MIN + 5;
+        }
+        Store get(String ap){
+            return stores.computeIfAbsent(ap, k->new Store(numSlots));
+        }
+        int capacityOf(Airport a){
+            if (a==null) return Integer.MAX_VALUE;
+            return a.isExporter ? Integer.MAX_VALUE : a.storageCap;
+        }
+        boolean canFit(String ap, int slotStart, int slotEnd, int qty){
+            if (slotStart>=slotEnd || qty<=0) return true;
+            Airport a=W.airports.get(ap);
+            int cap = capacityOf(a);
+            if (cap==Integer.MAX_VALUE) return true;
+            Store st = get(ap);
+            if (st.dirty){
+                int run=0;
+                for (int i=0;i<st.pref.length;i++){ run += st.delta[i]; st.pref[i]=run; }
+                st.dirty=false;
+            }
+            for (int t=slotStart; t<slotEnd; t++){
+                if (st.pref[t] + qty > cap) return false;
+            }
+            return true;
+        }
+        void addInterval(String ap, int slotStart, int slotEnd, int qty){
+            if (slotStart>=slotEnd || qty==0) return;
+            Store st = get(ap);
+            st.delta[slotStart]+=qty; st.delta[slotEnd]-=qty;
+            st.dirty = true;
+        }
+    }
+
+    // ===================== Utilidades ================================
+    static int toUTCFromLocal(Airport a, int localMin) { return localMin - a.gmt*60; }
+    static int slotOf(int utcMin, int numSlots){
+        int s = utcMin / SLOT_MIN;
+        if (s<0) return 0;
+        if (s>=numSlots) return numSlots-1;
+        return s;
+    }
+    static double haversineKm(double lat1,double lon1,double lat2,double lon2){
+        double R=6371.0;
+        double dLat=Math.toRadians(lat2-lat1);
+        double dLon=Math.toRadians(lon2-lon1);
+        double a = Math.sin(dLat/2)*Math.sin(dLat/2)
+                + Math.cos(Math.toRadians(lat1))*Math.cos(Math.toRadians(lat2))*Math.sin(dLon/2)*Math.sin(dLon/2);
+        double c = 2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R*c;
+    }
+
+    // ===================== Cromosoma =================================
+    static class Chromosome {
+        double[] keys;
+        Chromosome(int n) { keys = new double[n]; }
+        Chromosome copy(){ Chromosome c=new Chromosome(keys.length); System.arraycopy(keys,0,c.keys,0,keys.length); return c; }
+    }
+    static Chromosome randomChromosome(int n, Random rnd){
+        Chromosome c=new Chromosome(n);
+        for(int i=0;i<n;i++) c.keys[i]=rnd.nextDouble();
+        return c;
+    }
+
+    // ===================== Contextos =================================
+    static class SelectContext {
+        World W;
+        Precomp P;
+        Chromosome chrom;
+        String destTarget;
+        double wKey = 1.0, wEarly = 0.1, wGeo = 0.05;
+        double wDirect = 50.0;
+        double wTwoHop = 5.0;
+        Map<String,Double> distToDestByAp = Collections.emptyMap();
+        Set<String> hasDirectToTarget = Collections.emptySet();
+    }
+
+    static class FlightCandidate {
+        int fi, dayIndex, depUTC, arrUTC;
+        int avail;
+    }
+
+    static class LegStep {
+        int flightIndex;
+        int dayIndex;
+        int depUTC;
+        int arrUTC;
+        String waitAirport;
+        int waitStartSlot;
+        int waitEndSlot;
+        boolean requiresStorage;
+    }
+
+    static class DecodeContext {
+        World W;
+        int horizonDays;
+        Map<String,Integer> capUsedMap;
+        Precomp P;
+        StockTracker stock;
+        Chromosome chrom;
+        Random rnd;
+        int numSlots;
+        List<FlightCandidate> candBuf = new ArrayList<>(64);
+        int[][] capUsed;
+        Map<String, Map<String,Double>> distCache = new HashMap<>();
+        Map<String, Set<String>> directCache = new HashMap<>();
+    }
+
+    static class DestReservation {
+        int startSlot;
+        int endSlot;
+        int qty;
+        DestReservation(int s, int e, int q){ startSlot=s; endSlot=e; qty=q; }
+    }
+
+    static class Scored {
+        Chromosome c;
+        double fit;
+        Scored(Chromosome c, double fit){ this.c=c; this.fit=fit; }
+    }
+
+    // ===================== Constructor ===============================
     public genetico() {
         this.random = new Random();
     }
-    
-    /**
-     * Inicializa el algoritmo genético con los datos del problema
-     * 
-     * @param pedidos Lista de pedidos a asignar
-     * @param vuelos Lista de planes de vuelo disponibles
-     * @param aeropuertosList Lista de aeropuertos (para calcular si son continentales o intercontinentales)
-     */
-    public void inicializar(List<Pedido> pedidos, List<PlanDeVuelo> vuelos, List<Aeropuerto> aeropuertosList) {
+
+    public void inicializar(List<PedidoInput> pedidos, List<PlanDeVueloInput> vuelos, List<AeropuertoInput> aeropuertosList) {
         this.pedidos = pedidos;
         this.vuelos = vuelos;
-        
-        // Crear mapa de aeropuertos para acceso rápido por código ICAO
+
         this.aeropuertos = new HashMap<>();
-        for (Aeropuerto aeropuerto : aeropuertosList) {
-            this.aeropuertos.put(aeropuerto.getCodigoICAO(), aeropuerto);
+        for (AeropuertoInput aeropuerto : aeropuertosList) {
+            this.aeropuertos.put(aeropuerto.getCodigo(), aeropuerto);
+        }
+
+        this.world = convertToWorld(aeropuertosList, vuelos);
+
+        System.out.println("=== ALGORITMO GENÉTICO INICIALIZADO ===");
+        System.out.println("Pedidos: " + pedidos.size() + ", Vuelos: " + vuelos.size() + ", Aeropuertos: " + aeropuertos.size());
+    }
+
+    private World convertToWorld(List<AeropuertoInput> aeropuertosList, List<PlanDeVueloInput> vuelosList) {
+        World W = new World();
+        
+        for (Aeropuerto a : aeropuertosList) {
+            boolean isHub = exportHubs.contains(a.getCodigoICAO());
+            Airport ap = new Airport(
+                a.getCodigoICAO(),
+                a.getZonaHoraria(),
+                a.getCapacidadAlmacenamiento(),
+                a.getLatitud(),
+                a.getLongitud(),
+                isHub
+            );
+            W.airports.put(ap.code, ap);
+            if (isHub) W.hubList.add(ap.code);
         }
         
-        log.info("=== ALGORITMO GENÉTICO INICIALIZADO ===");
-        log.info("Pedidos a asignar: {}", pedidos.size());
-        log.info("Vuelos disponibles: {}", vuelos.size());
-        log.info("Aeropuertos cargados: {}", aeropuertos.size());
-        log.info("Población: {}", TAMANIO_POBLACION);
-        log.info("Generaciones máximas: {}", GENERACIONES_MAX);
-        log.info("Tiempo anticipación vuelo: {} minutos", TIEMPO_ANTICIPACION_VUELO);
-        log.info("Tiempo procesamiento continental: {} días", TIEMPO_PROCESAMIENTO_CONTINENTAL);
-        log.info("Tiempo procesamiento intercontinental: {} días", TIEMPO_PROCESAMIENTO_INTERCONTINENTAL);
-        log.info("=======================================");
-    }
-    
-    // ============================================
-    // MÉTODOS AUXILIARES PARA CÁLCULOS DE TIEMPO
-    // ============================================
-    
-    /**
-     * Determina si un vuelo es continental o intercontinental
-     * 
-     * @param vuelo Plan de vuelo a evaluar
-     * @return true si es continental (mismo continente), false si es intercontinental
-     */
-    private boolean esVueloContinental(PlanDeVuelo vuelo) {
-        Aeropuerto origen = aeropuertos.get(vuelo.getAeropuertoOrigen());
-        Aeropuerto destino = aeropuertos.get(vuelo.getAeropuertoDestino());
-        
-        if (origen == null || destino == null) {
-            log.warn("Aeropuerto no encontrado: origen={}, destino={}", 
-                vuelo.getAeropuertoOrigen(), vuelo.getAeropuertoDestino());
-            return true; // Asumir continental por defecto
-        }
-        
-        // Comparar continentes
-        return origen.getContinente().equalsIgnoreCase(destino.getContinente());
-    }
-    
-    /**
-     * Calcula el tiempo de procesamiento de un vuelo según si es continental o intercontinental
-     * 
-     * @param vuelo Plan de vuelo
-     * @return Tiempo de procesamiento en días
-     */
-    private int obtenerTiempoProcesamiento(PlanDeVuelo vuelo) {
-        if (esVueloContinental(vuelo)) {
-            return TIEMPO_PROCESAMIENTO_CONTINENTAL;
-        } else {
-            return TIEMPO_PROCESAMIENTO_INTERCONTINENTAL;
-        }
-    }
-    
-    /**
-     * Convierte día, hora y minuto a minutos totales desde el inicio del mes
-     * 
-     * @param dia Día del mes (1-31)
-     * @param hora Hora del día (0-23)
-     * @param minuto Minuto de la hora (0-59)
-     * @return Minutos totales desde el día 1, 00:00
-     */
-    private int convertirATiempoTotal(int dia, int hora, int minuto) {
-        return (dia - 1) * MINUTOS_POR_DIA + hora * 60 + minuto;
-    }
-    
-    /**
-     * Calcula el tiempo de espera de un pedido para un vuelo específico
-     * 
-     * @param pedido Pedido a evaluar
-     * @param vuelo Vuelo al que se asignaría el pedido
-     * @return Tiempo de espera en minutos (0 si no es factible)
-     */
-    private double calcularTiempoEspera(Pedido pedido, PlanDeVuelo vuelo) {
-        // Tiempo en que llega el pedido (en minutos totales)
-        int tiempoPedido = convertirATiempoTotal(pedido.getDia(), pedido.getHora(), pedido.getMinuto());
-        
-        // Tiempo de salida del vuelo (asumiendo día 1 para todos los vuelos)
-        // Los vuelos se repiten diariamente
-        int horaSalidaVuelo = vuelo.getHoraSalida().getHour();
-        int minutoSalidaVuelo = vuelo.getHoraSalida().getMinute();
-        
-        // Buscar el próximo vuelo disponible después del pedido
-        int tiempoVuelo = 0;
-        int diaActual = pedido.getDia();
-        
-        // Buscar el día del vuelo que cumpla con el tiempo de anticipación
-        while (true) {
-            tiempoVuelo = convertirATiempoTotal(diaActual, horaSalidaVuelo, minutoSalidaVuelo);
+        for (PlanDeVuelo v : vuelosList) {
+            LocalTime salida = v.getHoraSalida();
+            LocalTime llegada = v.getHoraLlegada();
             
-            // El pedido debe llegar al menos TIEMPO_ANTICIPACION_VUELO minutos antes
-            if (tiempoVuelo - tiempoPedido >= TIEMPO_ANTICIPACION_VUELO) {
-                break; // Encontramos un vuelo válido
+            int depMin = salida.getHour() * 60 + salida.getMinute();
+            int arrMin = llegada.getHour() * 60 + llegada.getMinute();
+            
+            Flight f = new Flight(v.getAeropuertoOrigen(), v.getAeropuertoDestino(), depMin, arrMin, v.getCapacidadMaxima());
+            W.flights.add(f);
+            W.outByAirport.computeIfAbsent(f.orig, k->new ArrayList<>()).add(f);
+        }
+        
+        W.outByAirport.values().forEach(lst -> lst.sort(Comparator.comparingInt(fl->fl.depLocalMin)));
+        
+        return W;
+    }
+
+    private List<Order> convertOrders(List<Pedido> pedidosList) {
+        List<Order> orders = new ArrayList<>();
+        for (Pedido p : pedidosList) {
+            int releaseMinUTC = (p.getDia()-1)*1440 + p.getHora()*60 + p.getMinuto();
+            orders.add(new Order(p.getAeropuertoDestino(), p.getCantidadProductos(), releaseMinUTC, p.getDia(), p.getClienteId()));
+        }
+        return orders;
+    }
+
+    // ===================== Ejecutar GA ===============================
+    public Solution ejecutar() {
+        if (pedidos == null || vuelos == null) {
+            throw new IllegalStateException("Debe inicializar el algoritmo");
+        }
+        
+        log.info("Iniciando GA...");
+        List<Order> orders = convertOrders(pedidos);
+        Solution best = runGA(world, orders, horizonDays, System.currentTimeMillis());
+        
+        log.info("Completado! Fitness: {}, OnTime: {}, Late: {}", best.objective, best.servedOnTime, best.servedLate);
+        return best;
+    }
+
+    static Solution runGA(World W, List<Order> orders, int horizonDays, long seed){
+        Random rnd = new Random(seed);
+        List<Chromosome> pop = new ArrayList<>(POP_SIZE);
+        for (int i=0;i<POP_SIZE;i++) pop.add(randomChromosome(W.flights.size(), rnd));
+
+        List<Order> ordersSorted = new ArrayList<>(orders);
+        ordersSorted.sort(Comparator.comparingInt(o->o.releaseMinUTC));
+
+        Precomp precomputed = precompute(W, horizonDays);
+        Chromosome best=null; double bestFit=-1e18; int stall=0;
+
+        for (int gen=1; gen<=MAX_GEN; gen++){
+            List<Scored> scored = new ArrayList<>(POP_SIZE);
+            for (Chromosome c : pop){
+                scored.add(new Scored(c, fitness(W, ordersSorted, c, horizonDays, precomputed)));
             }
-            
-            diaActual++; // Probar con el vuelo del día siguiente
-            
-            // Prevenir bucle infinito (máximo 31 días)
-            if (diaActual > 31) {
-                return Double.MAX_VALUE; // No factible
+
+            scored.sort((a,b)->Double.compare(b.fit, a.fit));
+            List<Chromosome> next = new ArrayList<>(POP_SIZE);
+            for (int i=0;i<ELITE_K;i++) next.add(scored.get(i).c.copy());
+
+            while (next.size()<POP_SIZE){
+                Chromosome p1 = scored.get(rnd.nextInt(scored.size())).c;
+                Chromosome p2 = scored.get(rnd.nextInt(scored.size())).c;
+                Chromosome ch = crossover(p1,p2,rnd);
+                mutate(ch,rnd);
+                next.add(ch);
             }
+            pop = next;
+
+            double iterFit = scored.get(0).fit;
+            if (iterFit > bestFit){ bestFit=iterFit; best=scored.get(0).c.copy(); stall=0; }
+            else stall++;
+
+            if (stall>=NO_IMPROV_LIMIT) break;
         }
-        
-        // Tiempo de espera = tiempo hasta el vuelo + tiempo de procesamiento
-        int tiempoEsperaHastaVuelo = tiempoVuelo - tiempoPedido;
-        int tiempoProcesamiento = obtenerTiempoProcesamiento(vuelo) * MINUTOS_POR_DIA;
-        
-        return tiempoEsperaHastaVuelo + tiempoProcesamiento;
+        return decodeSorted(W, ordersSorted, best, horizonDays, seed, precomputed);
     }
-    
-    // ============================================
-    // MÉTODO PRINCIPAL
-    // ============================================
-    
-    /**
-     * Ejecuta el algoritmo genético
-     * @return La mejor solución encontrada
-     */
-    public Cromosoma ejecutar() {
-        if (pedidos == null || vuelos == null || pedidos.isEmpty() || vuelos.isEmpty()) {
-            throw new IllegalStateException("Debe inicializar el algoritmo con pedidos y vuelos");
+
+    static double fitness(World W, List<Order> ordersSorted, Chromosome c, int horizonDays, Precomp precomputed){
+        return decodeSorted(W, ordersSorted, c, horizonDays, 12345L, precomputed).objective;
+    }
+
+    static Chromosome crossover(Chromosome a, Chromosome b, Random rnd){
+        if (rnd.nextDouble()>PCROSS) return rnd.nextBoolean()?a.copy():b.copy();
+        Chromosome c=new Chromosome(a.keys.length);
+        for (int i=0;i<a.keys.length;i++) c.keys[i]=(rnd.nextBoolean()?a.keys[i]:b.keys[i]);
+        return c;
+    }
+
+    static void mutate(Chromosome c, Random rnd){
+        for (int i=0;i<c.keys.length;i++){
+            if (rnd.nextDouble()<PMUT){
+                double v = c.keys[i] + rnd.nextGaussian()*0.1;
+                c.keys[i] = (v<0.0)?0.0:((v>1.0)?1.0:v);
+            }
         }
-        
-        log.info("Iniciando ejecución del algoritmo genético...");
-        long tiempoInicio = System.currentTimeMillis();
-        
-        // 1. Crear población inicial
-        List<Cromosoma> poblacion = crearPoblacionInicial();
-        
-        // 2. Evaluar fitness de la población inicial
-        evaluarPoblacion(poblacion);
-        
-        // 3. Encontrar el mejor de la población inicial
-        Cromosoma mejorGlobal = Collections.min(poblacion);
-        log.info("Generación 0 - Mejor fitness: {}", mejorGlobal.getFitness());
-        
-        // 4. Evolucionar por generaciones
-        for (int generacion = 1; generacion <= GENERACIONES_MAX; generacion++) {
-            
-            // Selección, cruce y mutación
-            List<Cromosoma> nuevaPoblacion = evolucionarPoblacion(poblacion);
-            
-            // Evaluar nueva población
-            evaluarPoblacion(nuevaPoblacion);
-            
-            // Actualizar población
-            poblacion = nuevaPoblacion;
-            
-            // Actualizar mejor solución global
-            Cromosoma mejorActual = Collections.min(poblacion);
-            if (mejorActual.getFitness() < mejorGlobal.getFitness()) {
-                mejorGlobal = mejorActual.clonar();
-                log.info("Generación {} - ¡NUEVO MEJOR! Fitness: {}", generacion, mejorGlobal.getFitness());
+    }
+
+    // ===================== Decodificador (Decoder) ==================
+    static Solution decodeSorted(World W, List<Order> ordenesSorted, Chromosome cromosoma, int diasHorizonte, long semilla, Precomp precomputado){
+        Solution solucion = new Solution();
+        solucion.capUsed = new HashMap<>();
+        StockTracker rastreadorStock = new StockTracker(W, diasHorizonte);
+        Precomp P = precomputado;
+
+        DecodeContext contextoDecodificacion = new DecodeContext();
+        contextoDecodificacion.W=W; 
+        contextoDecodificacion.horizonDays=diasHorizonte; 
+        contextoDecodificacion.capUsedMap=solucion.capUsed; 
+        contextoDecodificacion.P=P; 
+        contextoDecodificacion.stock=rastreadorStock; 
+        contextoDecodificacion.chrom=cromosoma; 
+        contextoDecodificacion.rnd=new Random(semilla);
+        contextoDecodificacion.numSlots = (diasHorizonte*1440)/SLOT_MIN + 5;
+        contextoDecodificacion.capUsed = new int[W.flights.size()][diasHorizonte];
+
+        int aTiempo=0, tarde=0, violaciones=0; 
+        long sumaHolgura=0; 
+        int contadorHolgura=0;
+
+        for (Order orden: ordenesSorted){
+            int restante = orden.qty;
+            List<SubRoute> subrutas = new ArrayList<>(4);
+
+            List<DestReservation> reservasDestino = new ArrayList<>();
+            int ultimaLlegada = -1;
+
+            int guardia=0, guardiaMax=500;
+            while (restante>0 && guardia++<guardiaMax){
+                SubRoute mejorSubruta = null;
+                int mejorLlegada = Integer.MAX_VALUE;
+                int cantidadSolicitada = restante;
+
+                for (String hub: obtenerHubs(W)) {
+                    int fechaLimite = calcularFechaLimiteParaHub(W, hub, orden.dest, orden.releaseMinUTC);
+                    SubRoute subruta = construirSubrutaDesdeHub(contextoDecodificacion, orden, hub, fechaLimite, cantidadSolicitada);
+                    if (subruta != null && subruta.qty > 0 && subruta.arrivalUTC < mejorLlegada) {
+                        mejorLlegada = subruta.arrivalUTC;
+                        mejorSubruta = subruta;
+                    }
+                }
+
+                if (mejorSubruta == null) break;
+
+                int inicioSlot = slotOf(mejorSubruta.arrivalUTC, contextoDecodificacion.numSlots);
+                int finSlot = slotOf(mejorSubruta.arrivalUTC + PICKUP_WINDOW_MIN, contextoDecodificacion.numSlots);
+                reservasDestino.add(new DestReservation(inicioSlot, finSlot, mejorSubruta.qty));
+
+                subrutas.add(mejorSubruta);
+                restante -= mejorSubruta.qty;
+
+                // Extender reservas de destino
+                if (mejorSubruta.arrivalUTC > ultimaLlegada) {
+                    int nuevaUltimaLlegada = mejorSubruta.arrivalUTC;
+                    int nuevoFinSlot = slotOf(nuevaUltimaLlegada + PICKUP_WINDOW_MIN, contextoDecodificacion.numSlots);
+                    for (DestReservation reserva: reservasDestino){
+                        if (reserva.endSlot < nuevoFinSlot){
+                            if (rastreadorStock.canFit(orden.dest, reserva.endSlot, nuevoFinSlot, reserva.qty)) {
+                                rastreadorStock.addInterval(orden.dest, reserva.endSlot, nuevoFinSlot, reserva.qty);
+                                reserva.endSlot = nuevoFinSlot;
+                            } else {
+                                violaciones++;
+                            }
+                        }
+                    }
+                    ultimaLlegada = nuevaUltimaLlegada;
+                }
             }
-            
-            // Log cada 50 generaciones
-            if (generacion % 50 == 0) {
-                log.info("Generación {} - Mejor fitness actual: {}", generacion, mejorActual.getFitness());
+
+            solucion.routes.put(orden, subrutas);
+
+            int entregado = 0;
+            for (int i=0;i<subrutas.size();i++) entregado += subrutas.get(i).qty;
+
+            if (entregado < orden.qty) {
+                tarde++;
+            } else {
+                SubRoute subutaCritica = null;
+                int llegadaMaxima = Integer.MIN_VALUE;
+                for (int i=0;i<subrutas.size();i++){
+                    SubRoute subruta = subrutas.get(i);
+                    if (subruta.arrivalUTC > llegadaMaxima){ 
+                        llegadaMaxima = subruta.arrivalUTC; 
+                        subutaCritica = subruta; 
+                    }
+                }
+                if (subutaCritica != null){
+                    int fechaLimiteCritica = calcularFechaLimiteParaHub(W, subutaCritica.originHub, orden.dest, orden.releaseMinUTC);
+                    if (subutaCritica.arrivalUTC <= fechaLimiteCritica) {
+                        aTiempo++;
+                        sumaHolgura += (fechaLimiteCritica - subutaCritica.arrivalUTC);
+                        contadorHolgura++;
+                    } else tarde++;
+                } else tarde++;
             }
-            
-            // Criterio de parada: convergencia
-            if (esConvergente(poblacion)) {
-                log.info("Convergencia alcanzada en generación {}", generacion);
+        }
+
+        solucion.servedOnTime = aTiempo; 
+        solucion.servedLate = tarde; 
+        solucion.capViol = violaciones;
+        solucion.avgSlack = (contadorHolgura==0)?0:(int)(sumaHolgura/contadorHolgura);
+        solucion.objective = LAMBDA_ONTIME*aTiempo - LAMBDA_LATE*tarde - LAMBDA_CAPVIO*violaciones + LAMBDA_SLACK*solucion.avgSlack;
+        return solucion;
+    }
+
+    static int calcularFechaLimiteParaHub(World W, String hub, String destino, int tiempoLiberacionMinUTC){
+        Airport aeropuertoHub = W.airports.get(hub);
+        Airport aeropuertoDestino = W.airports.get(destino);
+        boolean mismoContinente = (aeropuertoHub!=null && aeropuertoDestino!=null && aeropuertoHub.continent==aeropuertoDestino.continent);
+        return tiempoLiberacionMinUTC + (mismoContinente ? DUE_SAME_MIN : DUE_CROSS_MIN) + PICKUP_WINDOW_MIN;
+    }
+
+    static List<String> obtenerHubs(World W){
+        return W.hubList;
+    }
+
+    static SubRoute construirSubrutaDesdeHub(DecodeContext contextoDecodificacion, Order orden, String hub, int fechaLimite, int cantidadBloque){
+        if (cantidadBloque <= 0) return null;
+
+        String actual = hub;
+        int tiempoActual = orden.releaseMinUTC;
+        int cantidadSolicitada = cantidadBloque;
+
+        SelectContext contextoSeleccion = new SelectContext();
+        contextoSeleccion.W = contextoDecodificacion.W; 
+        contextoSeleccion.P = contextoDecodificacion.P; 
+        contextoSeleccion.chrom = contextoDecodificacion.chrom; 
+        contextoSeleccion.destTarget = orden.dest;
+        contextoSeleccion.distToDestByAp = obtenerDistanciasADestino(contextoDecodificacion, orden.dest);
+        contextoSeleccion.hasDirectToTarget = obtenerOrigenesDirectosADestino(contextoDecodificacion, orden.dest);
+
+        int expansiones = 0, maxExpansiones = 2000;
+        boolean primerTramo = true;
+        Set<String> visitados = new HashSet<>();
+        visitados.add(hub);
+
+        List<LegStep> plan = new ArrayList<>(8);
+        int capacidadRuta = cantidadSolicitada;
+        int ultimaLlegadaUTC = -1;
+
+        while (!actual.equals(orden.dest) && expansiones++ < maxExpansiones) {
+            int cantidadNecesaria = Math.max(1, capacidadRuta);
+            int conteo = enumerarCandidatos(contextoDecodificacion, actual, tiempoActual, fechaLimite, cantidadNecesaria);
+            if (conteo==0) return null;
+
+            contextoDecodificacion.candBuf.removeIf(candidato -> {
+                String siguiente = contextoDecodificacion.W.flights.get(candidato.fi).dest;
+                return visitados.contains(siguiente);
+            });
+            if (contextoDecodificacion.candBuf.isEmpty()) return null;
+
+            FlightCandidate elegido = null;
+            while (true) {
+                FlightCandidate mejor = seleccionarPorPrioridad(contextoDecodificacion.candBuf, contextoSeleccion);
+                if (mejor == null) return null;
+
+                Flight vuelo = contextoDecodificacion.W.flights.get(mejor.fi);
+                int disponibleTramo = mejor.avail;
+                if (disponibleTramo <= 0) {
+                    contextoDecodificacion.candBuf.remove(mejor);
+                    if (contextoDecodificacion.candBuf.isEmpty()) return null;
+                    continue;
+                }
+
+                int capacidadPropuesta = Math.min(capacidadRuta, disponibleTramo);
+                if (capacidadPropuesta <= 0) {
+                    contextoDecodificacion.candBuf.remove(mejor);
+                    if (contextoDecodificacion.candBuf.isEmpty()) return null;
+                    continue;
+                }
+
+                String aeropuertoEspera = null;
+                int inicioSlotEspera = 0;
+                int finSlotEspera = 0;
+                boolean requiereAlmacenamiento = false;
+
+                Airport aeropuertoActual = contextoDecodificacion.W.airports.get(actual);
+                boolean esHubActual = (aeropuertoActual!=null && aeropuertoActual.isExporter);
+                if (!primerTramo && !esHubActual) {
+                    aeropuertoEspera = actual;
+                    inicioSlotEspera = slotOf(tiempoActual, contextoDecodificacion.numSlots);
+                    finSlotEspera = slotOf(mejor.depUTC, contextoDecodificacion.numSlots);
+                    if (inicioSlotEspera < finSlotEspera) {
+                        int ajuste = calcularMaximoAjusteAlmacenamiento(contextoDecodificacion.stock, aeropuertoEspera, inicioSlotEspera, finSlotEspera, capacidadPropuesta);
+                        if (ajuste <= 0) {
+                            contextoDecodificacion.candBuf.remove(mejor);
+                            if (contextoDecodificacion.candBuf.isEmpty()) return null;
+                            continue;
+                        }
+                        capacidadPropuesta = Math.min(capacidadPropuesta, ajuste);
+                        requiereAlmacenamiento = true;
+                    }
+                }
+
+                capacidadRuta = capacidadPropuesta;
+
+                LegStep paso = new LegStep();
+                paso.flightIndex = mejor.fi;
+                paso.dayIndex = mejor.dayIndex;
+                paso.depUTC = mejor.depUTC;
+                paso.arrUTC = mejor.arrUTC;
+                paso.waitAirport = aeropuertoEspera;
+                paso.waitStartSlot = inicioSlotEspera;
+                paso.waitEndSlot = finSlotEspera;
+                paso.requiresStorage = requiereAlmacenamiento;
+                plan.add(paso);
+
+                actual = vuelo.dest;
+                tiempoActual = mejor.arrUTC;
+                ultimaLlegadaUTC = tiempoActual;
+                primerTramo = false;
+                visitados.add(actual);
+                elegido = mejor;
                 break;
             }
+
+            if (elegido == null) return null;
         }
-        
-        long tiempoTotal = System.currentTimeMillis() - tiempoInicio;
-        log.info("=== ALGORITMO GENÉTICO COMPLETADO ===");
-        log.info("Tiempo total: {} ms", tiempoTotal);
-        log.info("Mejor fitness: {}", mejorGlobal.getFitness());
-        log.info("Solución válida: {}", mejorGlobal.isEsValido());
-        log.info("=====================================");
-        
-        return mejorGlobal;
-    }
-    
-    // ============================================
-    // INICIALIZACIÓN DE LA POBLACIÓN
-    // ============================================
-    
-    /**
-     * Crea la población inicial de cromosomas aleatorios
-     */
-    private List<Cromosoma> crearPoblacionInicial() {
-        List<Cromosoma> poblacion = new ArrayList<>();
-        
-        for (int i = 0; i < TAMANIO_POBLACION; i++) {
-            Cromosoma individuo = crearCromosomaAleatorio();
-            poblacion.add(individuo);
-        }
-        
-        log.debug("Población inicial creada con {} individuos", poblacion.size());
-        return poblacion;
-    }
-    
-    /**
-     * Crea un cromosoma con genes aleatorios
-     */
-    private Cromosoma crearCromosomaAleatorio() {
-        Cromosoma cromosoma = new Cromosoma(pedidos.size());
-        
-        // Asignar cada pedido a un vuelo aleatorio
-        for (int i = 0; i < pedidos.size(); i++) {
-            cromosoma.genes[i] = random.nextInt(vuelos.size());
-        }
-        
-        return cromosoma;
-    }
-    
-    // ============================================
-    // EVALUACIÓN DE FITNESS
-    // ============================================
-    
-    /**
-     * Evalúa el fitness de toda la población
-     */
-    private void evaluarPoblacion(List<Cromosoma> poblacion) {
-        for (Cromosoma cromosoma : poblacion) {
-            evaluarFitness(cromosoma);
-        }
-    }
-    
-    /**
-     * Calcula el fitness de un cromosoma (menor es mejor)
-     * 
-     * Función objetivo:
-     * fitness = costoTiempoEspera + costoSobrecapacidad + costoVuelosUsados
-     */
-    private void evaluarFitness(Cromosoma cromosoma) {
-        double fitness = 0.0;
-        boolean esValido = true;
-        
-        // Mapear vuelos a sus pedidos asignados
-        Map<Integer, List<Integer>> vueloAPedidos = new HashMap<>();
-        for (int i = 0; i < cromosoma.genes.length; i++) {
-            int indiceVuelo = cromosoma.genes[i];
-            vueloAPedidos.computeIfAbsent(indiceVuelo, k -> new ArrayList<>()).add(i);
-        }
-        
-        // Evaluar cada vuelo
-        for (Map.Entry<Integer, List<Integer>> entrada : vueloAPedidos.entrySet()) {
-            int indiceVuelo = entrada.getKey();
-            List<Integer> indicesPedidos = entrada.getValue();
-            
-            PlanDeVuelo vuelo = vuelos.get(indiceVuelo);
-            
-            // Calcular carga total del vuelo y tiempo de espera de cada pedido
-            int cargaTotal = 0;
-            for (int indicePedido : indicesPedidos) {
-                Pedido pedido = pedidos.get(indicePedido);
-                cargaTotal += pedido.getCantidadProductos();
-                
-                // Calcular tiempo de espera del pedido
-                double tiempoEspera = calcularTiempoEspera(pedido, vuelo);
-                
-                // Penalizar tiempo de espera (convertir a días para la penalización)
-                double tiempoEsperaDias = tiempoEspera / MINUTOS_POR_DIA;
-                fitness += tiempoEsperaDias * PENALIZACION_TIEMPO;
+
+        if (!actual.equals(orden.dest)) return null;
+        if (plan.isEmpty()) return null;
+        if (capacidadRuta <= 0) return null;
+
+        int cantidadFinal = Math.min(capacidadRuta, cantidadSolicitada);
+        if (cantidadFinal <= 0) return null;
+
+        int inicioSlotDestino = slotOf(ultimaLlegadaUTC, contextoDecodificacion.numSlots);
+        int finSlotDestino = slotOf(ultimaLlegadaUTC + PICKUP_WINDOW_MIN, contextoDecodificacion.numSlots);
+        int ajusteDestino = calcularMaximoAjusteAlmacenamiento(contextoDecodificacion.stock, orden.dest, inicioSlotDestino, finSlotDestino, cantidadFinal);
+        if (ajusteDestino <= 0) return null;
+        cantidadFinal = Math.min(cantidadFinal, ajusteDestino);
+        if (cantidadFinal <= 0) return null;
+
+        SubRoute subruta = new SubRoute();
+        subruta.originHub = hub;
+        subruta.qty = cantidadFinal;
+        subruta.arrivalUTC = ultimaLlegadaUTC;
+
+        for (LegStep paso : plan) {
+            Flight vuelo = contextoDecodificacion.W.flights.get(paso.flightIndex);
+            if (paso.requiresStorage) {
+                contextoDecodificacion.stock.addInterval(paso.waitAirport, paso.waitStartSlot, paso.waitEndSlot, cantidadFinal);
             }
-            
-            // Verificar capacidad
-            if (cargaTotal > vuelo.getCapacidadMaxima()) {
-                esValido = false;
-                int exceso = cargaTotal - vuelo.getCapacidadMaxima();
-                fitness += exceso * PENALIZACION_SOBRECAPACIDAD;
-            }
-            
-            // Penalizar uso de vuelos (queremos usar menos vuelos)
-            fitness += 1.0;
-            
-            // Recompensar utilización de capacidad
-            double utilizacion = (double) cargaTotal / vuelo.getCapacidadMaxima();
-            fitness -= utilizacion * 0.5; // Recompensa por buena utilización
+
+            int usado = contextoDecodificacion.capUsed[paso.flightIndex][paso.dayIndex];
+            contextoDecodificacion.capUsed[paso.flightIndex][paso.dayIndex] = usado + cantidadFinal;
+
+            String clave = generarClaveVuelo(vuelo, paso.dayIndex);
+            int usadoMapa = contextoDecodificacion.capUsedMap.getOrDefault(clave, 0);
+            contextoDecodificacion.capUsedMap.put(clave, usadoMapa + cantidadFinal);
+
+            subruta.legs.add(new FlightUse(vuelo, paso.dayIndex, paso.depUTC, paso.arrUTC, cantidadFinal));
         }
-        
-        cromosoma.setFitness(fitness);
-        cromosoma.setEsValido(esValido);
+
+        contextoDecodificacion.stock.addInterval(orden.dest, inicioSlotDestino, finSlotDestino, cantidadFinal);
+
+        return subruta;
     }
-    
-    // ============================================
-    // OPERADORES GENÉTICOS
-    // ============================================
-    
-    /**
-     * Evoluciona la población aplicando selección, cruce y mutación
-     */
-    private List<Cromosoma> evolucionarPoblacion(List<Cromosoma> poblacionActual) {
-        List<Cromosoma> nuevaPoblacion = new ArrayList<>();
-        
-        // 1. ELITISMO: Los mejores pasan directamente
-        Collections.sort(poblacionActual);
-        for (int i = 0; i < ELITISMO && i < poblacionActual.size(); i++) {
-            nuevaPoblacion.add(poblacionActual.get(i).clonar());
-        }
-        
-        // 2. Completar población con descendientes
-        while (nuevaPoblacion.size() < TAMANIO_POBLACION) {
-            
-            // Seleccionar padres
-            Cromosoma padre1 = seleccionarPorTorneo(poblacionActual);
-            Cromosoma padre2 = seleccionarPorTorneo(poblacionActual);
-            
-            // Cruce
-            Cromosoma hijo;
-            if (random.nextDouble() < TASA_CRUCE) {
-                hijo = cruzar(padre1, padre2);
-            } else {
-                hijo = padre1.clonar();
-            }
-            
-            // Mutación
-            if (random.nextDouble() < TASA_MUTACION) {
-                mutar(hijo);
-            }
-            
-            nuevaPoblacion.add(hijo);
-        }
-        
-        return nuevaPoblacion;
+
+    static String generarClaveVuelo(Flight vuelo, int dia){ 
+        return vuelo.orig+">"+vuelo.dest+"@D"+dia+"#"+vuelo.depLocalMin; 
     }
-    
-    /**
-     * Selección por torneo: elige el mejor de k individuos aleatorios
-     */
-    private Cromosoma seleccionarPorTorneo(List<Cromosoma> poblacion) {
-        int tamanioTorneo = 5;
-        Cromosoma mejor = null;
-        
-        for (int i = 0; i < tamanioTorneo; i++) {
-            Cromosoma candidato = poblacion.get(random.nextInt(poblacion.size()));
-            if (mejor == null || candidato.getFitness() < mejor.getFitness()) {
-                mejor = candidato;
+
+    static int enumerarCandidatos(DecodeContext contextoDecodificacion, String actual, int tiempoActualUTC, int fechaLimite, int cantidadNecesaria){
+        contextoDecodificacion.candBuf.clear();
+        int[] indicesSalida = contextoDecodificacion.P.outIdxByAirport.getOrDefault(actual, null);
+        if (indicesSalida==null) return 0;
+
+        Airport aeropuertoOrigen = contextoDecodificacion.W.airports.get(actual);
+        if (aeropuertoOrigen==null) return 0;
+
+        final int salidaMinima = tiempoActualUTC + MIN_TURN_MIN;
+
+        for (int k=0; k<indicesSalida.length; k++){
+            int indiceVuelo = indicesSalida[k];
+            Flight vuelo = contextoDecodificacion.W.flights.get(indiceVuelo);
+            Airport aeropuertoDestino = contextoDecodificacion.W.airports.get(vuelo.dest);
+            if (aeropuertoDestino==null) continue;
+
+            int[] salidaPorDia = contextoDecodificacion.P.depUTC[indiceVuelo];
+            int[] llegadaPorDia = contextoDecodificacion.P.arrUTC[indiceVuelo];
+
+            int salidaBase = salidaPorDia[0];
+            if (salidaBase > fechaLimite) continue;
+
+            int diaInicio;
+            if (salidaMinima <= salidaBase) diaInicio = 0;
+            else {
+                int delta = salidaMinima - salidaBase;
+                diaInicio = delta / 1440;
+                if (delta % 1440 != 0) diaInicio++;
+            }
+            if (diaInicio < 0) diaInicio = 0;
+
+            for (int dia=diaInicio; dia<contextoDecodificacion.horizonDays; dia++){
+                int salidaUTC = salidaPorDia[dia];
+                if (salidaUTC < salidaMinima) continue;
+                if (salidaUTC > fechaLimite) break;
+
+                int llegadaUTC = llegadaPorDia[dia];
+                if (llegadaUTC > fechaLimite) continue;
+
+                int usado = contextoDecodificacion.capUsed[indiceVuelo][dia];
+                int disponible = vuelo.capacity - usado;
+                if (disponible <= 0) continue;
+
+                FlightCandidate candidatoVuelo = new FlightCandidate();
+                candidatoVuelo.fi = indiceVuelo; 
+                candidatoVuelo.dayIndex = dia; 
+                candidatoVuelo.depUTC = salidaUTC; 
+                candidatoVuelo.arrUTC = llegadaUTC; 
+                candidatoVuelo.avail = disponible;
+                contextoDecodificacion.candBuf.add(candidatoVuelo);
             }
         }
-        
+
+        if (contextoDecodificacion.candBuf.size() > TOPK_CANDIDATES) {
+            contextoDecodificacion.candBuf.sort(Comparator.comparingInt(candidato -> candidato.arrUTC));
+            contextoDecodificacion.candBuf.subList(TOPK_CANDIDATES, contextoDecodificacion.candBuf.size()).clear();
+        }
+        return contextoDecodificacion.candBuf.size();
+    }
+
+    static FlightCandidate seleccionarPorPrioridad(List<FlightCandidate> candidatos, SelectContext contexto){
+        if (candidatos.isEmpty()) return null;
+        int llegadaMinima = Integer.MAX_VALUE;
+        for (int i=0;i<candidatos.size();i++){
+            int valor = candidatos.get(i).arrUTC;
+            if (valor<llegadaMinima) llegadaMinima = valor;
+        }
+        double mejorPuntuacion = -1e18;
+        FlightCandidate mejor = null;
+        for (int i=0;i<candidatos.size();i++){
+            FlightCandidate candidato = candidatos.get(i);
+            Flight vuelo = contexto.W.flights.get(candidato.fi);
+            int indice = contexto.P.flightIndex.get(vuelo);
+            double clave = contexto.chrom.keys[indice];
+
+            double gananciaHoras = -((candidato.arrUTC - llegadaMinima) / 60.0);
+
+            Double distanciaOrigen = contexto.distToDestByAp.get(vuelo.orig);
+            Double distanciaDestino = contexto.distToDestByAp.get(vuelo.dest);
+            double progreso = 0.0;
+            if (distanciaOrigen!=null && distanciaDestino!=null) progreso = distanciaOrigen - distanciaDestino;
+
+            double bonusDirecto = vuelo.dest.equals(contexto.destTarget) ? contexto.wDirect : 0.0;
+            double bonusDosSaltos = contexto.hasDirectToTarget.contains(vuelo.dest) ? contexto.wTwoHop : 0.0;
+
+            double puntuacion = contexto.wKey*clave + contexto.wEarly*gananciaHoras + contexto.wGeo*progreso
+                         + bonusDirecto + bonusDosSaltos;
+
+            if (puntuacion > mejorPuntuacion){ mejorPuntuacion=puntuacion; mejor=candidato; }
+        }
         return mejor;
     }
-    
-    /**
-     * Operador de cruce: Un Punto
-     * Corta los cromosomas en un punto aleatorio e intercambia las partes
-     */
-    private Cromosoma cruzar(Cromosoma padre1, Cromosoma padre2) {
-        int puntoCorte = random.nextInt(padre1.genes.length);
-        Cromosoma hijo = new Cromosoma(padre1.genes.length);
-        
-        // Copiar primera parte del padre1
-        for (int i = 0; i < puntoCorte; i++) {
-            hijo.genes[i] = padre1.genes[i];
+
+    static int calcularMaximoAjusteAlmacenamiento(StockTracker rastreadorStock, String aeropuerto, int inicioSlot, int finSlot, int cantidadMaxima) {
+        if (cantidadMaxima <= 0) return 0;
+        if (inicioSlot >= finSlot) return cantidadMaxima;
+        int minimo = 0, maximo = cantidadMaxima;
+        while (minimo < maximo) {
+            int medio = (minimo + maximo + 1) >>> 1;
+            if (rastreadorStock.canFit(aeropuerto, inicioSlot, finSlot, medio)) minimo = medio;
+            else maximo = medio - 1;
         }
-        
-        // Copiar segunda parte del padre2
-        for (int i = puntoCorte; i < hijo.genes.length; i++) {
-            hijo.genes[i] = padre2.genes[i];
-        }
-        
-        return hijo;
+        return minimo;
     }
-    
-    /**
-     * Operador de mutación: cambia aleatoriamente el vuelo asignado a algunos pedidos
-     */
-    private void mutar(Cromosoma cromosoma) {
-        for (int i = 0; i < cromosoma.genes.length; i++) {
-            if (random.nextDouble() < 0.1) { // 10% de probabilidad por gen
-                cromosoma.genes[i] = random.nextInt(vuelos.size());
+
+    static Map<String,Double> obtenerDistanciasADestino(DecodeContext contextoDecodificacion, String destino){
+        return contextoDecodificacion.distCache.computeIfAbsent(destino, clave -> {
+            Map<String,Double> mapa = new HashMap<>(contextoDecodificacion.W.airports.size());
+            Airport aeropuertoObjetivo = contextoDecodificacion.W.airports.get(destino);
+            if (aeropuertoObjetivo != null){
+                for (Airport aeropuerto : contextoDecodificacion.W.airports.values()){
+                    double distancia = haversineKm(aeropuerto.lat, aeropuerto.lon, aeropuertoObjetivo.lat, aeropuertoObjetivo.lon);
+                    mapa.put(aeropuerto.code, distancia);
+                }
+            }
+            return mapa;
+        });
+    }
+
+    static Set<String> obtenerOrigenesDirectosADestino(DecodeContext contextoDecodificacion, String destino){
+        return contextoDecodificacion.directCache.computeIfAbsent(destino, clave -> {
+            Set<String> origenes = new HashSet<>();
+            for (Map.Entry<String,List<Flight>> entrada : contextoDecodificacion.W.outByAirport.entrySet()){
+                for (Flight vuelo : entrada.getValue()){
+                    if (vuelo.dest.equals(destino)){
+                        origenes.add(entrada.getKey());
+                        break;
+                    }
+                }
+            }
+            return origenes;
+        });
+    }
+
+    // ===================== MÉTODO MAIN PARA EJECUCIÓN STANDALONE =====================
+    public static void main(String[] args) {
+        System.out.println("╔════════════════════════════════════════════════════════════════╗");
+        System.out.println("║     ALGORITMO GENÉTICO - OPTIMIZACIÓN DE RUTAS LOGÍSTICAS     ║");
+        System.out.println("╚════════════════════════════════════════════════════════════════╝");
+        System.out.println();
+
+        try {
+            // Ruta base para los archivos de datos
+            String rutaBase = "src/main/resources/datos/";
+            
+            System.out.println("📂 Cargando datos desde: " + rutaBase);
+            System.out.println();
+
+            // 1. Cargar aeropuertos
+            System.out.print("   [1/3] Cargando aeropuertos... ");
+            List<Aeropuerto> aeropuertos = cargarAeropuertos(rutaBase + "Aeropuertos.txt");
+            System.out.println("✓ " + aeropuertos.size() + " aeropuertos cargados");
+
+            // 2. Cargar planes de vuelo
+            System.out.print("   [2/3] Cargando planes de vuelo... ");
+            List<PlanDeVuelo> planesDeVuelo = cargarPlanesDeVuelo(rutaBase + "PlanesDeVuelo.txt");
+            System.out.println("✓ " + planesDeVuelo.size() + " vuelos cargados");
+
+            // 3. Cargar pedidos
+            System.out.print("   [3/3] Cargando pedidos... ");
+            List<Pedido> pedidos = cargarPedidos(rutaBase + "Pedidos.txt");
+            System.out.println("✓ " + pedidos.size() + " pedidos cargados");
+
+            System.out.println();
+            System.out.println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+            System.out.println();
+
+            // 4. Inicializar y ejecutar algoritmo
+            System.out.println("🧬 Inicializando algoritmo genético...");
+            genetico algoritmo = new genetico();
+            algoritmo.inicializar(pedidos, planesDeVuelo, aeropuertos);
+
+            System.out.println();
+            System.out.println("🚀 Ejecutando optimización...");
+            System.out.println("   • Población: " + POP_SIZE + " individuos");
+            System.out.println("   • Generaciones máximas: " + MAX_GEN);
+            System.out.println("   • Tasa de cruce: " + (PCROSS*100) + "%");
+            System.out.println("   • Tasa de mutación: " + (PMUT*100) + "%");
+            System.out.println();
+
+            long inicio = System.currentTimeMillis();
+            Solution solucion = algoritmo.ejecutar();
+            long duracion = System.currentTimeMillis() - inicio;
+
+            // 5. Mostrar resultados
+            System.out.println();
+            System.out.println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+            System.out.println();
+            System.out.println("✅ OPTIMIZACIÓN COMPLETADA");
+            System.out.println();
+            System.out.println("📊 RESULTADOS:");
+            System.out.println("   ├─ Fitness: " + String.format("%.4f", solucion.objective));
+            System.out.println("   ├─ Pedidos a tiempo: " + solucion.servedOnTime);
+            System.out.println("   ├─ Pedidos tarde: " + solucion.servedLate);
+            System.out.println("   ├─ Violaciones capacidad: " + solucion.capViol);
+            System.out.println("   ├─ Holgura promedio: " + String.format("%.2f", (double)solucion.avgSlack) + " min");
+            System.out.println("   └─ Tiempo ejecución: " + duracion + " ms");
+            System.out.println();
+
+            // 6. Estadísticas adicionales
+            double tasaExito = (solucion.servedOnTime * 100.0) / (solucion.servedOnTime + solucion.servedLate);
+            System.out.println("📈 ESTADÍSTICAS:");
+            System.out.println("   ├─ Tasa de éxito: " + String.format("%.2f%%", tasaExito));
+            System.out.println("   ├─ Total servidos: " + (solucion.servedOnTime + solucion.servedLate));
+            
+            if (solucion.capViol == 0) {
+                System.out.println("   └─ Estado capacidad: ✓ Sin violaciones");
+            } else {
+                System.out.println("   └─ Estado capacidad: ⚠ " + solucion.capViol + " violaciones");
+            }
+            
+            System.out.println();
+            System.out.println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+
+        } catch (IOException e) {
+            System.err.println();
+            System.err.println("❌ ERROR: No se pudieron cargar los archivos de datos");
+            System.err.println("   Detalle: " + e.getMessage());
+            System.err.println();
+            System.err.println("   Asegúrate de que los archivos existan en:");
+            System.err.println("   • src/main/resources/datos/Aeropuertos.txt");
+            System.err.println("   • src/main/resources/datos/PlanesDeVuelo.txt");
+            System.err.println("   • src/main/resources/datos/Pedidos.txt");
+            System.exit(1);
+        } catch (Exception e) {
+            System.err.println();
+            System.err.println("❌ ERROR DURANTE LA EJECUCIÓN:");
+            System.err.println("   " + e.getMessage());
+            e.printStackTrace();
+            System.exit(1);
+        }
+    }
+
+    // ===================== MÉTODOS DE CARGA DE DATOS =====================
+
+    private static List<Aeropuerto> cargarAeropuertos(String rutaArchivo) throws IOException {
+        List<Aeropuerto> aeropuertos = new ArrayList<>();
+        
+        try (BufferedReader br = new BufferedReader(new FileReader(rutaArchivo))) {
+            String linea;
+            while ((linea = br.readLine()) != null) {
+                linea = linea.trim();
+                
+                // Ignorar líneas de encabezado y vacías
+                if (linea.isEmpty() || linea.startsWith("PDDS") || linea.startsWith("*") || 
+                    linea.contains("America") || linea.contains("Europa") || 
+                    linea.contains("Asia") || linea.contains("Africa") || linea.contains("GMT")) {
+                    continue;
+                }
+
+                try {
+                    // Formato: 01   SKBO   Bogota   Colombia   bogo   -5   430   Latitude: 04° 42' 05" N   Longitude:  74° 08' 49" W
+                    String[] partes = linea.split("\\s+");
+                    
+                    if (partes.length >= 7) {
+                        String codigo = partes[1];
+                        String ciudad = partes[2];
+                        int gmtOffset = Integer.parseInt(partes[5]);
+                        int capacidad = Integer.parseInt(partes[6]);
+                        
+                        // Extraer latitud y longitud
+                        double latitud = extraerCoordenada(linea, "Latitude:");
+                        double longitud = extraerCoordenada(linea, "Longitude:");
+                        
+                        Aeropuerto aeropuerto = new Aeropuerto();
+                        aeropuerto.setCodigo(codigo);
+                        aeropuerto.setCiudad(ciudad);
+                        aeropuerto.setLatitud(latitud);
+                        aeropuerto.setLongitud(longitud);
+                        aeropuerto.setZonaHoraria(gmtOffset);
+                        aeropuerto.setCapacidadAlmacenamiento(capacidad);
+                        
+                        aeropuertos.add(aeropuerto);
+                    }
+                } catch (Exception e) {
+                    // Ignorar líneas con formato incorrecto
+                    System.err.println("   ⚠ Advertencia: línea ignorada en aeropuertos: " + linea);
+                }
             }
         }
+        
+        return aeropuertos;
     }
-    
-    // ============================================
-    // CRITERIOS DE CONVERGENCIA
-    // ============================================
-    
-    /**
-     * Verifica si la población ha convergido (poca diversidad)
-     */
-    private boolean esConvergente(List<Cromosoma> poblacion) {
-        // Calcular desviación estándar del fitness
-        double mediaFitness = poblacion.stream()
-            .mapToDouble(Cromosoma::getFitness)
-            .average()
-            .orElse(0.0);
-        
-        double varianza = poblacion.stream()
-            .mapToDouble(c -> Math.pow(c.getFitness() - mediaFitness, 2))
-            .average()
-            .orElse(0.0);
-        
-        double desviacionEstandar = Math.sqrt(varianza);
-        
-        // Si la desviación es muy pequeña, la población ha convergido
-        return desviacionEstandar < 0.01;
-    }
-    
-    // ============================================
-    // MÉTODOS DE UTILIDAD
-    // ============================================
-    
-    /**
-     * Convierte un cromosoma en un mapa legible de asignaciones
-     */
-    public Map<String, List<Pedido>> convertirASolucion(Cromosoma cromosoma) {
-        Map<String, List<Pedido>> asignaciones = new HashMap<>();
-        
-        for (int i = 0; i < cromosoma.genes.length; i++) {
-            int indiceVuelo = cromosoma.genes[i];
-            PlanDeVuelo vuelo = vuelos.get(indiceVuelo);
-            Pedido pedido = pedidos.get(i);
+
+    private static double extraerCoordenada(String linea, String palabra) {
+        try {
+            int inicio = linea.indexOf(palabra);
+            if (inicio == -1) return 0.0;
             
-            String claveVuelo = vuelo.getAeropuertoOrigen() + "-" + vuelo.getAeropuertoDestino();
-            asignaciones.computeIfAbsent(claveVuelo, k -> new ArrayList<>()).add(pedido);
-        }
-        
-        return asignaciones;
-    }
-    
-    /**
-     * Imprime estadísticas de la solución
-     */
-    public void imprimirEstadisticas(Cromosoma solucion) {
-        Map<String, List<Pedido>> asignaciones = convertirASolucion(solucion);
-        
-        log.info("=== ESTADÍSTICAS DE LA SOLUCIÓN ===");
-        log.info("Vuelos utilizados: {}", asignaciones.size());
-        log.info("Fitness total: {}", solucion.getFitness());
-        log.info("Solución válida: {}", solucion.isEsValido());
-        
-        for (Map.Entry<String, List<Pedido>> entrada : asignaciones.entrySet()) {
-            String ruta = entrada.getKey();
-            List<Pedido> pedidosVuelo = entrada.getValue();
-            int cargaTotal = pedidosVuelo.stream()
-                .mapToInt(Pedido::getCantidadProductos)
-                .sum();
+            String resto = linea.substring(inicio + palabra.length()).trim();
+            String[] partes = resto.split("\\s+");
             
-            log.info("Ruta {}: {} pedidos, carga total: {}", ruta, pedidosVuelo.size(), cargaTotal);
+            if (partes.length >= 4) {
+                int grados = Integer.parseInt(partes[0].replace("°", ""));
+                int minutos = Integer.parseInt(partes[1].replace("'", ""));
+                int segundos = Integer.parseInt(partes[2].replace("\"", ""));
+                String direccion = partes[3];
+                
+                double coordenada = grados + (minutos / 60.0) + (segundos / 3600.0);
+                
+                if (direccion.equals("S") || direccion.equals("W")) {
+                    coordenada = -coordenada;
+                }
+                
+                return coordenada;
+            }
+        } catch (Exception e) {
+            // Coordenada por defecto
         }
-        
-        log.info("===================================");
+        return 0.0;
     }
-    
-    // ============================================
-    // MÉTODO MAIN PARA PRUEBAS
-    // ============================================
-    
-    /**
-     * Método main para probar el algoritmo genético de forma standalone
-     */
-    public static void main(String[] args) {
-        System.out.println("=================================================");
-        System.out.println("    PRUEBA DEL ALGORITMO GENÉTICO - MoraPack    ");
-        System.out.println("=================================================\n");
-        
-        // 1. Crear datos de prueba: Aeropuertos
-        Map<String, Aeropuerto> aeropuertos = new HashMap<>();
-        
-        // Aeropuertos de prueba (usando constructor completo)
-        Aeropuerto bogota = new Aeropuerto("SKBO", "Bogotá", "Colombia", -5, 10000, 
-            4.7011, -74.1469, "América del Sur");
-        aeropuertos.put("SKBO", bogota);
-        
-        Aeropuerto miami = new Aeropuerto("KMIA", "Miami", "Estados Unidos", -5, 15000,
-            25.7959, -80.2870, "América del Norte");
-        aeropuertos.put("KMIA", miami);
-        
-        Aeropuerto mexico = new Aeropuerto("MMMX", "Ciudad de México", "México", -6, 12000,
-            19.4361, -99.0719, "América del Norte");
-        aeropuertos.put("MMMX", mexico);
-        
-        Aeropuerto madrid = new Aeropuerto("LEMD", "Madrid", "España", 1, 20000,
-            40.4719, -3.5626, "Europa");
-        aeropuertos.put("LEMD", madrid);
-        
-        System.out.println("✓ Aeropuertos creados: " + aeropuertos.size());
-        
-        // 2. Crear planes de vuelo de prueba
+
+    private static List<PlanDeVuelo> cargarPlanesDeVuelo(String rutaArchivo) throws IOException {
         List<PlanDeVuelo> vuelos = new ArrayList<>();
         
-        // Vuelo 1: Bogotá -> Miami (Continental)
-        PlanDeVuelo v1 = new PlanDeVuelo("SKBO", "KMIA", 
-            java.time.LocalTime.of(8, 0), java.time.LocalTime.of(12, 0), 500);
-        vuelos.add(v1);
+        try (BufferedReader br = new BufferedReader(new FileReader(rutaArchivo))) {
+            String linea;
+            while ((linea = br.readLine()) != null) {
+                linea = linea.trim();
+                
+                if (linea.isEmpty()) continue;
+
+                try {
+                    // Formato: SKBO-SEQM-03:34-05:21-0300
+                    String[] partes = linea.split("-");
+                    
+                    if (partes.length == 5) {
+                        String origen = partes[0];
+                        String destino = partes[1];
+                        LocalTime horaSalida = LocalTime.parse(partes[2]);
+                        LocalTime horaLlegada = LocalTime.parse(partes[3]);
+                        int capacidad = Integer.parseInt(partes[4]);
+                        
+                        PlanDeVuelo vuelo = new PlanDeVuelo();
+                        vuelo.setAeropuertoOrigen(origen);
+                        vuelo.setAeropuertoDestino(destino);
+                        vuelo.setHoraSalida(horaSalida);
+                        vuelo.setHoraLlegada(horaLlegada);
+                        vuelo.setCapacidad(capacidad);
+                        
+                        vuelos.add(vuelo);
+                    }
+                } catch (Exception e) {
+                    System.err.println("   ⚠ Advertencia: línea ignorada en vuelos: " + linea);
+                }
+            }
+        }
         
-        // Vuelo 2: Miami -> Madrid (Intercontinental)
-        PlanDeVuelo v2 = new PlanDeVuelo("KMIA", "LEMD",
-            java.time.LocalTime.of(18, 0), java.time.LocalTime.of(8, 0), 800);
-        vuelos.add(v2);
-        
-        // Vuelo 3: Bogotá -> México (Continental)
-        PlanDeVuelo v3 = new PlanDeVuelo("SKBO", "MMMX",
-            java.time.LocalTime.of(10, 0), java.time.LocalTime.of(14, 0), 400);
-        vuelos.add(v3);
-        
-        // Vuelo 4: México -> Miami (Continental)
-        PlanDeVuelo v4 = new PlanDeVuelo("MMMX", "KMIA",
-            java.time.LocalTime.of(16, 0), java.time.LocalTime.of(20, 0), 600);
-        vuelos.add(v4);
-        
-        System.out.println("✓ Planes de vuelo creados: " + vuelos.size());
-        
-        // 3. Crear pedidos de prueba
+        return vuelos;
+    }
+
+    private static List<Pedido> cargarPedidos(String rutaArchivo) throws IOException {
         List<Pedido> pedidos = new ArrayList<>();
         
-        // Pedido 1: Bogotá -> Miami (puede ir directo)
-        Pedido p1 = new Pedido(1, 6, 0, "KMIA", 100, "0001234");
-        pedidos.add(p1);
-        
-        // Pedido 2: Bogotá -> Madrid (necesita conexión)
-        Pedido p2 = new Pedido(1, 6, 30, "LEMD", 150, "0002345");
-        pedidos.add(p2);
-        
-        // Pedido 3: Bogotá -> México (directo)
-        Pedido p3 = new Pedido(1, 7, 0, "MMMX", 80, "0003456");
-        pedidos.add(p3);
-        
-        // Pedido 4: Bogotá -> Miami (directo)
-        Pedido p4 = new Pedido(1, 7, 30, "KMIA", 120, "0004567");
-        pedidos.add(p4);
-        
-        // Pedido 5: Bogotá -> Miami (sobrecarga para probar restricciones)
-        Pedido p5 = new Pedido(1, 7, 45, "KMIA", 200, "0005678");
-        pedidos.add(p5);
-        
-        System.out.println("✓ Pedidos creados: " + pedidos.size());
-        System.out.println();
-        
-        // 4. Crear y ejecutar el algoritmo genético
-        System.out.println("Iniciando Algoritmo Genético...\n");
-        
-        genetico algoritmo = new genetico();
-        algoritmo.inicializar(pedidos, vuelos, new ArrayList<>(aeropuertos.values()));
-        
-        long tiempoInicio = System.currentTimeMillis();
-        Cromosoma mejorSolucion = algoritmo.ejecutar();
-        long tiempoTotal = System.currentTimeMillis() - tiempoInicio;
-        
-        // 5. Mostrar resultados
-        System.out.println("\n=================================================");
-        System.out.println("              RESULTADOS FINALES                 ");
-        System.out.println("=================================================");
-        System.out.println("Tiempo de ejecución: " + tiempoTotal + " ms");
-        System.out.println("Fitness de la mejor solución: " + mejorSolucion.getFitness());
-        System.out.println("Solución válida: " + (mejorSolucion.isEsValido() ? "SÍ ✓" : "NO ✗"));
-        System.out.println();
-        
-        // 6. Mostrar asignaciones detalladas
-        System.out.println("=== ASIGNACIONES PEDIDO -> VUELO ===");
-        for (int i = 0; i < pedidos.size(); i++) {
-            Pedido pedido = pedidos.get(i);
-            int indiceVuelo = mejorSolucion.getGenes()[i];
-            PlanDeVuelo vuelo = vuelos.get(indiceVuelo);
-            
-            System.out.printf("Pedido Cliente %s (%d productos): %s -> %s%n",
-                pedido.getClienteId(),
-                pedido.getCantidadProductos(),
-                vuelo.getAeropuertoOrigen(),
-                vuelo.getAeropuertoDestino()
-            );
+        try (BufferedReader br = new BufferedReader(new FileReader(rutaArchivo))) {
+            String linea;
+            while ((linea = br.readLine()) != null) {
+                linea = linea.trim();
+                
+                if (linea.isEmpty()) continue;
+
+                try {
+                    // Formato: 17-15-47-SKBO-324-0000015
+                    String[] partes = linea.split("-");
+                    
+                    if (partes.length == 6) {
+                        int dia = Integer.parseInt(partes[0]);
+                        int hora = Integer.parseInt(partes[1]);
+                        int minuto = Integer.parseInt(partes[2]);
+                        String aeropuertoDestino = partes[3];
+                        int cantidadProductos = Integer.parseInt(partes[4]);
+                        String clienteId = partes[5];
+                        
+                        Pedido pedido = new Pedido();
+                        pedido.setDia(dia);
+                        pedido.setHora(hora);
+                        pedido.setMinuto(minuto);
+                        pedido.setAeropuertoDestino(aeropuertoDestino);
+                        pedido.setCantidadProductos(cantidadProductos);
+                        pedido.setClienteId(clienteId);
+                        
+                        pedidos.add(pedido);
+                    }
+                } catch (Exception e) {
+                    System.err.println("   ⚠ Advertencia: línea ignorada en pedidos: " + linea);
+                }
+            }
         }
-        System.out.println();
         
-        // 7. Mostrar estadísticas por vuelo
-        algoritmo.imprimirEstadisticas(mejorSolucion);
-        
-        System.out.println("\n=================================================");
-        System.out.println("           PRUEBA COMPLETADA CON ÉXITO          ");
-        System.out.println("=================================================");
+        return pedidos;
     }
 }

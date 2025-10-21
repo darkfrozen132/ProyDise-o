@@ -1,0 +1,41 @@
+{
+  "airports": [
+    {
+      /* === Necesarios para DynamicMarkers === */
+      "lat": -12.0219,
+      "lng": -77.1143,
+      "name": "Lima-Jorge Chávez",
+      "capacity": "ILIMITADO",
+      "packages": 980,
+      "isSede": true,
+
+      /* === Opcionales / informativos === */
+      "code": "LIM",
+      "region": "América del Sur",
+      "country": "Perú",
+      "operationType": "Sede Principal - Hub Sudamericano"
+    }
+  ]
+}
+
+{
+  "flights": [
+    {
+      /* === Necesarios para DynamicMarkers === */
+      "origin": {
+        "lat": -12.0,
+        "lng": -77.1
+      },
+      "destination": {
+        "lat": 49.0,
+        "lng": 2.5
+      },
+      "originCode": "LIM",
+      "destinationCode": "CDG",
+      "altitude": 35000,
+      "speed": 500,
+      "regionOrigin": "América del Sur",
+      "regionDestination": "Europa"
+    }
+  ]
+}

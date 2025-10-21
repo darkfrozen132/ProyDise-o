@@ -1,0 +1,118 @@
+La planificación programada (fija)
+CONCEPTOS 1/2
+
+¿Qué es la planificación programada (fija)?
+La planificación de los pedidos-rutas se realiza cada cierto tiempo fijo, por ejemplo cada 5, 10 o 15 minutos; independiente de otros aspectos/condiciones del negocio.
+
+Conceptos clave
+
+Tiempo de ejecución del algoritmo (Ta): tiempo que demora ejecutar toda la planificación de los pedidos-rutas. Este tiempo varía por la cantidad de datos a procesar. No es lo mismo planificar con 5 pedidos que hacerlo con 10,000 pedidos.
+
+El Ta puede variar en el tiempo, en función al volumen de pedidos a procesar, por lo que debería determinar entre qué rangos se mueve este valor para volúmenes pequeños hasta más grandes (los cercanos al colapso logístico).
+
+
+La planificación programada (fija)
+CONCEPTOS 2/2
+
+Conceptos clave
+
+Salto del algoritmo (Sa): tiempo que transcurre entre ejecución y ejecución.
+
+Nota. Como se optó por la planificación programada, se debe fijar este valor de Sa.
+
+Si fija Sa muy grande, p.e., cada 24 horas (cada día), la probabilidad del colapso es muy alta (no es lo recomendable) pues hay pedidos de 6 u 8 horas que no serán planificados a tiempo.
+
+Si fija Sa grande, p.e., cada 8 horas (cada turno), la probabilidad del colapso es alta (no es lo recomendable), mejora respecto de la anterior, pero igual hay pedidos de 5, 7, 8 horas (incluso 10 horas) que no serán planificados a tiempo.
+
+Si fija Sa muy pequeño, p.e., Sa < Ta, esto significa que cada vez que se lance (inicie) la ejecución de la planificación, aún no ha concluido la anterior, generando un conflicto en la operación del software y potencialmente una caída de la solución.
+
+Se fija Sa “ligeramente superior a Ta”, puede ocurrir que eso que denomina “ligeramente” no sea lo suficiente en algún momento futuro… Cuando haya más pedidos que procesar.
+
+Entonces ¿Cuánto debe ser Sa?
+
+No hay una respuesta exacta, debería tomar varias consideraciones y de ser necesario hacer algunas pruebas.
+
+Un Sa alto, aumenta la probabilidad de un pronto colapso logístico.
+
+Un Sa pequeño, aumenta la probabilidad de caída de la solución.
+
+
+Dinámica sugerida para planificación programada (fija)
+Planteamiento (se van a utilizar valores referenciales altos)
+
+Se define Ta = 1 minuto (tiempo de ejecución de la planificación de pedidos-rutas = lo que demora en ejecutar)
+
+Se define Sa = 5 minutos (salto de tiempo de cada cuánto se lanza la planificación de pedidos-rutas)
+
+Se define K = constante de proporcionalidad del tiempo
+
+Considerar que K = 1, sería el escenario de la operación del día a día.
+
+Considerar que K = 14, sería el escenario de la simulación de 3 días.
+
+Considerar que K = 75, sería el escenario de la simulación al colapso logístico.
+
+Los valores de K, excepto K=1, deben ser obtenidos por calibración.
+
+Consideración especial
+
+Se cumple que Sa > Ta, tal que Ta/Sa es razonable para evitar la caída de la solución.
+
+La simulación, que hace que se “ejecute aparentemente más rápido”, no se va a lograr con “acelerar la ejecución del algoritmo”, ni con la “optimización técnica” de la solución bajo cualquier “criterio de optimización”.
+
+La simulación se va a conseguir cuando se consuma más datos por vez. Esto significa que se acelera el consumo de datos y, de manera correspondiente, se muestra dicho procesamiento.
+
+La presentación del mapa, respecto del procesamiento, siempre tendrá un retardo (delay) que debe ser muy pequeño (algunos pocos milisegundos o segundos), pero lo suficientemente notorio para apreciarse en la simulación en la pantalla.
+
+
+Dinámica sugerida para planificación programada (fija)
+Ejemplo: Simulación a 3 días
+
+Ta = 1 minuto
+
+Sa = 5 minutos
+
+K = 14
+
+Se define
+
+Salto del consumo (Sc):
+Salto (rango) de tiempo que se va a consumir en paralelo al Sa. Hasta ahí.
+
+Fórmula:
+Sc = K * Sa = 14 * 5 = 70 minutos
+
+🧠 Explicación del diagrama (interpretación visual en texto)
+
+Imagina una línea de tiempo dividida en minutos:
+
+10:05    10:10    10:15    10:20   ...   11:15   12:25
+
+
+Cada bloque azul claro representa el salto del algoritmo (Sa), es decir, cada cuánto tiempo se ejecuta la planificación (cada 5 minutos).
+
+Dentro de cada Sa hay un bloque azul oscuro pequeño que representa el tiempo de ejecución del algoritmo (Ta), o sea, lo que tarda en ejecutar la planificación (1 minuto).
+
+Debajo, una barra naranja y verde representa el eje del tiempo de los pedidos, o el rango de pedidos que se están considerando en cada ejecución.
+
+El planificador (eje azul superior) va avanzando cada 5 minutos (Sa),
+mientras que el consumo de pedidos (eje inferior) abarca periodos de 70 minutos (Sc), que es el rango de tiempo que se simula o se procesa en cada ciclo.
+
+Por tanto:
+
+Cada vez que se ejecuta el algoritmo (cada 5 minutos),
+el sistema analiza o “consume” 70 minutos de pedidos en simultáneo.
+
+Esto significa que la simulación avanza 70 minutos de datos cada 5 minutos reales de ejecución del planificador.
+
+💡 Resumen conceptual
+
+Ta → tiempo de ejecución de un ciclo (1 min).
+
+Sa → intervalo entre ejecuciones (5 min).
+
+K → factor de ampliación temporal (14, en este caso).
+
+Sc → rango de tiempo consumido por la simulación en cada ciclo (70 min).
+
+👉 En conjunto: cada 5 minutos de simulación (Sa), el algoritmo ejecuta durante 1 minuto (Ta) y consume 70 minutos de datos históricos o proyectados (Sc), simulando así 3 días de operación en menos tiempo.

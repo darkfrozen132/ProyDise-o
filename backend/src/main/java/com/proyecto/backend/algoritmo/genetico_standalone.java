@@ -301,6 +301,7 @@ public class genetico_standalone {
     static void loadFlights(Path file, World W) throws IOException {
         logInfo("FLIGHT", "Iniciando carga desde " + file.toAbsolutePath());
         int loaded = 0;
+        int skipped = 0;
         for (String s: readAllLinesAuto(file)) {
             String line = s.trim();
             if (line.isEmpty()) continue;
@@ -308,6 +309,13 @@ public class genetico_standalone {
             if (p.length < 5) continue;
             String orig = p[0].trim();
             String dest = p[1].trim();
+            
+            // Validar que ambos aeropuertos existan
+            if (!W.airports.containsKey(orig) || !W.airports.containsKey(dest)) {
+                skipped++;
+                continue;
+            }
+            
             int dep = parseHHMM(p[2].trim());
             int arr = parseHHMM(p[3].trim());
             int cap = Integer.parseInt(p[4].trim());
@@ -315,11 +323,9 @@ public class genetico_standalone {
             W.flights.add(f);
             W.outByAirport.computeIfAbsent(orig, k->new ArrayList<>()).add(f);
             loaded++;
-            logInfo("FLIGHT", String.format("Loaded %s->%s dep=%s arr=%s cap=%d",
-                    orig, dest, p[2].trim(), p[3].trim(), cap));
         }
         W.outByAirport.values().forEach(lst -> lst.sort(Comparator.comparingInt(fl->fl.depLocalMin)));
-        logInfo("FLIGHT", "Total cargados: " + loaded);
+        logInfo("FLIGHT", "Total cargados: " + loaded + " (omitidos: " + skipped + ")");
     }
 
     // ===================== GA: Cromosoma =============================
@@ -1010,39 +1016,77 @@ public class genetico_standalone {
 
     // ===================== Main (CLI) ================================
     public static void main(String[] args) throws Exception {
+        System.out.println("╔════════════════════════════════════════════════════════════════╗");
+        System.out.println("║     ALGORITMO GENÉTICO - OPTIMIZACIÓN DE RUTAS LOGÍSTICAS     ║");
+        System.out.println("╚════════════════════════════════════════════════════════════════╝");
+        System.out.println();
+
         Path airportsFile = Paths.get("Aeropuertos.txt");
         Path flightsFile  = Paths.get("PlanesDeVuelo.txt");
-        Path ordersFile   = Paths.get("Pedidos.txt"); // mensual
+        Path ordersFile   = Paths.get("Pedidos.txt");
 
+        System.out.println("📂 Cargando datos...");
         World W = new World();
         loadAirports(airportsFile, W);
         loadFlights(flightsFile, W);
-
-        // NEW: usa el formato mensual
         List<Order> orders = loadOrdersMonthly(ordersFile, W);
-        // Si quieres usar el formato antiguo, usa: loadOrdersLegacy(ordersFile, W);
 
-        // NOTA: horizonDays debe ser suficientemente grande para dd usados (ej. 7 días o 31).
-        int horizonDays = 31; // 31 por ser un dataset de 1 mes
+        System.out.println("   ✓ Aeropuertos: " + W.airports.size());
+        System.out.println("   ✓ Vuelos: " + W.flights.size());
+        System.out.println("   ✓ Pedidos: " + orders.size());
+        System.out.println();
+
+        if (orders.isEmpty()) {
+            System.err.println("⚠ ERROR: No se cargaron pedidos. Verifica el archivo Pedidos.txt");
+            return;
+        }
+
+        int horizonDays = 31;
         long seed = 10260475L;
 
-        Solution best = runGA(W, orders, horizonDays, seed);
+        System.out.println("🚀 Ejecutando algoritmo genético...");
+        System.out.println("   • Población: " + POP_SIZE);
+        System.out.println("   • Generaciones máx: " + MAX_GEN);
+        System.out.println("   • Horizonte: " + horizonDays + " días");
+        System.out.println();
 
-        System.out.println("Objetivo: " + best.objective);
-        System.out.println("On-time: " + best.servedOnTime + " | Late: " + best.servedLate +
-                " | CapViol: " + best.capViol + " | AvgSlack(min): " + best.avgSlack);
+        long inicio = System.currentTimeMillis();
+        Solution best = runGA(W, orders, horizonDays, seed);
+        long duracion = System.currentTimeMillis() - inicio;
+
+        System.out.println();
+        System.out.println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        System.out.println();
+        System.out.println("✅ OPTIMIZACIÓN COMPLETADA");
+        System.out.println();
+        System.out.println("📊 RESULTADOS:");
+        System.out.println("   ├─ Fitness: " + String.format("%.4f", best.objective));
+        System.out.println("   ├─ Pedidos a tiempo: " + best.servedOnTime);
+        System.out.println("   ├─ Pedidos tarde: " + best.servedLate);
+        System.out.println("   ├─ Violaciones capacidad: " + best.capViol);
+        System.out.println("   ├─ Holgura promedio: " + best.avgSlack + " min");
+        System.out.println("   ├─ Tiempo ejecución: " + duracion + " ms");
+        System.out.println();
 
         int deliveredOrders = best.servedOnTime + best.servedLate;
         double pctOnTime = deliveredOrders == 0 ? 0.0 : (best.servedOnTime * 100.0) / deliveredOrders;
+        
+        System.out.println("📈 ESTADÍSTICAS:");
+        System.out.println("   ├─ Tasa de éxito: " + String.format("%.2f%%", pctOnTime));
+        System.out.println("   ├─ Total servidos: " + deliveredOrders + "/" + orders.size());
+        
+        if (best.capViol == 0) {
+            System.out.println("   └─ Estado capacidad: ✓ Sin violaciones");
+        } else {
+            System.out.println("   └─ Estado capacidad: ⚠ " + best.capViol + " violaciones");
+        }
+        
+        System.out.println();
+        System.out.println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        
+        writeRoutesReport(best, orders, REPORT_FILE);
         logInfo("RESULT", String.format(
                 "Pedidos Entregados=%d OnTime=%d Late=%d PctOnTime=%.2f Fitness=%.4f",
                 deliveredOrders, best.servedOnTime, best.servedLate, pctOnTime, best.objective));
-        writeRoutesReport(best, orders, REPORT_FILE);
-
-        int totalOrders = orders.size();
-        System.out.printf("Pedidos entregados: %d/%d (%.2f%% on-time)%n",
-                deliveredOrders, totalOrders,
-                deliveredOrders==0?0.0:pctOnTime);
-        System.out.println("Detalle de rutas exportado a: " + REPORT_FILE.toAbsolutePath());
     }
 }

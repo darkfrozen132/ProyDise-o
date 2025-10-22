@@ -24,17 +24,43 @@
 ```
 backend/
 ├── src/main/java/com/proyecto/backend/
+│   ├── algoritmo/           # Algoritmo Genetico
+│   │   ├── core/           # Clases core del AG
+│   │   │   ├── World.java              # Cache de aeropuertos y vuelos
+│   │   │   ├── Chromosome.java         # Cromosoma del AG
+│   │   │   ├── Solution.java           # Solucion planificada
+│   │   │   ├── SubRuta.java            # Subruta de un pedido
+│   │   │   └── VueloUso.java           # Uso concreto de un vuelo
+│   │   ├── dto/            # DTOs del algoritmo
+│   │   │   ├── request/
+│   │   │   │   └── PlanificacionRequest.java
+│   │   │   └── response/
+│   │   │       ├── PlanificacionResponse.java
+│   │   │       ├── AeropuertoEstadoDTO.java
+│   │   │       ├── VueloEnRutaDTO.java
+│   │   │       └── RutaPlanificadaDTO.java
+│   │   ├── service/        # Servicios del algoritmo
+│   │   │   ├── WorldCacheService.java
+│   │   │   └── AlgoritmoGeneticoService.java
+│   │   └── controller/     # Controladores del algoritmo
+│   │       └── PlanificacionController.java
 │   ├── controller/          # REST Controllers
 │   │   ├── AeropuertoController.java
+│   │   ├── PedidoController.java
+│   │   ├── PlanDeVueloController.java
 │   │   └── HealthController.java
 │   ├── service/             # Business Logic
-│   │   └── AeropuertoService.java
+│   │   ├── AeropuertoService.java
+│   │   ├── PedidoService.java
+│   │   └── PlanDeVueloService.java
 │   ├── repository/          # Data Access (JPA)
-│   │   └── AeropuertoRepository.java
+│   │   ├── AeropuertoRepository.java
+│   │   ├── PedidoRepository.java
+│   │   └── PlanDeVueloRepository.java
 │   ├── model/               # JPA Entities
 │   │   ├── Aeropuerto.java
-│   │   └── BaseEntity.java
-│   ├── dto/                 # Data Transfer Objects
+│   │   ├── Pedido.java
+│   │   └── PlanDeVuelo.java
 │   ├── config/              # Configuration Classes
 │   │   ├── HibernateConfig.java
 │   │   ├── WebConfig.java
@@ -46,6 +72,7 @@ backend/
 │   ├── datos/               # Data files
 │   │   └── Aeropuertos.txt
 │   └── application.properties
+├── ENDPOINTS_PLANIFICACION.md  # Documentacion de endpoints del AG
 └── pom.xml
 ```
 
@@ -59,6 +86,23 @@ backend/
 - `GET /api/aeropuertos` - Obtener todos los aeropuertos
 - `GET /api/aeropuertos/{codigo}` - Buscar por codigo ICAO
 - `POST /api/aeropuertos/cargar` - Cargar aeropuertos desde archivo
+
+### Pedidos
+- `GET /api/pedidos` - Obtener todos los pedidos
+- `POST /api/pedidos` - Crear un nuevo pedido
+- `GET /api/pedidos/{id}` - Obtener pedido por ID
+
+### Planes de Vuelo
+- `GET /api/planes-vuelo` - Obtener todos los planes de vuelo
+- `POST /api/planes-vuelo` - Crear un nuevo plan de vuelo
+
+### Algoritmo Genetico - Planificacion
+- `POST /api/planificacion` - Ejecutar planificacion de rutas
+- `GET /api/planificacion/health` - Health check del servicio
+- `GET /api/planificacion/world/estado` - Estado del cache en memoria
+- `POST /api/planificacion/world/refrescar` - Refrescar cache desde BD
+
+Ver `ENDPOINTS_PLANIFICACION.md` para detalles y ejemplos de Postman.
 
 ## Database Configuration
 
@@ -84,3 +128,4 @@ spring.jpa.database-platform=org.hibernate.dialect.MySQLDialect
 - Usar @Transactional en metodos de servicio
 - Usar @Transactional(readOnly = true) para consultas
 - Extender BaseEntity para auditoria automatica
+- Español

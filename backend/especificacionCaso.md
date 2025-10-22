@@ -1,5 +1,6 @@
 # ESPECIFICACIÓN DEL CASO PROBLEMA UNIVERSITARIO
-## Sistema de Distribución MoraPack con Algoritmos ACO
+## Sistema de Distribución MoraPack con Algoritmos GENETICO
+
 
 
 # I. DEFINICIÓN DEL PROBLEMA
@@ -262,30 +263,6 @@ El sistema MoraPack **colapsa** cuando los requerimientos establecidos por la em
 
 ---
 
-# II. ANÁLISIS Y DISEÑO DE SOLUCIÓN
-
-## 3. ANÁLISIS DEL PROBLEMA DESDE PERSPECTIVA ACO
-
-**Problema Principal**: Optimización de rutas de distribución de productos MPE desde 3 sedes principales (Lima, Bruselas, Baku) hacia aeropuertos de destino en América, Asia y Europa, cumpliendo restricciones de tiempo y capacidad.
-
-**Características Clave del Problema:**
-- **Multi-origen**: 3 sedes con stock ilimitado
-- **Restricciones temporales**: 2 días mismo continente, 3 días diferente continente
-- **Capacidades limitadas**: Vuelos (200-400 paquetes) y almacenes (600-1000 paquetes)
-- **Replanificación dinámica**: Cancelaciones y reasignaciones en tiempo real
-- **Escalas permitidas**: Los productos pueden hacer escalas (tiempo mínimo 1 hora)
-
-**Mapeo a ACO:**
-- **Nodos**: Aeropuertos (sedes + destinos + escalas)
-- **Aristas**: Vuelos disponibles entre aeropuertos
-- **Feromona**: Rutas exitosas que cumplen plazos
-- **Heurística**: Combinación de tiempo, capacidad disponible y distancia
-- **Restricciones**: Capacidades de vuelos/almacenes y plazos de entrega
-
-**Escenarios de Evaluación:**
-1. **Operaciones día a día**: Tiempo real con registro manual + archivo batch
-2. **Simulación semanal**: 30-90 minutos de ejecución
-3. **Simulación colapso**: Hasta saturación del sistema
 
 ## 4. ESTRUCTURA DEL PROBLEMA
 

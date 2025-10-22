@@ -35,6 +35,14 @@ public class Pedido {
     private Long id;
 
     @Column(nullable = false)
+    @NotNull(message = "El anio es obligatorio")
+    private int anio;
+
+    @Column(nullable = false)
+    @NotNull(message = "El mes es obligatorio")
+    private int mes;
+
+    @Column(nullable = false)
     @NotNull(message = "El dia es obligatorio")
     private int dia;
 
@@ -67,8 +75,10 @@ public class Pedido {
     /**
      * Constructor con todos los parametros
      */
-    public Pedido(int dia, int hora, int minuto, String aeropuertoDestinoId, 
-                  int cantidadProductos, String clienteId) {
+    public Pedido(int anio, int mes, int dia, int hora, int minuto,
+                  String aeropuertoDestinoId, int cantidadProductos, String clienteId) {
+        this.anio = anio;
+        this.mes = mes;
         this.dia = dia;
         this.hora = hora;
         this.minuto = minuto;
@@ -79,6 +89,14 @@ public class Pedido {
         this.fechaCreacion = LocalDateTime.now();
     }
 
+    /**
+     * Constructor sin anio/mes (usa valores por defecto)
+     */
+    public Pedido(int dia, int hora, int minuto, String aeropuertoDestinoId,
+                  int cantidadProductos, String clienteId) {
+        this(2025, 1, dia, hora, minuto, aeropuertoDestinoId, cantidadProductos, clienteId);
+    }
+
     @PrePersist
     protected void onCreate() {
         if (fechaCreacion == null) {
@@ -86,6 +104,13 @@ public class Pedido {
         }
         if (estado == null || estado.isEmpty()) {
             estado = "PENDIENTE";
+        }
+        // Inicializar anio y mes con valores por defecto si no se especificaron
+        if (anio == 0) {
+            anio = 2025;
+        }
+        if (mes == 0) {
+            mes = 1;
         }
     }
 

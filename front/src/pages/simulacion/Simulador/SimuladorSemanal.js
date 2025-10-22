@@ -8,6 +8,7 @@ import { IoArrowBackCircleOutline } from "react-icons/io5";
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import './SimuladorSemanal.css';
+import { getAirports } from '../../../config/api';
 
 /* Reparar iconos por defecto de Leaflet */
 delete L.Icon.Default.prototype._getIconUrl;
@@ -123,26 +124,52 @@ const SimuladorSemanal = () => {
 	const [activeView, setActiveView] = useState('flights');
 	const [showRoutes, setShowRoutes] = useState(false);
 	const [startDate, setStartDate] = useState("");
-	/* Datos estáticos de aeropuertos */
-	const [airports, setAirports] = useState([
-		{ name: 'Lima-Jorge Chávez', code: 'LIM', lat: -12.0219, lng: -77.1143, capacity: 'ILIMITADO', packages: 980, isSede: true, region: 'América del Sur', country: 'Perú', operationType: 'Sede Principal - Hub Sudamericano' },
-		{ name: 'Bogotá-El Dorado', code: 'BOG', lat: 4.7016, lng: -74.1469, capacity: 900, packages: 720, region: 'América del Sur', country: 'Colombia', operationType: 'Aeropuerto Regional' },
-		{ name: 'Bruselas', code: 'BRU', lat: 50.9010, lng: 4.4844, capacity: 'ILIMITADO', packages: 850, isSede: true, region: 'Europa', country: 'Bélgica', operationType: 'Sede Principal - Hub Europeo' },
-		{ name: 'Amsterdam-Schiphol', code: 'AMS', lat: 52.3105, lng: 4.7683, capacity: 1200, packages: 960, region: 'Europa', country: 'Países Bajos', operationType: 'Aeropuerto Regional' },
-		{ name: 'París-Charles de Gaulle', code: 'CDG', lat: 49.0097, lng: 2.5479, capacity: 1300, packages: 1040, region: 'Europa', country: 'Francia', operationType: 'Aeropuerto Regional' },
-		{ name: 'Baku-Heydar Aliyev', code: 'GYD', lat: 40.4675, lng: 50.0467, capacity: 'ILIMITADO', packages: 800, isSede: true, region: 'Asia Central', country: 'Azerbaiyán', operationType: 'Sede Principal - Hub Asiático' },
-		{ name: 'Estambul', code: 'IST', lat: 41.2619, lng: 28.7419, capacity: 1100, packages: 880, region: 'Asia Central', country: 'Turquía', operationType: 'Aeropuerto Regional' },
-		{ name: 'Dubai', code: 'DXB', lat: 25.2532, lng: 55.3657, capacity: 1200, packages: 960, region: 'Asia Central', country: 'EAU', operationType: 'Aeropuerto Regional' },
-		{ name: 'Madrid-Barajas', code: 'MAD', lat: 40.4983, lng: -3.5676, capacity: 900, packages: 720, region: 'Europa', country: 'España', operationType: 'Aeropuerto Regional' },
-		{ name: 'México City', code: 'MEX', lat: 19.4363, lng: -99.0721, capacity: 800, packages: 640, region: 'América del Norte', country: 'México', operationType: 'Aeropuerto Regional' },
-		{ name: 'Londres-Heathrow', code: 'LHR', lat: 51.4700, lng: -0.4543, capacity: 1400, packages: 1120, region: 'Europa', country: 'Reino Unido', operationType: 'Aeropuerto Regional' },
-		{ name: 'Frankfurt', code: 'FRA', lat: 50.0379, lng: 8.5622, capacity: 1250, packages: 1000, region: 'Europa', country: 'Alemania', operationType: 'Aeropuerto Regional' }
-	]);
+	/* Datos de aeropuertos - se cargarán desde la API */
+	const [airports, setAirports] = useState([]);
+	const [loadingAirports, setLoadingAirports] = useState(true);
 	const intervalRef = useRef(); /* Referencia para el intervalo de simulación */
+
+	/* Cargar aeropuertos desde la API al montar el componente */
+	useEffect(() => {
+		const fetchAirports = async () => {
+			try {
+				setLoadingAirports(true);
+				console.log('🔄 Iniciando carga de aeropuertos...');
+				const data = await getAirports();
+				console.log('✅ Aeropuertos cargados desde API:', data.length, 'aeropuertos');
+				setAirports(data);
+			} catch (error) {
+				console.error('❌ Error al cargar aeropuertos desde API:', error);
+				console.log('🔄 Usando datos de fallback...');
+				// Fallback a datos estáticos en caso de error
+				const fallbackData = [
+					{ name: 'Lima-Jorge Chávez', code: 'SPIM', lat: -12.0219, lng: -77.1143, capacity: 'ILIMITADO', packages: 980, isSede: true, region: 'América del Sur', country: 'Perú', operationType: 'Sede Principal - Hub Sudamericano' },
+					{ name: 'Bogotá', code: 'SKBO', lat: 4.7016, lng: -74.1469, capacity: 900, packages: 720, isSede: false, region: 'América del Sur', country: 'Colombia', operationType: 'Aeropuerto Regional' },
+					{ name: 'Bruselas', code: 'BRU', lat: 50.9010, lng: 4.4844, capacity: 'ILIMITADO', packages: 850, isSede: true, region: 'Europa', country: 'Bélgica', operationType: 'Sede Principal - Hub Europeo' },
+					{ name: 'Amsterdam-Schiphol', code: 'AMS', lat: 52.3105, lng: 4.7683, capacity: 1200, packages: 960, isSede: false, region: 'Europa', country: 'Países Bajos', operationType: 'Aeropuerto Regional' }
+				];
+				setAirports(fallbackData);
+				console.log('✅ Datos de fallback cargados:', fallbackData.length, 'aeropuertos');
+			} finally {
+				setLoadingAirports(false);
+				console.log('✅ Carga de aeropuertos finalizada');
+			}
+		};
+
+		fetchAirports();
+	}, []);
 
 	/* Generar vuelos iniciales con lógica de origen, destino, tipo de avión, capacidad y carga */
 	const generateInitialFlights = useCallback(() => {
-		const flightCount = 402; const newFlights = []; const sedes = airports.filter(a => a.isSede);
+		// Verificar que hay aeropuertos válidos antes de generar vuelos
+		if (!airports || airports.length === 0) {
+			console.warn('⚠️ No hay aeropuertos disponibles para generar vuelos');
+			return;
+		}
+		
+		console.log('🔧 Generando vuelos con aeropuertos:', airports);
+		
+		const flightCount = 402; const newFlights = []; const sedes = airports.filter(a => a && a.isSede);
 		const flightTypes = [
 			{ type: 'boeing737', name: 'Boeing 737', capacity: [150, 250] },
 			{ type: 'airbus320', name: 'Airbus A320', capacity: [180, 280] },
@@ -153,9 +180,9 @@ const SimuladorSemanal = () => {
 		for (let i = 0; i < flightCount; i++) {
 			let origin, destination;
 			/* 60% de probabilidad de que el vuelo involucre una sede */
-			if (Math.random() < 0.6) {
+			if (Math.random() < 0.6 && sedes.length > 0) {
 				const sede = sedes[Math.floor(Math.random() * sedes.length)];
-				const otherAirports = airports.filter(a => a.region === sede.region && a !== sede);
+				const otherAirports = airports.filter(a => a && a.region === sede.region && a !== sede);
 				if (Math.random() < 0.5) { origin = sede; destination = otherAirports.length > 0 ? otherAirports[Math.floor(Math.random() * otherAirports.length)] : airports[Math.floor(Math.random() * airports.length)]; }
 				else { destination = sede; origin = otherAirports.length > 0 ? otherAirports[Math.floor(Math.random() * otherAirports.length)] : airports[Math.floor(Math.random() * airports.length)]; }
 			}
@@ -167,6 +194,13 @@ const SimuladorSemanal = () => {
 			/* Asegurar que origen y destino no sean iguales */
 			while (destination === origin)
 				destination = airports[Math.floor(Math.random() * airports.length)];
+			
+			// Validar que origin y destination existan
+			if (!origin || !destination) {
+				console.warn('⚠️ Origen o destino inválido en vuelo', i);
+				continue;
+			}
+			
 			/* Seleccionar tipo de avión y calcular capacidad y carga */
 			const selectedType = flightTypes[Math.floor(Math.random() * flightTypes.length)];
 			const [minCap, maxCap] = selectedType.capacity; const packageCapacity = Math.floor(Math.random() * (maxCap - minCap + 1)) + minCap;
@@ -208,10 +242,18 @@ const SimuladorSemanal = () => {
 		setFlights(newFlights);
 		const initialInAir = newFlights.reduce((acc, f) => acc + (f.altitude > 1000 ? 1 : 0), 0);
 		setFlightsInAir(initialInAir);
+		console.log('✅ Generados', newFlights.length, 'vuelos exitosamente');
 	}, [airports]);
 
-	/* Generar vuelos iniciales al montar el componente */
-	useEffect(() => { generateInitialFlights(); }, [generateInitialFlights]);
+	/* Generar vuelos iniciales solo cuando los aeropuertos estén cargados */
+	useEffect(() => { 
+		if (airports.length > 0 && !loadingAirports) {
+			console.log('🛫 Generando vuelos iniciales con', airports.length, 'aeropuertos');
+			console.log('📍 Lista de aeropuertos cargados:', airports);
+			generateInitialFlights();
+			console.log('✅ Vuelos generados exitosamente');
+		}
+	}, [airports.length, loadingAirports, generateInitialFlights]);
 
 	/* Lógica de simulación que avanza el tiempo y actualiza vuelos cada segundo */
 	useEffect(() => {
@@ -269,10 +311,6 @@ const SimuladorSemanal = () => {
 	}, [isRunning, speed, airports]);
 
 	const handlePlay = () => {
-		if (!startDate) {
-			alert("Por favor selecciona una fecha de inicio");
-			return;
-		}
 		setIsRunning(true);
 		setSimulationStatus('Simulación semanal en ejecución');
 	};
@@ -315,6 +353,18 @@ const SimuladorSemanal = () => {
 	const goBack = () => {
 		window.history.back(); // retrocede una página
 	};
+
+	/* Mostrar indicador de carga mientras se obtienen los aeropuertos */
+	if (loadingAirports) {
+		return (
+			<div className="section-content" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+				<div style={{ textAlign: 'center', color: '#fff' }}>
+					<i className="fas fa-spinner fa-spin" style={{ fontSize: '48px', marginBottom: '20px' }}></i>
+					<p style={{ fontSize: '18px' }}>Cargando aeropuertos...</p>
+				</div>
+			</div>
+		);
+	}
 
 	return (
 		<div className="section-content" id="simulationSection">

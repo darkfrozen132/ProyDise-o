@@ -8,7 +8,15 @@ import { IoArrowBackCircleOutline } from "react-icons/io5";
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import './SimuladorSemanal.css';
-import { getAirports } from '../../../config/api';
+import { 
+	getAirports, 
+	getFlights, 
+	iniciarSimulacion, 
+	pausarSimulacion, 
+	reanudarSimulacion, 
+	detenerSimulacion,
+	conectarStreamSimulacion 
+} from '../../../config/api';
 
 /* Reparar iconos por defecto de Leaflet */
 delete L.Icon.Default.prototype._getIconUrl;
@@ -128,6 +136,14 @@ const SimuladorSemanal = () => {
 	const [airports, setAirports] = useState([]);
 	const [loadingAirports, setLoadingAirports] = useState(true);
 	const intervalRef = useRef(); /* Referencia para el intervalo de simulación */
+	
+	// ==================== ESTADO SSE (TIEMPO DE SIMULACIÓN) ====================
+	const [simulacionActiva, setSimulacionActiva] = useState(false);
+	const [horaSimulada, setHoraSimulada] = useState(null);
+	const [tiempoRealMs, setTiempoRealMs] = useState(0);
+	const [tickActual, setTickActual] = useState(0);
+	const [timeScale, setTimeScale] = useState(10.0);
+	const eventSourceRef = useRef(null); /* Referencia para el EventSource SSE */
 
 	/* Cargar aeropuertos desde la API al montar el componente */
 	useEffect(() => {
@@ -158,6 +174,107 @@ const SimuladorSemanal = () => {
 
 		fetchAirports();
 	}, []);
+
+	/* ========== CARGA DE VUELOS DESACTIVADA TEMPORALMENTE ========== */
+	/* Por ahora solo usamos vuelos generados localmente, sin llamar al API de vuelos */
+	/* La carga desde API está comentada para enfocarnos en el SSE */
+
+	// ==================== CONEXIÓN SSE PARA TIEMPO DE SIMULACIÓN ====================
+	useEffect(() => {
+		// Solo conectar si la simulación está activa
+		if (!simulacionActiva) {
+			console.log('⏸️ SSE no conectado - simulación no activa');
+			return;
+		}
+
+		console.log('📡 Conectando al stream SSE de simulación...');
+		
+		const eventSource = conectarStreamSimulacion(
+			// Callback cuando llega un mensaje
+			(data) => {
+				console.log('✅ Datos SSE recibidos:', {
+					horaSimulada: data.horaSimulada,
+					tiempoRealMs: data.tiempoRealTranscurridoMs,
+					tickActual: data.tickActual,
+					timeScale: data.timeScale,
+					activa: data.activa
+				});
+				setHoraSimulada(data.horaSimulada);
+				setTiempoRealMs(data.tiempoRealTranscurridoMs);
+				setTickActual(data.tickActual);
+				setTimeScale(data.timeScale);
+				setSimulacionActiva(data.activa);
+			},
+			// Callback cuando hay error
+			(error) => {
+				console.error('❌ Error en stream SSE:', error);
+				setSimulacionActiva(false);
+			}
+		);
+
+		eventSourceRef.current = eventSource;
+
+		// Cleanup: cerrar conexión al desmontar o cuando simulacionActiva cambie
+		return () => {
+			console.log('🔌 Cerrando conexión SSE...');
+			if (eventSourceRef.current) {
+				eventSourceRef.current.close();
+				eventSourceRef.current = null;
+			}
+		};
+	}, [simulacionActiva]);
+
+	// ==================== FUNCIONES PARA CONTROLAR SIMULACIÓN ====================
+	const handleIniciarSimulacion = async () => {
+		try {
+			console.log('🚀 Iniciando simulación...');
+			const response = await iniciarSimulacion();
+			console.log('✅ Respuesta de iniciar simulación:', response);
+			setSimulacionActiva(true);
+			setHoraSimulada(response.estado.horaSimulada);
+			setTiempoRealMs(response.estado.tiempoRealTranscurridoMs);
+			setTickActual(response.estado.tickActual);
+			setTimeScale(response.estado.timeScale);
+			console.log('✅ Estado SSE inicializado:', {
+				simulacionActiva: true,
+				horaSimulada: response.estado.horaSimulada,
+				tiempoRealMs: response.estado.tiempoRealTranscurridoMs
+			});
+		} catch (error) {
+			console.error('❌ Error al iniciar simulación:', error);
+			alert('Error al conectar con el servidor. Verifica que el backend esté corriendo en http://127.0.0.1:8080');
+		}
+	};
+
+	const handlePausarSimulacion = async () => {
+		try {
+			await pausarSimulacion();
+			setSimulacionActiva(false);
+		} catch (error) {
+			console.error('Error al pausar simulación:', error);
+		}
+	};
+
+	const handleReanudarSimulacion = async () => {
+		try {
+			const response = await reanudarSimulacion();
+			setSimulacionActiva(true);
+		} catch (error) {
+			console.error('Error al reanudar simulación:', error);
+		}
+	};
+
+	const handleDetenerSimulacion = async () => {
+		try {
+			await detenerSimulacion();
+			setSimulacionActiva(false);
+			setHoraSimulada(null);
+			setTiempoRealMs(0);
+			setTickActual(0);
+		} catch (error) {
+			console.error('Error al detener simulación:', error);
+		}
+	};
 
 	/* Generar vuelos iniciales con lógica de origen, destino, tipo de avión, capacidad y carga */
 	const generateInitialFlights = useCallback(() => {
@@ -245,15 +362,13 @@ const SimuladorSemanal = () => {
 		console.log('✅ Generados', newFlights.length, 'vuelos exitosamente');
 	}, [airports]);
 
-	/* Generar vuelos iniciales solo cuando los aeropuertos estén cargados */
-	useEffect(() => { 
+	/* Generar vuelos localmente cuando los aeropuertos estén listos (modo prueba SSE) */
+	useEffect(() => {
 		if (airports.length > 0 && !loadingAirports) {
-			console.log('🛫 Generando vuelos iniciales con', airports.length, 'aeropuertos');
-			console.log('📍 Lista de aeropuertos cargados:', airports);
+			console.log('🔄 Generando vuelos localmente (modo prueba SSE)...');
 			generateInitialFlights();
-			console.log('✅ Vuelos generados exitosamente');
 		}
-	}, [airports.length, loadingAirports, generateInitialFlights]);
+	}, [airports, loadingAirports, generateInitialFlights]);
 
 	/* Lógica de simulación que avanza el tiempo y actualiza vuelos cada segundo */
 	useEffect(() => {
@@ -518,6 +633,85 @@ const SimuladorSemanal = () => {
 								</button>
 								<h2>Simulación Semanal</h2>
 							</div>
+
+							{/* ==================== PANEL SIMPLE DE TIEMPO SSE ==================== */}
+							<div style={{
+								background: '#f8f9fa',
+								borderRadius: '8px',
+								padding: '15px 20px',
+								marginBottom: '20px',
+								border: '1px solid #dee2e6',
+								display: 'flex',
+								justifyContent: 'space-between',
+								alignItems: 'center',
+								flexWrap: 'wrap',
+								gap: '15px'
+							}}>
+								{/* Información de tiempo */}
+								<div style={{ display: 'flex', gap: '30px', flexWrap: 'wrap' }}>
+									<div>
+										<span style={{ fontSize: '14px', color: '#6c757d', marginRight: '8px' }}>
+											Fecha y hora de simulación:
+										</span>
+										<span style={{ fontSize: '14px', fontWeight: '600', color: '#212529' }}>
+											{horaSimulada ? new Date(horaSimulada).toLocaleString('es-ES', {
+												day: '2-digit',
+												month: '2-digit',
+												year: 'numeric',
+												hour: '2-digit',
+												minute: '2-digit'
+											}) : '-- -- --'}
+										</span>
+									</div>
+									<div>
+										<span style={{ fontSize: '14px', color: '#6c757d', marginRight: '8px' }}>
+											Duración de simulación:
+										</span>
+										<span style={{ fontSize: '14px', fontWeight: '600', color: '#212529' }}>
+											{String(Math.floor(tiempoRealMs / 3600000)).padStart(2, '0')}:
+											{String(Math.floor((tiempoRealMs % 3600000) / 60000)).padStart(2, '0')}
+										</span>
+									</div>
+								</div>
+
+								{/* Botones de control */}
+								<div style={{ display: 'flex', gap: '10px' }}>
+									<button
+										onClick={handleIniciarSimulacion}
+										disabled={simulacionActiva}
+										style={{
+											padding: '8px 16px',
+											borderRadius: '6px',
+											border: '1px solid #28a745',
+											background: simulacionActiva ? '#e9ecef' : '#28a745',
+											color: simulacionActiva ? '#6c757d' : 'white',
+											fontSize: '14px',
+											fontWeight: '500',
+											cursor: simulacionActiva ? 'not-allowed' : 'pointer',
+											transition: 'all 0.2s'
+										}}
+									>
+										Iniciar
+									</button>
+									<button
+										onClick={handleDetenerSimulacion}
+										style={{
+											padding: '8px 16px',
+											borderRadius: '6px',
+											border: '1px solid #dc3545',
+											background: '#dc3545',
+											color: 'white',
+											fontSize: '14px',
+											fontWeight: '500',
+											cursor: 'pointer',
+											transition: 'all 0.2s'
+										}}
+									>
+										Detener
+									</button>
+								</div>
+							</div>
+
 							<div>
 								<div className="status-section">
 									{/* Selector de fecha de inicio */}

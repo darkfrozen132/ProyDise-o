@@ -83,5 +83,183 @@ export const getAirports = async () => {
   }
 };
 
+// Función para transformar datos de vuelos del backend al formato del frontend
+export const transformFlightData = (backendFlight, airports) => {
+  console.log('Transformando vuelo:', backendFlight);
+  
+  // Buscar aeropuerto de origen por código
+  const originAirport = airports.find(a => a.code === backendFlight.originCode);
+  const destinationAirport = airports.find(a => a.code === backendFlight.destinationCode);
+  
+  if (!originAirport || !destinationAirport) {
+    console.warn('⚠️ No se encontraron aeropuertos para el vuelo:', backendFlight);
+    return null;
+  }
+
+  // Calcular progreso del vuelo (de 0.0 a 1.0)
+  const progress = backendFlight.progress || 0.5; // Por defecto a la mitad si no viene
+
+  // Calcular posición actual basado en el progreso
+  const deltaLat = destinationAirport.lat - originAirport.lat;
+  const deltaLng = destinationAirport.lng - originAirport.lng;
+  const currentLat = originAirport.lat + (deltaLat * progress);
+  const currentLng = originAirport.lng + (deltaLng * progress);
+
+  // Calcular rotación del avión
+  const rotation = Math.atan2(deltaLng, deltaLat) * (180 / Math.PI);
+
+  // Determinar color según capacidad
+  const loadPercentage = (backendFlight.totalPaquetes / backendFlight.capacidad) * 100;
+  let aircraftColor;
+  if (loadPercentage >= 80) aircraftColor = '#dc3545'; // Rojo
+  else if (loadPercentage >= 50) aircraftColor = '#ffc107'; // Amarillo
+  else aircraftColor = '#28a745'; // Verde
+
+  // Mapear tipo de avión (ajustar según tu lógica)
+  const aircraftTypeMap = {
+    'EBCI': 'cargo',
+    'default': 'boeing737'
+  };
+  const aircraftType = aircraftTypeMap[backendFlight.originCode] || 'boeing737';
+
+  const transformed = {
+    id: backendFlight.id,
+    origin: originAirport,
+    destination: destinationAirport,
+    currentLat: currentLat,
+    currentLng: currentLng,
+    altitude: backendFlight.altitude || 35000,
+    speed: backendFlight.speed || 500,
+    progress: progress,
+    aircraftType: aircraftType,
+    aircraftColor: aircraftColor,
+    rotation: rotation,
+    packageCapacity: backendFlight.capacidad,
+    currentPackages: backendFlight.totalPaquetes,
+    status: 'active',
+    departureTime: backendFlight.salida,
+    arrivalTime: backendFlight.llegada,
+    route: backendFlight.ruta,
+    orders: backendFlight.orders || [],
+    regionOrigin: backendFlight.regionOrigin,
+    regionDestination: backendFlight.regionDestination,
+    isSameContinentFlight: backendFlight.regionOrigin === backendFlight.regionDestination
+  };
+  
+  console.log('Vuelo transformado:', transformed);
+  return transformed;
+};
+
+// Función para obtener vuelos transformados
+export const getFlights = async (airports) => {
+  try {
+    console.log('Solicitando vuelos a:', API_BASE_URL + '/vuelos/listar');
+    const response = await api.get('/vuelos/listar');
+    console.log('Respuesta de vuelos recibida:', response.data);
+    
+    if (!response.data || !response.data.vuelos) {
+      console.warn('⚠️ No se encontraron vuelos en la respuesta');
+      return [];
+    }
+    
+    const transformed = response.data.vuelos
+      .map(flight => transformFlightData(flight, airports))
+      .filter(flight => flight !== null); // Filtrar vuelos inválidos
+    
+    console.log('Vuelos transformados:', transformed.length, 'vuelos');
+    return transformed;
+  } catch (error) {
+    console.error('Error al obtener vuelos:', error);
+    throw error;
+  }
+};
+
+// ==================== FUNCIONES PARA SSE (SIMULACIÓN TIEMPO REAL) ====================
+
+// Iniciar simulación
+export const iniciarSimulacion = async () => {
+  try {
+    console.log('🚀 Iniciando simulación...');
+    const response = await api.post('/simulacion/iniciar');
+    console.log('✅ Simulación iniciada:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error al iniciar simulación:', error);
+    throw error;
+  }
+};
+
+// Pausar simulación
+export const pausarSimulacion = async () => {
+  try {
+    console.log('⏸️ Pausando simulación...');
+    const response = await api.post('/simulacion/pausar');
+    console.log('✅ Simulación pausada:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error al pausar simulación:', error);
+    throw error;
+  }
+};
+
+// Reanudar simulación
+export const reanudarSimulacion = async () => {
+  try {
+    console.log('▶️ Reanudando simulación...');
+    const response = await api.post('/simulacion/reanudar');
+    console.log('✅ Simulación reanudada:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error al reanudar simulación:', error);
+    throw error;
+  }
+};
+
+// Detener simulación
+export const detenerSimulacion = async () => {
+  try {
+    console.log('⏹️ Deteniendo simulación...');
+    const response = await api.post('/simulacion/detener');
+    console.log('✅ Simulación detenida:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error al detener simulación:', error);
+    throw error;
+  }
+};
+
+// Obtener estado actual de la simulación (sin stream)
+export const obtenerEstadoSimulacion = async () => {
+  try {
+    const response = await api.get('/simulacion/estado');
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error al obtener estado de simulación:', error);
+    throw error;
+  }
+};
+
+// Conectar al stream SSE de la simulación
+export const conectarStreamSimulacion = (onMessage, onError) => {
+  const eventSource = new EventSource(`${API_BASE_URL}/simulacion/stream`);
+  
+  eventSource.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      console.log('📡 SSE - Estado recibido:', data);
+      onMessage(data);
+    } catch (error) {
+      console.error('❌ Error al parsear SSE:', error);
+    }
+  };
+  
+  eventSource.onerror = (error) => {
+    console.error('❌ Error en SSE:', error);
+    if (onError) onError(error);
+  };
+  
+  return eventSource;
+};
+
 export default api;
-export { API_BASE_URL };
+export { API_BASE_URL };  

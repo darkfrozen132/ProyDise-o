@@ -55,11 +55,14 @@ public class PlanificacionResponse {
     @AllArgsConstructor
     public static class MetadataPlanificacion {
 
-        // Fecha y hora de inicio de la simulacion
+        // Fecha y hora de inicio del rango de pedidos
         private LocalDateTime fechaInicio;
 
-        // Fecha y hora de fin de la simulacion
+        // Fecha y hora de fin del rango de pedidos
         private LocalDateTime fechaFin;
+
+        // Rango en formato legible
+        private String rangoDescripcion;
 
         // Factor K utilizado
         private int factorK;

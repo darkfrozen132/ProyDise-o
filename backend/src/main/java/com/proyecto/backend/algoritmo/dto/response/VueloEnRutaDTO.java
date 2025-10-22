@@ -5,6 +5,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Representa un vuelo planificado con su ruta geografica
@@ -30,8 +32,8 @@ public class VueloEnRutaDTO {
     // Fecha y hora de llegada (UTC)
     private LocalDateTime llegada;
 
-    // Numero de paquetes en este vuelo
-    private int paquetes;
+    // Lista de pedidos en este vuelo
+    private List<OrdenVuelo> orders = new ArrayList<>();
 
     // Capacidad maxima del vuelo
     private int capacidad;
@@ -50,6 +52,17 @@ public class VueloEnRutaDTO {
 
     // Coordenadas geograficas de la ruta
     private RutaGeografica ruta;
+
+    /**
+     * Pedido transportado en este vuelo
+     */
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class OrdenVuelo {
+        private String orderId;   // ID del pedido
+        private int quantity;     // Cantidad de productos
+    }
 
     /**
      * Coordenadas geograficas del origen y destino
@@ -75,6 +88,15 @@ public class VueloEnRutaDTO {
     }
 
     /**
+     * Calcula el total de paquetes en el vuelo
+     *
+     * @return Total de paquetes sumando todas las ordenes
+     */
+    public int getTotalPaquetes() {
+        return orders.stream().mapToInt(OrdenVuelo::getQuantity).sum();
+    }
+
+    /**
      * Calcula el porcentaje de ocupacion del vuelo
      *
      * @return Porcentaje de ocupacion (0-100)
@@ -83,7 +105,7 @@ public class VueloEnRutaDTO {
         if (capacidad == 0) {
             return 0.0;
         }
-        return (paquetes * 100.0) / capacidad;
+        return (getTotalPaquetes() * 100.0) / capacidad;
     }
 
     /**
@@ -92,6 +114,6 @@ public class VueloEnRutaDTO {
      * @return true si esta al 100% de capacidad
      */
     public boolean estaLleno() {
-        return paquetes >= capacidad;
+        return getTotalPaquetes() >= capacidad;
     }
 }

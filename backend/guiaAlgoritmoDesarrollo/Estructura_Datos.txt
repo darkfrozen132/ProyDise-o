@@ -21,21 +21,24 @@
 {
   "flights": [
     {
-      /* === Necesarios para DynamicMarkers === */
-      "origin": {
-        "lat": -12.0,
-        "lng": -77.1
-      },
-      "destination": {
-        "lat": 49.0,
-        "lng": 2.5
-      },
-      "originCode": "LIM",
-      "destinationCode": "CDG",
-      "altitude": 35000,
-      "speed": 500,
-      "regionOrigin": "América del Sur",
-      "regionDestination": "Europa"
+      "id": "F001",
+      "origin": { "lat": -12.0, "lng": -77.1 },
+      "destination": { "lat": 49.0, "lng": 2.5 },
+      "orders": [
+        { "orderId": "Ped1", "quantity": 10 },
+        { "orderId": "Ped2", "quantity": 5 },
+        { "orderId": "Ped3", "quantity": 7 }
+      ]
+    },
+    {
+      "id": "F002",
+      "origin": { "lat": -12.1, "lng": -77.0 },
+      "destination": { "lat": 40.7, "lng": -74.0 },
+      "orders": [
+        { "orderId": "Ped4", "quantity": 3 },
+        { "orderId": "Ped5", "quantity": 8 }
+      ]
     }
   ]
 }
+

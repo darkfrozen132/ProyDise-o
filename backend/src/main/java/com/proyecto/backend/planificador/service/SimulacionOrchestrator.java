@@ -1,6 +1,7 @@
 package com.proyecto.backend.planificador.service;
 
 import com.proyecto.backend.planificador.dto.SimulacionEstadoDTO;
+import com.proyecto.backend.service.VueloTrackingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -15,12 +16,12 @@ import java.util.concurrent.atomic.AtomicLong;
  * Orquestador de la simulación en tiempo real
  * 
  * Constantes principales:
- * - TIME_SCALE: Cuántas horas simuladas equivalen a 1 segundo real (default: 10.0)
+ * - TIME_SCALE: Cuántos minutos simulados equivalen a 1 segundo real (default: 60.0)
  * - INTERVALO_TICK_MS: Cada cuántos milisegundos se ejecuta un tick (default: 1000ms)
  * - TIEMPO_PROCESAMIENTO_MS: Tiempo reservado para que el algoritmo procese (default: 800ms)
  * 
  * Funcionamiento:
- * - Cada 1 segundo real = 10 horas simuladas
+ * - Cada 1 segundo real = 60 minutos simulados (1 hora simulada)
  * - Ejecuta el algoritmo genético cada tick
  * - Permite pausar/reanudar/detener la simulación
  */
@@ -29,13 +30,17 @@ import java.util.concurrent.atomic.AtomicLong;
 @RequiredArgsConstructor
 public class SimulacionOrchestrator {
 
+    // ⭐ Servicio de tracking de vuelos
+    private final VueloTrackingService vueloTrackingService;
+
     // ==================== CONSTANTES DE SIMULACIÓN ====================
     
     /**
-     * TIME_SCALE: Cuántas horas simuladas equivalen a 1 segundo real
-     * Ejemplo: 10.0 significa que cada segundo real = 10 horas simuladas
+     * TIME_SCALE: Cuántos minutos simulados equivalen a 1 segundo real
+     * Ejemplo: 60.0 significa que cada segundo real = 60 minutos simulados (1 hora)
+     *          120.0 significa que cada segundo real = 120 minutos simulados (2 horas)
      */
-    private static final double TIME_SCALE = 10.0;
+    private static final double TIME_SCALE = 60.0;  // ⭐ 1 segundo real = 1 hora simulada
     
     /**
      * INTERVALO_TICK_MS: Cada cuántos milisegundos se ejecuta un tick de simulación
@@ -129,7 +134,7 @@ public class SimulacionOrchestrator {
         }
 
         log.info("🚀 Iniciando simulación...");
-        log.info("   TIME_SCALE: {} horas/segundo", TIME_SCALE);
+        log.info("   TIME_SCALE: {} minutos/segundo", TIME_SCALE);
         log.info("   INTERVALO_TICK: {}ms", INTERVALO_TICK_MS);
         log.info("   TIEMPO_PROCESAMIENTO: {}ms", TIEMPO_PROCESAMIENTO_MS);
 
@@ -145,6 +150,14 @@ public class SimulacionOrchestrator {
         
         simulacionActiva.set(true);
         log.info("✅ Simulación iniciada en hora simulada: {}", horaSimulacionActual);
+        
+        // ⭐ Iniciar tracking de vuelos automáticamente
+        try {
+            vueloTrackingService.iniciarStreaming();
+            log.info("✈️ Tracking de vuelos iniciado automáticamente");
+        } catch (Exception e) {
+            log.error("❌ Error al iniciar tracking de vuelos", e);
+        }
         
         // ⭐ Enviar estado inicial por SSE
         broadcastEstado();
@@ -198,6 +211,14 @@ public class SimulacionOrchestrator {
         pedidosATiempo.set(0);
         pedidosTarde.set(0);
         
+        // ⭐ Detener tracking de vuelos automáticamente
+        try {
+            vueloTrackingService.detenerStreaming();
+            log.info("✈️ Tracking de vuelos detenido automáticamente");
+        } catch (Exception e) {
+            log.error("❌ Error al detener tracking de vuelos", e);
+        }
+        
         log.info("⏹️ Simulación detenida y reseteada");
         
         // ⭐ Enviar estado detenido por SSE
@@ -240,8 +261,8 @@ public class SimulacionOrchestrator {
             return;
         }
         
-        // Cada tick avanza TIME_SCALE horas
-        horaSimulacionActual = horaSimulacionActual.plusHours((long) TIME_SCALE);
+        // Cada tick avanza TIME_SCALE minutos
+        horaSimulacionActual = horaSimulacionActual.plusMinutes((long) TIME_SCALE);
         
         log.debug("🕐 Tiempo simulado avanzado a: {} (Día {}, Hora {})", 
                  horaSimulacionActual,
@@ -302,6 +323,7 @@ public class SimulacionOrchestrator {
                 .tickActual(tickActual.get())
                 .estadoDescripcion(simulacionActiva.get() ? "ACTIVA" : "PAUSADA")
                 .timeScale(TIME_SCALE)
+                .rutasSolucion(vueloTrackingService.obtenerTodasLasRutas())  // ⭐ Incluir rutas
                 .build();
     }
 

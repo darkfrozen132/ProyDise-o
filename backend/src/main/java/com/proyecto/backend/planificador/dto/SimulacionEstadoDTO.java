@@ -6,10 +6,12 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 
 /**
  * DTO para el estado de la simulación en tiempo real
- * Simplificado: solo devuelve tiempos (simulado y real)
+ * Incluye tiempos y rutas de solución activas
  */
 @Data
 @Builder
@@ -28,4 +30,7 @@ public class SimulacionEstadoDTO {
     
     // Configuración (útil para el frontend)
     private double timeScale; // Horas simuladas por segundo real
+    
+    // ⭐ RUTAS DE SOLUCIÓN - Para graficar en el mapa
+    private List<Map<String, Object>> rutasSolucion;  // Rutas activas en este momento
 }

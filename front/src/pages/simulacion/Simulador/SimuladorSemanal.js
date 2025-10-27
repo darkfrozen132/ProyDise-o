@@ -8,6 +8,16 @@ import { IoArrowBackCircleOutline } from "react-icons/io5";
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import './SimuladorSemanal.css';
+import { 
+	getAirports, 
+	getFlights, 
+	iniciarSimulacion, 
+	pausarSimulacion, 
+	reanudarSimulacion, 
+	detenerSimulacion,
+	conectarStreamSimulacion,
+	obtenerEstadoSimulacion
+} from '../../../config/api';
 
 /* Reparar iconos por defecto de Leaflet */
 delete L.Icon.Default.prototype._getIconUrl;
@@ -123,156 +133,323 @@ const SimuladorSemanal = () => {
 	const [activeView, setActiveView] = useState('flights');
 	const [showRoutes, setShowRoutes] = useState(false);
 	const [startDate, setStartDate] = useState("");
-	/* Datos estáticos de aeropuertos */
-	const [airports, setAirports] = useState([
-		{ name: 'Lima-Jorge Chávez', code: 'LIM', lat: -12.0219, lng: -77.1143, capacity: 'ILIMITADO', packages: 980, isSede: true, region: 'América del Sur', country: 'Perú', operationType: 'Sede Principal - Hub Sudamericano' },
-		{ name: 'Bogotá-El Dorado', code: 'BOG', lat: 4.7016, lng: -74.1469, capacity: 900, packages: 720, region: 'América del Sur', country: 'Colombia', operationType: 'Aeropuerto Regional' },
-		{ name: 'Bruselas', code: 'BRU', lat: 50.9010, lng: 4.4844, capacity: 'ILIMITADO', packages: 850, isSede: true, region: 'Europa', country: 'Bélgica', operationType: 'Sede Principal - Hub Europeo' },
-		{ name: 'Amsterdam-Schiphol', code: 'AMS', lat: 52.3105, lng: 4.7683, capacity: 1200, packages: 960, region: 'Europa', country: 'Países Bajos', operationType: 'Aeropuerto Regional' },
-		{ name: 'París-Charles de Gaulle', code: 'CDG', lat: 49.0097, lng: 2.5479, capacity: 1300, packages: 1040, region: 'Europa', country: 'Francia', operationType: 'Aeropuerto Regional' },
-		{ name: 'Baku-Heydar Aliyev', code: 'GYD', lat: 40.4675, lng: 50.0467, capacity: 'ILIMITADO', packages: 800, isSede: true, region: 'Asia Central', country: 'Azerbaiyán', operationType: 'Sede Principal - Hub Asiático' },
-		{ name: 'Estambul', code: 'IST', lat: 41.2619, lng: 28.7419, capacity: 1100, packages: 880, region: 'Asia Central', country: 'Turquía', operationType: 'Aeropuerto Regional' },
-		{ name: 'Dubai', code: 'DXB', lat: 25.2532, lng: 55.3657, capacity: 1200, packages: 960, region: 'Asia Central', country: 'EAU', operationType: 'Aeropuerto Regional' },
-		{ name: 'Madrid-Barajas', code: 'MAD', lat: 40.4983, lng: -3.5676, capacity: 900, packages: 720, region: 'Europa', country: 'España', operationType: 'Aeropuerto Regional' },
-		{ name: 'México City', code: 'MEX', lat: 19.4363, lng: -99.0721, capacity: 800, packages: 640, region: 'América del Norte', country: 'México', operationType: 'Aeropuerto Regional' },
-		{ name: 'Londres-Heathrow', code: 'LHR', lat: 51.4700, lng: -0.4543, capacity: 1400, packages: 1120, region: 'Europa', country: 'Reino Unido', operationType: 'Aeropuerto Regional' },
-		{ name: 'Frankfurt', code: 'FRA', lat: 50.0379, lng: 8.5622, capacity: 1250, packages: 1000, region: 'Europa', country: 'Alemania', operationType: 'Aeropuerto Regional' }
-	]);
+	/* Datos de aeropuertos - se cargarán desde la API */
+	const [airports, setAirports] = useState([]);
+	const [loadingAirports, setLoadingAirports] = useState(true);
 	const intervalRef = useRef(); /* Referencia para el intervalo de simulación */
+	
+	// ==================== ESTADO SSE (TIEMPO DE SIMULACIÓN Y RUTAS) ====================
+	const [simulacionActiva, setSimulacionActiva] = useState(false);
+	const [horaSimulada, setHoraSimulada] = useState(null);
+	const [tiempoRealMs, setTiempoRealMs] = useState(0);
+	const [tickActual, setTickActual] = useState(0);
+	const [timeScale, setTimeScale] = useState(10.0);
+	const [rutasSolucion, setRutasSolucion] = useState([]); // Rutas que vienen del SSE
+	const eventSourceRef = useRef(null); /* Referencia para el EventSource SSE */
 
-	/* Generar vuelos iniciales con lógica de origen, destino, tipo de avión, capacidad y carga */
-	const generateInitialFlights = useCallback(() => {
-		const flightCount = 402; const newFlights = []; const sedes = airports.filter(a => a.isSede);
-		const flightTypes = [
-			{ type: 'boeing737', name: 'Boeing 737', capacity: [150, 250] },
-			{ type: 'airbus320', name: 'Airbus A320', capacity: [180, 280] },
-			{ type: 'boeing777', name: 'Boeing 777', capacity: [300, 400] },
-			{ type: 'cargo', name: 'Cargo', capacity: [50, 150] }
-		];
-		/* Generar cada vuelo */
-		for (let i = 0; i < flightCount; i++) {
-			let origin, destination;
-			/* 60% de probabilidad de que el vuelo involucre una sede */
-			if (Math.random() < 0.6) {
-				const sede = sedes[Math.floor(Math.random() * sedes.length)];
-				const otherAirports = airports.filter(a => a.region === sede.region && a !== sede);
-				if (Math.random() < 0.5) { origin = sede; destination = otherAirports.length > 0 ? otherAirports[Math.floor(Math.random() * otherAirports.length)] : airports[Math.floor(Math.random() * airports.length)]; }
-				else { destination = sede; origin = otherAirports.length > 0 ? otherAirports[Math.floor(Math.random() * otherAirports.length)] : airports[Math.floor(Math.random() * airports.length)]; }
-			}
-			/* 40% de probabilidad de vuelos entre aeropuertos regulares */
-			else {
-				origin = airports[Math.floor(Math.random() * airports.length)];
-				destination = airports[Math.floor(Math.random() * airports.length)];
-			}
-			/* Asegurar que origen y destino no sean iguales */
-			while (destination === origin)
-				destination = airports[Math.floor(Math.random() * airports.length)];
-			/* Seleccionar tipo de avión y calcular capacidad y carga */
-			const selectedType = flightTypes[Math.floor(Math.random() * flightTypes.length)];
-			const [minCap, maxCap] = selectedType.capacity; const packageCapacity = Math.floor(Math.random() * (maxCap - minCap + 1)) + minCap;
-			const loadFactor = 0.7 + Math.random() * 0.3; const currentPackages = Math.floor(packageCapacity * loadFactor);
-			const loadPercentage = (currentPackages / packageCapacity) * 100; let aircraftColor;
-			/* Determinar color del avión según carga */
-			if (loadPercentage >= 80) aircraftColor = '#dc3545';
-			else if (loadPercentage >= 50) aircraftColor = '#ffc107';
-			else aircraftColor = '#28a745';
-			/* Calcular rotación y posición inicial del vuelo */
-			const deltaLat = destination.lat - origin.lat; const deltaLng = destination.lng - origin.lng; const rotation = Math.atan2(deltaLng, deltaLat) * (180 / Math.PI);
-			const initialProgress = Math.random(); const initialLat = origin.lat + deltaLat * initialProgress; const initialLng = origin.lng + deltaLng * initialProgress;
-			let initialAltitude, initialSpeed;
-			/* Calcular altitud y velocidad inicial según progreso */
-			if (initialProgress < 0.1) {
-				initialAltitude = initialProgress * 100000;
-				initialSpeed = initialProgress * 2500;
-			}
-			else if (initialProgress < 0.9) {
-				initialAltitude = 35000;
-				initialSpeed = 500;
-			}
-			else {
-				const landingProgress = (initialProgress - 0.9) / 0.1;
-				initialAltitude = 30000 * (1 - landingProgress);
-				initialSpeed = 450 * (1 - landingProgress * 0.6);
-			}
-			/* Crear objeto de vuelo */
-			const flight = {
-				id: `MP${String(i + 1).padStart(4, '0')}`,
-				origin, destination, progress: initialProgress, altitude: initialAltitude, speed: initialSpeed, status: 'active',
-				packageCapacity, currentPackages, packageType: 'MPE', isSameContinentFlight: origin.region === destination.region,
-				currentLat: initialLat, currentLng: initialLng, aircraftType: selectedType.type,
-				aircraftName: selectedType.name, aircraftColor, rotation
-			};
-			newFlights.push(flight);
+	// ==================== FUNCIÓN PARA CONVERTIR RUTA DEL BACKEND A VUELO ====================
+	const convertirRutaAVuelo = (ruta) => {
+		// Determinar tipo de avión según capacidad de paquetes
+		let aircraftType, aircraftName;
+		if (ruta.totalPackages >= 300) {
+			aircraftType = 'boeing777';
+			aircraftName = 'Boeing 777';
+		} else if (ruta.totalPackages >= 200) {
+			aircraftType = 'airbus320';
+			aircraftName = 'Airbus A320';
+		} else if (ruta.totalPackages >= 100) {
+			aircraftType = 'boeing737';
+			aircraftName = 'Boeing 737';
+		} else {
+			aircraftType = 'cargo';
+			aircraftName = 'Cargo';
 		}
-		/* Actualizar estado con los vuelos generados */
-		setFlights(newFlights);
-		const initialInAir = newFlights.reduce((acc, f) => acc + (f.altitude > 1000 ? 1 : 0), 0);
-		setFlightsInAir(initialInAir);
-	}, [airports]);
 
-	/* Generar vuelos iniciales al montar el componente */
-	useEffect(() => { generateInitialFlights(); }, [generateInitialFlights]);
+		// Determinar color según progreso y estado
+		let aircraftColor;
+		if (!ruta.enVuelo) {
+			aircraftColor = '#6c757d'; // Gris si no está en vuelo
+		} else if (ruta.progress >= 0.8) {
+			aircraftColor = '#28a745'; // Verde cerca del destino
+		} else if (ruta.progress >= 0.5) {
+			aircraftColor = '#ffc107'; // Amarillo a mitad de camino
+		} else {
+			aircraftColor = '#007bff'; // Azul al inicio
+		}
 
-	/* Lógica de simulación que avanza el tiempo y actualiza vuelos cada segundo */
+		// Calcular rotación basada en dirección
+		const deltaLat = ruta.destinoLatitud - ruta.origenLatitud;
+		const deltaLng = ruta.destinoLongitud - ruta.origenLongitud;
+		const rotation = Math.atan2(deltaLng, deltaLat) * (180 / Math.PI);
+
+		// Crear objeto de vuelo compatible con el mapa
+		return {
+			id: `RT${String(ruta.id).padStart(4, '0')}`,
+			origin: {
+				code: ruta.originCode,
+				lat: ruta.origenLatitud,
+				lng: ruta.origenLongitud,
+				region: ruta.regionOrigen
+			},
+			destination: {
+				code: ruta.destinationCode,
+				lat: ruta.destinoLatitud,
+				lng: ruta.destinoLongitud,
+				region: ruta.regionDestino
+			},
+			progress: ruta.progress,
+			altitude: ruta.altitude,
+			speed: ruta.speed,
+			status: ruta.enVuelo ? 'active' : 'grounded',
+			packageCapacity: ruta.totalPackages,
+			currentPackages: ruta.totalPackages,
+			packageType: 'MPE',
+			isSameContinentFlight: ruta.regionOrigen === ruta.regionDestino,
+			currentLat: ruta.currentLatitude,
+			currentLng: ruta.currentLongitude,
+			aircraftType,
+			aircraftName,
+			aircraftColor,
+			rotation
+		};
+	};
+
+	// ==================== DEBUG: MONITOREAR CAMBIOS EN tiempoRealMs ====================
 	useEffect(() => {
-		if (isRunning) {
-			/* Avance semanal cada segundo */
-			intervalRef.current = setInterval(() => {
-				/* Avanzar tiempo actual */
-				setCurrentTime(prev => { const newTime = new Date(prev); newTime.setDate(newTime.getDate() + 7 * speed); return newTime; });
-				/* Actualizar tiempo transcurrido */
-				setElapsedTime(prev => {
-					const totalMinutes = prev.days * 24 * 60 + prev.hours * 60 + prev.minutes + 7 * 24 * 60 * speed;
-					return { days: Math.floor(totalMinutes / (24 * 60)), hours: Math.floor((totalMinutes % (24 * 60)) / 60), minutes: totalMinutes % 60 };
-				});
-				/* Actualizar estado de vuelos */
-				setFlights(prevFlights => {
-					const deltas = {}; const addDelta = (code, amount) => { if (!code || !Number.isFinite(amount)) return; deltas[code] = (deltas[code] || 0) + amount; };
-					const nextFlights = prevFlights.map(flight => {
-						let newProgress = flight.progress + (0.25 * speed); // avance semanal
-						const latDiff = flight.destination.lat - flight.origin.lat; const lngDiff = flight.destination.lng - flight.origin.lng;
-						let newLat = flight.origin.lat + (latDiff * newProgress); let newLng = flight.origin.lng + (lngDiff * newProgress);
-						let newAltitude, newSpeed;
-						if (newProgress < 0.1) { newAltitude = newProgress * 100000; newSpeed = newProgress * 2500; }
-						else if (newProgress < 0.9) { newAltitude = 30000 + Math.random() * 10000; newSpeed = 450 + Math.random() * 200; }
-						else { const landingProgress = (newProgress - 0.9) / 0.1; newAltitude = 30000 * (1 - landingProgress); newSpeed = 450 * (1 - landingProgress * 0.6); }
-						/* Si el vuelo ha llegado a su destino, actualizar paquetes y reasignar vuelo */
-						if (newProgress >= 1) {
-							addDelta(flight.destination.code, flight.currentPackages);
-							addDelta(flight.origin.code, -flight.currentPackages);
-							const newOrigin = airports[Math.floor(Math.random() * airports.length)]; let newDestination = airports[Math.floor(Math.random() * airports.length)];
-							while (newDestination === newOrigin) newDestination = airports[Math.floor(Math.random() * airports.length)];
-							const selectedType = flight.aircraftType; const [minCap, maxCap] = selectedType === 'cargo' ? [50, 150] : [150, 400];
-							const newPackageCapacity = Math.floor(Math.random() * (maxCap - minCap + 1)) + minCap; const newLoadFactor = 0.7 + Math.random() * 0.3;
-							const newCurrentPackages = Math.floor(newPackageCapacity * newLoadFactor); const newLoadPercentage = (newCurrentPackages / newPackageCapacity) * 100;
-							let newAircraftColor; if (newLoadPercentage >= 80) newAircraftColor = '#dc3545'; else if (newLoadPercentage >= 50) newAircraftColor = '#ffc107'; else newAircraftColor = '#28a745';
-							const newDeltaLat = newDestination.lat - newOrigin.lat; const newDeltaLng = newDestination.lng - newOrigin.lng;
-							const newRotation = Math.atan2(newDeltaLng, newDeltaLat) * (180 / Math.PI);
-							addDelta(newOrigin.code, -newCurrentPackages);
-							return { ...flight, origin: newOrigin, destination: newDestination, progress: 0, altitude: 0, speed: 0, currentLat: newOrigin.lat, currentLng: newOrigin.lng, currentPackages: newCurrentPackages, packageCapacity: newPackageCapacity, aircraftColor: newAircraftColor, rotation: newRotation };
-						}
-						return { ...flight, progress: newProgress, altitude: newAltitude, speed: newSpeed, currentLat: newLat, currentLng: newLng };
-					});
-					/* Actualizar paquetes en aeropuertos según deltas calculados */
-					const codes = Object.keys(deltas);
-					if (codes.length > 0) {
-						setAirports(prev => prev.map(a => { const delta = deltas[a.code] || 0; if (!delta) return a; let nextPackages = a.packages + delta; if (nextPackages < 0) nextPackages = 0; if (typeof a.capacity === 'number') nextPackages = Math.min(nextPackages, a.capacity); return { ...a, packages: nextPackages }; }));
-					}
-					/* Contar vuelos en el aire */
-					const inAir = nextFlights.reduce((acc, f) => acc + (f.altitude > 1000 ? 1 : 0), 0);
-					setFlightsInAir(inAir);
-					return nextFlights;
-				});
-			}, 1000);
-			return () => clearInterval(intervalRef.current);
-		} else { clearInterval(intervalRef.current); }
-	}, [isRunning, speed, airports]);
+		console.log('🕐 tiempoRealMs actualizado a:', tiempoRealMs, 'ms =', {
+			horas: Math.floor(tiempoRealMs / 3600000),
+			minutos: Math.floor((tiempoRealMs % 3600000) / 60000),
+			segundos: Math.floor((tiempoRealMs % 60000) / 1000)
+		});
+	}, [tiempoRealMs]);
 
-	const handlePlay = () => {
-		if (!startDate) {
-			alert("Por favor selecciona una fecha de inicio");
+	/* Cargar aeropuertos desde la API al montar el componente */
+	useEffect(() => {
+		const fetchAirports = async () => {
+			try {
+				setLoadingAirports(true);
+				console.log('🔄 Iniciando carga de aeropuertos...');
+				const data = await getAirports();
+				console.log('✅ Aeropuertos cargados desde API:', data.length, 'aeropuertos');
+				setAirports(data);
+			} catch (error) {
+				console.error('❌ Error al cargar aeropuertos desde API:', error);
+				console.log('🔄 Usando datos de fallback...');
+				// Fallback a datos estáticos en caso de error
+				const fallbackData = [
+					{ name: 'Lima-Jorge Chávez', code: 'SPIM', lat: -12.0219, lng: -77.1143, capacity: 'ILIMITADO', packages: 980, isSede: true, region: 'América del Sur', country: 'Perú', operationType: 'Sede Principal - Hub Sudamericano' },
+					{ name: 'Bogotá', code: 'SKBO', lat: 4.7016, lng: -74.1469, capacity: 900, packages: 720, isSede: false, region: 'América del Sur', country: 'Colombia', operationType: 'Aeropuerto Regional' },
+					{ name: 'Bruselas', code: 'BRU', lat: 50.9010, lng: 4.4844, capacity: 'ILIMITADO', packages: 850, isSede: true, region: 'Europa', country: 'Bélgica', operationType: 'Sede Principal - Hub Europeo' },
+					{ name: 'Amsterdam-Schiphol', code: 'AMS', lat: 52.3105, lng: 4.7683, capacity: 1200, packages: 960, isSede: false, region: 'Europa', country: 'Países Bajos', operationType: 'Aeropuerto Regional' }
+				];
+				setAirports(fallbackData);
+				console.log('✅ Datos de fallback cargados:', fallbackData.length, 'aeropuertos');
+			} finally {
+				setLoadingAirports(false);
+				console.log('✅ Carga de aeropuertos finalizada');
+			}
+		};
+
+		fetchAirports();
+	}, []);
+
+	/* ========== CARGA DE VUELOS DESACTIVADA TEMPORALMENTE ========== */
+	/* Por ahora solo usamos vuelos generados localmente, sin llamar al API de vuelos */
+	/* La carga desde API está comentada para enfocarnos en el SSE */
+
+	// ==================== POLLING FALLBACK PARA ACTUALIZAR TIEMPO ====================
+	// Este efecto actualiza el tiempo cada segundo mediante polling
+	// Se usa como fallback si el SSE no envía actualizaciones continuas
+	useEffect(() => {
+		if (!simulacionActiva) {
 			return;
 		}
+
+		console.log('⏱️ Iniciando polling para actualizar tiempo...');
+		
+		const pollingInterval = setInterval(async () => {
+			try {
+				const estado = await obtenerEstadoSimulacion();
+				console.log('🔄 Polling - Estado actualizado:', {
+					horaSimulada: estado.horaSimulada,
+					tiempoRealMs: estado.tiempoRealTranscurridoMs,
+					tickActual: estado.tickActual
+				});
+				
+				setHoraSimulada(estado.horaSimulada);
+				setTiempoRealMs(estado.tiempoRealTranscurridoMs);
+				setTickActual(estado.tickActual);
+				setTimeScale(estado.timeScale);
+				setSimulacionActiva(estado.activa);
+			} catch (error) {
+				console.error('❌ Error en polling:', error);
+			}
+		}, 1000); // Actualizar cada 1 segundo
+
+		return () => {
+			console.log('⏹️ Deteniendo polling...');
+			clearInterval(pollingInterval);
+		};
+	}, [simulacionActiva]);
+
+	// ==================== CONEXIÓN SSE PARA TIEMPO DE SIMULACIÓN ====================
+	useEffect(() => {
+		// Solo conectar si la simulación está activa
+		if (!simulacionActiva) {
+			console.log('⏸️ SSE no conectado - simulación no activa');
+			return;
+		}
+
+		console.log('📡 Conectando al stream SSE de simulación...');
+		
+		const eventSource = conectarStreamSimulacion(
+			// Callback cuando llega un mensaje
+			(data) => {
+				console.log('✅ Datos SSE recibidos:', {
+					horaSimulada: data.horaSimulada,
+					tiempoRealMs: data.tiempoRealTranscurridoMs,
+					tickActual: data.tickActual,
+					timeScale: data.timeScale,
+					activa: data.activa,
+					rutasCount: data.rutasSolucion?.length || 0
+				});
+				setHoraSimulada(data.horaSimulada);
+				setTiempoRealMs(data.tiempoRealTranscurridoMs);
+				setTickActual(data.tickActual);
+				setTimeScale(data.timeScale);
+				setSimulacionActiva(data.activa);
+				
+				// Actualizar rutas y convertirlas a vuelos
+				if (data.rutasSolucion && data.rutasSolucion.length > 0) {
+					console.log('✈️ Actualizando rutas desde SSE:', data.rutasSolucion.length, 'rutas');
+					setRutasSolucion(data.rutasSolucion);
+					
+					// Convertir rutas a formato de vuelos para el mapa
+					const nuevosVuelos = data.rutasSolucion.map(ruta => convertirRutaAVuelo(ruta));
+					setFlights(nuevosVuelos);
+					
+					// Contar vuelos en el aire
+					const enAire = nuevosVuelos.filter(v => v.altitude > 1000).length;
+					setFlightsInAir(enAire);
+					console.log('✅ Vuelos actualizados:', nuevosVuelos.length, 'total,', enAire, 'en el aire');
+				}
+			},
+			// Callback cuando hay error
+			(error) => {
+				console.error('❌ Error en stream SSE:', error);
+				setSimulacionActiva(false);
+			}
+		);
+
+		eventSourceRef.current = eventSource;
+
+		// Cleanup: cerrar conexión al desmontar o cuando simulacionActiva cambie
+		return () => {
+			console.log('🔌 Cerrando conexión SSE...');
+			if (eventSourceRef.current) {
+				eventSourceRef.current.close();
+				eventSourceRef.current = null;
+			}
+		};
+	}, [simulacionActiva]);
+
+	// ==================== FUNCIONES PARA CONTROLAR SIMULACIÓN ====================
+	const handleIniciarSimulacion = async () => {
+		try {
+			console.log('🚀 Iniciando simulación...');
+			const response = await iniciarSimulacion();
+			console.log('✅ Respuesta de iniciar simulación:', response);
+			setSimulacionActiva(true);
+			setHoraSimulada(response.estado.horaSimulada);
+			setTiempoRealMs(response.estado.tiempoRealTranscurridoMs);
+			setTickActual(response.estado.tickActual);
+			setTimeScale(response.estado.timeScale);
+			
+			// Cargar rutas iniciales si vienen en la respuesta
+			if (response.estado.rutasSolucion && response.estado.rutasSolucion.length > 0) {
+				console.log('✈️ Cargando rutas iniciales:', response.estado.rutasSolucion.length, 'rutas');
+				setRutasSolucion(response.estado.rutasSolucion);
+				
+				// Convertir rutas a vuelos
+				const vuelosIniciales = response.estado.rutasSolucion.map(ruta => convertirRutaAVuelo(ruta));
+				setFlights(vuelosIniciales);
+				
+				const enAire = vuelosIniciales.filter(v => v.altitude > 1000).length;
+				setFlightsInAir(enAire);
+				console.log('✅ Vuelos iniciales cargados:', vuelosIniciales.length, 'total,', enAire, 'en el aire');
+			}
+			
+			console.log('✅ Estado SSE inicializado:', {
+				simulacionActiva: true,
+				horaSimulada: response.estado.horaSimulada,
+				tiempoRealMs: response.estado.tiempoRealTranscurridoMs,
+				rutasCount: response.estado.rutasSolucion?.length || 0
+			});
+		} catch (error) {
+			console.error('❌ Error al iniciar simulación:', error);
+			alert('Error al conectar con el servidor. Verifica que el backend esté corriendo en http://127.0.0.1:8080');
+		}
+	};
+
+	const handlePausarSimulacion = async () => {
+		try {
+			await pausarSimulacion();
+			setSimulacionActiva(false);
+		} catch (error) {
+			console.error('Error al pausar simulación:', error);
+		}
+	};
+
+	const handleReanudarSimulacion = async () => {
+		try {
+			const response = await reanudarSimulacion();
+			setSimulacionActiva(true);
+		} catch (error) {
+			console.error('Error al reanudar simulación:', error);
+		}
+	};
+
+	const handleDetenerSimulacion = async () => {
+		try {
+			await detenerSimulacion();
+			setSimulacionActiva(false);
+			setHoraSimulada(null);
+			setTiempoRealMs(0);
+			setTickActual(0);
+		} catch (error) {
+			console.error('Error al detener simulación:', error);
+		}
+	};
+
+	/* Generar vuelos iniciales con lógica de origen, destino, tipo de avión, capacidad y carga */
+	/* ========== GENERACIÓN LOCAL DE VUELOS DESACTIVADA ========== */
+	/* Ahora los vuelos se cargan desde el SSE del backend (rutasSolucion) */
+	/* La siguiente función está comentada porque ya no se usa */
+	/*
+	const generateInitialFlights = useCallback(() => {
+		// ... código comentado ...
+	}, [airports]);
+
+	useEffect(() => {
+		if (airports.length > 0 && !loadingAirports) {
+			console.log('🔄 Generando vuelos localmente (modo prueba SSE)...');
+			generateInitialFlights();
+		}
+	}, [airports, loadingAirports, generateInitialFlights]);
+	*/
+
+	/* ========== SIMULACIÓN LOCAL DESACTIVADA ========== */
+	/* El SSE del backend ahora maneja toda la lógica de simulación */
+	/* La siguiente lógica está comentada porque ya no se usa */
+	/*
+	useEffect(() => {
+		if (isRunning) {
+			// ... lógica de simulación local comentada ...
+		}
+	}, [isRunning, speed, airports]);
+	*/
+
+	const handlePlay = () => {
 		setIsRunning(true);
 		setSimulationStatus('Simulación semanal en ejecución');
 	};
@@ -281,7 +458,6 @@ const SimuladorSemanal = () => {
 		setSimulationStatus('Simulación semanal detenida');
 	};
 	const handleSpeedChange = () => { const speeds = [1, 2, 4, 8]; const currentIndex = speeds.indexOf(speed); const nextSpeed = speeds[(currentIndex + 1) % speeds.length]; setSpeed(nextSpeed); };
-	const handleRestart = () => { setIsRunning(false); setElapsedTime({ days: 0, hours: 0, minutes: 0 }); setCurrentTime(new Date(2024, 7, 27, 8, 0, 0)); generateInitialFlights(); setSimulationStatus('Sistema reiniciado'); setTimeout(() => { setSimulationStatus('Monitoreo semanal activo'); }, 2000); };
 	const formatTime = (timeObj) => `${timeObj.days.toString().padStart(2, '0')} : ${timeObj.hours.toString().padStart(2, '0')} : ${timeObj.minutes.toString().padStart(2, '0')}`;
 
 	/* Calcular métricas de saturación de aeropuertos */
@@ -315,6 +491,18 @@ const SimuladorSemanal = () => {
 	const goBack = () => {
 		window.history.back(); // retrocede una página
 	};
+
+	/* Mostrar indicador de carga mientras se obtienen los aeropuertos */
+	if (loadingAirports) {
+		return (
+			<div className="section-content" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+				<div style={{ textAlign: 'center', color: '#fff' }}>
+					<i className="fas fa-spinner fa-spin" style={{ fontSize: '48px', marginBottom: '20px' }}></i>
+					<p style={{ fontSize: '18px' }}>Cargando aeropuertos...</p>
+				</div>
+			</div>
+		);
+	}
 
 	return (
 		<div className="section-content" id="simulationSection">
@@ -468,45 +656,89 @@ const SimuladorSemanal = () => {
 								</button>
 								<h2>Simulación Semanal</h2>
 							</div>
-							<div>
-								<div className="status-section">
-									{/* Selector de fecha de inicio */}
-									<div className="form-group">
-										<label className="form-label" for="fecha-inicio">
-											Fecha de Inicio:
-										</label>
-										<input
-											type="date"
-											id="fecha-inicio"
-											className="date-input"
-											value={startDate}
-											onChange={(e) => setStartDate(e.target.value)}
-										/>
+
+							{/* ==================== PANEL SIMPLE DE TIEMPO SSE ==================== */}
+							<div style={{
+								background: '#f8f9fa',
+								borderRadius: '8px',
+								padding: '15px 20px',
+								marginBottom: '20px',
+								border: '1px solid #dee2e6',
+								display: 'flex',
+								justifyContent: 'space-between',
+								alignItems: 'center',
+								flexWrap: 'wrap',
+								gap: '15px'
+							}}>
+								{/* Información de tiempo */}
+								<div style={{ display: 'flex', gap: '30px', flexWrap: 'wrap' }}>
+									<div>
+										<span style={{ fontSize: '14px', color: '#6c757d', marginRight: '8px' }}>
+											Fecha y hora de simulación:
+										</span>
+										<span style={{ fontSize: '14px', fontWeight: '600', color: '#212529' }}>
+											{horaSimulada ? new Date(horaSimulada).toLocaleString('es-ES', {
+												day: '2-digit',
+												month: '2-digit',
+												year: 'numeric',
+												hour: '2-digit',
+												minute: '2-digit',
+												second: '2-digit'
+											}) : '--:--:--'}
+										</span>
 									</div>
-									{/* Controles de estado y reproducción */}
-									<div className="status-and-controls" style={{ display: 'flex', flexDirection: 'row' }}>
-										<div className="status-container">
-											<span className="status-label">Estado:</span>
-											<div className="status-indicator">
-												<span className={`status-dot ${isRunning ? "active" : "stopped"}`} />
-												<span className="status-text">{simulationStatus}</span>
-											</div>
-										</div>
-										{/* Controles de simulación */}
-										<div className="simulation-controls">
-											<div className="control-buttons">
-												<button className="sim-control-btn play-btn" onClick={handlePlay}>
-													<i className="fas fa-play"></i> Iniciar
-												</button>
-												<button className="sim-control-btn stop-btn" onClick={handleStop}>
-													<i className="fas fa-stop"></i> Detener
-												</button>
-											</div>
-										</div>
+									<div>
+										<span style={{ fontSize: '14px', color: '#6c757d', marginRight: '8px' }}>
+											Tiempo transcurrido:
+										</span>
+										<span style={{ fontSize: '14px', fontWeight: '600', color: '#212529' }}>
+											{tickActual} segundos
+										</span>
+										<span style={{ fontSize: '12px', color: '#6c757d', marginLeft: '8px' }}>
+											(Tick: {tickActual})
+										</span>
 									</div>
+								</div>
+
+								{/* Botones de control */}
+								<div style={{ display: 'flex', gap: '10px' }}>
+									<button
+										onClick={handleIniciarSimulacion}
+										disabled={simulacionActiva}
+										style={{
+											padding: '8px 16px',
+											borderRadius: '6px',
+											border: '1px solid #28a745',
+											background: simulacionActiva ? '#e9ecef' : '#28a745',
+											color: simulacionActiva ? '#6c757d' : 'white',
+											fontSize: '14px',
+											fontWeight: '500',
+											cursor: simulacionActiva ? 'not-allowed' : 'pointer',
+											transition: 'all 0.2s'
+										}}
+									>
+										Iniciar
+									</button>
+									<button
+										onClick={handleDetenerSimulacion}
+										style={{
+											padding: '8px 16px',
+											borderRadius: '6px',
+											border: '1px solid #dc3545',
+											background: '#dc3545',
+											color: 'white',
+											fontSize: '14px',
+											fontWeight: '500',
+											cursor: 'pointer',
+											transition: 'all 0.2s'
+										}}
+									>
+										Detener
+									</button>
 								</div>
 							</div>
 						</div>
+						
 						{/* Mapa interactivo */}
 						<div className="map-container">
 							<MapContainer center={[20.0, 10.0]} zoom={3} className="flight-map" scrollWheelZoom={false} minZoom={2} maxZoom={10} zoomControl={true} doubleClickZoom={true} boxZoom={true} keyboard={true} touchZoom={true}>

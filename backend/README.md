@@ -1,6 +1,6 @@
-# Backend Spring Boot - Sistema de Aeropuertos
+# Backend Spring Boot - Sistema MoraPack
 
-Proyecto backend desarrollado con Spring Boot 3.2.0 y Java 17 para gestion de aeropuertos.
+Proyecto backend desarrollado con Spring Boot 3.2.0 y Java 17 para el sistema de distribucion logistica MoraPack con optimizacion de rutas mediante Algoritmo Genetico.
 
 ## Estructura del Proyecto
 
@@ -9,17 +9,39 @@ backend/
 ├── src/
 │   ├── main/
 │   │   ├── java/com/proyecto/backend/
-│   │   │   ├── controller/       # Controladores REST
+│   │   │   ├── algoritmo/        # 🧬 Algoritmo Genetico
+│   │   │   │   ├── core/         # Clases core
+│   │   │   │   │   ├── World.java              # Cache inmutable
+│   │   │   │   │   ├── WorldTemporal.java      # Expansion temporal
+│   │   │   │   │   ├── VueloInstancia.java     # Instancia con UTC
+│   │   │   │   │   ├── DecodificadorBasico.java # Greedy v1
+│   │   │   │   │   ├── Chromosome.java         # Cromosoma AG
+│   │   │   │   │   ├── Solution.java           # Solucion
+│   │   │   │   │   ├── SubRuta.java            # Subruta
+│   │   │   │   │   └── VueloUso.java           # Uso de vuelo
+│   │   │   │   ├── dto/          # DTOs
+│   │   │   │   ├── service/      # Servicios
+│   │   │   │   │   ├── WorldCacheService.java
+│   │   │   │   │   └── AlgoritmoGeneticoService.java
+│   │   │   │   └── controller/   # Controladores
+│   │   │   │       └── PlanificacionController.java
+│   │   │   ├── controller/       # REST Controllers
 │   │   │   │   ├── AeropuertoController.java
+│   │   │   │   ├── PedidoController.java
+│   │   │   │   ├── PlanDeVueloController.java
 │   │   │   │   └── HealthController.java
 │   │   │   ├── service/          # Logica de negocio
-│   │   │   │   └── AeropuertoService.java
+│   │   │   │   ├── AeropuertoService.java
+│   │   │   │   ├── PedidoService.java
+│   │   │   │   └── PlanDeVueloService.java
 │   │   │   ├── repository/       # Acceso a datos (JPA)
-│   │   │   │   └── AeropuertoRepository.java
+│   │   │   │   ├── AeropuertoRepository.java
+│   │   │   │   ├── PedidoRepository.java
+│   │   │   │   └── PlanDeVueloRepository.java
 │   │   │   ├── model/            # Entidades JPA
 │   │   │   │   ├── Aeropuerto.java
-│   │   │   │   └── BaseEntity.java
-│   │   │   ├── dto/              # Objetos de transferencia
+│   │   │   │   ├── Pedido.java
+│   │   │   │   └── PlanDeVuelo.java
 │   │   │   ├── config/           # Configuraciones
 │   │   │   │   ├── HibernateConfig.java
 │   │   │   │   ├── WebConfig.java
@@ -32,6 +54,8 @@ backend/
 │   │       │   └── Aeropuertos.txt
 │   │       └── application.properties
 │   └── test/
+├── ALGORITMO_GENETICO_ESPAÑOL.md  # Documentacion del AG
+├── ENDPOINTS_PLANIFICACION.md     # Endpoints del algoritmo
 └── pom.xml
 ```
 
@@ -277,3 +301,79 @@ Al iniciar la aplicacion, el `DatabaseConnectionChecker` verifica automaticament
 - Usuario conectado
 
 Ver los logs al iniciar para confirmar conexion exitosa.
+
+## Algoritmo Genetico de Optimizacion de Rutas
+
+### Estado Actual: v1 - Greedy Basico
+
+El sistema incluye un algoritmo de optimizacion de rutas logisticas para distribucion de productos desde las sedes principales (Lima, Bruselas, Baku) hacia los destinos finales.
+
+### Componentes Implementados
+
+#### 1. WorldTemporal - Expansion Temporal de Vuelos
+- **Objetivo**: Crear instancias concretas de vuelos para un horizonte temporal
+- **Funcionamiento**: Expande templates de `PlanDeVuelo` por N dias
+- **Ejemplo**: Template SPIM→SEQM 03:34 → 7 instancias (dia 0 a dia 6)
+- **Beneficio**: Control de capacidad individual por fecha/vuelo
+
+#### 2. VueloInstancia - Instancias con Fechas Reales
+- **Conversiones UTC**: Horarios locales → UTC considerando huso horario
+- **Deteccion de cruce de dia**: Vuelos que llegan al dia siguiente
+- **IDs unicos**: Formato `ORIGEN-DESTINO-YYYYMMDD-HHMM`
+- **Ejemplo**: `SPIM-SEQM-20250117-0334`
+
+#### 3. DecodificadorBasico - Algoritmo Greedy Simple
+- **Estrategia**: Buscar desde cada hub hacia el destino
+- **Intenta**:
+  1. Vuelo directo (hub → destino)
+  2. Con 1 escala (hub → intermedio → destino)
+- **Validaciones**:
+  - Capacidad disponible en cada vuelo
+  - Horarios de conexion (min 30 minutos)
+  - Dia correcto del pedido
+
+### API de Planificacion
+
+```bash
+# Ejecutar planificacion
+POST http://localhost:8080/api/planificacion
+Content-Type: application/json
+
+{
+    "fecha": "2025-01-17",
+    "factorK": 1,
+    "parametrosGenetico": {
+        "tamanioPoblacion": 50,
+        "maxGeneraciones": 200
+    }
+}
+```
+
+**Respuesta incluye:**
+- Metadata: pedidos procesados, tiempo de ejecucion
+- Vuelos: con lista de pedidos agrupados
+- Rutas: por pedido con subrutas y escalas
+- Aeropuertos: estado de ocupacion
+
+### Reglas de Negocio
+
+| Concepto | Valor |
+|----------|-------|
+| **Plazo mismo continente** | 2 dias + 2h recojo |
+| **Plazo diferente continente** | 3 dias + 2h recojo |
+| **Conexion minima** | 30 minutos |
+| **Espera en transito** | 1 hora (min) |
+| **Capacidad vuelos** | 200-400 productos |
+| **Capacidad almacenes** | 600-1000 productos |
+| **Hubs (stock ilimitado)** | SPIM, EBCI, UBBB |
+
+### Roadmap - Proximo a Implementar
+
+- [ ] **StockTracker**: Control de capacidad de almacenes con difference arrays
+- [ ] **Calculo de plazos**: Clasificacion de pedidos (a tiempo/tarde)
+- [ ] **DecodificadorGenetico**: Expansion greedy con heuristica de pesos
+- [ ] **Funcion fitness**: Objetivo = 1.0×aTiempo - 1.5×tarde - 4.0×violaciones
+- [ ] **Operadores geneticos**: Cruce, mutacion, elitismo
+- [ ] **Loop evolutivo**: Poblacion de 50-100 cromosomas, 200 generaciones
+
+Ver `ALGORITMO_GENETICO_ESPAÑOL.md` para documentacion completa.

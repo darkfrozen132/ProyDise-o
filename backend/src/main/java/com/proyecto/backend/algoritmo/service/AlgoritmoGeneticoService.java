@@ -46,7 +46,7 @@ public class AlgoritmoGeneticoService {
 
         log.info("Iniciando planificacion para fecha {} con K={}", request.getFecha(), request.getFactorK());
 
-        // Obtener el World
+        // Obtener el World base (singleton inmutable)
         World world = worldCacheService.getWorld();
 
         // Cargar pedidos en el rango de tiempo
@@ -58,18 +58,61 @@ public class AlgoritmoGeneticoService {
             return crearResponseVacio(request, inicio);
         }
 
+        // Calcular horizonte temporal (dias a expandir)
+        int numeroDias = calcularHorizonteDias(request, pedidos);
+        log.info("Horizonte temporal: {} dias", numeroDias);
+
+        // Crear WorldTemporal para esta ejecucion
+        WorldTemporal worldTemporal = new WorldTemporal(world, request.getFecha(), numeroDias);
+        log.info("WorldTemporal creado: {}", worldTemporal.getEstadisticas());
+
         // Generar solucion usando decodificador basico (greedy)
         // TODO: Implementar algoritmo genetico completo
-        DecodificadorBasico decodificador = new DecodificadorBasico(world);
+        DecodificadorBasico decodificador = new DecodificadorBasico(worldTemporal);
         Solution solucion = decodificador.generarSolucion(pedidos);
 
+        // Log estadisticas finales
+        log.info("Estadisticas finales: {}", worldTemporal.getEstadisticas());
+
         // Convertir solucion a response DTO (incluye los pedidos para verificacion)
-        PlanificacionResponse response = convertirAResponse(solucion, world, request, pedidos, inicio);
+        PlanificacionResponse response = convertirAResponse(solucion, worldTemporal, request, pedidos, inicio);
 
         long tiempoTotal = System.currentTimeMillis() - inicio;
         log.info("Planificacion completada en {} ms", tiempoTotal);
 
         return response;
+    }
+
+    /**
+     * Calcula el horizonte temporal en dias
+     *
+     * Reglas:
+     * - Minimo: plazo maximo de entrega (3 dias) + 1 dia buffer = 4 dias
+     * - Dinamico: dia maximo de pedidos + 3 dias
+     *
+     * @param request Request de planificacion
+     * @param pedidos Lista de pedidos
+     * @return Numero de dias del horizonte
+     */
+    private int calcularHorizonteDias(PlanificacionRequest request, List<Pedido> pedidos) {
+        // Por defecto: 7 dias (una semana)
+        int diasBase = 7;
+
+        // Calcular dia maximo de los pedidos
+        LocalDate fechaMaxPedido = request.getFecha();
+        for (Pedido pedido : pedidos) {
+            LocalDate fechaPedido = LocalDate.of(pedido.getAnio(), pedido.getMes(), pedido.getDia());
+            if (fechaPedido.isAfter(fechaMaxPedido)) {
+                fechaMaxPedido = fechaPedido;
+            }
+        }
+
+        // Dias necesarios = (fechaMaxPedido - fechaBase) + 3 dias plazo + 1 buffer
+        int diasNecesarios = (int) java.time.temporal.ChronoUnit.DAYS.between(
+                request.getFecha(), fechaMaxPedido) + 4;
+
+        // Usar el mayor entre diasBase y diasNecesarios
+        return Math.max(diasBase, diasNecesarios);
     }
 
     /**
@@ -177,14 +220,14 @@ public class AlgoritmoGeneticoService {
      * Convierte una Solution a PlanificacionResponse
      *
      * @param solucion Solucion del algoritmo
-     * @param world World con datos
+     * @param worldTemporal WorldTemporal con datos
      * @param request Request original
      * @param pedidos Lista de pedidos procesados
      * @param inicio Tiempo de inicio
      * @return Response DTO
      */
     private PlanificacionResponse convertirAResponse(
-            Solution solucion, World world, PlanificacionRequest request,
+            Solution solucion, WorldTemporal worldTemporal, PlanificacionRequest request,
             List<Pedido> pedidos, long inicio) {
 
         PlanificacionResponse response = new PlanificacionResponse();
@@ -215,11 +258,11 @@ public class AlgoritmoGeneticoService {
         response.setPedidosProcesados(convertirPedidosAResumen(pedidos));
 
         // Convertir aeropuertos
-        response.setAeropuertos(convertirAeropuertos(world));
+        response.setAeropuertos(convertirAeropuertos(worldTemporal));
 
         // Convertir vuelos y rutas desde la solucion
-        response.setVuelos(convertirVuelos(solucion, world));
-        response.setRutas(convertirRutas(solucion, world));
+        response.setVuelos(convertirVuelos(solucion, worldTemporal));
+        response.setRutas(convertirRutas(solucion, worldTemporal));
 
         return response;
     }
@@ -229,10 +272,10 @@ public class AlgoritmoGeneticoService {
      * Agrupa los pedidos por vuelo
      *
      * @param solucion Solucion con rutas
-     * @param world World con datos de aeropuertos
+     * @param worldTemporal WorldTemporal con datos de aeropuertos
      * @return Lista de DTOs de vuelos
      */
-    private List<VueloEnRutaDTO> convertirVuelos(Solution solucion, World world) {
+    private List<VueloEnRutaDTO> convertirVuelos(Solution solucion, WorldTemporal worldTemporal) {
         // Mapa: vueloId -> DTO del vuelo
         Map<String, VueloEnRutaDTO> vuelosMap = new HashMap<>();
 
@@ -259,9 +302,17 @@ public class AlgoritmoGeneticoService {
                         dto.setOriginCode(vueloUso.getOrigen());
                         dto.setDestinationCode(vueloUso.getDestino());
 
-                        // TODO: calcular fechas reales
-                        dto.setSalida(LocalDateTime.now());
-                        dto.setLlegada(LocalDateTime.now().plusHours(2));
+                        // Obtener fechas UTC reales desde VueloInstancia
+                        VueloInstancia instancia = worldTemporal.getVuelo(vueloId);
+                        if (instancia != null) {
+                            dto.setSalida(instancia.getSalidaUTC());
+                            dto.setLlegada(instancia.getLlegadaUTC());
+                        } else {
+                            // Fallback (no debería ocurrir)
+                            log.warn("VueloInstancia no encontrada para ID: {}", vueloId);
+                            dto.setSalida(LocalDateTime.now());
+                            dto.setLlegada(LocalDateTime.now().plusHours(2));
+                        }
 
                         dto.setCapacidad(vueloUso.getCapacidadMaxima());
                         dto.setAltitude(35000);
@@ -274,8 +325,8 @@ public class AlgoritmoGeneticoService {
                         ));
 
                         // Obtener coordenadas de los aeropuertos
-                        Aeropuerto origen = world.getAeropuerto(vueloUso.getOrigen());
-                        Aeropuerto destino = world.getAeropuerto(vueloUso.getDestino());
+                        Aeropuerto origen = worldTemporal.getAeropuerto(vueloUso.getOrigen());
+                        Aeropuerto destino = worldTemporal.getAeropuerto(vueloUso.getDestino());
 
                         if (origen != null && destino != null) {
                             dto.setRegionOrigin(origen.getContinente());
@@ -310,10 +361,10 @@ public class AlgoritmoGeneticoService {
      * Convierte las rutas de la solucion a DTOs
      *
      * @param solucion Solucion con rutas
-     * @param world World con datos
+     * @param worldTemporal WorldTemporal con datos
      * @return Lista de DTOs de rutas
      */
-    private List<RutaPlanificadaDTO> convertirRutas(Solution solucion, World world) {
+    private List<RutaPlanificadaDTO> convertirRutas(Solution solucion, WorldTemporal worldTemporal) {
         List<RutaPlanificadaDTO> rutas = new ArrayList<>();
 
         for (Map.Entry<Pedido, List<SubRuta>> entry : solucion.getRutas().entrySet()) {
@@ -404,13 +455,13 @@ public class AlgoritmoGeneticoService {
     /**
      * Convierte aeropuertos a DTOs
      *
-     * @param world World con datos
+     * @param worldTemporal WorldTemporal con datos
      * @return Lista de DTOs de aeropuertos
      */
-    private List<AeropuertoEstadoDTO> convertirAeropuertos(World world) {
+    private List<AeropuertoEstadoDTO> convertirAeropuertos(WorldTemporal worldTemporal) {
         List<AeropuertoEstadoDTO> aeropuertos = new ArrayList<>();
 
-        for (Aeropuerto aeropuerto : world.getAeropuertos().values()) {
+        for (Aeropuerto aeropuerto : worldTemporal.getWorldBase().getAeropuertos().values()) {
             AeropuertoEstadoDTO dto = new AeropuertoEstadoDTO();
             dto.setCode(aeropuerto.getCodigoICAO());
             dto.setLat(aeropuerto.getLatitud());

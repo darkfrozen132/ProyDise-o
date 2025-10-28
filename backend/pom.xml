@@ -101,7 +101,7 @@
                 </configuration>
             </plugin>
             
-            <!-- Maven Compiler Plugin - Excluir carpeta algoritmo -->
+            <!-- Maven Compiler Plugin - Excluir carpeta algoritmo 
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -110,7 +110,7 @@
                         <exclude>**/algoritmo/**/*.java</exclude>
                     </excludes>
                 </configuration>
-            </plugin>
+            </plugin>-->
         </plugins>
     </build>
 

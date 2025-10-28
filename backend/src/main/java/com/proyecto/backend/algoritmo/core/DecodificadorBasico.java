@@ -2,23 +2,28 @@ package com.proyecto.backend.algoritmo.core;
 
 import com.proyecto.backend.model.Aeropuerto;
 import com.proyecto.backend.model.Pedido;
-import com.proyecto.backend.model.PlanDeVuelo;
 import lombok.extern.slf4j.Slf4j;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Decodificador basico para generar rutas de forma greedy
- * Version inicial simple - sin optimizacion, sin verificar capacidades
+ *
+ * Mejoras v2:
+ * - Usa WorldTemporal con instancias de vuelos expandidas
+ * - Verifica capacidades reales de cada vuelo
+ * - Calcula dia correcto del pedido
+ * - Usa fechas/horas UTC correctas
  */
 @Slf4j
 public class DecodificadorBasico {
 
-    private final World world;
+    private final WorldTemporal worldTemporal;
 
-    public DecodificadorBasico(World world) {
-        this.world = world;
+    public DecodificadorBasico(WorldTemporal worldTemporal) {
+        this.worldTemporal = worldTemporal;
     }
 
     /**
@@ -82,15 +87,25 @@ public class DecodificadorBasico {
         int cantidad = pedido.getCantidadProductos();
 
         // Verificar que el destino exista
-        Aeropuerto aeropuertoDestino = world.getAeropuerto(destino);
+        Aeropuerto aeropuertoDestino = worldTemporal.getAeropuerto(destino);
         if (aeropuertoDestino == null) {
             log.warn("Aeropuerto destino {} no existe", destino);
             return subrutas;
         }
 
+        // Calcular dia relativo del pedido
+        LocalDate fechaPedido = LocalDate.of(pedido.getAnio(), pedido.getMes(), pedido.getDia());
+        int diaRelativo = worldTemporal.calcularDiaRelativo(fechaPedido);
+
+        if (diaRelativo < 0) {
+            log.warn("Pedido {} fuera del horizonte temporal: {}",
+                    pedido.getId(), fechaPedido);
+            return subrutas;
+        }
+
         // Intentar generar ruta desde cada hub
-        for (String hub : world.getHubs()) {
-            SubRuta subruta = buscarRutaDesdeHub(hub, destino, cantidad, pedido);
+        for (String hub : worldTemporal.getHubs()) {
+            SubRuta subruta = buscarRutaDesdeHub(hub, destino, cantidad, diaRelativo);
 
             if (subruta != null) {
                 subrutas.add(subruta);
@@ -108,18 +123,18 @@ public class DecodificadorBasico {
      * @param hub Hub de origen
      * @param destino Aeropuerto destino
      * @param cantidad Cantidad de productos
-     * @param pedido Pedido original (para tiempos)
+     * @param diaRelativo Dia relativo del pedido
      * @return SubRuta o null si no se encuentra
      */
-    private SubRuta buscarRutaDesdeHub(String hub, String destino, int cantidad, Pedido pedido) {
+    private SubRuta buscarRutaDesdeHub(String hub, String destino, int cantidad, int diaRelativo) {
         // 1. Intentar vuelo directo
-        SubRuta rutaDirecta = buscarVueloDirecto(hub, destino, cantidad, pedido);
+        SubRuta rutaDirecta = buscarVueloDirecto(hub, destino, cantidad, diaRelativo);
         if (rutaDirecta != null) {
             return rutaDirecta;
         }
 
         // 2. Intentar con 1 escala
-        SubRuta rutaConEscala = buscarConUnaEscala(hub, destino, cantidad, pedido);
+        SubRuta rutaConEscala = buscarConUnaEscala(hub, destino, cantidad, diaRelativo);
         if (rutaConEscala != null) {
             return rutaConEscala;
         }
@@ -128,35 +143,38 @@ public class DecodificadorBasico {
     }
 
     /**
-     * Busca un vuelo directo del hub al destino
+     * Busca un vuelo directo del hub al destino con capacidad disponible
      *
      * @param origen Hub de origen
      * @param destino Aeropuerto destino
      * @param cantidad Cantidad de productos
-     * @param pedido Pedido original
+     * @param diaRelativo Dia relativo del pedido
      * @return SubRuta o null
      */
-    private SubRuta buscarVueloDirecto(String origen, String destino, int cantidad, Pedido pedido) {
-        List<PlanDeVuelo> vuelosDesdeOrigen = world.getVuelosDesde(origen);
+    private SubRuta buscarVueloDirecto(String origen, String destino, int cantidad, int diaRelativo) {
+        // Buscar vuelos directos desde origen a destino en el dia especificado
+        List<VueloInstancia> vuelosDirectos = worldTemporal.buscarVuelosDirectos(origen, destino, diaRelativo);
 
-        for (PlanDeVuelo vuelo : vuelosDesdeOrigen) {
-            if (vuelo.getAeropuertoDestino().equals(destino)) {
-                // Encontramos vuelo directo!
-                SubRuta subruta = new SubRuta(origen, cantidad);
+        for (VueloInstancia vuelo : vuelosDirectos) {
+            // Verificar capacidad disponible
+            if (vuelo.tieneCapacidad(cantidad)) {
+                // Asignar capacidad
+                if (vuelo.asignarCapacidad(cantidad)) {
+                    // Crear subruta
+                    SubRuta subruta = new SubRuta(origen, cantidad);
 
-                // Crear VueloUso (por ahora dia 0)
-                // TODO: calcular el dia correcto basado en la fecha del pedido
-                VueloUso vueloUso = new VueloUso();
-                vueloUso.setPlanVuelo(vuelo);
-                vueloUso.setIndiceDia(0);
-                vueloUso.setSalidaUTC(0);  // TODO: calcular UTC correcto
-                vueloUso.setLlegadaUTC(60); // TODO: calcular UTC correcto
-                vueloUso.setCantidadAsignada(cantidad);
+                    // Convertir VueloInstancia a VueloUso
+                    VueloUso vueloUso = vuelo.toVueloUso();
+                    vueloUso.setCantidadAsignada(cantidad);
 
-                subruta.agregarVuelo(vueloUso);
+                    subruta.agregarVuelo(vueloUso);
 
-                log.debug("Ruta directa: {} -> {} ({})", origen, destino, vuelo.getCapacidadMaxima());
-                return subruta;
+                    log.debug("Ruta directa encontrada: {} ({} / {} productos, {:.1f}% ocupacion)",
+                            vuelo.getId(), vuelo.getCapacidadUsada(), vuelo.getCapacidadMaxima(),
+                            vuelo.getPorcentajeOcupacion());
+
+                    return subruta;
+                }
             }
         }
 
@@ -164,52 +182,100 @@ public class DecodificadorBasico {
     }
 
     /**
-     * Busca una ruta con una escala
+     * Busca una ruta con una escala verificando capacidades
      *
      * @param origen Hub de origen
      * @param destino Aeropuerto destino
      * @param cantidad Cantidad de productos
-     * @param pedido Pedido original
+     * @param diaRelativo Dia relativo del pedido
      * @return SubRuta o null
      */
-    private SubRuta buscarConUnaEscala(String origen, String destino, int cantidad, Pedido pedido) {
-        List<PlanDeVuelo> vuelosDesdeOrigen = world.getVuelosDesde(origen);
+    private SubRuta buscarConUnaEscala(String origen, String destino, int cantidad, int diaRelativo) {
+        // Obtener vuelos desde el origen en el dia especificado
+        List<VueloInstancia> vuelosDesdeOrigen = worldTemporal.getVuelosDesde(origen, diaRelativo);
 
         // Para cada vuelo desde el origen
-        for (PlanDeVuelo vuelo1 : vuelosDesdeOrigen) {
-            String escala = vuelo1.getAeropuertoDestino();
+        for (VueloInstancia vuelo1 : vuelosDesdeOrigen) {
+            String escala = vuelo1.getDestino();
 
             // No volver al origen
             if (escala.equals(origen)) continue;
 
-            // Buscar vuelo desde la escala al destino
-            List<PlanDeVuelo> vuelosDesdeEscala = world.getVuelosDesde(escala);
+            // No ir al destino final (ya se busco directo antes)
+            if (escala.equals(destino)) continue;
 
-            for (PlanDeVuelo vuelo2 : vuelosDesdeEscala) {
-                if (vuelo2.getAeropuertoDestino().equals(destino)) {
-                    // Encontramos ruta con 1 escala!
+            // Verificar capacidad del primer vuelo
+            if (!vuelo1.tieneCapacidad(cantidad)) continue;
+
+            // Buscar vuelos desde la escala al destino
+            // Puede ser mismo dia o dia siguiente dependiendo de los horarios
+            List<VueloInstancia> vuelosDesdeEscala = worldTemporal.getVuelosDesde(escala, diaRelativo);
+
+            for (VueloInstancia vuelo2 : vuelosDesdeEscala) {
+                if (!vuelo2.getDestino().equals(destino)) continue;
+
+                // Verificar que vuelo2 sale DESPUES de que llega vuelo1
+                if (vuelo2.getSalidaUTC().isBefore(vuelo1.getLlegadaUTC())) {
+                    continue;
+                }
+
+                // Verificar capacidad del segundo vuelo
+                if (!vuelo2.tieneCapacidad(cantidad)) continue;
+
+                // Asignar capacidades
+                if (vuelo1.asignarCapacidad(cantidad) && vuelo2.asignarCapacidad(cantidad)) {
+                    // Crear subruta
                     SubRuta subruta = new SubRuta(origen, cantidad);
 
                     // Primer vuelo
-                    VueloUso uso1 = new VueloUso();
-                    uso1.setPlanVuelo(vuelo1);
-                    uso1.setIndiceDia(0);
-                    uso1.setSalidaUTC(0);
-                    uso1.setLlegadaUTC(60);
+                    VueloUso uso1 = vuelo1.toVueloUso();
                     uso1.setCantidadAsignada(cantidad);
                     subruta.agregarVuelo(uso1);
 
                     // Segundo vuelo
-                    VueloUso uso2 = new VueloUso();
-                    uso2.setPlanVuelo(vuelo2);
-                    uso2.setIndiceDia(0);
-                    uso2.setSalidaUTC(120);
-                    uso2.setLlegadaUTC(180);
+                    VueloUso uso2 = vuelo2.toVueloUso();
                     uso2.setCantidadAsignada(cantidad);
                     subruta.agregarVuelo(uso2);
 
-                    log.debug("Ruta con escala: {} -> {} -> {}", origen, escala, destino);
+                    log.debug("Ruta con escala: {} -> {} -> {} ({} y {})",
+                            origen, escala, destino, vuelo1.getId(), vuelo2.getId());
+
                     return subruta;
+                } else {
+                    // Si fallo la asignacion, liberar lo que se asigno
+                    vuelo1.liberarCapacidad(cantidad);
+                }
+            }
+
+            // Intentar con dia siguiente si no encontro
+            if (diaRelativo + 1 < worldTemporal.getNumeroDias()) {
+                List<VueloInstancia> vuelosDiaSiguiente = worldTemporal.getVuelosDesde(escala, diaRelativo + 1);
+
+                for (VueloInstancia vuelo2 : vuelosDiaSiguiente) {
+                    if (!vuelo2.getDestino().equals(destino)) continue;
+
+                    // Verificar capacidad
+                    if (!vuelo2.tieneCapacidad(cantidad)) continue;
+
+                    // Asignar capacidades
+                    if (vuelo1.asignarCapacidad(cantidad) && vuelo2.asignarCapacidad(cantidad)) {
+                        SubRuta subruta = new SubRuta(origen, cantidad);
+
+                        VueloUso uso1 = vuelo1.toVueloUso();
+                        uso1.setCantidadAsignada(cantidad);
+                        subruta.agregarVuelo(uso1);
+
+                        VueloUso uso2 = vuelo2.toVueloUso();
+                        uso2.setCantidadAsignada(cantidad);
+                        subruta.agregarVuelo(uso2);
+
+                        log.debug("Ruta con escala (dia siguiente): {} -> {} -> {}",
+                                origen, escala, destino);
+
+                        return subruta;
+                    } else {
+                        vuelo1.liberarCapacidad(cantidad);
+                    }
                 }
             }
         }

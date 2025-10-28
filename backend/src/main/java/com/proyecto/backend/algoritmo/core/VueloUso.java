@@ -29,6 +29,9 @@ public class VueloUso {
     // Cantidad de productos asignados a este vuelo
     private int cantidadAsignada;
 
+    // ID completo con fecha (opcional, se usa cuando se crea desde VueloInstancia)
+    private String idCompleto;
+
     /**
      * Constructor simplificado
      *
@@ -76,9 +79,18 @@ public class VueloUso {
     /**
      * Genera un identificador unico para este vuelo
      *
-     * @return ID en formato ORIGEN-DESTINO-D{dia}-HHMM
+     * Si se creo desde VueloInstancia, usa el ID completo con fecha
+     * Sino, usa el formato antiguo con dia relativo
+     *
+     * @return ID en formato ORIGEN-DESTINO-YYYYMMDD-HHMM o ORIGEN-DESTINO-D{dia}-HHMM
      */
     public String generarId() {
+        // Si tiene ID completo (desde VueloInstancia), usarlo
+        if (idCompleto != null && !idCompleto.isEmpty()) {
+            return idCompleto;
+        }
+
+        // Fallback: formato antiguo con dia relativo
         int minutos = salidaUTC % 1440;
         if (minutos < 0) minutos += 1440;
         int horas = minutos / 60;

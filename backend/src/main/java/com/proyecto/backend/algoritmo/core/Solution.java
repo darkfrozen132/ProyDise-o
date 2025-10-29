@@ -15,6 +15,12 @@ import java.util.Map;
 @Data
 public class Solution {
 
+    // Pesos de la funcion fitness (configurables)
+    public static final double PESO_PEDIDO_A_TIEMPO = 100.0;      // Recompensa por entrega a tiempo
+    public static final double PESO_PEDIDO_TARDE = -50.0;         // Penalizacion por entrega tarde
+    public static final double PESO_PEDIDO_NO_ENTREGADO = -200.0; // Penalizacion fuerte por no entrega
+    public static final double PESO_VIOLACION_CAPACIDAD = -1000.0; // Penalizacion critica
+
     // Rutas planificadas por pedido
     private Map<Pedido, List<SubRuta>> rutas;
 
@@ -161,6 +167,44 @@ public class Solution {
                     break;
             }
         }
+    }
+
+    /**
+     * Calcula la funcion fitness (objetivo) de la solucion
+     *
+     * Formula:
+     *   fitness = w1 * pedidos_a_tiempo + w2 * pedidos_tarde + w3 * pedidos_no_entregados + w4 * violaciones
+     *
+     * Donde:
+     *   w1 = +100 (recompensa por entrega a tiempo)
+     *   w2 = -50  (penalizacion media por entrega tarde)
+     *   w3 = -200 (penalizacion fuerte por no entrega)
+     *   w4 = -1000 (penalizacion critica por violacion de capacidad)
+     *
+     * Objetivo: MAXIMIZAR fitness
+     *
+     * Ejemplos:
+     *   - 10 pedidos a tiempo, 0 tarde, 0 no entregados: fitness = 1000
+     *   - 8 a tiempo, 2 tarde, 0 no entregados: fitness = 800 - 100 = 700
+     *   - 5 a tiempo, 2 tarde, 3 no entregados: fitness = 500 - 100 - 600 = -200
+     *   - 10 a tiempo con 1 violacion: fitness = 1000 - 1000 = 0 (invalida)
+     */
+    public void calcularFitness() {
+        this.objetivo =
+            (pedidosATiempo * PESO_PEDIDO_A_TIEMPO) +
+            (pedidosTarde * PESO_PEDIDO_TARDE) +
+            (pedidosNoEntregados * PESO_PEDIDO_NO_ENTREGADO) +
+            (violacionesCapacidad * PESO_VIOLACION_CAPACIDAD);
+    }
+
+    /**
+     * Calcula metricas y fitness en un solo paso
+     *
+     * @param calculador Calculador de plazos de entrega
+     */
+    public void calcularMetricasYFitness(CalculadorPlazos calculador) {
+        calcularMetricas(calculador);
+        calcularFitness();
     }
 
     /**

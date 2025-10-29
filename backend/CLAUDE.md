@@ -146,8 +146,13 @@ spring.jpa.database-platform=org.hibernate.dialect.MySQLDialect
 - ✅ Clasificacion de pedidos: EstadoEntrega (A_TIEMPO, TARDE, NO_ENTREGADO)
 - ✅ Solution.calcularMetricas(): Metricas automaticas de entrega
 
+- ✅ Funcion fitness completa con pesos configurables
+  - Pedidos a tiempo: +100 puntos
+  - Pedidos tarde: -50 puntos
+  - Pedidos no entregados: -200 puntos
+  - Violaciones capacidad: -1000 puntos
+
 **Pendiente de Implementar:**
-- ❌ Funcion fitness completa (pesos para a_tiempo, tarde, no_entregado)
 - ❌ DecodificadorGenetico: Expansion greedy con heuristica de pesos
 - ❌ Operadores geneticos (cruce, mutacion, elitismo)
 - ❌ Loop evolutivo (poblacion, generaciones)

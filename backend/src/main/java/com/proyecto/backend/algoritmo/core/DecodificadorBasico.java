@@ -105,15 +105,12 @@ public class DecodificadorBasico {
 
         log.info("Rutas generadas: {}, fallidas: {}", rutasGeneradas, rutasFallidas);
 
-        // Calcular metricas de entrega (a tiempo, tarde, no entregados)
-        solucion.calcularMetricas(calculadorPlazos);
+        // Calcular metricas de entrega y fitness
+        solucion.calcularMetricasYFitness(calculadorPlazos);
 
-        log.info("Metricas calculadas: {} a tiempo, {} tarde, {} no entregados",
-                solucion.getPedidosATiempo(), solucion.getPedidosTarde(), solucion.getPedidosNoEntregados());
-
-        // Calcular objetivo basico (por ahora solo el numero de rutas)
-        // TODO: implementar funcion fitness completa
-        solucion.setObjetivo(rutasGeneradas * 1.0);
+        log.info("Metricas calculadas: {} a tiempo, {} tarde, {} no entregados, fitness = {}",
+                solucion.getPedidosATiempo(), solucion.getPedidosTarde(),
+                solucion.getPedidosNoEntregados(), String.format("%.2f", solucion.getObjetivo()));
 
         return solucion;
     }

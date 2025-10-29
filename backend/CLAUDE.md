@@ -29,11 +29,14 @@ backend/
 │   │   │   ├── World.java              # Cache inmutable (templates)
 │   │   │   ├── WorldTemporal.java      # Expansion temporal por request
 │   │   │   ├── VueloInstancia.java     # Instancia concreta con fecha/UTC
+│   │   │   ├── ControladorAlmacenes.java # Control temporal de almacenes (slots)
+│   │   │   ├── CalculadorPlazos.java   # Calculo de plazos de entrega
+│   │   │   ├── EstadoEntrega.java      # Enum (A_TIEMPO, TARDE, NO_ENTREGADO)
 │   │   │   ├── Chromosome.java         # Cromosoma del AG
 │   │   │   ├── Solution.java           # Solucion planificada
 │   │   │   ├── SubRuta.java            # Subruta de un pedido
 │   │   │   ├── VueloUso.java           # Uso concreto de un vuelo
-│   │   │   └── DecodificadorBasico.java # Greedy simple (v1)
+│   │   │   └── DecodificadorBasico.java # Greedy simple (v2)
 │   │   ├── dto/            # DTOs del algoritmo
 │   │   │   ├── request/
 │   │   │   │   └── PlanificacionRequest.java
@@ -123,21 +126,29 @@ spring.jpa.database-platform=org.hibernate.dialect.MySQLDialect
 
 ## Estado Actual del Algoritmo Genetico
 
-### Version Implementada: v1 - Greedy Basico
+### Version Implementada: v3 - Greedy con BFS Multi-Escalas
 
 **Funcionando:**
 - ✅ WorldTemporal: Expande templates de vuelos por horizonte temporal (7 dias)
 - ✅ VueloInstancia: Conversiones UTC correctas, control de capacidad individual
-- ✅ DecodificadorBasico: Greedy simple (directo + 1 escala)
+- ✅ DecodificadorBasico: Busqueda BFS para rutas con hasta 3 escalas
+  - Busqueda generalizada con Queue (BFS)
+  - Configurable con MAX_ESCALAS = 3
+  - Verifica capacidades de vuelos y almacenes en cada paso
+  - Retorna primera ruta válida (greedy)
 - ✅ IDs con fecha completa: ORIGEN-DESTINO-YYYYMMDD-HHMM
 - ✅ API REST funcional con DTOs correctos
+- ✅ ControladorAlmacenes: Control de capacidad temporal con difference arrays
+  - Slots de 60 minutos para rastrear ocupacion
+  - Verifica almacenes intermedios y destino
+  - Hubs con capacidad ilimitada
+- ✅ CalculadorPlazos: Calculo de plazos de entrega (2/3 dias segun continente)
+- ✅ Clasificacion de pedidos: EstadoEntrega (A_TIEMPO, TARDE, NO_ENTREGADO)
+- ✅ Solution.calcularMetricas(): Metricas automaticas de entrega
 
 **Pendiente de Implementar:**
-- ❌ StockTracker: Control de capacidad de almacenes (difference arrays)
-- ❌ Calculo de plazos de entrega (2/3 dias segun continente)
-- ❌ Clasificacion de pedidos (a tiempo/tarde/no entregado)
+- ❌ Funcion fitness completa (pesos para a_tiempo, tarde, no_entregado)
 - ❌ DecodificadorGenetico: Expansion greedy con heuristica de pesos
-- ❌ Funcion fitness completa
 - ❌ Operadores geneticos (cruce, mutacion, elitismo)
 - ❌ Loop evolutivo (poblacion, generaciones)
 

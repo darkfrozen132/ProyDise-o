@@ -131,6 +131,39 @@ public class Solution {
     }
 
     /**
+     * Calcula las metricas de entrega usando el CalculadorPlazos
+     * Clasifica cada pedido como: a tiempo, tarde, o no entregado
+     *
+     * @param calculador Calculador de plazos de entrega
+     */
+    public void calcularMetricas(CalculadorPlazos calculador) {
+        // Reiniciar contadores
+        this.pedidosATiempo = 0;
+        this.pedidosTarde = 0;
+        this.pedidosNoEntregados = 0;
+
+        // Clasificar cada pedido
+        for (Map.Entry<Pedido, List<SubRuta>> entry : rutas.entrySet()) {
+            Pedido pedido = entry.getKey();
+            List<SubRuta> subrutas = entry.getValue();
+
+            EstadoEntrega estado = calculador.calcularEstadoEntrega(pedido, subrutas);
+
+            switch (estado) {
+                case ENTREGADO_A_TIEMPO:
+                    pedidosATiempo++;
+                    break;
+                case ENTREGADO_TARDE:
+                    pedidosTarde++;
+                    break;
+                case NO_ENTREGADO:
+                    pedidosNoEntregados++;
+                    break;
+            }
+        }
+    }
+
+    /**
      * Verifica si la solucion es factible (sin violaciones criticas)
      *
      * @return true si no hay violaciones de capacidad

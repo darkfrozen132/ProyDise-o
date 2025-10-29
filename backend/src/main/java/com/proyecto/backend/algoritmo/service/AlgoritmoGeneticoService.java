@@ -66,9 +66,21 @@ public class AlgoritmoGeneticoService {
         WorldTemporal worldTemporal = new WorldTemporal(world, request.getFecha(), numeroDias);
         log.info("WorldTemporal creado: {}", worldTemporal.getEstadisticas());
 
+        // Crear controlador de almacenes para rastrear ocupacion
+        LocalDateTime fechaBaseUTC = LocalDateTime.of(request.getFecha(), LocalTime.MIDNIGHT);
+        ControladorAlmacenes controladorAlmacenes = new ControladorAlmacenes(numeroDias, fechaBaseUTC);
+
+        // Registrar todos los aeropuertos con sus capacidades
+        for (Aeropuerto aeropuerto : world.getAeropuertos().values()) {
+            // Hubs tienen capacidad 0 (ilimitada), otros tienen su capacidad real
+            int capacidad = aeropuerto.tieneStockIlimitado() ? 0 : aeropuerto.getCapacidadAlmacen();
+            controladorAlmacenes.registrarAeropuerto(aeropuerto.getCodigoICAO(), capacidad);
+        }
+        log.info("ControladorAlmacenes: {}", controladorAlmacenes.obtenerEstadisticas());
+
         // Generar solucion usando decodificador basico (greedy)
         // TODO: Implementar algoritmo genetico completo
-        DecodificadorBasico decodificador = new DecodificadorBasico(worldTemporal);
+        DecodificadorBasico decodificador = new DecodificadorBasico(worldTemporal, controladorAlmacenes);
         Solution solucion = decodificador.generarSolucion(pedidos);
 
         // Log estadisticas finales

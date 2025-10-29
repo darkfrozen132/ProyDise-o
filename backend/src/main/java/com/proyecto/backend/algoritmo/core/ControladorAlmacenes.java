@@ -286,6 +286,25 @@ public class ControladorAlmacenes {
     }
 
     /**
+     * Limpia todas las reservas de almacenes
+     * Usado por el algoritmo genetico para evaluar diferentes soluciones
+     */
+    public void limpiar() {
+        for (Almacen almacen : almacenes.values()) {
+            // Resetear difference array
+            for (int i = 0; i < almacen.delta.length; i++) {
+                almacen.delta[i] = 0;
+            }
+            // Resetear prefix sum
+            for (int i = 0; i < almacen.pref.length; i++) {
+                almacen.pref[i] = 0;
+            }
+            almacen.sucio = false;
+        }
+        log.trace("Todas las reservas de almacenes limpiadas");
+    }
+
+    /**
      * Obtiene estadisticas del controlador
      *
      * @return String con estadisticas

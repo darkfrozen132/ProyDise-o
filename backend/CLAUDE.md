@@ -32,11 +32,13 @@ backend/
 │   │   │   ├── ControladorAlmacenes.java # Control temporal de almacenes (slots)
 │   │   │   ├── CalculadorPlazos.java   # Calculo de plazos de entrega
 │   │   │   ├── EstadoEntrega.java      # Enum (A_TIEMPO, TARDE, NO_ENTREGADO)
+│   │   │   ├── BuscadorRutas.java      # Busqueda BFS de rutas (reutilizable)
 │   │   │   ├── Chromosome.java         # Cromosoma del AG
 │   │   │   ├── Solution.java           # Solucion planificada
 │   │   │   ├── SubRuta.java            # Subruta de un pedido
 │   │   │   ├── VueloUso.java           # Uso concreto de un vuelo
-│   │   │   └── DecodificadorBasico.java # Greedy simple (v2)
+│   │   │   ├── DecodificadorBasico.java    # Greedy simple (v3)
+│   │   │   └── DecodificadorGenetico.java  # Greedy con prioridades del AG
 │   │   ├── dto/            # DTOs del algoritmo
 │   │   │   ├── request/
 │   │   │   │   └── PlanificacionRequest.java
@@ -126,7 +128,7 @@ spring.jpa.database-platform=org.hibernate.dialect.MySQLDialect
 
 ## Estado Actual del Algoritmo Genetico
 
-### Version Implementada: v3 - Greedy con BFS Multi-Escalas
+### Version Implementada: v4 - Algoritmo Genetico Completo
 
 **Funcionando:**
 - ✅ WorldTemporal: Expande templates de vuelos por horizonte temporal (7 dias)
@@ -151,11 +153,28 @@ spring.jpa.database-platform=org.hibernate.dialect.MySQLDialect
   - Pedidos tarde: -50 puntos
   - Pedidos no entregados: -200 puntos
   - Violaciones capacidad: -1000 puntos
+- ✅ BuscadorRutas: Logica BFS encapsulada y reutilizable
+- ✅ DecodificadorGenetico: Greedy con prioridades de cromosoma
+  - Interpreta genes como prioridades de pedidos
+  - Ordena pedidos por prioridad descendente
+  - Asigna rutas greedy respetando orden
+  - Calcula fitness automáticamente
+- ✅ Loop Evolutivo Completo (AlgoritmoGeneticoService)
+  - Población: 50 individuos
+  - Generaciones: hasta 200 (o 40 sin mejora)
+  - Selección: Torneo de 3 individuos
+  - Cruce: Uniforme (80% probabilidad)
+  - Mutación: Gaussiana (5% probabilidad)
+  - Elitismo: 4 mejores preservados
+  - Logs detallados de evolución
 
-**Pendiente de Implementar:**
-- ❌ DecodificadorGenetico: Expansion greedy con heuristica de pesos
-- ❌ Operadores geneticos (cruce, mutacion, elitismo)
-- ❌ Loop evolutivo (poblacion, generaciones)
+**🎉 Algoritmo Genetico 100% Implementado**
+
+**Mejoras Futuras Opcionales:**
+- Operadores avanzados (cruce de dos puntos, mutación adaptativa)
+- Paralelización de evaluación de población
+- Diversidad poblacional (prevenir convergencia prematura)
+- Algoritmos híbridos (búsqueda local post-AG)
 
 ### Reglas de Negocio
 
@@ -178,15 +197,23 @@ Hubs: ILIMITADO (SPIM, EBCI, UBBB)
 Por defecto: 7 dias (calculado dinamicamente)
 ```
 
-### Parametros del Algoritmo Genetico (Futuros)
+### Parametros del Algoritmo Genetico (Configurados)
 
 ```java
-MAX_GEN = 200                 // Generaciones maximas
-NO_IMPROV_LIMIT = 40          // Parar si 40 gen sin mejora
-TAMANIO_POBLACION = 50-100    // Cromosomas por generacion
-ELITE_K = 4                   // Mejores preservados
-PCROSS = 0.8                  // Probabilidad de cruce
-PMUT = 0.05                   // Probabilidad de mutacion
+// Poblacion y generaciones
+TAMANIO_POBLACION = 50        // Individuos por generacion
+MAX_GENERACIONES = 200        // Generaciones maximas
+NO_MEJORA_LIMITE = 40         // Parar si 40 gen sin mejora
+
+// Operadores geneticos
+PROB_CRUCE = 0.8              // Probabilidad de cruce (80%)
+PROB_MUTACION = 0.05          // Probabilidad de mutacion (5%)
+ELITE_K = 4                   // Mejores preservados (elitismo)
+TAMANIO_TORNEO = 3            // Individuos en seleccion por torneo
+
+// Representacion cromosoma
+1 gen por pedido              // Gen = prioridad del pedido [0, 1]
+Mayor valor = mayor prioridad // Se procesa primero greedy
 ```
 
 ## Contribucion

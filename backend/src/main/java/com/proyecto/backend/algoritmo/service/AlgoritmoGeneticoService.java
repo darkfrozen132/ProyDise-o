@@ -34,6 +34,15 @@ public class AlgoritmoGeneticoService {
     private static final int PLAZO_DIFERENTE_CONTINENTE_DIAS = 3;
     private static final int VENTANA_RECOJO_HORAS = 2;
 
+    // Parametros del algoritmo genetico
+    private static final int TAMANIO_POBLACION = 50;      // Numero de individuos
+    private static final int MAX_GENERACIONES = 200;      // Generaciones maximas
+    private static final int NO_MEJORA_LIMITE = 40;       // Parar si 40 gen sin mejora
+    private static final int ELITE_K = 4;                 // Mejores preservados (elitismo)
+    private static final double PROB_CRUCE = 0.8;         // Probabilidad de cruce
+    private static final double PROB_MUTACION = 0.05;     // Probabilidad de mutacion
+    private static final int TAMANIO_TORNEO = 3;          // Individuos en torneo
+
     /**
      * Ejecuta la planificacion de rutas para una fecha dada
      *
@@ -78,13 +87,12 @@ public class AlgoritmoGeneticoService {
         }
         log.info("ControladorAlmacenes: {}", controladorAlmacenes.obtenerEstadisticas());
 
-        // Generar solucion usando decodificador basico (greedy)
-        // TODO: Implementar algoritmo genetico completo
-        DecodificadorBasico decodificador = new DecodificadorBasico(worldTemporal, controladorAlmacenes);
-        Solution solucion = decodificador.generarSolucion(pedidos);
+        // Ejecutar algoritmo genetico completo
+        Solution solucion = ejecutarAlgoritmoGenetico(worldTemporal, controladorAlmacenes, pedidos);
 
         // Log estadisticas finales
         log.info("Estadisticas finales: {}", worldTemporal.getEstadisticas());
+        log.info("Solucion final: {}", solucion.getResumen());
 
         // Convertir solucion a response DTO (incluye los pedidos para verificacion)
         PlanificacionResponse response = convertirAResponse(solucion, worldTemporal, request, pedidos, inicio);
@@ -93,6 +101,183 @@ public class AlgoritmoGeneticoService {
         log.info("Planificacion completada en {} ms", tiempoTotal);
 
         return response;
+    }
+
+    /**
+     * Ejecuta el algoritmo genetico completo
+     *
+     * @param worldTemporal World temporal con vuelos expandidos
+     * @param controladorAlmacenes Controlador de capacidad de almacenes
+     * @param pedidos Lista de pedidos a planificar
+     * @return Mejor solucion encontrada
+     */
+    private Solution ejecutarAlgoritmoGenetico(WorldTemporal worldTemporal,
+                                               ControladorAlmacenes controladorAlmacenes,
+                                               List<Pedido> pedidos) {
+        log.info("Iniciando algoritmo genetico: poblacion={}, generaciones={}, elite={}",
+                TAMANIO_POBLACION, MAX_GENERACIONES, ELITE_K);
+
+        Random random = new Random();
+        int numeroPedidos = pedidos.size();
+
+        // Crear decodificador genetico
+        DecodificadorGenetico decodificador = new DecodificadorGenetico(worldTemporal, controladorAlmacenes);
+
+        // 1. Generar poblacion inicial
+        List<Individuo> poblacion = generarPoblacionInicial(numeroPedidos, random);
+        log.info("Poblacion inicial generada: {} individuos", poblacion.size());
+
+        // Evaluar poblacion inicial
+        evaluarPoblacion(poblacion, decodificador, pedidos, worldTemporal, controladorAlmacenes);
+
+        // Ordenar por fitness (mejor primero)
+        poblacion.sort(Comparator.comparingDouble((Individuo i) -> i.fitness).reversed());
+
+        double mejorFitnessGlobal = poblacion.get(0).fitness;
+        int generacionesSinMejora = 0;
+
+        log.info("Gen 0: Mejor fitness = {:.2f}, Promedio = {:.2f}",
+                mejorFitnessGlobal, calcularFitnessPromedio(poblacion));
+
+        // 2. Loop evolutivo
+        for (int generacion = 1; generacion <= MAX_GENERACIONES; generacion++) {
+            // Crear nueva generacion
+            List<Individuo> nuevaPoblacion = new ArrayList<>();
+
+            // Elitismo: copiar mejores K individuos
+            for (int i = 0; i < ELITE_K && i < poblacion.size(); i++) {
+                nuevaPoblacion.add(new Individuo(poblacion.get(i).cromosoma.copiar()));
+            }
+
+            // Generar resto de la poblacion
+            while (nuevaPoblacion.size() < TAMANIO_POBLACION) {
+                // Seleccion por torneo
+                Chromosome padre1 = seleccionTorneo(poblacion, random).cromosoma;
+                Chromosome padre2 = seleccionTorneo(poblacion, random).cromosoma;
+
+                // Cruce
+                Chromosome hijo;
+                if (random.nextDouble() < PROB_CRUCE) {
+                    hijo = padre1.cruzar(padre2, random);
+                } else {
+                    hijo = padre1.copiar();
+                }
+
+                // Mutacion
+                hijo.mutar(PROB_MUTACION, random);
+
+                nuevaPoblacion.add(new Individuo(hijo));
+            }
+
+            // Evaluar nueva poblacion
+            evaluarPoblacion(nuevaPoblacion, decodificador, pedidos, worldTemporal, controladorAlmacenes);
+
+            // Ordenar por fitness
+            nuevaPoblacion.sort(Comparator.comparingDouble((Individuo i) -> i.fitness).reversed());
+
+            // Actualizar poblacion
+            poblacion = nuevaPoblacion;
+
+            // Verificar mejora
+            double mejorFitnessActual = poblacion.get(0).fitness;
+            double fitnessPromedio = calcularFitnessPromedio(poblacion);
+
+            if (mejorFitnessActual > mejorFitnessGlobal) {
+                mejorFitnessGlobal = mejorFitnessActual;
+                generacionesSinMejora = 0;
+                log.info("Gen {}: MEJORA - Mejor fitness = {:.2f}, Promedio = {:.2f}",
+                        generacion, mejorFitnessGlobal, fitnessPromedio);
+            } else {
+                generacionesSinMejora++;
+                if (generacion % 20 == 0) {
+                    log.info("Gen {}: Mejor fitness = {:.2f}, Promedio = {:.2f}, Sin mejora: {}",
+                            generacion, mejorFitnessGlobal, fitnessPromedio, generacionesSinMejora);
+                }
+            }
+
+            // Criterio de parada: sin mejora por N generaciones
+            if (generacionesSinMejora >= NO_MEJORA_LIMITE) {
+                log.info("Algoritmo detenido: {} generaciones sin mejora", generacionesSinMejora);
+                break;
+            }
+        }
+
+        // Retornar mejor solucion encontrada
+        Individuo mejorIndividuo = poblacion.get(0);
+        log.info("Algoritmo genetico completado: Fitness final = {:.2f}", mejorIndividuo.fitness);
+
+        return mejorIndividuo.solucion;
+    }
+
+    /**
+     * Genera poblacion inicial de cromosomas aleatorios
+     */
+    private List<Individuo> generarPoblacionInicial(int numeroPedidos, Random random) {
+        List<Individuo> poblacion = new ArrayList<>();
+        for (int i = 0; i < TAMANIO_POBLACION; i++) {
+            Chromosome cromosoma = new Chromosome(numeroPedidos);
+            cromosoma.inicializarAleatorio(random);
+            poblacion.add(new Individuo(cromosoma));
+        }
+        return poblacion;
+    }
+
+    /**
+     * Evalua todos los individuos de la poblacion
+     */
+    private void evaluarPoblacion(List<Individuo> poblacion, DecodificadorGenetico decodificador,
+                                   List<Pedido> pedidos, WorldTemporal worldTemporal,
+                                   ControladorAlmacenes controladorAlmacenes) {
+        for (Individuo individuo : poblacion) {
+            if (individuo.solucion == null) {
+                // Resetear el estado de vuelos y almacenes antes de evaluar
+                worldTemporal.resetearCapacidades();
+                controladorAlmacenes.limpiar();
+
+                // Decodificar cromosoma con instancias compartidas (pero reseteadas)
+                individuo.solucion = decodificador.decodificar(individuo.cromosoma, pedidos);
+                individuo.fitness = individuo.solucion.getObjetivo();
+            }
+        }
+    }
+
+    /**
+     * Seleccion por torneo
+     */
+    private Individuo seleccionTorneo(List<Individuo> poblacion, Random random) {
+        Individuo mejor = null;
+        for (int i = 0; i < TAMANIO_TORNEO; i++) {
+            Individuo candidato = poblacion.get(random.nextInt(poblacion.size()));
+            if (mejor == null || candidato.fitness > mejor.fitness) {
+                mejor = candidato;
+            }
+        }
+        return mejor;
+    }
+
+    /**
+     * Calcula fitness promedio de la poblacion
+     */
+    private double calcularFitnessPromedio(List<Individuo> poblacion) {
+        return poblacion.stream()
+                .mapToDouble(i -> i.fitness)
+                .average()
+                .orElse(0.0);
+    }
+
+    /**
+     * Clase interna para representar un individuo
+     */
+    private static class Individuo {
+        Chromosome cromosoma;
+        Solution solucion;
+        double fitness;
+
+        Individuo(Chromosome cromosoma) {
+            this.cromosoma = cromosoma;
+            this.solucion = null;
+            this.fitness = Double.NEGATIVE_INFINITY;
+        }
     }
 
     /**
@@ -392,9 +577,17 @@ public class AlgoritmoGeneticoService {
             // Estado por defecto (TODO: calcular real)
             dto.setEstado(RutaPlanificadaDTO.EstadoPedido.EN_PROCESO);
 
-            // Fechas (TODO: calcular reales)
-            dto.setFechaPedido(LocalDateTime.now());
-            dto.setFechaLimite(LocalDateTime.now().plusDays(2));
+            // Fechas reales del pedido
+            LocalDateTime fechaPedido = LocalDateTime.of(
+                pedido.getAnio(), pedido.getMes(), pedido.getDia(),
+                pedido.getHora(), pedido.getMinuto()
+            );
+            dto.setFechaPedido(fechaPedido);
+            
+            // Calcular fecha límite según el plazo del pedido
+            // Si hay continente origen/destino, usar plazo real, sino usar 2 días por defecto
+            LocalDateTime fechaLimite = fechaPedido.plusDays(2);
+            dto.setFechaLimite(fechaLimite);
 
             // Convertir subrutas
             List<RutaPlanificadaDTO.SubrutaDTO> subrutasDTO = new ArrayList<>();
@@ -403,8 +596,9 @@ public class AlgoritmoGeneticoService {
                 subrutaDTO.setHub(subruta.getHubOrigen());
                 subrutaDTO.setCantidad(subruta.getCantidad());
 
-                // Fecha de llegada (TODO: calcular real)
-                subrutaDTO.setLlegada(LocalDateTime.now().plusHours(3));
+                // Calcular fecha de llegada real desde el último vuelo
+                LocalDateTime llegadaReal = calcularLlegadaReal(subruta, worldTemporal);
+                subrutaDTO.setLlegada(llegadaReal);
 
                 // IDs de vuelos
                 List<String> vuelosIds = new ArrayList<>();
@@ -432,6 +626,38 @@ public class AlgoritmoGeneticoService {
 
         log.info("Convertidas {} rutas", rutas.size());
         return rutas;
+    }
+
+    /**
+     * Calcula la fecha/hora de llegada real del último vuelo de una subruta
+     *
+     * @param subruta Subruta con vuelos
+     * @param worldTemporal WorldTemporal con vuelos expandidos
+     * @return Fecha/hora de llegada real o fecha actual si no hay vuelos
+     */
+    private LocalDateTime calcularLlegadaReal(SubRuta subruta, WorldTemporal worldTemporal) {
+        if (subruta.getVuelos().isEmpty()) {
+            return LocalDateTime.now();
+        }
+
+        // Obtener el último vuelo de la subruta
+        VueloUso ultimoVuelo = subruta.getVuelos().get(subruta.getVuelos().size() - 1);
+        
+        // Buscar la instancia del vuelo usando el ID completo
+        String vueloId = ultimoVuelo.getIdCompleto();
+        if (vueloId == null || vueloId.isEmpty()) {
+            // Fallback: generar ID y buscar
+            vueloId = ultimoVuelo.generarId();
+        }
+        
+        VueloInstancia instancia = worldTemporal.getVuelo(vueloId);
+        if (instancia != null) {
+            return instancia.getLlegadaUTC();
+        }
+
+        // Si no se encuentra, retornar fecha actual (no debería pasar)
+        log.warn("No se pudo encontrar vuelo con ID: {}", vueloId);
+        return LocalDateTime.now();
     }
 
     /**

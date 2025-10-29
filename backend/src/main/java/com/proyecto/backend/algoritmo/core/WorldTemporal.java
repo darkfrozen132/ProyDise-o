@@ -263,6 +263,17 @@ public class WorldTemporal {
     }
 
     /**
+     * Resetea las capacidades de todos los vuelos expandidos
+     * Usado por el algoritmo genetico para evaluar diferentes soluciones
+     */
+    public void resetearCapacidades() {
+        for (VueloInstancia vuelo : vuelosExpandidos.values()) {
+            vuelo.resetearCapacidad();
+        }
+        log.trace("Capacidades de {} vuelos reseteadas", vuelosExpandidos.size());
+    }
+
+    /**
      * Obtiene estadisticas del WorldTemporal
      *
      * @return String con estadisticas

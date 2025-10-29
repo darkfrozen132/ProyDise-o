@@ -234,6 +234,14 @@ public class VueloInstancia {
     }
 
     /**
+     * Resetea la capacidad usada a 0
+     * Usado por el algoritmo genetico para evaluar diferentes soluciones
+     */
+    public void resetearCapacidad() {
+        capacidadUsada = 0;
+    }
+
+    /**
      * Obtiene la capacidad restante
      *
      * @return Capacidad restante

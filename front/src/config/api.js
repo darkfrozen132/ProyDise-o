@@ -1,6 +1,8 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://127.0.0.1:8080/api';
+// En desarrollo, el proxy redirige /api a http://127.0.0.1:8080/api
+// En producción, debes configurar la URL completa
+const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,

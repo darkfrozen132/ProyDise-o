@@ -1,353 +1,307 @@
 package com.proyecto.backend.planificador.service;
 
-import com.proyecto.backend.planificador.dto.SimulacionEstadoDTO;
-import com.proyecto.backend.service.VueloTrackingService;
+import com.proyecto.backend.planificador.semanal.dto.request.PlanificacionRequest;
+import com.proyecto.backend.planificador.semanal.dto.response.PlanificacionResponse;
+import com.proyecto.backend.planificador.semanal.dto.sse.EventoTickDTO;
+import com.proyecto.backend.planificador.semanal.dto.sse.SimulacionEstadoDTO;
+import com.proyecto.backend.planificador.semanal.service.AlgoritmoGeneticoService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.io.IOException;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
- * Orquestador de la simulación en tiempo real
+ * Orquestador de simulación incremental con SSE
  * 
- * Constantes principales:
- * - TIME_SCALE: Cuántos minutos simulados equivalen a 1 segundo real (default: 60.0)
- * - INTERVALO_TICK_MS: Cada cuántos milisegundos se ejecuta un tick (default: 1000ms)
- * - TIEMPO_PROCESAMIENTO_MS: Tiempo reservado para que el algoritmo procese (default: 800ms)
+ * Ejecuta el algoritmo genético de forma incremental:
+ * - Tick 1: Planifica [0-5 min]
+ * - Tick 2: Planifica [0-10 min]
+ * - Tick 3: Planifica [0-15 min]
+ * ...
  * 
- * Funcionamiento:
- * - Cada 1 segundo real = 60 minutos simulados (1 hora simulada)
- * - Ejecuta el algoritmo genético cada tick
- * - Permite pausar/reanudar/detener la simulación
+ * Envía resultados en tiempo real mediante Server-Sent Events (SSE)
  */
 @Service
-@Slf4j
 @RequiredArgsConstructor
+@Slf4j
 public class SimulacionOrchestrator {
-
-    // ⭐ Servicio de tracking de vuelos
-    private final VueloTrackingService vueloTrackingService;
-
-    // ==================== CONSTANTES DE SIMULACIÓN ====================
+    
+    private final AlgoritmoGeneticoService algoritmoGeneticoService;
+    
+    // Clientes SSE conectados (thread-safe)
+    private final CopyOnWriteArrayList<SseEmitter> emitters = new CopyOnWriteArrayList<>();
+    
+    // Estado de la simulación
+    private volatile boolean activa = false;
+    private Thread simulacionThread;
+    
+    // Parámetros de la simulación actual
+    private LocalDate fechaInicio;
+    private LocalDateTime inicioSimulacion;
+    private int minutoActual = 0;
+    private int saltoMinutos = 5;  // Sa (step algorithm)
+    private int tickActual = 0;
+    private int tamanioPoblacion = 50;
+    private int maxGeneraciones = 200;
+    
+    // Configuración
+    private static final long INTERVALO_TICK_MS = 1000;  // 1 segundo entre ticks
+    private static final int LIMITE_MINUTOS = 1440;      // 24 horas
+    private static final long SSE_TIMEOUT = 30 * 60 * 1000; // 30 minutos
     
     /**
-     * TIME_SCALE: Cuántos minutos simulados equivalen a 1 segundo real
-     * Ejemplo: 60.0 significa que cada segundo real = 60 minutos simulados (1 hora)
-     *          120.0 significa que cada segundo real = 120 minutos simulados (2 horas)
+     * Inicia la simulación incremental
+     * 
+     * @param fecha Fecha de inicio de la planificación
+     * @param saltoMinutos Incremento en minutos por cada tick (Sa)
+     * @param tamanioPoblacion Tamaño de la población del algoritmo genético
+     * @param maxGeneraciones Máximo de generaciones del algoritmo genético
      */
-    private static final double TIME_SCALE = 60.0;  // ⭐ 1 segundo real = 1 hora simulada
-    
-    /**
-     * INTERVALO_TICK_MS: Cada cuántos milisegundos se ejecuta un tick de simulación
-     * 1000ms = 1 segundo real
-     */
-    private static final long INTERVALO_TICK_MS = 1000;
-    
-    /**
-     * TIEMPO_PROCESAMIENTO_MS: Tiempo reservado para que el algoritmo procese
-     * Debe ser menor que INTERVALO_TICK_MS para evitar solapamientos
-     */
-    private static final long TIEMPO_PROCESAMIENTO_MS = 800;
-    
-    // ==================== ESTADO DE LA SIMULACIÓN ====================
-    
-    private final AtomicBoolean simulacionActiva = new AtomicBoolean(false);
-    private final AtomicInteger tickActual = new AtomicInteger(0);
-    private final AtomicLong tiempoInicioMs = new AtomicLong(0);
-    
-    private LocalDateTime horaSimulacionActual;
-    
-    // Estadísticas
-    private final AtomicInteger totalPedidosProcesados = new AtomicInteger(0);
-    private final AtomicInteger pedidosATiempo = new AtomicInteger(0);
-    private final AtomicInteger pedidosTarde = new AtomicInteger(0);
-    
-    // ⭐ Controller para enviar eventos SSE
-    private com.proyecto.backend.planificador.controller.SimulacionController simulacionController;
-    
-    /**
-     * Método para inyectar el controller (evita dependencia circular)
-     */
-    public void setSimulacionController(com.proyecto.backend.planificador.controller.SimulacionController controller) {
-        this.simulacionController = controller;
-    }
-    
-    // ==================== SCHEDULER ====================
-    
-    /**
-     * Ejecuta un tick de simulación cada INTERVALO_TICK_MS milisegundos
-     * fixedDelay asegura que no se solapen ejecuciones
-     */
-    @Scheduled(fixedDelayString = "#{${simulacion.intervalo.tick.ms:1000}}")
-    public void tick() {
-        if (!simulacionActiva.get()) {
-            return; // Simulación pausada
+    public void iniciarSimulacion(LocalDate fecha, int saltoMinutos, int tamanioPoblacion, int maxGeneraciones) {
+        if (activa) {
+            throw new IllegalStateException("Ya hay una simulación activa");
         }
-
-        try {
-            long inicioTick = System.currentTimeMillis();
-            int tick = tickActual.incrementAndGet();
-
-            log.info("═══════════════════════════════════════════════════════════");
-            log.info("TICK #{} - Hora Simulada: {} (Tiempo Real: {}ms)", 
-                     tick, horaSimulacionActual, getTiempoRealTranscurrido());
-            log.info("═══════════════════════════════════════════════════════════");
-
-            // 1. Ejecutar algoritmo genético (aquí llamarías a tu servicio)
-            ejecutarAlgoritmo();
-
-            // 2. Avanzar el tiempo simulado
-            avanzarTiempoSimulado();
-
-            // 3. Verificar tiempo de procesamiento
-            long tiempoProcesamiento = System.currentTimeMillis() - inicioTick;
-            
-            if (tiempoProcesamiento > TIEMPO_PROCESAMIENTO_MS) {
-                log.warn("⚠️ El procesamiento tomó {}ms (límite: {}ms)", 
-                         tiempoProcesamiento, TIEMPO_PROCESAMIENTO_MS);
-            } else {
-                log.debug("✅ Procesamiento completado en {}ms", tiempoProcesamiento);
-            }
-
-            // 4. ⭐ Enviar estado actualizado a todos los clientes conectados por SSE
-            broadcastEstado();
-
-        } catch (Exception e) {
-            log.error("❌ Error en tick de simulación", e);
-        }
-    }
-
-    // ==================== CONTROL DE SIMULACIÓN ====================
-    
-    /**
-     * Inicia la simulación
-     */
-    public synchronized void iniciar() {
-        if (simulacionActiva.get()) {
-            log.warn("La simulación ya está en ejecución");
-            throw new IllegalStateException("La simulación ya está activa");
-        }
-
-        log.info("🚀 Iniciando simulación...");
-        log.info("   TIME_SCALE: {} minutos/segundo", TIME_SCALE);
-        log.info("   INTERVALO_TICK: {}ms", INTERVALO_TICK_MS);
-        log.info("   TIEMPO_PROCESAMIENTO: {}ms", TIEMPO_PROCESAMIENTO_MS);
-
+        
         // Inicializar estado
-        tickActual.set(0);
-        tiempoInicioMs.set(System.currentTimeMillis());
-        horaSimulacionActual = LocalDateTime.of(2025, 1, 1, 0, 0); // Día 1, hora 0
+        this.fechaInicio = fecha;
+        this.inicioSimulacion = LocalDateTime.now();
+        this.saltoMinutos = saltoMinutos;
+        this.tamanioPoblacion = tamanioPoblacion;
+        this.maxGeneraciones = maxGeneraciones;
+        this.minutoActual = 0;
+        this.tickActual = 0;
+        this.activa = true;
         
-        // Resetear estadísticas
-        totalPedidosProcesados.set(0);
-        pedidosATiempo.set(0);
-        pedidosTarde.set(0);
+        // Crear y arrancar thread de simulación
+        simulacionThread = new Thread(() -> {
+            try {
+                ejecutarLoopSimulacion();
+            } catch (InterruptedException e) {
+                log.info("⏸️ Simulación interrumpida");
+            } catch (Exception e) {
+                log.error("❌ Error en simulación", e);
+                detenerSimulacion();
+            }
+        });
         
-        simulacionActiva.set(true);
-        log.info("✅ Simulación iniciada en hora simulada: {}", horaSimulacionActual);
+        simulacionThread.start();
         
-        // ⭐ Iniciar tracking de vuelos automáticamente
-        try {
-            vueloTrackingService.iniciarStreaming();
-            log.info("✈️ Tracking de vuelos iniciado automáticamente");
-        } catch (Exception e) {
-            log.error("❌ Error al iniciar tracking de vuelos", e);
-        }
-        
-        // ⭐ Enviar estado inicial por SSE
-        broadcastEstado();
+        log.info("🚀 Simulación iniciada: fecha={}, saltoMinutos={}, población={}, generaciones={}", 
+            fecha, saltoMinutos, tamanioPoblacion, maxGeneraciones);
     }
-
-    /**
-     * Pausa la simulación
-     */
-    public synchronized void pausar() {
-        if (!simulacionActiva.get()) {
-            log.warn("La simulación ya está pausada");
-            throw new IllegalStateException("La simulación ya está pausada");
-        }
-
-        simulacionActiva.set(false);
-        log.info("⏸️ Simulación pausada en tick #{} - Hora simulada: {}", 
-                 tickActual.get(), horaSimulacionActual);
-        
-        // ⭐ Enviar estado pausado por SSE
-        broadcastEstado();
-    }
-
-    /**
-     * Reanuda la simulación
-     */
-    public synchronized void reanudar() {
-        if (simulacionActiva.get()) {
-            log.warn("La simulación ya está en ejecución");
-            throw new IllegalStateException("La simulación ya está activa");
-        }
-
-        simulacionActiva.set(true);
-        log.info("▶️ Simulación reanudada desde tick #{} - Hora simulada: {}", 
-                 tickActual.get(), horaSimulacionActual);
-        
-        // ⭐ Enviar estado reanudado por SSE
-        broadcastEstado();
-    }
-
-    /**
-     * Detiene completamente la simulación y resetea el estado
-     */
-    public synchronized void detener() {
-        simulacionActiva.set(false);
-        tickActual.set(0);
-        tiempoInicioMs.set(0);
-        horaSimulacionActual = null;
-        
-        // Resetear estadísticas
-        totalPedidosProcesados.set(0);
-        pedidosATiempo.set(0);
-        pedidosTarde.set(0);
-        
-        // ⭐ Detener tracking de vuelos automáticamente
-        try {
-            vueloTrackingService.detenerStreaming();
-            log.info("✈️ Tracking de vuelos detenido automáticamente");
-        } catch (Exception e) {
-            log.error("❌ Error al detener tracking de vuelos", e);
-        }
-        
-        log.info("⏹️ Simulación detenida y reseteada");
-        
-        // ⭐ Enviar estado detenido por SSE
-        broadcastEstado();
-    }
-
-    // ==================== LÓGICA INTERNA ====================
     
     /**
-     * Ejecuta el algoritmo genético
-     * AQUÍ DEBES INTEGRAR TU ALGORITMO GENÉTICO
+     * Loop principal de la simulación
+     * Se ejecuta en un thread separado
      */
-    private void ejecutarAlgoritmo() {
+    private void ejecutarLoopSimulacion() throws InterruptedException {
+        while (activa && minutoActual < LIMITE_MINUTOS) {
+            long inicioTick = System.currentTimeMillis();
+            tickActual++;
+            
+            // 1. Incrementar ventana temporal
+            minutoActual += saltoMinutos;
+            
+            log.info("⏱️ Tick {}: Procesando ventana [0-{} min]", tickActual, minutoActual);
+            
+            // 2. Construir request dinámico
+            PlanificacionRequest request = construirRequest();
+            
+            // 3. Ejecutar algoritmo genético
+            PlanificacionResponse response = algoritmoGeneticoService.planificar(request);
+            
+            long duracionTick = System.currentTimeMillis() - inicioTick;
+            
+            // 4. Calcular progreso
+            double progreso = (double) minutoActual / LIMITE_MINUTOS;
+            boolean completada = minutoActual >= LIMITE_MINUTOS;
+            
+            // 5. Crear evento para SSE
+            EventoTickDTO evento = EventoTickDTO.builder()
+                .tick(tickActual)
+                .minutoActual(minutoActual)
+                .saltoMinutos(saltoMinutos)
+                .fechaInicio(fechaInicio)
+                .planificacion(response)
+                .tiempoEjecucionMs(duracionTick)
+                .completada(completada)
+                .progreso(progreso)
+                .build();
+            
+            // 6. Broadcast a todos los clientes conectados
+            broadcastEvento(evento);
+            
+            log.info("📤 Tick {} completado en {}ms - {} clientes notificados - Progreso: {:.1f}%", 
+                tickActual, duracionTick, emitters.size(), progreso * 100);
+            
+            // 7. Esperar antes del siguiente tick
+            Thread.sleep(INTERVALO_TICK_MS);
+        }
+        
+        // Simulación completada
+        if (minutoActual >= LIMITE_MINUTOS) {
+            log.info("✅ Simulación completada: {} minutos procesados ({} horas)", 
+                minutoActual, minutoActual / 60.0);
+        }
+        
+        detenerSimulacion();
+    }
+    
+    /**
+     * Construye el PlanificacionRequest dinámicamente según el minuto actual
+     * 
+     * Fórmula clave: factorK = minutoActual / saltoMinutos
+     * 
+     * Ejemplo:
+     * - minutoActual = 10, saltoMinutos = 5 → factorK = 2
+     * - El algoritmo procesará pedidos desde 0 hasta 10 minutos
+     */
+    private PlanificacionRequest construirRequest() {
+        PlanificacionRequest request = new PlanificacionRequest();
+        request.setFecha(fechaInicio);
+        
+        // 🔥 CLAVE: Calcular factorK dinámicamente
+        // factorK determina el rango temporal: [0, minutoActual]
+        int factorK = minutoActual / saltoMinutos;
+        request.setFactorK(factorK);
+        
+        // Configurar parámetros del algoritmo genético
+        PlanificacionRequest.ParametrosGenetico params = new PlanificacionRequest.ParametrosGenetico();
+        params.setSaltoAlgoritmoMinutos(saltoMinutos);
+        params.setTamanioPoblacion(tamanioPoblacion);
+        params.setMaxGeneraciones(maxGeneraciones);
+        request.setParametrosGenetico(params);
+        
+        log.debug("📝 Request: fecha={}, factorK={}, ventana=[0-{} min]", 
+            fechaInicio, factorK, minutoActual);
+        
+        return request;
+    }
+    
+    /**
+     * Registra un nuevo cliente SSE
+     * 
+     * @return SseEmitter para enviar eventos
+     */
+    public SseEmitter registrarCliente() {
+        SseEmitter emitter = new SseEmitter(SSE_TIMEOUT);
+        
+        emitter.onCompletion(() -> {
+            emitters.remove(emitter);
+            log.info("🔌 Cliente SSE desconectado - Quedan: {}", emitters.size());
+        });
+        
+        emitter.onTimeout(() -> {
+            emitters.remove(emitter);
+            log.warn("⏱️ Cliente SSE timeout - Quedan: {}", emitters.size());
+        });
+        
+        emitter.onError((e) -> {
+            emitters.remove(emitter);
+            log.error("❌ Error en cliente SSE - Quedan: {}", emitters.size(), e);
+        });
+        
+        emitters.add(emitter);
+        log.info("🔌 Cliente SSE conectado - Total: {}", emitters.size());
+        
+        // Enviar estado actual inmediatamente
         try {
-            long inicio = System.currentTimeMillis();
-            
-            // TODO: Llamar a tu servicio del algoritmo genético
-            // Ejemplo:
-            // Solucion solucion = algoritmoGeneticoService.ejecutar();
-            // actualizarEstadisticas(solucion);
-            
-            log.debug("🧬 Algoritmo genético simulado");
-            
-            // Simular procesamiento
-            Thread.sleep(100);
-            
-            long duracion = System.currentTimeMillis() - inicio;
-            log.debug("🧬 Algoritmo ejecutado en {}ms", duracion);
-            
-        } catch (Exception e) {
-            log.error("❌ Error al ejecutar algoritmo genético", e);
+            SseEmitter.SseEventBuilder event = SseEmitter.event()
+                .name("estado")
+                .data(obtenerEstado());
+            emitter.send(event);
+        } catch (IOException e) {
+            log.error("Error enviando estado inicial", e);
+            emitters.remove(emitter);
+        }
+        
+        return emitter;
+    }
+    
+    /**
+     * Envía un evento a todos los clientes conectados
+     * 
+     * @param evento Evento a enviar
+     */
+    private void broadcastEvento(EventoTickDTO evento) {
+        for (SseEmitter emitter : emitters) {
+            try {
+                SseEmitter.SseEventBuilder event = SseEmitter.event()
+                    .name("tick")
+                    .data(evento);
+                emitter.send(event);
+            } catch (IOException e) {
+                log.error("Error enviando evento a cliente, se eliminará", e);
+                emitters.remove(emitter);
+            }
         }
     }
-
+    
     /**
-     * Avanza el tiempo simulado según TIME_SCALE
+     * Detiene la simulación actual
      */
-    private void avanzarTiempoSimulado() {
-        if (horaSimulacionActual == null) {
+    public void detenerSimulacion() {
+        if (!activa) {
+            log.warn("No hay simulación activa para detener");
             return;
         }
         
-        // Cada tick avanza TIME_SCALE minutos
-        horaSimulacionActual = horaSimulacionActual.plusMinutes((long) TIME_SCALE);
+        activa = false;
         
-        log.debug("🕐 Tiempo simulado avanzado a: {} (Día {}, Hora {})", 
-                 horaSimulacionActual,
-                 horaSimulacionActual.getDayOfMonth(),
-                 horaSimulacionActual.getHour());
+        if (simulacionThread != null && simulacionThread.isAlive()) {
+            simulacionThread.interrupt();
+        }
+        
+        // Enviar evento de finalización a todos los clientes
+        for (SseEmitter emitter : emitters) {
+            try {
+                SseEmitter.SseEventBuilder event = SseEmitter.event()
+                    .name("finalizado")
+                    .data("Simulación detenida");
+                emitter.send(event);
+                emitter.complete();
+            } catch (IOException e) {
+                log.error("Error enviando evento de finalización", e);
+            }
+        }
+        
+        emitters.clear();
+        
+        log.info("🛑 Simulación detenida");
     }
-
-    /**
-     * Actualiza estadísticas después de ejecutar el algoritmo
-     */
-    public void actualizarEstadisticas(int pedidosProcesados, int aTiempo, int tarde) {
-        totalPedidosProcesados.addAndGet(pedidosProcesados);
-        pedidosATiempo.addAndGet(aTiempo);
-        pedidosTarde.addAndGet(tarde);
-    }
-
-    // ==================== CONSULTAS ====================
     
     /**
-     * Verifica si la simulación está activa
+     * Obtiene el estado actual de la simulación
+     * 
+     * @return Estado de la simulación
+     */
+    public SimulacionEstadoDTO obtenerEstado() {
+        double progreso = activa ? (double) minutoActual / LIMITE_MINUTOS : 0.0;
+        
+        return SimulacionEstadoDTO.builder()
+            .activa(activa)
+            .fechaInicio(fechaInicio)
+            .inicioSimulacion(inicioSimulacion)
+            .minutoActual(minutoActual)
+            .saltoMinutos(saltoMinutos)
+            .tickActual(tickActual)
+            .clientesConectados(emitters.size())
+            .progreso(progreso)
+            .limiteMinutos(LIMITE_MINUTOS)
+            .build();
+    }
+    
+    /**
+     * Verifica si hay una simulación activa
+     * 
+     * @return true si hay una simulación en curso
      */
     public boolean estaActiva() {
-        return simulacionActiva.get();
-    }
-
-    /**
-     * Obtiene el tick actual
-     */
-    public int getTickActual() {
-        return tickActual.get();
-    }
-
-    /**
-     * Obtiene la hora simulada actual
-     */
-    public LocalDateTime getHoraSimulacionActual() {
-        return horaSimulacionActual;
-    }
-
-    /**
-     * Calcula cuánto tiempo real ha transcurrido en milisegundos
-     */
-    public long getTiempoRealTranscurrido() {
-        if (tiempoInicioMs.get() == 0) {
-            return 0;
-        }
-        return System.currentTimeMillis() - tiempoInicioMs.get();
-    }
-
-    /**
-     * ⭐ Obtiene el DTO con los tiempos (para SSE)
-     */
-    public SimulacionEstadoDTO getEstadoDTO() {
-        return SimulacionEstadoDTO.builder()
-                .horaSimulada(horaSimulacionActual)
-                .tiempoRealTranscurridoMs(getTiempoRealTranscurrido())
-                .activa(simulacionActiva.get())
-                .tickActual(tickActual.get())
-                .estadoDescripcion(simulacionActiva.get() ? "ACTIVA" : "PAUSADA")
-                .timeScale(TIME_SCALE)
-                .rutasSolucion(vueloTrackingService.obtenerTodasLasRutas())  // ⭐ Incluir rutas
-                .build();
-    }
-
-    /**
-     * ⭐ Envía el estado actual a todos los clientes conectados por SSE
-     */
-    private void broadcastEstado() {
-        if (simulacionController != null) {
-            simulacionController.broadcastEstado(getEstadoDTO());
-        }
-    }
-
-    /**
-     * Obtiene las constantes de configuración
-     */
-    public double getTimeScale() {
-        return TIME_SCALE;
-    }
-
-    public long getIntervaloTickMs() {
-        return INTERVALO_TICK_MS;
-    }
-
-    public long getTiempoProcesamientoMs() {
-        return TIEMPO_PROCESAMIENTO_MS;
+        return activa;
     }
 }

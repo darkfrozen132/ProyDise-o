@@ -22,25 +22,25 @@ public class Aeropuerto {
     @Column(name = "codigo_icao", length = 4, nullable = false)
     private String codigoICAO;
 
-    @Column(nullable = false, length = 100)
+    @Column(name = "ciudad", nullable = false, length = 100)
     private String ciudad;
 
-    @Column(nullable = false, length = 100)
+    @Column(name = "pais", nullable = false, length = 100)
     private String pais;
 
-    @Column(name = "huso_horario")
+    @Column(name = "huso_horario", nullable = false)
     private int husoHorario;
 
-    @Column(name = "capacidad_almacen")
+    @Column(name = "capacidad_almacen", nullable = false)
     private int capacidadAlmacen;
 
-    @Column(nullable = false)
+    @Column(name = "latitud", nullable = false)
     private double latitud;
 
-    @Column(nullable = false)
+    @Column(name = "longitud", nullable = false)
     private double longitud;
 
-    @Column(nullable = false, length = 50)
+    @Column(name = "continente", nullable = false, length = 50)
     private String continente;
 
     // Capacidad actual disponible (variable durante ejecucion)

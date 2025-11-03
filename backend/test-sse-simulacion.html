@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Simulación SSE</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        
+        h1 {
+            color: #667eea;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 20px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        
+        .form-group {
+            flex: 1;
+            min-width: 200px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .btn-start {
+            background: #10b981;
+            color: white;
+        }
+        
+        .btn-start:hover {
+            background: #059669;
+        }
+        
+        .btn-stop {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .btn-stop:hover {
+            background: #dc2626;
+        }
+        
+        .btn-clear {
+            background: #6b7280;
+            color: white;
+        }
+        
+        .btn-clear:hover {
+            background: #4b5563;
+        }
+        
+        .status {
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+        
+        .status.disconnected {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
+        .status.connected {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        
+        .status.running {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        
+        .progress {
+            background: #e5e7eb;
+            border-radius: 10px;
+            height: 30px;
+            margin: 20px 0;
+            overflow: hidden;
+        }
+        
+        .progress-bar {
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            height: 100%;
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .events {
+            background: #f9fafb;
+            border: 2px solid #e5e7eb;
+            border-radius: 5px;
+            padding: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+        
+        .event {
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 3px;
+            border-left: 4px solid #667eea;
+            background: white;
+        }
+        
+        .event-time {
+            color: #6b7280;
+            font-size: 11px;
+        }
+        
+        .event-tick {
+            background: #eff6ff;
+            border-left-color: #3b82f6;
+        }
+        
+        .event-complete {
+            background: #f0fdf4;
+            border-left-color: #10b981;
+        }
+        
+        .event-error {
+            background: #fef2f2;
+            border-left-color: #ef4444;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Test Simulación SSE - Planificación Incremental</h1>
+        
+        <div class="controls">
+            <div class="form-group">
+                <label for="fecha">Fecha de Simulación:</label>
+                <input type="date" id="fecha" value="2025-01-15">
+            </div>
+            
+            <div class="form-group">
+                <label for="saltoMinutos">Salto de Minutos (Sa):</label>
+                <input type="number" id="saltoMinutos" value="5" min="1" max="60">
+            </div>
+            
+            <div class="form-group">
+                <label for="poblacion">Población:</label>
+                <input type="number" id="poblacion" value="50" min="10" max="200">
+            </div>
+            
+            <div class="form-group">
+                <label for="generaciones">Generaciones:</label>
+                <input type="number" id="generaciones" value="200" min="50" max="500">
+            </div>
+        </div>
+        
+        <div class="button-group">
+            <button class="btn-start" onclick="iniciarSimulacion()">▶️ Iniciar Simulación</button>
+            <button class="btn-stop" onclick="detenerSimulacion()">⏹️ Detener</button>
+            <button class="btn-clear" onclick="limpiarLogs()">🗑️ Limpiar Logs</button>
+        </div>
+        
+        <div id="status" class="status disconnected">
+            ⚫ Desconectado - Esperando inicio de simulación
+        </div>
+        
+        <div class="progress">
+            <div id="progressBar" class="progress-bar" style="width: 0%">0%</div>
+        </div>
+        
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-label">Tick Actual</div>
+                <div class="stat-value" id="tickActual">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Minutos Procesados</div>
+                <div class="stat-value" id="minutosActual">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Pedidos Entregados</div>
+                <div class="stat-value" id="pedidosEntregados">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Tiempo Ejecución</div>
+                <div class="stat-value" id="tiempoEjecucion">0s</div>
+            </div>
+        </div>
+        
+        <h2>📊 Eventos en Tiempo Real</h2>
+        <div id="events" class="events">
+            <div class="event">Esperando inicio de simulación...</div>
+        </div>
+    </div>
+    
+    <script>
+        let eventSource = null;
+        let tickCount = 0;
+        
+        function addEvent(message, type = 'info') {
+            const eventsDiv = document.getElementById('events');
+            const eventDiv = document.createElement('div');
+            const now = new Date().toLocaleTimeString();
+            
+            eventDiv.className = `event event-${type}`;
+            eventDiv.innerHTML = `
+                <div class="event-time">${now}</div>
+                <div>${message}</div>
+            `;
+            
+            eventsDiv.insertBefore(eventDiv, eventsDiv.firstChild);
+            
+            // Mantener solo los últimos 50 eventos
+            while (eventsDiv.children.length > 50) {
+                eventsDiv.removeChild(eventsDiv.lastChild);
+            }
+        }
+        
+        function updateStatus(message, className) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${className}`;
+        }
+        
+        function updateProgress(progreso) {
+            const progressBar = document.getElementById('progressBar');
+            const percentage = Math.round(progreso * 100);
+            progressBar.style.width = `${percentage}%`;
+            progressBar.textContent = `${percentage}%`;
+        }
+        
+        async function iniciarSimulacion() {
+            const fecha = document.getElementById('fecha').value;
+            const saltoMinutos = parseInt(document.getElementById('saltoMinutos').value);
+            const poblacion = parseInt(document.getElementById('poblacion').value);
+            const generaciones = parseInt(document.getElementById('generaciones').value);
+            
+            try {
+                addEvent(`🚀 Iniciando simulación: fecha=${fecha}, salto=${saltoMinutos} min`, 'info');
+                
+                const response = await fetch('http://localhost:8000/api/simulacion/iniciar', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        fecha: fecha,
+                        saltoMinutos: saltoMinutos,
+                        tamanioPoblacion: poblacion,
+                        maxGeneraciones: generaciones
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    addEvent(`✅ ${data.mensaje}`, 'tick');
+                    addEvent(`📡 Conectando al stream SSE...`, 'info');
+                    conectarSSE();
+                } else {
+                    addEvent(`❌ Error: ${data.error}`, 'error');
+                }
+                
+            } catch (error) {
+                addEvent(`❌ Error al iniciar simulación: ${error.message}`, 'error');
+            }
+        }
+        
+        function conectarSSE() {
+            if (eventSource) {
+                eventSource.close();
+            }
+            
+            eventSource = new EventSource('http://localhost:8000/api/simulacion/stream');
+            
+            eventSource.addEventListener('estado', (event) => {
+                const estado = JSON.parse(event.data);
+                addEvent(`📊 Estado inicial recibido - Tick: ${estado.tickActual}`, 'info');
+                updateStatus('🟢 Conectado - Simulación en progreso', 'connected');
+            });
+            
+            eventSource.addEventListener('tick', (event) => {
+                const tick = JSON.parse(event.data);
+                tickCount++;
+                
+                addEvent(`⏱️ Tick ${tick.tick}: ${tick.minutoActual} minutos - Objetivo: ${tick.planificacion.metadata.objetivo.toFixed(2)}`, 'tick');
+                
+                // Actualizar estadísticas
+                document.getElementById('tickActual').textContent = tick.tick;
+                document.getElementById('minutosActual').textContent = tick.minutoActual;
+                document.getElementById('pedidosEntregados').textContent = 
+                    tick.planificacion.metadata.pedidosATiempo || 0;
+                document.getElementById('tiempoEjecucion').textContent = 
+                    `${(tick.tiempoEjecucionMs / 1000).toFixed(1)}s`;
+                
+                updateProgress(tick.progreso);
+                updateStatus(`🔄 Procesando - Tick ${tick.tick} de ${tick.totalTicks} (${Math.round(tick.progreso * 100)}%)`, 'running');
+            });
+            
+            eventSource.addEventListener('finalizado', (event) => {
+                const data = JSON.parse(event.data);
+                addEvent(`✅ Simulación completada! Total de ticks: ${tickCount}`, 'complete');
+                updateStatus('✅ Simulación completada exitosamente', 'connected');
+                eventSource.close();
+            });
+            
+            eventSource.addEventListener('error', (event) => {
+                addEvent(`❌ Error en la conexión SSE`, 'error');
+                updateStatus('❌ Error en la conexión', 'disconnected');
+                eventSource.close();
+            });
+            
+            eventSource.onerror = (error) => {
+                addEvent(`❌ Error de conexión SSE`, 'error');
+                updateStatus('❌ Desconectado', 'disconnected');
+            };
+        }
+        
+        async function detenerSimulacion() {
+            try {
+                addEvent(`⏸️ Deteniendo simulación...`, 'info');
+                
+                const response = await fetch('http://localhost:8000/api/simulacion/detener', {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    addEvent(`⏹️ ${data.mensaje}`, 'info');
+                    updateStatus('⏹️ Simulación detenida', 'disconnected');
+                } else {
+                    addEvent(`⚠️ ${data.mensaje}`, 'info');
+                }
+                
+                if (eventSource) {
+                    eventSource.close();
+                    eventSource = null;
+                }
+                
+            } catch (error) {
+                addEvent(`❌ Error al detener simulación: ${error.message}`, 'error');
+            }
+        }
+        
+        function limpiarLogs() {
+            const eventsDiv = document.getElementById('events');
+            eventsDiv.innerHTML = '<div class="event">Logs limpiados...</div>';
+            
+            // Reset estadísticas
+            document.getElementById('tickActual').textContent = '0';
+            document.getElementById('minutosActual').textContent = '0';
+            document.getElementById('pedidosEntregados').textContent = '0';
+            document.getElementById('tiempoEjecucion').textContent = '0s';
+            updateProgress(0);
+            tickCount = 0;
+        }
+        
+        // Limpiar conexión al cerrar la página
+        window.addEventListener('beforeunload', () => {
+            if (eventSource) {
+                eventSource.close();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -8,8 +8,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 
-import java.time.LocalDateTime;
-
 /**
  * Entidad que representa un Pedido/Envío en el sistema MoraPack
  * 
@@ -25,14 +23,16 @@ import java.time.LocalDateTime;
 public class Pedido {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "pedido_seq")
-    @SequenceGenerator(
-        name = "pedido_seq",
-        sequenceName = "pedido_sequence",
-        initialValue = 100000,  // Empieza desde 100000 para evitar conflictos
-        allocationSize = 100    // Pre-asigna 100 IDs en memoria (antes 50)
-    )
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(nullable = false)
+    @NotNull(message = "El año es obligatorio")
+    private int anio;
+
+    @Column(nullable = false)
+    @NotNull(message = "El mes es obligatorio")
+    private int mes;
 
     @Column(nullable = false)
     @NotNull(message = "El dia es obligatorio")
@@ -58,17 +58,16 @@ public class Pedido {
     @NotNull(message = "El ID del cliente es obligatorio")
     private String clienteId;
 
-    @Column(name = "fecha_creacion", nullable = false, updatable = false)
-    private LocalDateTime fechaCreacion;
-
     @Column(nullable = false, length = 20)
     private String estado; // PENDIENTE, ASIGNADO, EN_RUTA, ENTREGADO, CANCELADO
 
     /**
      * Constructor con todos los parametros
      */
-    public Pedido(int dia, int hora, int minuto, String aeropuertoDestinoId, 
+    public Pedido(int anio, int mes, int dia, int hora, int minuto, String aeropuertoDestinoId, 
                   int cantidadProductos, String clienteId) {
+        this.anio = anio;
+        this.mes = mes;
         this.dia = dia;
         this.hora = hora;
         this.minuto = minuto;
@@ -76,14 +75,10 @@ public class Pedido {
         this.cantidadProductos = cantidadProductos;
         this.clienteId = clienteId;
         this.estado = "PENDIENTE";
-        this.fechaCreacion = LocalDateTime.now();
     }
 
     @PrePersist
     protected void onCreate() {
-        if (fechaCreacion == null) {
-            fechaCreacion = LocalDateTime.now();
-        }
         if (estado == null || estado.isEmpty()) {
             estado = "PENDIENTE";
         }

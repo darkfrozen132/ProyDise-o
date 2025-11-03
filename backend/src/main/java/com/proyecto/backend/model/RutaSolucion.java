@@ -24,6 +24,13 @@ public class RutaSolucion {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /**
+     * ID completo del vuelo (ej: "UA123_D0_2025-01-15T00:00")
+     * Corresponde al campo "id" en el JSON del SSE
+     */
+    @Column(name = "id_vuelo", nullable = false, length = 100, unique = true)
+    private String idVuelo;
+
     @Column(name = "origin_code", nullable = false, length = 4)
     private String originCode;
 
@@ -40,65 +47,103 @@ public class RutaSolucion {
     private Integer capacidad;
 
     @Column(name = "altitud")
-    private Integer altitud;
-
-    @Column(name = "velocidad")
-    private Integer speed;
+    private Integer altitude;
 
     @Column(name = "region_origen", length = 50)
-    private String regionOrigen;
+    private String regionOrigin;
 
     @Column(name = "region_destino", length = 50)
-    private String regionDestino;
+    private String regionDestination;
 
-    @Column(name = "total_paquetes")
-    private Integer totalPaquetes;
-
-    // Coordenadas de origen
+    // ==================== COORDENADAS RUTA ====================
+    
+    /**
+     * Coordenadas de origen (lat/lng)
+     * Corresponde a "ruta.origin" en el JSON del SSE
+     */
     @Column(name = "origen_latitud")
-    private Double origenLatitud;
+    private Double originLat;
 
     @Column(name = "origen_longitud")
-    private Double origenLongitud;
-
-    // Coordenadas de destino
-    @Column(name = "destino_latitud")
-    private Double destinoLatitud;
-
-    @Column(name = "destino_longitud")
-    private Double destinoLongitud;
-
-    // Coordenadas actuales del vuelo (se actualizan en tiempo real durante el vuelo)
-    @Column(name = "current_latitud")
-    private Double currentLatitud;
-
-    @Column(name = "current_longitud")
-    private Double currentLongitud;
-
-    @Column(name = "progreso")
-    private Double progreso; // Porcentaje de progreso (0-100)
-
-    @Column(name = "en_vuelo")
-    private Boolean enVuelo = false; // Indica si el vuelo está actualmente en progreso
-
-    // Lista de pedidos transportados (relación uno a muchos)
-    @OneToMany(mappedBy = "rutaSolucion", cascade = CascadeType.ALL, orphanRemoval = true)
-    @ToString.Exclude
-    private List<VueloPedido> vuelos = new ArrayList<>();
+    private Double originLng;
 
     /**
-     * Agrega un pedido a esta ruta
+     * Coordenadas de destino (lat/lng)
+     * Corresponde a "ruta.destination" en el JSON del SSE
      */
-    public void agregarVuelo(VueloPedido vuelo) {
-        vuelos.add(vuelo);
-        vuelo.setRutaSolucion(this);
+    @Column(name = "destino_latitud")
+    private Double destinationLat;
+
+    @Column(name = "destino_longitud")
+    private Double destinationLng;
+
+    // ==================== COORDENADAS ACTUALES (TRACKING EN TIEMPO REAL) ====================
+    
+    /**
+     * Coordenadas actuales del vuelo (se actualizan en tiempo real durante el vuelo)
+     * Estas coordenadas se interpolan entre origin y destination según el progreso
+     */
+    @Column(name = "current_latitud")
+    private Double currentLat;
+
+    @Column(name = "current_longitud")
+    private Double currentLng;
+
+    /**
+     * Porcentaje de progreso del vuelo (0.0 a 100.0)
+     * Se calcula según el tiempo transcurrido entre salida y llegada
+     */
+    @Column(name = "progreso")
+    private Double progreso;
+
+    /**
+     * Indica si el vuelo está actualmente en progreso
+     */
+    @Column(name = "en_vuelo")
+    private Boolean enVuelo = false;
+
+    // ==================== RELACIÓN CON PEDIDOS (ORDERS) ====================
+    
+    /**
+     * Lista de pedidos transportados en este vuelo
+     * Corresponde al array "orders" en el JSON del SSE
+     * Cada VueloPedido tiene orderId y cantidad
+     */
+    @OneToMany(mappedBy = "rutaSolucion", cascade = CascadeType.ALL, orphanRemoval = true)
+    @ToString.Exclude
+    private List<VueloPedido> orders = new ArrayList<>();
+
+    /**
+     * Agrega un pedido a este vuelo (order)
+     */
+    public void agregarOrder(VueloPedido order) {
+        orders.add(order);
+        order.setRutaSolucion(this);
     }
 
     /**
-     * Remueve un pedido de esta ruta
+     * Remueve un pedido de este vuelo (order)
      */
+    public void removerOrder(VueloPedido order) {
+        orders.remove(order);
+        order.setRutaSolucion(null);
+    }
+    
+    /**
+     * Método legacy - usa agregarOrder en su lugar
+     * @deprecated
+     */
+    @Deprecated
+    public void agregarVuelo(VueloPedido vuelo) {
+        agregarOrder(vuelo);
+    }
+
+    /**
+     * Método legacy - usa removerOrder en su lugar
+     * @deprecated
+     */
+    @Deprecated
     public void removerVuelo(VueloPedido vuelo) {
-        vuelos.remove(vuelo);
-        vuelo.setRutaSolucion(null);
+        removerOrder(vuelo);
     }
 }

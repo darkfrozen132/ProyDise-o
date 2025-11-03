@@ -150,10 +150,10 @@ public class VueloTrackingService {
             // Marcar vuelo como en progreso
             actualizarRutaEnBD(rutaId, null, null, null, true);
             
-            double latInicio = ruta.getOrigenLatitud();
-            double lonInicio = ruta.getOrigenLongitud();
-            double latFin = ruta.getDestinoLatitud();
-            double lonFin = ruta.getDestinoLongitud();
+            double latInicio = ruta.getOriginLat();
+            double lonInicio = ruta.getOriginLng();
+            double latFin = ruta.getDestinationLat();
+            double lonFin = ruta.getDestinationLng();
             
             log.info("📍 Iniciando vuelo desde ({}, {}) hasta ({}, {})", 
                 latInicio, lonInicio, latFin, lonFin);
@@ -186,9 +186,8 @@ public class VueloTrackingService {
                 evento.put("currentLatitude", latActual);
                 evento.put("currentLongitude", lonActual);
                 evento.put("progress", progreso * 100);
-                evento.put("speed", ruta.getSpeed());
-                evento.put("altitude", ruta.getAltitud());
-                evento.put("totalPackages", ruta.getTotalPaquetes());
+                evento.put("altitude", ruta.getAltitude());
+                evento.put("totalPackages", ruta.getOrders().size()); // Calcular desde orders
                 evento.put("horaSimuladaVuelo", horaSimuladaVuelo.toString());
                 evento.put("horaSalida", horaSalida.toString());
                 evento.put("horaLlegada", horaLlegada.toString());
@@ -214,9 +213,8 @@ public class VueloTrackingService {
             eventoFinal.put("currentLatitude", latFin);
             eventoFinal.put("currentLongitude", lonFin);
             eventoFinal.put("progress", 100.0);
-            eventoFinal.put("speed", ruta.getSpeed());
-            eventoFinal.put("altitude", ruta.getAltitud());
-            eventoFinal.put("totalPackages", ruta.getTotalPaquetes());
+            eventoFinal.put("altitude", ruta.getAltitude());
+            eventoFinal.put("totalPackages", ruta.getOrders().size()); // Calcular desde orders
             eventoFinal.put("completed", true);  // ⭐ Indicador de completado
             eventoFinal.put("message", "Vuelo completado - Llegada a " + ruta.getDestinationCode());
             
@@ -271,10 +269,10 @@ public class VueloTrackingService {
                 .orElseThrow(() -> new RuntimeException("Ruta no encontrada: " + rutaId));
             
             if (lat != null) {
-                ruta.setCurrentLatitud(lat);
+                ruta.setCurrentLat(lat);
             }
             if (lng != null) {
-                ruta.setCurrentLongitud(lng);
+                ruta.setCurrentLng(lng);
             }
             if (progreso != null) {
                 ruta.setProgreso(progreso);
@@ -335,13 +333,12 @@ public class VueloTrackingService {
                 data.put("id", ruta.getId());
                 data.put("originCode", ruta.getOriginCode());
                 data.put("destinationCode", ruta.getDestinationCode());
-                data.put("currentLatitude", ruta.getCurrentLatitud() != null ? ruta.getCurrentLatitud() : ruta.getOrigenLatitud());
-                data.put("currentLongitude", ruta.getCurrentLongitud() != null ? ruta.getCurrentLongitud() : ruta.getOrigenLongitud());
+                data.put("currentLatitude", ruta.getCurrentLat() != null ? ruta.getCurrentLat() : ruta.getOriginLat());
+                data.put("currentLongitude", ruta.getCurrentLng() != null ? ruta.getCurrentLng() : ruta.getOriginLng());
                 data.put("progress", ruta.getProgreso() != null ? ruta.getProgreso() : 0.0);
                 data.put("enVuelo", ruta.getEnVuelo() != null ? ruta.getEnVuelo() : false);
-                data.put("speed", ruta.getSpeed());
-                data.put("altitude", ruta.getAltitud());
-                data.put("totalPackages", ruta.getTotalPaquetes());
+                data.put("altitude", ruta.getAltitude());
+                data.put("totalPackages", ruta.getOrders().size());
                 return data;
             });
     }
@@ -357,12 +354,11 @@ public class VueloTrackingService {
                 data.put("id", ruta.getId());
                 data.put("originCode", ruta.getOriginCode());
                 data.put("destinationCode", ruta.getDestinationCode());
-                data.put("currentLatitude", ruta.getCurrentLatitud());
-                data.put("currentLongitude", ruta.getCurrentLongitud());
+                data.put("currentLatitude", ruta.getCurrentLat());
+                data.put("currentLongitude", ruta.getCurrentLng());
                 data.put("progress", ruta.getProgreso());
-                data.put("speed", ruta.getSpeed());
-                data.put("altitude", ruta.getAltitud());
-                data.put("totalPackages", ruta.getTotalPaquetes());
+                data.put("altitude", ruta.getAltitude());
+                data.put("totalPackages", ruta.getOrders().size());
                 return data;
             })
             .collect(Collectors.toList());
@@ -385,16 +381,16 @@ public class VueloTrackingService {
                 data.put("destinationCode", ruta.getDestinationCode());
                 
                 // Coordenadas de origen
-                data.put("origenLatitud", ruta.getOrigenLatitud());
-                data.put("origenLongitud", ruta.getOrigenLongitud());
+                data.put("origenLatitud", ruta.getOriginLat());
+                data.put("origenLongitud", ruta.getOriginLng());
                 
                 // Coordenadas de destino
-                data.put("destinoLatitud", ruta.getDestinoLatitud());
-                data.put("destinoLongitud", ruta.getDestinoLongitud());
+                data.put("destinoLatitud", ruta.getDestinationLat());
+                data.put("destinoLongitud", ruta.getDestinationLng());
                 
                 // Coordenadas actuales (si está en vuelo)
-                Double currentLat = ruta.getCurrentLatitud() != null ? ruta.getCurrentLatitud() : ruta.getOrigenLatitud();
-                Double currentLng = ruta.getCurrentLongitud() != null ? ruta.getCurrentLongitud() : ruta.getOrigenLongitud();
+                Double currentLat = ruta.getCurrentLat() != null ? ruta.getCurrentLat() : ruta.getOriginLat();
+                Double currentLng = ruta.getCurrentLng() != null ? ruta.getCurrentLng() : ruta.getOriginLng();
                 
                 data.put("currentLatitude", currentLat);
                 data.put("currentLongitude", currentLng);
@@ -410,11 +406,10 @@ public class VueloTrackingService {
                 data.put("progress", ruta.getProgreso() != null ? ruta.getProgreso() : 0.0);
                 
                 // Información adicional
-                data.put("speed", ruta.getSpeed());
-                data.put("altitude", ruta.getAltitud());
-                data.put("totalPackages", ruta.getTotalPaquetes());
-                data.put("regionOrigen", ruta.getRegionOrigen());
-                data.put("regionDestino", ruta.getRegionDestino());
+                data.put("altitude", ruta.getAltitude());
+                data.put("totalPackages", ruta.getOrders().size());
+                data.put("regionOrigen", ruta.getRegionOrigin());
+                data.put("regionDestino", ruta.getRegionDestination());
                 
                 return data;
             })

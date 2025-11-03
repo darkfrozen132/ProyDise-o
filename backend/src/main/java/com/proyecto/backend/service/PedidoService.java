@@ -113,6 +113,8 @@ public class PedidoService {
     public Pedido actualizar(Long id, Pedido pedido) {
         Pedido existente = buscarPorId(id);
 
+        existente.setAnio(pedido.getAnio());
+        existente.setMes(pedido.getMes());
         existente.setDia(pedido.getDia());
         existente.setHora(pedido.getHora());
         existente.setMinuto(pedido.getMinuto());
@@ -243,6 +245,10 @@ public class PedidoService {
      * Parsea una línea del archivo y crea un objeto Pedido
      * Formato: dd-hh-mm-dest-###-IdClien
      * Ejemplo: 30-09-15-SEQM-145-0054321
+     * 
+     * NOTA: El archivo no incluye año ni mes, se asumen valores por defecto:
+     * - Año: 2025
+     * - Mes: 1 (Enero)
      */
     private Pedido parsearLineaPedido(String linea) {
         if (linea == null || linea.trim().isEmpty()) {
@@ -257,6 +263,10 @@ public class PedidoService {
         }
 
         try {
+            // Valores por defecto para año y mes (planificación semanal/mensual)
+            int anio = 2025;
+            int mes = 1;
+            
             int dia = Integer.parseInt(partes[0].trim());
             int hora = Integer.parseInt(partes[1].trim());
             int minuto = Integer.parseInt(partes[2].trim());
@@ -264,7 +274,7 @@ public class PedidoService {
             int cantidadProductos = Integer.parseInt(partes[4].trim());
             String clienteId = partes[5].trim();
 
-            return new Pedido(dia, hora, minuto, aeropuertoDestino, cantidadProductos, clienteId);
+            return new Pedido(anio, mes, dia, hora, minuto, aeropuertoDestino, cantidadProductos, clienteId);
 
         } catch (NumberFormatException e) {
             log.warn("Error parseando números en línea: {} - Error: {}", linea, e.getMessage());

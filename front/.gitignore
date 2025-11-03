@@ -13,12 +13,7 @@ yarn-error.log*
 .DS_Store
 Thumbs.db
 
-# Entornos
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+
 
 # IDE / editores
 .vscode/

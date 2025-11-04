@@ -36,16 +36,16 @@ mvn spring-boot:run
 
 **Opción A: Usar curl (Git Bash o WSL)**
 ```bash
-curl -X POST http://localhost:8080/api/aeropuertos/test-carga
+curl -X POST http://localhost:8000/api/aeropuertos/test-carga
 ```
 
 **Opción B: Usar PowerShell**
 ```powershell
-Invoke-WebRequest -Uri http://localhost:8080/api/aeropuertos/test-carga -Method POST
+Invoke-WebRequest -Uri http://localhost:8000/api/aeropuertos/test-carga -Method POST
 ```
 
 **Opción C: Usar navegador o Postman**
-- URL: `http://localhost:8080/api/aeropuertos/test-carga`
+- URL: `http://localhost:8000/api/aeropuertos/test-carga`
 - Método: POST
 
 ### Paso 3: Verificar la respuesta
@@ -90,7 +90,7 @@ La respuesta debe incluir:
 ### Paso 4: Verificar todos los aeropuertos
 
 ```bash
-curl http://localhost:8080/api/aeropuertos
+curl http://localhost:8000/api/aeropuertos
 ```
 
 ## Detalles Técnicos del Parseo
@@ -144,16 +144,16 @@ El problema NO es caché del servidor, sino que los aeropuertos ya están en la 
 
 ### Opción 1: Recargar (limpia y carga de nuevo) - RECOMENDADO
 ```bash
-curl -X POST http://localhost:8080/api/aeropuertos/recargar
+curl -X POST http://localhost:8000/api/aeropuertos/recargar
 ```
 
 ### Opción 2: Limpiar manualmente y luego cargar
 ```bash
 # 1. Limpiar
-curl -X DELETE http://localhost:8080/api/aeropuertos/limpiar
+curl -X DELETE http://localhost:8000/api/aeropuertos/limpiar
 
 # 2. Cargar
-curl -X POST http://localhost:8080/api/aeropuertos/cargar
+curl -X POST http://localhost:8000/api/aeropuertos/cargar
 ```
 
 ### Opción 3: Modificar directamente en la base de datos

@@ -137,7 +137,7 @@ const SimuladorSemanal = () => {
 	const [airports, setAirports] = useState([]);
 	const [loadingAirports, setLoadingAirports] = useState(true);
 	const intervalRef = useRef(); /* Referencia para el intervalo de simulación */
-	
+
 	// ==================== ESTADO SSE (TIEMPO DE SIMULACIÓN Y RUTAS) ====================
 	const [simulacionActiva, setSimulacionActiva] = useState(false);
 	const [horaSimulada, setHoraSimulada] = useState(null);
@@ -146,6 +146,12 @@ const SimuladorSemanal = () => {
 	const [timeScale, setTimeScale] = useState(10.0);
 	const [rutasSolucion, setRutasSolucion] = useState([]); // Rutas que vienen del SSE
 	const eventSourceRef = useRef(null); /* Referencia para el EventSource SSE */
+
+	// ==================== ESTADO MODO MOCK ====================
+	const [modoMock, setModoMock] = useState(false);
+	const [simulacionMockActiva, setSimulacionMockActiva] = useState(false);
+	const [segundoActual, setSegundoActual] = useState(0);
+	const mockIntervalRef = useRef(null);
 
 	// ==================== FUNCIÓN PARA CONVERTIR RUTA DEL BACKEND A VUELO ====================
 	const convertirRutaAVuelo = (ruta) => {
@@ -213,6 +219,94 @@ const SimuladorSemanal = () => {
 			rotation
 		};
 	};
+
+	// ==================== FUNCIÓN PARA CONVERTIR DATOS MOCK SIMPLES A VUELO ====================
+	const convertirDatoMockAVuelo = (datoMock) => {
+		// Formato del backend: { id, currentLat, currentLng, angle }
+		return {
+			id: datoMock.id,
+			origin: { code: 'MOCK', lat: 0, lng: 0, region: 'Test' },
+			destination: { code: 'MOCK', lat: 0, lng: 0, region: 'Test' },
+			progress: 0.5,
+			altitude: 35000,
+			speed: 850,
+			status: 'active',
+			packageCapacity: 200,
+			currentPackages: 200,
+			packageType: 'MPE',
+			isSameContinentFlight: false,
+			currentLat: datoMock.currentLat,
+			currentLng: datoMock.currentLng,
+			aircraftType: 'boeing737',
+			aircraftName: 'Boeing 737',
+			aircraftColor: '#007bff',
+			rotation: datoMock.angle || 0 // Usar el ángulo del JSON
+		};
+	};
+
+	// ==================== FUNCIONES MODO MOCK ====================
+	const cargarDatosMock = async (segundo) => {
+		try {
+			const response = await fetch(`/mockData/segundo_${segundo}.json`);
+			if (!response.ok) {
+				throw new Error(`Error cargando segundo_${segundo}.json`);
+			}
+			const datos = await response.json();
+			console.log(`📦 Datos mock cargados (segundo ${segundo}):`, datos);
+
+			// Convertir datos simples a formato de vuelo
+			const vuelosMock = datos.map(dato => convertirDatoMockAVuelo(dato));
+			setFlights(vuelosMock);
+			setFlightsInAir(vuelosMock.length);
+			setSegundoActual(segundo);
+		} catch (error) {
+			console.error('❌ Error cargando datos mock:', error);
+		}
+	};
+
+	const handleIniciarMock = () => {
+		console.log('🎬 Iniciando simulación MOCK...');
+		setSimulacionMockActiva(true);
+		setSegundoActual(0);
+		cargarDatosMock(0);
+
+		// Crear intervalo que cargue un archivo cada segundo
+		mockIntervalRef.current = setInterval(() => {
+			setSegundoActual(prevSegundo => {
+				const nextSegundo = prevSegundo + 1;
+
+				if (nextSegundo >= 30) {
+					// Reiniciar desde el segundo 0
+					cargarDatosMock(0);
+					return 0;
+				} else {
+					cargarDatosMock(nextSegundo);
+					return nextSegundo;
+				}
+			});
+		}, 1000); // Cada 1 segundo
+	};
+
+	const handleDetenerMock = () => {
+		console.log('⏹️ Deteniendo simulación MOCK...');
+		setSimulacionMockActiva(false);
+		if (mockIntervalRef.current) {
+			clearInterval(mockIntervalRef.current);
+			mockIntervalRef.current = null;
+		}
+		setFlights([]);
+		setSegundoActual(0);
+		setFlightsInAir(0);
+	};
+
+	// Cleanup del modo mock al desmontar
+	useEffect(() => {
+		return () => {
+			if (mockIntervalRef.current) {
+				clearInterval(mockIntervalRef.current);
+			}
+		};
+	}, []);
 
 	// ==================== DEBUG: MONITOREAR CAMBIOS EN tiempoRealMs ====================
 	useEffect(() => {
@@ -387,7 +481,7 @@ const SimuladorSemanal = () => {
 			});
 		} catch (error) {
 			console.error('❌ Error al iniciar simulación:', error);
-			alert('Error al conectar con el servidor. Verifica que el backend esté corriendo en http://127.0.0.1:8080');
+			alert('Error al conectar con el servidor. Verifica que el backend esté corriendo en http://127.0.0.1:8000');
 		}
 	};
 
@@ -737,8 +831,102 @@ const SimuladorSemanal = () => {
 									</button>
 								</div>
 							</div>
+
+							{/* ==================== PANEL MODO MOCK ==================== */}
+							<div style={{
+								background: '#fff3cd',
+								borderRadius: '8px',
+								padding: '15px 20px',
+								marginBottom: '20px',
+								border: '2px solid #ffc107',
+								display: 'flex',
+								justifyContent: 'space-between',
+								alignItems: 'center',
+								flexWrap: 'wrap',
+								gap: '15px'
+							}}>
+								{/* Título y descripción */}
+								<div style={{ flex: 1 }}>
+									<h3 style={{ margin: '0 0 8px 0', color: '#856404', fontSize: '16px', fontWeight: '600' }}>
+										<i className="fas fa-flask"></i> Modo Prueba Mock
+									</h3>
+									<p style={{ margin: 0, fontSize: '13px', color: '#856404' }}>
+										Simula 10 vuelos durante 30 segundos con datos JSON locales
+									</p>
+								</div>
+
+								{/* Información del estado */}
+								<div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+									<div>
+										<span style={{ fontSize: '14px', color: '#856404', marginRight: '8px' }}>
+											Segundo actual:
+										</span>
+										<span style={{ fontSize: '16px', fontWeight: '700', color: '#212529' }}>
+											{segundoActual}/29
+										</span>
+									</div>
+									<div>
+										<span style={{ fontSize: '14px', color: '#856404', marginRight: '8px' }}>
+											Vuelos:
+										</span>
+										<span style={{ fontSize: '16px', fontWeight: '700', color: '#212529' }}>
+											{flights.length}
+										</span>
+									</div>
+									<div>
+										<span style={{
+											padding: '4px 12px',
+											borderRadius: '4px',
+											fontSize: '12px',
+											fontWeight: '600',
+											background: simulacionMockActiva ? '#28a745' : '#6c757d',
+											color: 'white'
+										}}>
+											{simulacionMockActiva ? 'ACTIVO' : 'DETENIDO'}
+										</span>
+									</div>
+								</div>
+
+								{/* Botones de control */}
+								<div style={{ display: 'flex', gap: '10px' }}>
+									<button
+										onClick={handleIniciarMock}
+										disabled={simulacionMockActiva}
+										style={{
+											padding: '8px 16px',
+											borderRadius: '6px',
+											border: '1px solid #007bff',
+											background: simulacionMockActiva ? '#e9ecef' : '#007bff',
+											color: simulacionMockActiva ? '#6c757d' : 'white',
+											fontSize: '14px',
+											fontWeight: '500',
+											cursor: simulacionMockActiva ? 'not-allowed' : 'pointer',
+											transition: 'all 0.2s'
+										}}
+									>
+										<i className="fas fa-play"></i> Iniciar Mock
+									</button>
+									<button
+										onClick={handleDetenerMock}
+										disabled={!simulacionMockActiva}
+										style={{
+											padding: '8px 16px',
+											borderRadius: '6px',
+											border: '1px solid #dc3545',
+											background: !simulacionMockActiva ? '#e9ecef' : '#dc3545',
+											color: !simulacionMockActiva ? '#6c757d' : 'white',
+											fontSize: '14px',
+											fontWeight: '500',
+											cursor: !simulacionMockActiva ? 'not-allowed' : 'pointer',
+											transition: 'all 0.2s'
+										}}
+									>
+										<i className="fas fa-stop"></i> Detener Mock
+									</button>
+								</div>
+							</div>
 						</div>
-						
+
 						{/* Mapa interactivo */}
 						<div className="map-container">
 							<MapContainer center={[20.0, 10.0]} zoom={3} className="flight-map" scrollWheelZoom={false} minZoom={2} maxZoom={10} zoomControl={true} doubleClickZoom={true} boxZoom={true} keyboard={true} touchZoom={true}>

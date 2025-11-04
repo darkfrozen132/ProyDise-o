@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # Script de prueba para el Sistema de Simulación Incremental SSE
-# Asegúrate de que el backend esté corriendo en http://localhost:8080
+# Asegúrate de que el backend esté corriendo en http://localhost:8000
 
-BASE_URL="http://localhost:8080/api/simulacion"
+BASE_URL="http://localhost:8000/api/simulacion"
 
 echo "🧪 PRUEBA DEL SISTEMA DE SIMULACIÓN INCREMENTAL SSE"
 echo "=================================================="

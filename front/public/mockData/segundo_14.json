@@ -1,0 +1,62 @@
+[
+  {
+    "id": "RT0001",
+    "currentLat": 18.3549,
+    "currentLng": -37.7218,
+    "angle": 52.36
+  },
+  {
+    "id": "RT0002",
+    "currentLat": 45.8643,
+    "currentLng": 26.48,
+    "angle": 102.9
+  },
+  {
+    "id": "RT0003",
+    "currentLat": 15.1278,
+    "currentLng": -11.3414,
+    "angle": -112.43
+  },
+  {
+    "id": "RT0004",
+    "currentLat": 1.5394,
+    "currentLng": -31.9994,
+    "angle": 36.12
+  },
+  {
+    "id": "RT0005",
+    "currentLat": 7.9811,
+    "currentLng": -34.3114,
+    "angle": 41.4
+  },
+  {
+    "id": "RT0006",
+    "currentLat": 26.0917,
+    "currentLng": -37.1218,
+    "angle": 59.98
+  },
+  {
+    "id": "RT0007",
+    "currentLat": 40.8734,
+    "currentLng": 12.0349,
+    "angle": 88.62
+  },
+  {
+    "id": "RT0008",
+    "currentLat": 40.8853,
+    "currentLng": 39.0321,
+    "angle": 92.17
+  },
+  {
+    "id": "RT0009",
+    "currentLat": 29.3269,
+    "currentLng": -33.3287,
+    "angle": -121.1
+  },
+  {
+    "id": "RT0010",
+    "currentLat": 8.5391,
+    "currentLng": -26.9408,
+    "angle": -143.92
+  }
+]

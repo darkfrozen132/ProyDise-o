@@ -62,12 +62,10 @@ public class SimulacionController {
                 return ResponseEntity.badRequest().body(response);
             }
             
-            // Iniciar simulación
+            // Iniciar simulación (solo fecha y factorK)
             simulacionOrchestrator.iniciarSimulacion(
                 request.getFecha(),
-                request.getSaltoMinutos(),
-                request.getTamanioPoblacion(),
-                request.getMaxGeneraciones()
+                request.getSaltoMinutos()
             );
             
             response.put("success", true);
@@ -139,7 +137,7 @@ public class SimulacionController {
         log.info("GET /api/simulacion/estado");
         
         try {
-            SimulacionEstadoDTO estado = simulacionOrchestrator.obtenerEstado();
+            SimulacionEstadoDTO estado = simulacionOrchestrator.obtenerEstadoDTO();
             return ResponseEntity.ok(estado);
             
         } catch (Exception e) {
@@ -224,7 +222,7 @@ public class SimulacionController {
         health.put("simulacionActiva", simulacionOrchestrator.estaActiva());
         
         if (simulacionOrchestrator.estaActiva()) {
-            SimulacionEstadoDTO estado = simulacionOrchestrator.obtenerEstado();
+            SimulacionEstadoDTO estado = simulacionOrchestrator.obtenerEstadoDTO();
             health.put("tickActual", estado.getTickActual());
             health.put("progreso", String.format("%.1f%%", estado.getProgreso() * 100));
             health.put("clientesConectados", estado.getClientesConectados());

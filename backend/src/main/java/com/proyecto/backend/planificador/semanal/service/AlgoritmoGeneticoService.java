@@ -5,7 +5,6 @@ import com.proyecto.backend.planificador.semanal.dto.request.PlanificacionReques
 import com.proyecto.backend.planificador.semanal.dto.response.*;
 import com.proyecto.backend.model.Aeropuerto;
 import com.proyecto.backend.model.Pedido;
-import com.proyecto.backend.model.PlanDeVuelo;
 import com.proyecto.backend.repository.PedidoRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,9 +34,9 @@ public class AlgoritmoGeneticoService {
     private static final int VENTANA_RECOJO_HORAS = 2;
 
     // Parametros del algoritmo genetico
-    private static final int TAMANIO_POBLACION = 50;      // Numero de individuos
-    private static final int MAX_GENERACIONES = 200;      // Generaciones maximas
-    private static final int NO_MEJORA_LIMITE = 40;       // Parar si 40 gen sin mejora
+    private static final int TAMANIO_POBLACION = 20;      // Numero de individuos
+    private static final int MAX_GENERACIONES = 20;      // Generaciones maximas
+    private static final int NO_MEJORA_LIMITE = 10;       // Parar si 40 gen sin mejora
     private static final int ELITE_K = 4;                 // Mejores preservados (elitismo)
     private static final double PROB_CRUCE = 0.8;         // Probabilidad de cruce
     private static final double PROB_MUTACION = 0.05;     // Probabilidad de mutacion
@@ -101,6 +100,227 @@ public class AlgoritmoGeneticoService {
         log.info("Planificacion completada en {} ms", tiempoTotal);
 
         return response;
+    }
+
+    /**
+     * Ejecuta un ciclo del algoritmo genetico para la simulacion en tiempo real
+     *
+     * Este metodo es llamado por el SimulacionOrchestrator cada Sa minutos
+     * con un timeout de Ta segundos.
+     *
+     * @param state Estado global de la simulacion
+     * @param tiempoHasta Tiempo hasta el cual planificar (ventana acumulativa Sc)
+     */
+    public void ejecutarCiclo(SimulationState state, LocalDateTime tiempoHasta) {
+        long inicio = System.currentTimeMillis();
+
+        log.info("Ejecutando ciclo AG: desde {} hasta {} (ventana: {} min)",
+            state.getTiempoRealInicio(), tiempoHasta,
+            java.time.temporal.ChronoUnit.MINUTES.between(state.getTiempoRealInicio(), tiempoHasta));
+
+        // 1. Filtrar pedidos PENDIENTES del state
+        List<Pedido> pedidosPendientes = filtrarPedidosPendientes(state, tiempoHasta);
+
+        if (pedidosPendientes.isEmpty()) {
+            log.info("No hay pedidos pendientes para planificar en esta ventana");
+            return;
+        }
+
+        log.info("Pedidos pendientes a planificar: {}", pedidosPendientes.size());
+
+        // 2. Calcular horizonte dinamico (fecha maxima de pedido + 3 dias)
+        LocalDate fechaBase = state.getTiempoRealInicio().toLocalDate();
+        int diasNecesarios = calcularHorizonteDinamico(fechaBase, tiempoHasta);
+        log.info("Horizonte dinamico: {} dias", diasNecesarios);
+
+        // 3. Obtener World base
+        World world = worldCacheService.getWorld();
+
+        // 4. Crear WorldTemporal con horizonte dinamico
+        WorldTemporal worldTemporal = new WorldTemporal(world, fechaBase, diasNecesarios);
+
+        // 5. Inicializar WorldTemporal desde state (cargar capacidades ya usadas)
+        inicializarWorldDesdeState(worldTemporal, state);
+
+        // 6. Crear ControladorAlmacenes y cargar desde state
+        LocalDateTime fechaBaseUTC = LocalDateTime.of(fechaBase, LocalTime.MIDNIGHT);
+        ControladorAlmacenes controladorAlmacenes = new ControladorAlmacenes(diasNecesarios, fechaBaseUTC);
+
+        // Registrar aeropuertos
+        for (Aeropuerto aeropuerto : world.getAeropuertos().values()) {
+            int capacidad = aeropuerto.tieneStockIlimitado() ? 0 : aeropuerto.getCapacidadAlmacen();
+            controladorAlmacenes.registrarAeropuerto(aeropuerto.getCodigoICAO(), capacidad);
+        }
+
+        // Cargar ocupacion desde state
+        inicializarControladorDesdeState(controladorAlmacenes, state);
+
+        // 7. Ejecutar algoritmo genetico con parametros del state
+        Solution solucion = ejecutarAlgoritmoGeneticoConParametros(
+            worldTemporal, controladorAlmacenes, pedidosPendientes, state.getParametrosAG());
+
+        // 8. Actualizar state con la solucion
+        actualizarStateConSolucion(state, solucion, worldTemporal);
+
+        long duracion = System.currentTimeMillis() - inicio;
+        log.info("Ciclo AG completado en {} ms - Planificados: {}/{}",
+            duracion, solucion.getPedidosATiempo() + solucion.getPedidosTarde(), pedidosPendientes.size());
+    }
+
+    /**
+     * Filtra los pedidos PENDIENTES dentro de la ventana de tiempo
+     */
+    private List<Pedido> filtrarPedidosPendientes(SimulationState state, LocalDateTime tiempoHasta) {
+        List<Pedido> pedidos = new ArrayList<>();
+
+        for (PedidoState pedidoState : state.getPedidos().values()) {
+            if (pedidoState.getEstado() == EstadoPedido.PENDIENTE) {
+                // Verificar si el pedido esta en la ventana
+                if (pedidoState.getFechaCreacion().isBefore(tiempoHasta)) {
+                    // Cargar el pedido desde el repositorio
+                    Pedido pedido = pedidoRepository.findById(pedidoState.getId()).orElse(null);
+                    if (pedido != null) {
+                        pedidos.add(pedido);
+                    }
+                }
+            }
+        }
+
+        return pedidos;
+    }
+
+    /**
+     * Calcula el horizonte dinamico en dias
+     * Formula: dias desde fechaBase hasta tiempoHasta + 3 dias plazo maximo
+     */
+    private int calcularHorizonteDinamico(LocalDate fechaBase, LocalDateTime tiempoHasta) {
+        int diasHastaVentana = (int) java.time.temporal.ChronoUnit.DAYS.between(
+            fechaBase, tiempoHasta.toLocalDate()) + 1;
+
+        // Agregar 3 dias de plazo maximo de entrega
+        int diasTotal = diasHastaVentana + 3;
+
+        // Minimo 4 dias, maximo 14 dias (2 semanas)
+        return Math.max(4, Math.min(14, diasTotal));
+    }
+
+    /**
+     * Inicializa WorldTemporal con las capacidades ya usadas desde el state
+     */
+    private void inicializarWorldDesdeState(WorldTemporal worldTemporal, SimulationState state) {
+        for (VueloState vueloState : state.getVuelos().values()) {
+            // Reservar la capacidad ya usada
+            VueloInstancia instancia = worldTemporal.getVuelo(vueloState.getId());
+            if (instancia != null) {
+                // Asignar la capacidad que ya está siendo usada
+                int capacidadUsada = vueloState.getCapacidadUsada();
+                if (capacidadUsada > 0) {
+                    instancia.asignarCapacidad(capacidadUsada);
+                }
+            }
+        }
+
+        log.debug("WorldTemporal inicializado con {} vuelos pre-cargados", state.getVuelos().size());
+    }
+
+    /**
+     * Inicializa ControladorAlmacenes con la ocupacion actual desde el state
+     */
+    private void inicializarControladorDesdeState(ControladorAlmacenes controlador,
+                                                    SimulationState state) {
+        for (AlmacenState almacen : state.getAlmacenes().values()) {
+            // Calcular cuando llego cada pedido y reservar espacio
+            for (Long pedidoId : almacen.getPedidosAlmacenados()) {
+                PedidoState pedido = state.getPedidos().get(pedidoId);
+                if (pedido != null) {
+                    // El pedido esta en el almacen, reservar espacio desde ahora
+                    LocalDateTime tiempoInicio = state.getTiempoSimulacion();
+                    
+                    // Reservar hasta el final del horizonte (sera liberado cuando salga)
+                    LocalDateTime tiempoFin = tiempoInicio.plusDays(7);
+
+                    // Usar agregarIntervalo en lugar de reservar
+                    controlador.agregarIntervalo(almacen.getCodigoICAO(), 
+                        tiempoInicio, tiempoFin, pedido.getCantidad());
+                }
+            }
+        }
+
+        log.debug("ControladorAlmacenes inicializado con ocupacion de {} almacenes",
+            state.getAlmacenes().size());
+    }
+
+    /**
+     * Actualiza el state con la solucion del algoritmo genetico
+     */
+    private void actualizarStateConSolucion(SimulationState state, Solution solucion,
+                                             WorldTemporal worldTemporal) {
+        int pedidosPlanificados = 0;
+
+        for (Map.Entry<Pedido, List<SubRuta>> entry : solucion.getRutas().entrySet()) {
+            Pedido pedido = entry.getKey();
+            List<SubRuta> subrutas = entry.getValue();
+
+            PedidoState pedidoState = state.getPedidos().get(pedido.getId());
+            if (pedidoState == null) continue;
+
+            // Cambiar estado a PLANIFICADO
+            pedidoState.setEstado(EstadoPedido.PLANIFICADO);
+
+            // Construir ruta planificada
+            List<VueloAsignado> rutaPlanificada = new ArrayList<>();
+            LocalDateTime llegadaEstimada = null;
+
+            for (SubRuta subruta : subrutas) {
+                for (VueloUso vueloUso : subruta.getVuelos()) {
+                    String vueloId = vueloUso.generarId();
+                    VueloInstancia instancia = worldTemporal.getVuelo(vueloId);
+
+                    if (instancia != null) {
+                        // Crear VueloAsignado
+                        VueloAsignado vueloAsignado = new VueloAsignado();
+                        vueloAsignado.setVueloId(vueloId);
+                        vueloAsignado.setOrigen(vueloUso.getOrigen());
+                        vueloAsignado.setDestino(vueloUso.getDestino());
+                        vueloAsignado.setSalida(instancia.getSalidaUTC());
+                        vueloAsignado.setLlegada(instancia.getLlegadaUTC());
+                        vueloAsignado.setCantidad(vueloUso.getCantidadAsignada());
+
+                        rutaPlanificada.add(vueloAsignado);
+                        llegadaEstimada = instancia.getLlegadaUTC();
+
+                        // Actualizar VueloState en el state
+                        VueloState vueloState = state.getVuelos().computeIfAbsent(vueloId, k -> {
+                            VueloState v = new VueloState();
+                            v.setId(vueloId);
+                            v.setOrigen(vueloUso.getOrigen());
+                            v.setDestino(vueloUso.getDestino());
+                            v.setSalida(instancia.getSalidaUTC());
+                            v.setLlegada(instancia.getLlegadaUTC());
+                            v.setCapacidadMaxima(vueloUso.getCapacidadMaxima());
+                            v.setCapacidadUsada(0);
+                            v.setEstado(EstadoVuelo.PROGRAMADO);
+                            v.setProgreso(0.0);
+                            return v;
+                        });
+
+                        // Reservar capacidad
+                        vueloState.setCapacidadUsada(
+                            vueloState.getCapacidadUsada() + vueloUso.getCantidadAsignada());
+                    }
+                }
+            }
+
+            // Actualizar pedido con ruta planificada
+            pedidoState.setRutaPlanificada(rutaPlanificada);
+            pedidoState.setFechaEntregaEstimada(llegadaEstimada);
+            pedidoState.setProgresoRuta(0.0);
+
+            pedidosPlanificados++;
+        }
+
+        log.info("State actualizado: {} pedidos planificados, {} vuelos creados/actualizados",
+            pedidosPlanificados, state.getVuelos().size());
     }
 
     /**
@@ -210,11 +430,132 @@ public class AlgoritmoGeneticoService {
     }
 
     /**
+     * Ejecuta el algoritmo genetico con parametros configurables desde el state
+     *
+     * @param worldTemporal World temporal con vuelos expandidos
+     * @param controladorAlmacenes Controlador de capacidad de almacenes
+     * @param pedidos Lista de pedidos a planificar
+     * @param parametros Parametros configurables del AG
+     * @return Mejor solucion encontrada
+     */
+    private Solution ejecutarAlgoritmoGeneticoConParametros(WorldTemporal worldTemporal,
+                                                             ControladorAlmacenes controladorAlmacenes,
+                                                             List<Pedido> pedidos,
+                                                             SimulationState.ParametrosAG parametros) {
+        log.info("Iniciando algoritmo genetico: poblacion={}, generaciones={}, elite={}",
+                parametros.getTamanioPoblacion(), parametros.getMaxGeneraciones(), parametros.getEliteK());
+
+        Random random = new Random();
+        int numeroPedidos = pedidos.size();
+
+        // Crear decodificador genetico
+        DecodificadorGenetico decodificador = new DecodificadorGenetico(worldTemporal, controladorAlmacenes);
+
+        // 1. Generar poblacion inicial
+        List<Individuo> poblacion = generarPoblacionInicial(numeroPedidos, parametros.getTamanioPoblacion(), random);
+        log.info("Poblacion inicial generada: {} individuos", poblacion.size());
+
+        // Evaluar poblacion inicial
+        evaluarPoblacion(poblacion, decodificador, pedidos, worldTemporal, controladorAlmacenes);
+
+        // Ordenar por fitness (mejor primero)
+        poblacion.sort(Comparator.comparingDouble((Individuo i) -> i.fitness).reversed());
+
+        double mejorFitnessGlobal = poblacion.get(0).fitness;
+        int generacionesSinMejora = 0;
+
+        log.info("Gen 0: Mejor fitness = {:.2f}, Promedio = {:.2f}",
+                mejorFitnessGlobal, calcularFitnessPromedio(poblacion));
+
+        // 2. Loop evolutivo
+        for (int generacion = 1; generacion <= parametros.getMaxGeneraciones(); generacion++) {
+            // Verificar si el thread fue interrumpido (para timeout)
+            if (Thread.currentThread().isInterrupted()) {
+                log.warn("AG interrumpido en generacion {} por timeout", generacion);
+                break;
+            }
+
+            // Crear nueva generacion
+            List<Individuo> nuevaPoblacion = new ArrayList<>();
+
+            // Elitismo: copiar mejores K individuos
+            for (int i = 0; i < parametros.getEliteK() && i < poblacion.size(); i++) {
+                nuevaPoblacion.add(new Individuo(poblacion.get(i).cromosoma.copiar()));
+            }
+
+            // Generar resto de la poblacion
+            while (nuevaPoblacion.size() < parametros.getTamanioPoblacion()) {
+                // Seleccion por torneo
+                Chromosome padre1 = seleccionTorneo(poblacion, random).cromosoma;
+                Chromosome padre2 = seleccionTorneo(poblacion, random).cromosoma;
+
+                // Cruce
+                Chromosome hijo;
+                if (random.nextDouble() < parametros.getProbabilidadCruce()) {
+                    hijo = padre1.cruzar(padre2, random);
+                } else {
+                    hijo = padre1.copiar();
+                }
+
+                // Mutacion
+                hijo.mutar(parametros.getProbabilidadMutacion(), random);
+
+                nuevaPoblacion.add(new Individuo(hijo));
+            }
+
+            // Evaluar nueva poblacion
+            evaluarPoblacion(nuevaPoblacion, decodificador, pedidos, worldTemporal, controladorAlmacenes);
+
+            // Ordenar por fitness
+            nuevaPoblacion.sort(Comparator.comparingDouble((Individuo i) -> i.fitness).reversed());
+
+            // Actualizar poblacion
+            poblacion = nuevaPoblacion;
+
+            // Verificar mejora
+            double mejorFitnessActual = poblacion.get(0).fitness;
+            double fitnessPromedio = calcularFitnessPromedio(poblacion);
+
+            if (mejorFitnessActual > mejorFitnessGlobal) {
+                mejorFitnessGlobal = mejorFitnessActual;
+                generacionesSinMejora = 0;
+                log.info("Gen {}: MEJORA - Mejor fitness = {:.2f}, Promedio = {:.2f}",
+                        generacion, mejorFitnessGlobal, fitnessPromedio);
+            } else {
+                generacionesSinMejora++;
+                if (generacion % 20 == 0) {
+                    log.info("Gen {}: Mejor fitness = {:.2f}, Promedio = {:.2f}, Sin mejora: {}",
+                            generacion, mejorFitnessGlobal, fitnessPromedio, generacionesSinMejora);
+                }
+            }
+
+            // Criterio de parada: sin mejora por N generaciones
+            if (generacionesSinMejora >= parametros.getLimiteGeneracionesSinMejora()) {
+                log.info("Algoritmo detenido: {} generaciones sin mejora", generacionesSinMejora);
+                break;
+            }
+        }
+
+        // Retornar mejor solucion encontrada
+        Individuo mejorIndividuo = poblacion.get(0);
+        log.info("Algoritmo genetico completado: Fitness final = {:.2f}", mejorIndividuo.fitness);
+
+        return mejorIndividuo.solucion;
+    }
+
+    /**
      * Genera poblacion inicial de cromosomas aleatorios
      */
     private List<Individuo> generarPoblacionInicial(int numeroPedidos, Random random) {
+        return generarPoblacionInicial(numeroPedidos, TAMANIO_POBLACION, random);
+    }
+
+    /**
+     * Genera poblacion inicial de cromosomas aleatorios con tamanio configurable
+     */
+    private List<Individuo> generarPoblacionInicial(int numeroPedidos, int tamanioPoblacion, Random random) {
         List<Individuo> poblacion = new ArrayList<>();
-        for (int i = 0; i < TAMANIO_POBLACION; i++) {
+        for (int i = 0; i < tamanioPoblacion; i++) {
             Chromosome cromosoma = new Chromosome(numeroPedidos);
             cromosoma.inicializarAleatorio(random);
             poblacion.add(new Individuo(cromosoma));

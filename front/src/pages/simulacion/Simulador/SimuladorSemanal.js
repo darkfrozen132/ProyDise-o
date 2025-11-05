@@ -16,13 +16,8 @@ import {
 	reanudarSimulacion, 
 	detenerSimulacion,
 	conectarStreamSimulacion,
-	obtenerEstadoSimulacion,
-	consultarEstadoWebSocket,
-	activarWebSocket,
-	desactivarWebSocket,
-	enviarMensajePruebaWS
+	obtenerEstadoSimulacion
 } from '../../../config/api';
-import { conectarWebSocket } from '../../../config/websocket';
 
 /* Reparar iconos por defecto de Leaflet */
 delete L.Icon.Default.prototype._getIconUrl;
@@ -142,7 +137,7 @@ const SimuladorSemanal = () => {
 	const [airports, setAirports] = useState([]);
 	const [loadingAirports, setLoadingAirports] = useState(true);
 	const intervalRef = useRef(); /* Referencia para el intervalo de simulación */
-	
+
 	// ==================== ESTADO SSE (TIEMPO DE SIMULACIÓN Y RUTAS) ====================
 	const [simulacionActiva, setSimulacionActiva] = useState(false);
 	const [horaSimulada, setHoraSimulada] = useState(null);
@@ -152,11 +147,11 @@ const SimuladorSemanal = () => {
 	const [rutasSolucion, setRutasSolucion] = useState([]); // Rutas que vienen del SSE
 	const eventSourceRef = useRef(null); /* Referencia para el EventSource SSE */
 
-	// ==================== ESTADO WEBSOCKET ====================
-	const [wsConectado, setWsConectado] = useState(false);
-	const [wsActivo, setWsActivo] = useState(false);
-	const [mensajesWS, setMensajesWS] = useState([]);
-	const wsRef = useRef(null); /* Referencia para el WebSocket */
+	// ==================== ESTADO MODO MOCK ====================
+	const [modoMock, setModoMock] = useState(false);
+	const [simulacionMockActiva, setSimulacionMockActiva] = useState(false);
+	const [segundoActual, setSegundoActual] = useState(0);
+	const mockIntervalRef = useRef(null);
 
 	// ==================== FUNCIÓN PARA CONVERTIR RUTA DEL BACKEND A VUELO ====================
 	const convertirRutaAVuelo = (ruta) => {
@@ -224,6 +219,94 @@ const SimuladorSemanal = () => {
 			rotation
 		};
 	};
+
+	// ==================== FUNCIÓN PARA CONVERTIR DATOS MOCK SIMPLES A VUELO ====================
+	const convertirDatoMockAVuelo = (datoMock) => {
+		// Formato del backend: { id, currentLat, currentLng, angle }
+		return {
+			id: datoMock.id,
+			origin: { code: 'MOCK', lat: 0, lng: 0, region: 'Test' },
+			destination: { code: 'MOCK', lat: 0, lng: 0, region: 'Test' },
+			progress: 0.5,
+			altitude: 35000,
+			speed: 850,
+			status: 'active',
+			packageCapacity: 200,
+			currentPackages: 200,
+			packageType: 'MPE',
+			isSameContinentFlight: false,
+			currentLat: datoMock.currentLat,
+			currentLng: datoMock.currentLng,
+			aircraftType: 'boeing737',
+			aircraftName: 'Boeing 737',
+			aircraftColor: '#007bff',
+			rotation: datoMock.angle || 0 // Usar el ángulo del JSON
+		};
+	};
+
+	// ==================== FUNCIONES MODO MOCK ====================
+	const cargarDatosMock = async (segundo) => {
+		try {
+			const response = await fetch(`/mockData/segundo_${segundo}.json`);
+			if (!response.ok) {
+				throw new Error(`Error cargando segundo_${segundo}.json`);
+			}
+			const datos = await response.json();
+			console.log(`📦 Datos mock cargados (segundo ${segundo}):`, datos);
+
+			// Convertir datos simples a formato de vuelo
+			const vuelosMock = datos.map(dato => convertirDatoMockAVuelo(dato));
+			setFlights(vuelosMock);
+			setFlightsInAir(vuelosMock.length);
+			setSegundoActual(segundo);
+		} catch (error) {
+			console.error('❌ Error cargando datos mock:', error);
+		}
+	};
+
+	const handleIniciarMock = () => {
+		console.log('🎬 Iniciando simulación MOCK...');
+		setSimulacionMockActiva(true);
+		setSegundoActual(0);
+		cargarDatosMock(0);
+
+		// Crear intervalo que cargue un archivo cada segundo
+		mockIntervalRef.current = setInterval(() => {
+			setSegundoActual(prevSegundo => {
+				const nextSegundo = prevSegundo + 1;
+
+				if (nextSegundo >= 30) {
+					// Reiniciar desde el segundo 0
+					cargarDatosMock(0);
+					return 0;
+				} else {
+					cargarDatosMock(nextSegundo);
+					return nextSegundo;
+				}
+			});
+		}, 1000); // Cada 1 segundo
+	};
+
+	const handleDetenerMock = () => {
+		console.log('⏹️ Deteniendo simulación MOCK...');
+		setSimulacionMockActiva(false);
+		if (mockIntervalRef.current) {
+			clearInterval(mockIntervalRef.current);
+			mockIntervalRef.current = null;
+		}
+		setFlights([]);
+		setSegundoActual(0);
+		setFlightsInAir(0);
+	};
+
+	// Cleanup del modo mock al desmontar
+	useEffect(() => {
+		return () => {
+			if (mockIntervalRef.current) {
+				clearInterval(mockIntervalRef.current);
+			}
+		};
+	}, []);
 
 	// ==================== DEBUG: MONITOREAR CAMBIOS EN tiempoRealMs ====================
 	useEffect(() => {
@@ -364,16 +447,6 @@ const SimuladorSemanal = () => {
 		};
 	}, [simulacionActiva]);
 
-	// ==================== CLEANUP WEBSOCKET AL DESMONTAR ====================
-	useEffect(() => {
-		return () => {
-			if (wsRef.current) {
-				console.log('🔌 Cerrando WebSocket al desmontar componente...');
-				wsRef.current.cerrar();
-			}
-		};
-	}, []);
-
 	// ==================== FUNCIONES PARA CONTROLAR SIMULACIÓN ====================
 	const handleIniciarSimulacion = async () => {
 		try {
@@ -408,7 +481,7 @@ const SimuladorSemanal = () => {
 			});
 		} catch (error) {
 			console.error('❌ Error al iniciar simulación:', error);
-			alert('Error al conectar con el servidor. Verifica que el backend esté corriendo en http://127.0.0.1:8080');
+			alert('Error al conectar con el servidor. Verifica que el backend esté corriendo en http://127.0.0.1:8000');
 		}
 	};
 
@@ -441,97 +514,6 @@ const SimuladorSemanal = () => {
 			console.error('Error al detener simulación:', error);
 		}
 	};
-
-	// ==================== FUNCIONES WEBSOCKET ====================
-	
-	// Conectar WebSocket
-	const handleConectarWS = () => {
-		if (wsRef.current) {
-			console.warn('⚠️ WebSocket ya está conectado');
-			return;
-		}
-
-		console.log('🔌 Intentando conectar WebSocket...');
-		const ws = conectarWebSocket(
-			(data) => {
-				console.log('📨 Mensaje WebSocket recibido:', data);
-				setMensajesWS(prev => [...prev, data]);
-			},
-			(error) => {
-				console.error('❌ Error WebSocket:', error);
-				setWsConectado(false);
-			},
-			() => {
-				console.log('✅ WebSocket conectado!');
-				setWsConectado(true);
-			},
-			() => {
-				console.log('🔌 WebSocket desconectado');
-				setWsConectado(false);
-				wsRef.current = null;
-			}
-		);
-		wsRef.current = ws;
-	};
-
-	// Desconectar WebSocket
-	const handleDesconectarWS = () => {
-		if (wsRef.current) {
-			wsRef.current.cerrar();
-			wsRef.current = null;
-			setWsConectado(false);
-			console.log('🔌 WebSocket desconectado manualmente');
-		}
-	};
-
-	// Activar WebSocket en el backend
-	const handleActivarWS = async () => {
-		try {
-			const response = await activarWebSocket();
-			setWsActivo(true);
-			console.log('✅ WebSocket activado en backend:', response);
-		} catch (error) {
-			console.error('❌ Error al activar WebSocket:', error);
-		}
-	};
-
-	// Desactivar WebSocket en el backend
-	const handleDesactivarWS = async () => {
-		try {
-			const response = await desactivarWebSocket();
-			setWsActivo(false);
-			console.log('🛑 WebSocket desactivado en backend:', response);
-		} catch (error) {
-			console.error('❌ Error al desactivar WebSocket:', error);
-		}
-	};
-
-	// Consultar estado del WebSocket
-	const handleConsultarEstadoWS = async () => {
-		try {
-			const response = await consultarEstadoWebSocket();
-			setWsActivo(response.activo || false);
-			console.log('📊 Estado WebSocket:', response);
-		} catch (error) {
-			console.error('❌ Error al consultar estado:', error);
-		}
-	};
-
-	// Enviar mensaje de prueba
-	const handleEnviarMensajeWS = async () => {
-		try {
-			const mensaje = `Prueba desde frontend - ${new Date().toLocaleTimeString()}`;
-			await enviarMensajePruebaWS(mensaje);
-		} catch (error) {
-			console.error('❌ Error al enviar mensaje:', error);
-		}
-	};
-
-	// Limpiar mensajes
-	const handleLimpiarMensajesWS = () => {
-		setMensajesWS([]);
-	};
-
 
 	/* Generar vuelos iniciales con lógica de origen, destino, tipo de avión, capacidad y carga */
 	/* ========== GENERACIÓN LOCAL DE VUELOS DESACTIVADA ========== */
@@ -850,76 +832,101 @@ const SimuladorSemanal = () => {
 								</div>
 							</div>
 
-							{/* ==================== PANEL PRUEBA WEBSOCKET ==================== */}
+							{/* ==================== PANEL MODO MOCK ==================== */}
 							<div style={{
 								background: '#fff3cd',
 								borderRadius: '8px',
 								padding: '15px 20px',
 								marginBottom: '20px',
-								border: '1px solid #ffc107',
+								border: '2px solid #ffc107',
+								display: 'flex',
+								justifyContent: 'space-between',
+								alignItems: 'center',
+								flexWrap: 'wrap',
+								gap: '15px'
 							}}>
-								<h4 style={{ margin: '0 0 15px 0', fontSize: '16px', color: '#856404' }}>
-									🔌 Prueba WebSocket
-								</h4>
-								
-								{/* Indicadores de estado */}
-								<div style={{ display: 'flex', gap: '20px', marginBottom: '15px', fontSize: '13px' }}>
-									<span style={{ color: wsConectado ? '#28a745' : '#dc3545', fontWeight: '600' }}>
-										● {wsConectado ? 'Conectado' : 'Desconectado'}
-									</span>
-									<span style={{ color: wsActivo ? '#28a745' : '#6c757d', fontWeight: '600' }}>
-										Backend: {wsActivo ? 'Activo' : 'Inactivo'}
-									</span>
-									<span style={{ color: '#6c757d' }}>
-										Mensajes: {mensajesWS.length}
-									</span>
+								{/* Título y descripción */}
+								<div style={{ flex: 1 }}>
+									<h3 style={{ margin: '0 0 8px 0', color: '#856404', fontSize: '16px', fontWeight: '600' }}>
+										<i className="fas fa-flask"></i> Modo Prueba Mock
+									</h3>
+									<p style={{ margin: 0, fontSize: '13px', color: '#856404' }}>
+										Simula 10 vuelos durante 30 segundos con datos JSON locales
+									</p>
+								</div>
+
+								{/* Información del estado */}
+								<div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+									<div>
+										<span style={{ fontSize: '14px', color: '#856404', marginRight: '8px' }}>
+											Segundo actual:
+										</span>
+										<span style={{ fontSize: '16px', fontWeight: '700', color: '#212529' }}>
+											{segundoActual}/29
+										</span>
+									</div>
+									<div>
+										<span style={{ fontSize: '14px', color: '#856404', marginRight: '8px' }}>
+											Vuelos:
+										</span>
+										<span style={{ fontSize: '16px', fontWeight: '700', color: '#212529' }}>
+											{flights.length}
+										</span>
+									</div>
+									<div>
+										<span style={{
+											padding: '4px 12px',
+											borderRadius: '4px',
+											fontSize: '12px',
+											fontWeight: '600',
+											background: simulacionMockActiva ? '#28a745' : '#6c757d',
+											color: 'white'
+										}}>
+											{simulacionMockActiva ? 'ACTIVO' : 'DETENIDO'}
+										</span>
+									</div>
 								</div>
 
 								{/* Botones de control */}
-								<div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-									<button onClick={handleConectarWS} disabled={wsConectado} 
-										style={{ padding: '6px 12px', fontSize: '13px', background: wsConectado ? '#e9ecef' : '#007bff', color: wsConectado ? '#6c757d' : 'white', border: 'none', borderRadius: '4px', cursor: wsConectado ? 'not-allowed' : 'pointer' }}>
-										Conectar
+								<div style={{ display: 'flex', gap: '10px' }}>
+									<button
+										onClick={handleIniciarMock}
+										disabled={simulacionMockActiva}
+										style={{
+											padding: '8px 16px',
+											borderRadius: '6px',
+											border: '1px solid #007bff',
+											background: simulacionMockActiva ? '#e9ecef' : '#007bff',
+											color: simulacionMockActiva ? '#6c757d' : 'white',
+											fontSize: '14px',
+											fontWeight: '500',
+											cursor: simulacionMockActiva ? 'not-allowed' : 'pointer',
+											transition: 'all 0.2s'
+										}}
+									>
+										<i className="fas fa-play"></i> Iniciar Mock
 									</button>
-									<button onClick={handleDesconectarWS} disabled={!wsConectado}
-										style={{ padding: '6px 12px', fontSize: '13px', background: !wsConectado ? '#e9ecef' : '#6c757d', color: !wsConectado ? '#6c757d' : 'white', border: 'none', borderRadius: '4px', cursor: !wsConectado ? 'not-allowed' : 'pointer' }}>
-										Desconectar
-									</button>
-									<button onClick={handleActivarWS}
-										style={{ padding: '6px 12px', fontSize: '13px', background: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-										Activar Backend
-									</button>
-									<button onClick={handleDesactivarWS}
-										style={{ padding: '6px 12px', fontSize: '13px', background: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-										Desactivar Backend
-									</button>
-									<button onClick={handleConsultarEstadoWS}
-										style={{ padding: '6px 12px', fontSize: '13px', background: '#17a2b8', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-										Consultar Estado
-									</button>
-									<button onClick={handleEnviarMensajeWS}
-										style={{ padding: '6px 12px', fontSize: '13px', background: '#ffc107', color: '#212529', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-										Enviar Mensaje
-									</button>
-									<button onClick={handleLimpiarMensajesWS}
-										style={{ padding: '6px 12px', fontSize: '13px', background: '#6c757d', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-										Limpiar
+									<button
+										onClick={handleDetenerMock}
+										disabled={!simulacionMockActiva}
+										style={{
+											padding: '8px 16px',
+											borderRadius: '6px',
+											border: '1px solid #dc3545',
+											background: !simulacionMockActiva ? '#e9ecef' : '#dc3545',
+											color: !simulacionMockActiva ? '#6c757d' : 'white',
+											fontSize: '14px',
+											fontWeight: '500',
+											cursor: !simulacionMockActiva ? 'not-allowed' : 'pointer',
+											transition: 'all 0.2s'
+										}}
+									>
+										<i className="fas fa-stop"></i> Detener Mock
 									</button>
 								</div>
-
-								{/* Últimos mensajes */}
-								{mensajesWS.length > 0 && (
-									<div style={{ marginTop: '15px', maxHeight: '100px', overflow: 'auto', background: 'white', padding: '10px', borderRadius: '4px', fontSize: '12px', fontFamily: 'monospace' }}>
-										{mensajesWS.slice(-5).map((msg, idx) => (
-											<div key={idx} style={{ marginBottom: '5px', color: '#212529' }}>
-												{typeof msg === 'string' ? msg : JSON.stringify(msg)}
-											</div>
-										))}
-									</div>
-								)}
 							</div>
 						</div>
-						
+
 						{/* Mapa interactivo */}
 						<div className="map-container">
 							<MapContainer center={[20.0, 10.0]} zoom={3} className="flight-map" scrollWheelZoom={false} minZoom={2} maxZoom={10} zoomControl={true} doubleClickZoom={true} boxZoom={true} keyboard={true} touchZoom={true}>

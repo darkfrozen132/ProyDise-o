@@ -118,7 +118,7 @@ El stream devuelve JSON con este formato cada segundo:
 ## 🧪 Cómo Probar
 
 ### **Requisitos:**
-1. Backend Spring Boot ejecutándose en `http://localhost:8080`
+1. Backend Spring Boot ejecutándose en `http://localhost:8000`
 2. Frontend React ejecutándose en `http://localhost:3000`
 
 ### **Pasos:**
@@ -142,19 +142,19 @@ Abre la consola del navegador (F12) y verás logs como:
 ### **Prueba de CURL (opcional):**
 ```bash
 # Iniciar simulación
-curl -X POST http://localhost:8080/api/simulacion/iniciar
+curl -X POST http://localhost:8000/api/simulacion/iniciar
 
 # Ver stream en terminal
-curl -N http://localhost:8080/api/simulacion/stream
+curl -N http://localhost:8000/api/simulacion/stream
 
 # Pausar
-curl -X POST http://localhost:8080/api/simulacion/pausar
+curl -X POST http://localhost:8000/api/simulacion/pausar
 
 # Reanudar
-curl -X POST http://localhost:8080/api/simulacion/reanudar
+curl -X POST http://localhost:8000/api/simulacion/reanudar
 
 # Detener
-curl -X POST http://localhost:8080/api/simulacion/detener
+curl -X POST http://localhost:8000/api/simulacion/detener
 ```
 
 ---

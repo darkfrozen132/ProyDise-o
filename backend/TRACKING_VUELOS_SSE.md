@@ -93,7 +93,7 @@ GET /api/vuelos/tracking/estado
 
 ```javascript
 // Conectar al SSE
-const eventSource = new EventSource('http://localhost:8080/api/vuelos/stream');
+const eventSource = new EventSource('http://localhost:8000/api/vuelos/stream');
 
 eventSource.addEventListener('vuelo-update', (event) => {
   const data = JSON.parse(event.data);
@@ -111,7 +111,7 @@ eventSource.onerror = (error) => {
 };
 
 // Iniciar tracking
-fetch('http://localhost:8080/api/vuelos/tracking/iniciar', {
+fetch('http://localhost:8000/api/vuelos/tracking/iniciar', {
   method: 'POST'
 })
 .then(res => res.json())
@@ -119,7 +119,7 @@ fetch('http://localhost:8080/api/vuelos/tracking/iniciar', {
 
 // Detener tracking
 function detenerTracking() {
-  fetch('http://localhost:8080/api/vuelos/tracking/detener', {
+  fetch('http://localhost:8000/api/vuelos/tracking/detener', {
     method: 'POST'
   })
   .then(() => eventSource.close());
@@ -142,7 +142,7 @@ let routeLine = L.polyline([], { color: 'blue' }).addTo(map);
 const coordenadas = [];
 
 // Conectar a SSE
-const eventSource = new EventSource('http://localhost:8080/api/vuelos/stream');
+const eventSource = new EventSource('http://localhost:8000/api/vuelos/stream');
 
 eventSource.addEventListener('vuelo-update', (event) => {
   const data = JSON.parse(event.data);

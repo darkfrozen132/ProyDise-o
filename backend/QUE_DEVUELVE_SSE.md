@@ -23,9 +23,9 @@ data: {
   "minutoActual": 0,
   "saltoMinutos": 5,
   "tickActual": 0,
-  "clientesConectados": 1,
-  "progreso": 0.0,
-  "limiteMinutos": 1440
+  "clientesConectados": 1,// Eliminar
+  "progreso": 0.0,//ELiminar
+  "limiteMinutos": 1440//ELiminar
 }
 ```
 
@@ -62,7 +62,7 @@ data: {
       "tiempoEjecucionMs": 856,
       "generacionesEjecutadas": 200
     },
-    "aeropuertos": [
+    "aeropuertos": [ //Mdificar, devuelve el tiempo real la cantidad de pedidos que tiene ese aeropuerto
       {
         "code": "KLAX",
         "lat": 33.9425,

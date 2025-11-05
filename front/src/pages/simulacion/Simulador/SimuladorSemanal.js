@@ -16,8 +16,13 @@ import {
 	reanudarSimulacion, 
 	detenerSimulacion,
 	conectarStreamSimulacion,
-	obtenerEstadoSimulacion
+	obtenerEstadoSimulacion,
+	consultarEstadoWebSocket,
+	activarWebSocket,
+	desactivarWebSocket,
+	enviarMensajePruebaWS
 } from '../../../config/api';
+import { conectarWebSocket } from '../../../config/websocket';
 
 /* Reparar iconos por defecto de Leaflet */
 delete L.Icon.Default.prototype._getIconUrl;
@@ -146,6 +151,12 @@ const SimuladorSemanal = () => {
 	const [timeScale, setTimeScale] = useState(10.0);
 	const [rutasSolucion, setRutasSolucion] = useState([]); // Rutas que vienen del SSE
 	const eventSourceRef = useRef(null); /* Referencia para el EventSource SSE */
+
+	// ==================== ESTADO WEBSOCKET ====================
+	const [wsConectado, setWsConectado] = useState(false);
+	const [wsActivo, setWsActivo] = useState(false);
+	const [mensajesWS, setMensajesWS] = useState([]);
+	const wsRef = useRef(null); /* Referencia para el WebSocket */
 
 	// ==================== FUNCIÓN PARA CONVERTIR RUTA DEL BACKEND A VUELO ====================
 	const convertirRutaAVuelo = (ruta) => {
@@ -353,6 +364,16 @@ const SimuladorSemanal = () => {
 		};
 	}, [simulacionActiva]);
 
+	// ==================== CLEANUP WEBSOCKET AL DESMONTAR ====================
+	useEffect(() => {
+		return () => {
+			if (wsRef.current) {
+				console.log('🔌 Cerrando WebSocket al desmontar componente...');
+				wsRef.current.cerrar();
+			}
+		};
+	}, []);
+
 	// ==================== FUNCIONES PARA CONTROLAR SIMULACIÓN ====================
 	const handleIniciarSimulacion = async () => {
 		try {
@@ -420,6 +441,97 @@ const SimuladorSemanal = () => {
 			console.error('Error al detener simulación:', error);
 		}
 	};
+
+	// ==================== FUNCIONES WEBSOCKET ====================
+	
+	// Conectar WebSocket
+	const handleConectarWS = () => {
+		if (wsRef.current) {
+			console.warn('⚠️ WebSocket ya está conectado');
+			return;
+		}
+
+		console.log('🔌 Intentando conectar WebSocket...');
+		const ws = conectarWebSocket(
+			(data) => {
+				console.log('📨 Mensaje WebSocket recibido:', data);
+				setMensajesWS(prev => [...prev, data]);
+			},
+			(error) => {
+				console.error('❌ Error WebSocket:', error);
+				setWsConectado(false);
+			},
+			() => {
+				console.log('✅ WebSocket conectado!');
+				setWsConectado(true);
+			},
+			() => {
+				console.log('🔌 WebSocket desconectado');
+				setWsConectado(false);
+				wsRef.current = null;
+			}
+		);
+		wsRef.current = ws;
+	};
+
+	// Desconectar WebSocket
+	const handleDesconectarWS = () => {
+		if (wsRef.current) {
+			wsRef.current.cerrar();
+			wsRef.current = null;
+			setWsConectado(false);
+			console.log('🔌 WebSocket desconectado manualmente');
+		}
+	};
+
+	// Activar WebSocket en el backend
+	const handleActivarWS = async () => {
+		try {
+			const response = await activarWebSocket();
+			setWsActivo(true);
+			console.log('✅ WebSocket activado en backend:', response);
+		} catch (error) {
+			console.error('❌ Error al activar WebSocket:', error);
+		}
+	};
+
+	// Desactivar WebSocket en el backend
+	const handleDesactivarWS = async () => {
+		try {
+			const response = await desactivarWebSocket();
+			setWsActivo(false);
+			console.log('🛑 WebSocket desactivado en backend:', response);
+		} catch (error) {
+			console.error('❌ Error al desactivar WebSocket:', error);
+		}
+	};
+
+	// Consultar estado del WebSocket
+	const handleConsultarEstadoWS = async () => {
+		try {
+			const response = await consultarEstadoWebSocket();
+			setWsActivo(response.activo || false);
+			console.log('📊 Estado WebSocket:', response);
+		} catch (error) {
+			console.error('❌ Error al consultar estado:', error);
+		}
+	};
+
+	// Enviar mensaje de prueba
+	const handleEnviarMensajeWS = async () => {
+		try {
+			const mensaje = `Prueba desde frontend - ${new Date().toLocaleTimeString()}`;
+			await enviarMensajePruebaWS(mensaje);
+		} catch (error) {
+			console.error('❌ Error al enviar mensaje:', error);
+		}
+	};
+
+	// Limpiar mensajes
+	const handleLimpiarMensajesWS = () => {
+		setMensajesWS([]);
+	};
+
 
 	/* Generar vuelos iniciales con lógica de origen, destino, tipo de avión, capacidad y carga */
 	/* ========== GENERACIÓN LOCAL DE VUELOS DESACTIVADA ========== */
@@ -736,6 +848,75 @@ const SimuladorSemanal = () => {
 										Detener
 									</button>
 								</div>
+							</div>
+
+							{/* ==================== PANEL PRUEBA WEBSOCKET ==================== */}
+							<div style={{
+								background: '#fff3cd',
+								borderRadius: '8px',
+								padding: '15px 20px',
+								marginBottom: '20px',
+								border: '1px solid #ffc107',
+							}}>
+								<h4 style={{ margin: '0 0 15px 0', fontSize: '16px', color: '#856404' }}>
+									🔌 Prueba WebSocket
+								</h4>
+								
+								{/* Indicadores de estado */}
+								<div style={{ display: 'flex', gap: '20px', marginBottom: '15px', fontSize: '13px' }}>
+									<span style={{ color: wsConectado ? '#28a745' : '#dc3545', fontWeight: '600' }}>
+										● {wsConectado ? 'Conectado' : 'Desconectado'}
+									</span>
+									<span style={{ color: wsActivo ? '#28a745' : '#6c757d', fontWeight: '600' }}>
+										Backend: {wsActivo ? 'Activo' : 'Inactivo'}
+									</span>
+									<span style={{ color: '#6c757d' }}>
+										Mensajes: {mensajesWS.length}
+									</span>
+								</div>
+
+								{/* Botones de control */}
+								<div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+									<button onClick={handleConectarWS} disabled={wsConectado} 
+										style={{ padding: '6px 12px', fontSize: '13px', background: wsConectado ? '#e9ecef' : '#007bff', color: wsConectado ? '#6c757d' : 'white', border: 'none', borderRadius: '4px', cursor: wsConectado ? 'not-allowed' : 'pointer' }}>
+										Conectar
+									</button>
+									<button onClick={handleDesconectarWS} disabled={!wsConectado}
+										style={{ padding: '6px 12px', fontSize: '13px', background: !wsConectado ? '#e9ecef' : '#6c757d', color: !wsConectado ? '#6c757d' : 'white', border: 'none', borderRadius: '4px', cursor: !wsConectado ? 'not-allowed' : 'pointer' }}>
+										Desconectar
+									</button>
+									<button onClick={handleActivarWS}
+										style={{ padding: '6px 12px', fontSize: '13px', background: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+										Activar Backend
+									</button>
+									<button onClick={handleDesactivarWS}
+										style={{ padding: '6px 12px', fontSize: '13px', background: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+										Desactivar Backend
+									</button>
+									<button onClick={handleConsultarEstadoWS}
+										style={{ padding: '6px 12px', fontSize: '13px', background: '#17a2b8', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+										Consultar Estado
+									</button>
+									<button onClick={handleEnviarMensajeWS}
+										style={{ padding: '6px 12px', fontSize: '13px', background: '#ffc107', color: '#212529', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+										Enviar Mensaje
+									</button>
+									<button onClick={handleLimpiarMensajesWS}
+										style={{ padding: '6px 12px', fontSize: '13px', background: '#6c757d', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+										Limpiar
+									</button>
+								</div>
+
+								{/* Últimos mensajes */}
+								{mensajesWS.length > 0 && (
+									<div style={{ marginTop: '15px', maxHeight: '100px', overflow: 'auto', background: 'white', padding: '10px', borderRadius: '4px', fontSize: '12px', fontFamily: 'monospace' }}>
+										{mensajesWS.slice(-5).map((msg, idx) => (
+											<div key={idx} style={{ marginBottom: '5px', color: '#212529' }}>
+												{typeof msg === 'string' ? msg : JSON.stringify(msg)}
+											</div>
+										))}
+									</div>
+								)}
 							</div>
 						</div>
 						

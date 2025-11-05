@@ -154,8 +154,8 @@ export const transformFlightData = (backendFlight, airports) => {
 // Función para obtener vuelos transformados
 export const getFlights = async (airports) => {
   try {
-    console.log('Solicitando vuelos a:', API_BASE_URL + '/vuelos/listar');
-    const response = await api.get('/vuelos/listar');
+    console.log('Solicitando vuelos a:', API_BASE_URL + '/api/vuelos/listar');
+    const response = await api.get('/api/vuelos/listar');
     console.log('Respuesta de vuelos recibida:', response.data);
     
     if (!response.data || !response.data.vuelos) {
@@ -181,7 +181,7 @@ export const getFlights = async (airports) => {
 export const iniciarSimulacion = async () => {
   try {
     console.log('🚀 Iniciando simulación...');
-    const response = await api.post('/simulacion/iniciar');
+    const response = await api.post('/api/simulacion/iniciar');
     console.log('✅ Simulación iniciada:', response.data);
     return response.data;
   } catch (error) {
@@ -194,7 +194,7 @@ export const iniciarSimulacion = async () => {
 export const pausarSimulacion = async () => {
   try {
     console.log('⏸️ Pausando simulación...');
-    const response = await api.post('/simulacion/pausar');
+    const response = await api.post('/api/simulacion/pausar');
     console.log('✅ Simulación pausada:', response.data);
     return response.data;
   } catch (error) {
@@ -207,7 +207,7 @@ export const pausarSimulacion = async () => {
 export const reanudarSimulacion = async () => {
   try {
     console.log('▶️ Reanudando simulación...');
-    const response = await api.post('/simulacion/reanudar');
+    const response = await api.post('/api/simulacion/reanudar');
     console.log('✅ Simulación reanudada:', response.data);
     return response.data;
   } catch (error) {
@@ -220,7 +220,7 @@ export const reanudarSimulacion = async () => {
 export const detenerSimulacion = async () => {
   try {
     console.log('⏹️ Deteniendo simulación...');
-    const response = await api.post('/simulacion/detener');
+    const response = await api.post('/api/simulacion/detener');
     console.log('✅ Simulación detenida:', response.data);
     return response.data;
   } catch (error) {
@@ -232,7 +232,7 @@ export const detenerSimulacion = async () => {
 // Obtener estado actual de la simulación (sin stream)
 export const obtenerEstadoSimulacion = async () => {
   try {
-    const response = await api.get('/simulacion/estado');
+    const response = await api.get('/api/simulacion/estado');
     return response.data;
   } catch (error) {
     console.error('❌ Error al obtener estado de simulación:', error);
@@ -240,9 +240,9 @@ export const obtenerEstadoSimulacion = async () => {
   }
 };
 
-// Conectar al stream SSE de la simulación
+// Conectar al stream SSE de la simulación (EventSource)
 export const conectarStreamSimulacion = (onMessage, onError) => {
-  const eventSource = new EventSource(`${API_BASE_URL}/simulacion/stream`);
+  const eventSource = new EventSource(`${API_BASE_URL}/api/simulacion/stream`);
   
   eventSource.onmessage = (event) => {
     try {
@@ -262,5 +262,60 @@ export const conectarStreamSimulacion = (onMessage, onError) => {
   return eventSource;
 };
 
+// ==================== FUNCIONES PARA WEBSOCKET ====================
+
+// Consultar estado del WebSocket
+export const consultarEstadoWebSocket = async () => {
+  try {
+    console.log('🔍 Consultando estado WebSocket...');
+    const response = await api.get('/api/websocket/estado');
+    console.log('✅ Estado WebSocket:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error al consultar estado WebSocket:', error);
+    throw error;
+  }
+};
+
+// Activar WebSocket
+export const activarWebSocket = async () => {
+  try {
+    console.log('✅ Activando WebSocket...');
+    const response = await api.get('/api/websocket/activar');
+    console.log('✅ WebSocket activado:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error al activar WebSocket:', error);
+    throw error;
+  }
+};
+
+// Desactivar WebSocket
+export const desactivarWebSocket = async () => {
+  try {
+    console.log('🛑 Desactivando WebSocket...');
+    const response = await api.get('/api/websocket/desactivar');
+    console.log('✅ WebSocket desactivado:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error al desactivar WebSocket:', error);
+    throw error;
+  }
+};
+
+// Enviar mensaje de prueba
+export const enviarMensajePruebaWS = async (mensaje) => {
+  try {
+    console.log('📤 Enviando mensaje de prueba:', mensaje);
+    const response = await api.get(`/api/websocket/test?mensaje=${encodeURIComponent(mensaje)}`);
+    console.log('✅ Respuesta:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error al enviar mensaje:', error);
+    throw error;
+  }
+};
+
 export default api;
-export { API_BASE_URL };  
+export { API_BASE_URL };
+  

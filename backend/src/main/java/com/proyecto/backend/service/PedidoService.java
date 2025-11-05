@@ -163,8 +163,8 @@ public class PedidoService {
     /**
      * Carga pedidos desde el archivo de texto
      * IMPORTANTE: Limpia la BD antes de cargar para evitar duplicados
-     * Formato: dd-hh-mm-dest-###-IdClien
-     * Ejemplo: 30-09-15-SEQM-145-0054321
+     * Formato nuevo: id_pedido-aaaammdd-hh-mm-dest-###-IdClien
+     * Ejemplo: 000000001-20250102-00-54-LOWW-002-0000068
      * @return Lista de pedidos cargados
      */
     @Transactional
@@ -243,12 +243,17 @@ public class PedidoService {
 
     /**
      * Parsea una línea del archivo y crea un objeto Pedido
-     * Formato: dd-hh-mm-dest-###-IdClien
-     * Ejemplo: 30-09-15-SEQM-145-0054321
+     * Formato nuevo: id_pedido-aaaammdd-hh-mm-dest-###-IdClien
+     * Ejemplo: 000000001-20250102-00-54-LOWW-002-0000068
      * 
-     * NOTA: El archivo no incluye año ni mes, se asumen valores por defecto:
-     * - Año: 2025
-     * - Mes: 1 (Enero)
+     * Formato:
+     * - id_pedido: 9 dígitos (ej: 000000001)
+     * - aaaammdd: 8 dígitos fecha (ej: 20250102 = 2 enero 2025)
+     * - hh: 2 dígitos hora (ej: 00)
+     * - mm: 2 dígitos minuto (ej: 54)
+     * - dest: 4 caracteres código ICAO aeropuerto (ej: LOWW)
+     * - ###: 3 dígitos cantidad productos (ej: 002)
+     * - IdClien: 7 dígitos ID cliente (ej: 0000068)
      */
     private Pedido parsearLineaPedido(String linea) {
         if (linea == null || linea.trim().isEmpty()) {
@@ -257,27 +262,34 @@ public class PedidoService {
 
         String[] partes = linea.trim().split("-");
         
-        if (partes.length != 6) {
-            log.warn("Formato de línea inválido (esperaba 6 partes): {}", linea);
+        if (partes.length != 7) {
+            log.warn("Formato de línea inválido (esperaba 7 partes): {}", linea);
             return null;
         }
 
         try {
-            // Valores por defecto para año y mes (planificación semanal/mensual)
-            int anio = 2025;
-            int mes = 1;
+            // Nuevo formato: id_pedido-aaaammdd-hh-mm-dest-###-IdClien
+            String pedidoId = partes[0].trim();  // No se usa en el constructor, solo para logging
+            String fechaStr = partes[1].trim();  // aaaammdd
             
-            int dia = Integer.parseInt(partes[0].trim());
-            int hora = Integer.parseInt(partes[1].trim());
-            int minuto = Integer.parseInt(partes[2].trim());
-            String aeropuertoDestino = partes[3].trim();
-            int cantidadProductos = Integer.parseInt(partes[4].trim());
-            String clienteId = partes[5].trim();
+            // Extraer año, mes, día de la fecha
+            int anio = Integer.parseInt(fechaStr.substring(0, 4));   // aaaa
+            int mes = Integer.parseInt(fechaStr.substring(4, 6));    // mm
+            int dia = Integer.parseInt(fechaStr.substring(6, 8));    // dd
+            
+            int hora = Integer.parseInt(partes[2].trim());
+            int minuto = Integer.parseInt(partes[3].trim());
+            String aeropuertoDestino = partes[4].trim();
+            int cantidadProductos = Integer.parseInt(partes[5].trim());
+            String clienteId = partes[6].trim();
+
+            log.debug("Parseado pedido {} - Fecha: {}/{}/{} {}:{} - Destino: {} - Cantidad: {} - Cliente: {}",
+                pedidoId, dia, mes, anio, hora, minuto, aeropuertoDestino, cantidadProductos, clienteId);
 
             return new Pedido(anio, mes, dia, hora, minuto, aeropuertoDestino, cantidadProductos, clienteId);
 
-        } catch (NumberFormatException e) {
-            log.warn("Error parseando números en línea: {} - Error: {}", linea, e.getMessage());
+        } catch (NumberFormatException | StringIndexOutOfBoundsException e) {
+            log.warn("Error parseando línea: {} - Error: {}", linea, e.getMessage());
             return null;
         }
     }

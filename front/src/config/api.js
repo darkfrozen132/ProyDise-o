@@ -72,8 +72,8 @@ export const transformAirportData = (backendAirport) => {
 // Función para obtener aeropuertos transformados
 export const getAirports = async () => {
   try {
-    console.log('Solicitando aeropuertos a:', API_BASE_URL + '/api/aeropuertos/listar');
-    const response = await api.get('/api/aeropuertos/listar');
+    console.log('Solicitando aeropuertos a:', API_BASE_URL + '/aeropuertos/listar');
+    const response = await api.get('/aeropuertos/listar');
     console.log('Respuesta recibida:', response.data);
     const transformed = response.data.map(transformAirportData);
     console.log('Aeropuertos transformados:', transformed);

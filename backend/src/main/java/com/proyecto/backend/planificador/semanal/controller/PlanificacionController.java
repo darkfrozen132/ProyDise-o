@@ -2,6 +2,7 @@ package com.proyecto.backend.planificador.semanal.controller;
 
 import com.proyecto.backend.planificador.semanal.dto.request.PlanificacionRequest;
 import com.proyecto.backend.planificador.semanal.dto.response.PlanificacionResponse;
+import com.proyecto.backend.planificador.semanal.dto.response.PlanificacionResponseSimple;
 import com.proyecto.backend.planificador.semanal.service.AlgoritmoGeneticoService;
 import com.proyecto.backend.planificador.semanal.service.WorldCacheService;
 import jakarta.validation.Valid;
@@ -27,25 +28,70 @@ public class PlanificacionController {
 
     /**
      * Ejecuta la planificacion de rutas con el algoritmo genetico
+     * Retorna formato simplificado con solo vuelos y pedidos
      *
-     * POST /api/planificacion
+     * POST /api/planificacion/semanal
      *
      * Body ejemplo:
      * {
      *   "fecha": "2025-01-15",
-     *   "factorK": 1,
+     *   "factorK": 14,
      *   "parametrosGenetico": {
      *     "tamanioPoblacion": 50,
      *     "maxGeneraciones": 200
      *   }
      * }
      *
+     * Response:
+     * {
+     *   "vuelos": [
+     *     {
+     *       "fechaInicial": "2025-01-15 08:30",
+     *       "fechaFinal": "2025-01-15 14:45",
+     *       "origenCodigoICAO": "SPIM",
+     *       "destinoCodigoICAO": "KJFK",
+     *       "pedidos": [
+     *         {"idPedido": 123, "cantidad": 50}
+     *       ]
+     *     }
+     *   ]
+     * }
+     *
      * @param request Parametros de planificacion
-     * @return Response con la planificacion completa
+     * @return Response simplificado con vuelos y pedidos
      */
     @PostMapping
-    public ResponseEntity<PlanificacionResponse> planificar(@Valid @RequestBody PlanificacionRequest request) {
-        log.info("POST /api/planificacion - fecha: {}, K: {}", request.getFecha(), request.getFactorK());
+    public ResponseEntity<PlanificacionResponseSimple> planificar(@Valid @RequestBody PlanificacionRequest request) {
+        log.info("POST /api/planificacion/semanal - fecha: {}, K: {}", request.getFecha(), request.getFactorK());
+
+        try {
+            PlanificacionResponseSimple response = algoritmoGeneticoService.planificarSimple(request);
+            log.info("Planificacion completada: {} vuelos, {} pedidos",
+                    response.getTotalVuelos(), response.getTotalPedidos());
+            return ResponseEntity.ok(response);
+
+        } catch (IllegalStateException e) {
+            log.error("Error de estado: {}", e.getMessage());
+            return ResponseEntity.badRequest().build();
+
+        } catch (Exception e) {
+            log.error("Error al ejecutar planificacion", e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * Ejecuta la planificacion con response completo (legacy)
+     * Incluye metadata, aeropuertos, rutas y vuelos con detalles geograficos
+     *
+     * POST /api/planificacion/semanal/completo
+     *
+     * @param request Parametros de planificacion
+     * @return Response completo con toda la informacion
+     */
+    @PostMapping("/completo")
+    public ResponseEntity<PlanificacionResponse> planificarCompleto(@Valid @RequestBody PlanificacionRequest request) {
+        log.info("POST /api/planificacion/semanal/completo - fecha: {}, K: {}", request.getFecha(), request.getFactorK());
 
         try {
             PlanificacionResponse response = algoritmoGeneticoService.planificar(request);

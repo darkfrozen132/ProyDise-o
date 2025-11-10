@@ -103,6 +103,68 @@ public class AlgoritmoGeneticoService {
     }
 
     /**
+     * Ejecuta la planificacion de rutas y retorna formato simplificado
+     * Solo incluye lista de vuelos con sus pedidos asignados
+     *
+     * @param request Request con parametros de planificacion
+     * @return Response simplificado con vuelos y pedidos
+     */
+    @Transactional(readOnly = true)
+    public PlanificacionResponseSimple planificarSimple(PlanificacionRequest request) {
+        long inicio = System.currentTimeMillis();
+
+        log.info("Iniciando planificacion simplificada para fecha {} con K={}", request.getFecha(), request.getFactorK());
+
+        // Obtener el World base (singleton inmutable)
+        World world = worldCacheService.getWorld();
+
+        // Cargar pedidos en el rango de tiempo
+        List<Pedido> pedidos = cargarPedidosEnRango(request);
+        log.info("Cargados {} pedidos para procesar", pedidos.size());
+
+        if (pedidos.isEmpty()) {
+            log.warn("No hay pedidos para procesar en el rango especificado");
+            return new PlanificacionResponseSimple();
+        }
+
+        // Calcular horizonte temporal (dias a expandir)
+        int numeroDias = calcularHorizonteDias(request, pedidos);
+        log.info("Horizonte temporal: {} dias", numeroDias);
+
+        // Crear WorldTemporal para esta ejecucion
+        WorldTemporal worldTemporal = new WorldTemporal(world, request.getFecha(), numeroDias);
+        log.info("WorldTemporal creado: {}", worldTemporal.getEstadisticas());
+
+        // Crear controlador de almacenes para rastrear ocupacion
+        LocalDateTime fechaBaseUTC = LocalDateTime.of(request.getFecha(), LocalTime.MIDNIGHT);
+        ControladorAlmacenes controladorAlmacenes = new ControladorAlmacenes(numeroDias, fechaBaseUTC);
+
+        // Registrar todos los aeropuertos con sus capacidades
+        for (Aeropuerto aeropuerto : world.getAeropuertos().values()) {
+            // Hubs tienen capacidad 0 (ilimitada), otros tienen su capacidad real
+            int capacidad = aeropuerto.tieneStockIlimitado() ? 0 : aeropuerto.getCapacidadAlmacen();
+            controladorAlmacenes.registrarAeropuerto(aeropuerto.getCodigoICAO(), capacidad);
+        }
+        log.info("ControladorAlmacenes: {}", controladorAlmacenes.obtenerEstadisticas());
+
+        // Ejecutar algoritmo genetico completo
+        Solution solucion = ejecutarAlgoritmoGenetico(worldTemporal, controladorAlmacenes, pedidos);
+
+        // Log estadisticas finales
+        log.info("Estadisticas finales: {}", worldTemporal.getEstadisticas());
+        log.info("Solucion final: {}", solucion.getResumen());
+
+        // Convertir solucion a response simplificado
+        PlanificacionResponseSimple response = convertirAResponseSimple(solucion, worldTemporal);
+
+        long tiempoTotal = System.currentTimeMillis() - inicio;
+        log.info("Planificacion simplificada completada en {} ms - {} vuelos generados",
+                tiempoTotal, response.getTotalVuelos());
+
+        return response;
+    }
+
+    /**
      * Ejecuta un ciclo del algoritmo genetico para la simulacion en tiempo real
      *
      * Este metodo es llamado por el SimulacionOrchestrator cada Sa minutos
@@ -1056,5 +1118,83 @@ public class AlgoritmoGeneticoService {
         }
 
         return aeropuertos;
+    }
+
+    /**
+     * Convierte la solucion a formato simplificado con solo vuelos y pedidos
+     * Formato de fechas: yyyy-MM-dd HH:mm
+     *
+     * @param solucion Solucion con rutas planificadas
+     * @param worldTemporal WorldTemporal con datos temporales
+     * @return Response simplificado con lista de vuelos
+     */
+    public PlanificacionResponseSimple convertirAResponseSimple(Solution solucion, WorldTemporal worldTemporal) {
+        // Mapa: vueloId -> DTO del vuelo simplificado
+        Map<String, VueloSimplificadoDTO> vuelosMap = new HashMap<>();
+
+        // Recorrer todas las rutas para extraer los vuelos y agrupar pedidos
+        for (Map.Entry<Pedido, List<SubRuta>> entry : solucion.getRutas().entrySet()) {
+            Pedido pedido = entry.getKey();
+            Long pedidoId = pedido.getId();
+
+            for (SubRuta subruta : entry.getValue()) {
+                for (VueloUso vueloUso : subruta.getVuelos()) {
+                    String vueloId = vueloUso.generarId();
+
+                    // Si el vuelo ya existe, agregar el pedido a su lista
+                    if (vuelosMap.containsKey(vueloId)) {
+                        VueloSimplificadoDTO vueloDTO = vuelosMap.get(vueloId);
+                        vueloDTO.agregarPedido(pedidoId, vueloUso.getCantidadAsignada());
+                    } else {
+                        // Crear nuevo DTO de vuelo simplificado
+                        VueloSimplificadoDTO dto = new VueloSimplificadoDTO();
+
+                        // Establecer codigos ICAO
+                        dto.setOrigenCodigoICAO(vueloUso.getOrigen());
+                        dto.setDestinoCodigoICAO(vueloUso.getDestino());
+
+                        // Obtener fechas UTC reales desde VueloInstancia y formatearlas
+                        VueloInstancia instancia = worldTemporal.getVuelo(vueloId);
+                        if (instancia != null) {
+                            // Formato: yyyy-MM-dd HH:mm
+                            dto.setFechaInicial(formatearFecha(instancia.getSalidaUTC()));
+                            dto.setFechaFinal(formatearFecha(instancia.getLlegadaUTC()));
+                        } else {
+                            // Fallback (no debería ocurrir)
+                            log.warn("VueloInstancia no encontrada para ID: {}", vueloId);
+                            LocalDateTime ahora = LocalDateTime.now();
+                            dto.setFechaInicial(formatearFecha(ahora));
+                            dto.setFechaFinal(formatearFecha(ahora.plusHours(2)));
+                        }
+
+                        // Agregar primer pedido
+                        dto.agregarPedido(pedidoId, vueloUso.getCantidadAsignada());
+
+                        vuelosMap.put(vueloId, dto);
+                    }
+                }
+            }
+        }
+
+        // Convertir el mapa a lista y crear el response
+        List<VueloSimplificadoDTO> vuelos = new ArrayList<>(vuelosMap.values());
+        log.info("Convertidos {} vuelos unicos en formato simplificado", vuelos.size());
+
+        return PlanificacionResponseSimple.conVuelos(vuelos);
+    }
+
+    /**
+     * Formatea una fecha a string en formato yyyy-MM-dd HH:mm
+     *
+     * @param fecha Fecha a formatear
+     * @return String formateado
+     */
+    private String formatearFecha(LocalDateTime fecha) {
+        return String.format("%04d-%02d-%02d %02d:%02d",
+                fecha.getYear(),
+                fecha.getMonthValue(),
+                fecha.getDayOfMonth(),
+                fecha.getHour(),
+                fecha.getMinute());
     }
 }

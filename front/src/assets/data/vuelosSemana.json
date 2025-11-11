@@ -1,0 +1,32 @@
+{
+    "vuelos": [
+        {
+            "fechaInicial": "2024-12-31 22:01",
+            "fechaFinal": "2025-01-01 12:56",
+            "origenCodigoICAO": "EBCI",
+            "destinoCodigoICAO": "SGAS",
+            "pedidos": [
+                {
+                    "idPedido": 134,
+                    "cantidad": 217
+                }
+            ],
+            "totalPaquetes": 217
+        },
+        {
+            "fechaInicial": "2025-01-01 01:48",
+            "fechaFinal": "2025-01-01 03:04",
+            "origenCodigoICAO": "EBCI",
+            "destinoCodigoICAO": "EHAM",
+            "pedidos": [
+                {
+                    "idPedido": 308,
+                    "cantidad": 287
+                }
+            ],
+            "totalPaquetes": 287
+        }
+    ],
+    "totalPedidos": 2,
+    "totalVuelos": 2
+}

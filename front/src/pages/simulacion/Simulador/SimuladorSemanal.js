@@ -21,8 +21,8 @@ import {
 } from '../../../config/api';
 
 /* Constantes de configuracion de tiempo de simulacion */
-const DESIRED_TIME_SCALE = 5; // K=5, Ta=5 min -> 25 min simulados en 5 min reales
-const REAL_TICK_MS = 1000; // 1 segundo real por tick
+const DESIRED_TIME_SCALE = 500; // Valor de K
+const REAL_TICK_MS = 1000; // Intervalo del reloj (1s)
 const MODO_LOCAL = true;
 
 /* Reparar iconos por defecto de Leaflet */
@@ -175,12 +175,6 @@ const SimuladorSemanal = () => {
 	const [rutasSolucion, setRutasSolucion] = useState([]); // Rutas que vienen del SSE
 	const eventSourceRef = useRef(null); /* Referencia para el EventSource SSE */
 
-	// ==================== ESTADO MODO MOCK ====================
-	const [modoMock, setModoMock] = useState(false);
-	const [simulacionMockActiva, setSimulacionMockActiva] = useState(false);
-	const [segundoActual, setSegundoActual] = useState(0);
-	const mockIntervalRef = useRef(null);
-
 	// ==================== FUNCIÓN PARA CONVERTIR RUTA DEL BACKEND A VUELO ====================
 	const convertirRutaAVuelo = (ruta) => {
 		// Determinar tipo de avión según capacidad de paquetes
@@ -272,70 +266,6 @@ const SimuladorSemanal = () => {
 		};
 	};
 
-	// ==================== FUNCIONES MODO MOCK ====================
-	const cargarDatosMock = async (segundo) => {
-		try {
-			const response = await fetch(`/mockData/segundo_${segundo}.json`);
-			if (!response.ok) {
-				throw new Error(`Error cargando segundo_${segundo}.json`);
-			}
-			const datos = await response.json();
-			console.log(`📦 Datos mock cargados (segundo ${segundo}):`, datos);
-
-			// Convertir datos simples a formato de vuelo
-			const vuelosMock = datos.map(dato => convertirDatoMockAVuelo(dato));
-			setFlights(vuelosMock);
-			setFlightsInAir(vuelosMock.length);
-			setSegundoActual(segundo);
-		} catch (error) {
-			console.error('❌ Error cargando datos mock:', error);
-		}
-	};
-
-	const handleIniciarMock = () => {
-		console.log('🎬 Iniciando simulación MOCK...');
-		setSimulacionMockActiva(true);
-		setSegundoActual(0);
-		cargarDatosMock(0);
-
-		// Crear intervalo que cargue un archivo cada segundo
-		mockIntervalRef.current = setInterval(() => {
-			setSegundoActual(prevSegundo => {
-				const nextSegundo = prevSegundo + 1;
-
-				if (nextSegundo >= 30) {
-					// Reiniciar desde el segundo 0
-					cargarDatosMock(0);
-					return 0;
-				} else {
-					cargarDatosMock(nextSegundo);
-					return nextSegundo;
-				}
-			});
-		}, 1000); // Cada 1 segundo
-	};
-
-	const handleDetenerMock = () => {
-		console.log('⏹️ Deteniendo simulación MOCK...');
-		setSimulacionMockActiva(false);
-		if (mockIntervalRef.current) {
-			clearInterval(mockIntervalRef.current);
-			mockIntervalRef.current = null;
-		}
-		setFlights([]);
-		setSegundoActual(0);
-		setFlightsInAir(0);
-	};
-
-	// Cleanup del modo mock al desmontar
-	useEffect(() => {
-		return () => {
-			if (mockIntervalRef.current) {
-				clearInterval(mockIntervalRef.current);
-			}
-		};
-	}, []);
-
 	// ==================== DEBUG: MONITOREAR CAMBIOS EN tiempoRealMs ====================
 	useEffect(() => {
 		console.log('🕐 tiempoRealMs actualizado a:', tiempoRealMs, 'ms =', {
@@ -357,7 +287,7 @@ const SimuladorSemanal = () => {
 			} catch (error) {
 				console.error('❌ Error al cargar aeropuertos desde API:', error);
 				console.log('🔄 Usando datos de fallback...');
-				// Fallback a datos estáticos en caso de error
+				/* Fallback a datos estáticos en caso de error */
 				const fallbackData = [
 					{ name: 'Lima-Jorge Chávez', code: 'SPIM', lat: -12.0219, lng: -77.1143, capacity: 'ILIMITADO', packages: 980, isSede: true, region: 'América del Sur', country: 'Perú', operationType: 'Sede Principal - Hub Sudamericano' },
 					{ name: 'Bogotá', code: 'SKBO', lat: 4.7016, lng: -74.1469, capacity: 900, packages: 720, isSede: false, region: 'América del Sur', country: 'Colombia', operationType: 'Aeropuerto Regional' },
@@ -380,20 +310,7 @@ const SimuladorSemanal = () => {
 		if (vuelosSemana?.vuelos) {
 			setPlanFixed(vuelosSemana.vuelos);
 		}
-
-		// Iniciar reloj desde la fecha seleccionada
-		const inicioUTC = new Date(`${fechaInicioSimulacion}T00:00:00Z`);
-		setSimClock(inicioUTC);
-
-		// Cada segundo real → avanzar 5 segundos simulados
-		simIntervalRef.current = setInterval(() => {
-			setSimClock(prev => prev ? new Date(prev.getTime() + DESIRED_TIME_SCALE * 1000) : null);
-		}, REAL_TICK_MS);
-
-		return () => {
-			if (simIntervalRef.current) clearInterval(simIntervalRef.current);
-		};
-	}, []);
+	}, [vuelosSemana]);
 
 	/* Actualizar vuelos según el reloj de simulación y la planificación fija */
 	useEffect(() => {
@@ -452,9 +369,9 @@ const SimuladorSemanal = () => {
 			// 🔀 Política al llegar:
 			// A) Mantenerlo visible en el destino:
 			const mostrarAlLlegar = true;
-			/*if (!mostrarAlLlegar && progress >= 1) {
+			if (!mostrarAlLlegar && progress >= 1) {
 				continue; // ❗ Ocúltalo tras llegar
-			}*/
+			}
 
 			nuevos.push({
 				id: `${vuelo.origenCodigoICAO}-${vuelo.destinoCodigoICAO}-${start.getTime()}`,
@@ -547,106 +464,26 @@ const SimuladorSemanal = () => {
 		};
 	}, [simulacionActiva]);
 
-
-	/* ========== CARGA DE VUELOS DESACTIVADA TEMPORALMENTE ========== */
-	/* Por ahora solo usamos vuelos generados localmente, sin llamar al API de vuelos */
-	/* La carga desde API está comentada para enfocarnos en el SSE */
-
-	// ==================== POLLING FALLBACK PARA ACTUALIZAR TIEMPO ====================
-	// Este efecto actualiza el tiempo cada segundo mediante polling
-	// Se usa como fallback si el SSE no envía actualizaciones continuas
-	/*useEffect(() => {
-		if (!simulacionActiva) {
-			return;
+	/* Efecto para avanzar el reloj de simulación en modo local */
+	useEffect(() => {
+		if (!simulacionActiva) return;
+		if (!simClock) {
+			const inicioUTC = new Date(`${fechaInicioSimulacion}T00:00:00Z`);
+			setSimClock(inicioUTC);
+			simStartRef.current = inicioUTC;
 		}
-
-		console.log('⏱️ Iniciando polling para actualizar tiempo...');
-		
-		const pollingInterval = setInterval(async () => {
-			try {
-				const estado = await obtenerEstadoSimulacion();
-				console.log('🔄 Polling - Estado actualizado:', {
-					horaSimulada: estado.horaSimulada,
-					tiempoRealMs: estado.tiempoRealTranscurridoMs,
-					tickActual: estado.tickActual
-				});
-				
-				setHoraSimulada(estado.horaSimulada);
-				setTiempoRealMs(estado.tiempoRealTranscurridoMs);
-				setTickActual(estado.tickActual);
-				setTimeScale(estado.timeScale);
-				setSimulacionActiva(estado.activa);
-			} catch (error) {
-				console.error('❌ Error en polling:', error);
-			}
-		}, 1000); // Actualizar cada 1 segundo
+		const advanceMs = DESIRED_TIME_SCALE * REAL_TICK_MS;
+		simIntervalRef.current = setInterval(() => {
+			setSimClock(prev => prev ? new Date(prev.getTime() + advanceMs) : null);
+			setTickActual(prev => prev + REAL_TICK_MS / 1000);
+			setTiempoRealMs(prev => prev + REAL_TICK_MS);
+		}, REAL_TICK_MS);
 
 		return () => {
-			console.log('⏹️ Deteniendo polling...');
-			clearInterval(pollingInterval);
+			if (simIntervalRef.current) clearInterval(simIntervalRef.current);
 		};
-	}, [simulacionActiva]);
+	}, [simulacionActiva, DESIRED_TIME_SCALE, REAL_TICK_MS, fechaInicioSimulacion]);
 
-	// ==================== CONEXIÓN SSE PARA TIEMPO DE SIMULACIÓN ====================
-	/*useEffect(() => {
-		// Solo conectar si la simulación está activa
-		if (!simulacionActiva) {
-			console.log('⏸️ SSE no conectado - simulación no activa');
-			return;
-		}
-
-		console.log('📡 Conectando al stream SSE de simulación...');
-		
-		const eventSource = conectarStreamSimulacion(
-			// Callback cuando llega un mensaje
-			(data) => {
-				console.log('✅ Datos SSE recibidos:', {
-					horaSimulada: data.horaSimulada,
-					tiempoRealMs: data.tiempoRealTranscurridoMs,
-					tickActual: data.tickActual,
-					timeScale: data.timeScale,
-					activa: data.activa,
-					rutasCount: data.rutasSolucion?.length || 0
-				});
-				setHoraSimulada(data.horaSimulada);
-				setTiempoRealMs(data.tiempoRealTranscurridoMs);
-				setTickActual(data.tickActual);
-				setTimeScale(data.timeScale);
-				setSimulacionActiva(data.activa);
-				
-				// Actualizar rutas y convertirlas a vuelos
-				if (data.rutasSolucion && data.rutasSolucion.length > 0) {
-					console.log('✈️ Actualizando rutas desde SSE:', data.rutasSolucion.length, 'rutas');
-					setRutasSolucion(data.rutasSolucion);
-					
-					// Convertir rutas a formato de vuelos para el mapa
-					const nuevosVuelos = data.rutasSolucion.map(ruta => convertirRutaAVuelo(ruta));
-					setFlights(nuevosVuelos);
-					
-					// Contar vuelos en el aire
-					const enAire = nuevosVuelos.filter(v => v.altitude > 1000).length;
-					setFlightsInAir(enAire);
-					console.log('✅ Vuelos actualizados:', nuevosVuelos.length, 'total,', enAire, 'en el aire');
-				}
-			},
-			// Callback cuando hay error
-			(error) => {
-				console.error('❌ Error en stream SSE:', error);
-				setSimulacionActiva(false);
-			}
-		);
-
-		eventSourceRef.current = eventSource;
-
-		// Cleanup: cerrar conexión al desmontar o cuando simulacionActiva cambie
-		return () => {
-			console.log('🔌 Cerrando conexión SSE...');
-			if (eventSourceRef.current) {
-				eventSourceRef.current.close();
-				eventSourceRef.current = null;
-			}
-		};
-	}, [simulacionActiva]);*/
 
 	// ==================== FUNCIONES PARA CONTROLAR SIMULACIÓN ====================
 	const handleIniciarSimulacion = async () => {
@@ -669,7 +506,7 @@ const SimuladorSemanal = () => {
 			// Arranca reloj local
 			if (simIntervalRef.current) clearInterval(simIntervalRef.current);
 			simIntervalRef.current = setInterval(() => {
-				setSimClock(prev => prev ? new Date(prev.getTime() + DESIRED_TIME_SCALE * 1000) : null);
+				setSimClock(prev => prev ? new Date(prev.getTime() + DESIRED_TIME_SCALE * REAL_TICK_MS) : null);
 				setTickActual(prev => prev + 1);
 				setTiempoRealMs(prev => prev + REAL_TICK_MS);
 			}, REAL_TICK_MS);
@@ -734,46 +571,6 @@ const SimuladorSemanal = () => {
 		setFlights([]);
 		setFlightsInAir(0);
 	};
-	
-
-	/* Generar vuelos iniciales con lógica de origen, destino, tipo de avión, capacidad y carga */
-	/* ========== GENERACIÓN LOCAL DE VUELOS DESACTIVADA ========== */
-	/* Ahora los vuelos se cargan desde el SSE del backend (rutasSolucion) */
-	/* La siguiente función está comentada porque ya no se usa */
-	/*
-	const generateInitialFlights = useCallback(() => {
-		// ... código comentado ...
-	}, [airports]);
-
-	useEffect(() => {
-		if (airports.length > 0 && !loadingAirports) {
-			console.log('🔄 Generando vuelos localmente (modo prueba SSE)...');
-			generateInitialFlights();
-		}
-	}, [airports, loadingAirports, generateInitialFlights]);
-	*/
-
-	/* ========== SIMULACIÓN LOCAL DESACTIVADA ========== */
-	/* El SSE del backend ahora maneja toda la lógica de simulación */
-	/* La siguiente lógica está comentada porque ya no se usa */
-	/*
-	useEffect(() => {
-		if (isRunning) {
-			// ... lógica de simulación local comentada ...
-		}
-	}, [isRunning, speed, airports]);
-	*/
-
-	const handlePlay = () => {
-		setIsRunning(true);
-		setSimulationStatus('Simulación semanal en ejecución');
-	};
-	const handleStop = () => {
-		setIsRunning(false);
-		setSimulationStatus('Simulación semanal detenida');
-	};
-	const handleSpeedChange = () => { const speeds = [1, 2, 4, 8]; const currentIndex = speeds.indexOf(speed); const nextSpeed = speeds[(currentIndex + 1) % speeds.length]; setSpeed(nextSpeed); };
-	const formatTime = (timeObj) => `${timeObj.days.toString().padStart(2, '0')} : ${timeObj.hours.toString().padStart(2, '0')} : ${timeObj.minutes.toString().padStart(2, '0')}`;
 
 	/* Calcular métricas de saturación de aeropuertos */
 	const getSaturation = () => {
@@ -1051,100 +848,6 @@ const SimuladorSemanal = () => {
 										}}
 									>
 										Detener
-									</button>
-								</div>
-							</div>
-
-							{/* ==================== PANEL MODO MOCK ==================== */}
-							<div style={{
-								background: '#fff3cd',
-								borderRadius: '8px',
-								padding: '15px 20px',
-								marginBottom: '20px',
-								border: '2px solid #ffc107',
-								display: 'flex',
-								justifyContent: 'space-between',
-								alignItems: 'center',
-								flexWrap: 'wrap',
-								gap: '15px'
-							}}>
-								{/* Título y descripción */}
-								<div style={{ flex: 1 }}>
-									<h3 style={{ margin: '0 0 8px 0', color: '#856404', fontSize: '16px', fontWeight: '600' }}>
-										<i className="fas fa-flask"></i> Modo Prueba Mock
-									</h3>
-									<p style={{ margin: 0, fontSize: '13px', color: '#856404' }}>
-										Simula 10 vuelos durante 30 segundos con datos JSON locales
-									</p>
-								</div>
-
-								{/* Información del estado */}
-								<div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
-									<div>
-										<span style={{ fontSize: '14px', color: '#856404', marginRight: '8px' }}>
-											Segundo actual:
-										</span>
-										<span style={{ fontSize: '16px', fontWeight: '700', color: '#212529' }}>
-											{segundoActual}/29
-										</span>
-									</div>
-									<div>
-										<span style={{ fontSize: '14px', color: '#856404', marginRight: '8px' }}>
-											Vuelos:
-										</span>
-										<span style={{ fontSize: '16px', fontWeight: '700', color: '#212529' }}>
-											{flights.length}
-										</span>
-									</div>
-									<div>
-										<span style={{
-											padding: '4px 12px',
-											borderRadius: '4px',
-											fontSize: '12px',
-											fontWeight: '600',
-											background: simulacionMockActiva ? '#28a745' : '#6c757d',
-											color: 'white'
-										}}>
-											{simulacionMockActiva ? 'ACTIVO' : 'DETENIDO'}
-										</span>
-									</div>
-								</div>
-
-								{/* Botones de control */}
-								<div style={{ display: 'flex', gap: '10px' }}>
-									<button
-										onClick={handleIniciarMock}
-										disabled={simulacionMockActiva}
-										style={{
-											padding: '8px 16px',
-											borderRadius: '6px',
-											border: '1px solid #007bff',
-											background: simulacionMockActiva ? '#e9ecef' : '#007bff',
-											color: simulacionMockActiva ? '#6c757d' : 'white',
-											fontSize: '14px',
-											fontWeight: '500',
-											cursor: simulacionMockActiva ? 'not-allowed' : 'pointer',
-											transition: 'all 0.2s'
-										}}
-									>
-										<i className="fas fa-play"></i> Iniciar Mock
-									</button>
-									<button
-										onClick={handleDetenerMock}
-										disabled={!simulacionMockActiva}
-										style={{
-											padding: '8px 16px',
-											borderRadius: '6px',
-											border: '1px solid #dc3545',
-											background: !simulacionMockActiva ? '#e9ecef' : '#dc3545',
-											color: !simulacionMockActiva ? '#6c757d' : 'white',
-											fontSize: '14px',
-											fontWeight: '500',
-											cursor: !simulacionMockActiva ? 'not-allowed' : 'pointer',
-											transition: 'all 0.2s'
-										}}
-									>
-										<i className="fas fa-stop"></i> Detener Mock
 									</button>
 								</div>
 							</div>

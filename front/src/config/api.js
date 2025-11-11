@@ -316,6 +316,13 @@ export const enviarMensajePruebaWS = async (mensaje) => {
   }
 };
 
+/* Apis de planificación de rutas */
+export const getPlanificacionSemanal = async (fecha, factorK) => {
+  const body = { fecha, factorK };
+  const { data } = await api.post('/planificacion/semanal', body);
+  return data; // { vuelos, totalPedidos, totalVuelos }
+};
+
 export default api;
 export { API_BASE_URL };
   

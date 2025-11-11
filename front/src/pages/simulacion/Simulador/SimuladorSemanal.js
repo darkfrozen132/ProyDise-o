@@ -8,6 +8,7 @@ import { IoArrowBackCircleOutline } from "react-icons/io5";
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import vuelosSemana from '../../../assets/data/vuelosSemana.json';
+import { getPlanificacionSemanal } from '../../../config/api';
 import './SimuladorSemanal.css';
 import { 
 	getAirports, 
@@ -466,70 +467,72 @@ const SimuladorSemanal = () => {
 
 	/* Efecto para avanzar el reloj de simulación en modo local */
 	useEffect(() => {
-		if (!simulacionActiva) return;
-		if (!simClock) {
-			const inicioUTC = new Date(`${fechaInicioSimulacion}T00:00:00Z`);
-			setSimClock(inicioUTC);
-			simStartRef.current = inicioUTC;
+		if (!simulacionActiva) {
+			if (simIntervalRef.current) {
+				clearInterval(simIntervalRef.current);
+				simIntervalRef.current = null;
+			}
+			return;
 		}
+
 		const advanceMs = DESIRED_TIME_SCALE * REAL_TICK_MS;
+
 		simIntervalRef.current = setInterval(() => {
-			setSimClock(prev => prev ? new Date(prev.getTime() + advanceMs) : null);
+			setSimClock(prev => (prev ? new Date(prev.getTime() + advanceMs) : null));
 			setTickActual(prev => prev + REAL_TICK_MS / 1000);
 			setTiempoRealMs(prev => prev + REAL_TICK_MS);
 		}, REAL_TICK_MS);
 
 		return () => {
-			if (simIntervalRef.current) clearInterval(simIntervalRef.current);
+			if (simIntervalRef.current) {
+				clearInterval(simIntervalRef.current);
+				simIntervalRef.current = null;
+			}
 		};
-	}, [simulacionActiva, DESIRED_TIME_SCALE, REAL_TICK_MS, fechaInicioSimulacion]);
+	}, [simulacionActiva, DESIRED_TIME_SCALE, REAL_TICK_MS]);
 
 
 	// ==================== FUNCIONES PARA CONTROLAR SIMULACIÓN ====================
 	const handleIniciarSimulacion = async () => {
-		if (MODO_LOCAL) {
-			console.log("🎬 Iniciando simulación LOCAL (JSON) desde:", fechaInicioSimulacion);
+		console.log("🎬 Iniciando simulación (plan por API + reloj local) desde:", fechaInicioSimulacion);
 
-			if (!planFixed.length && vuelosSemana?.vuelos) {
-				setPlanFixed(vuelosSemana.vuelos);
+		try {
+			// 🔹 Pasa fecha y K
+			const factorK = 500;
+			const plan = await getPlanificacionSemanal(fechaInicioSimulacion, factorK);
+
+			const vuelos = Array.isArray(plan?.vuelos) ? plan.vuelos : [];
+			if (!vuelos.length) {
+				alert('El API devolvió un plan vacío.');
+				return;
 			}
-
-			const inicioUTC = new Date(`${fechaInicioSimulacion}T00:00:00Z`);
-			setSimClock(inicioUTC);
-			simStartRef.current = inicioUTC;
-			setSimulacionActiva(true);
-			setHoraSimulada(inicioUTC);
-			setTiempoRealMs(0);
-			setTickActual(0);
-			setTimeScale(DESIRED_TIME_SCALE);
-
-			// Arranca reloj local
-			if (simIntervalRef.current) clearInterval(simIntervalRef.current);
-			simIntervalRef.current = setInterval(() => {
-				setSimClock(prev => prev ? new Date(prev.getTime() + DESIRED_TIME_SCALE * REAL_TICK_MS) : null);
-				setTickActual(prev => prev + 1);
-				setTiempoRealMs(prev => prev + REAL_TICK_MS);
-			}, REAL_TICK_MS);
-
-			// 🔌 Cierra cualquier SSE previo por si quedó abierto
-			if (eventSourceRef.current) {
-				eventSourceRef.current.close();
-				eventSourceRef.current = null;
-			}
-			return; // ← importantísimo: NO seguir al flujo backend
+			setPlanFixed(vuelos);
+			console.log("✅ Plan fijo recibido:", vuelos.length, "vuelos");
+		} catch (e) {
+			console.error("❌ Error al cargar plan semanal:", e);
+			alert("No se pudo obtener el plan semanal del backend.");
+			return;
 		}
 
-		// —— flujo backend (cuando MODO_LOCAL === false) ——
-		try {
-			console.log("🚀 Iniciando simulación BACKEND con fecha:", fechaInicioSimulacion);
-			const response = await iniciarSimulacion({ fechaInicial: fechaInicioSimulacion });
-			setSimulacionActiva(true);
-			setHoraSimulada(response.estado.horaSimulada || fechaInicioSimulacion);
-			setTiempoRealMs(0);
-			setTickActual(0);
-			setTimeScale(DESIRED_TIME_SCALE);
-		} catch (error) {
-			console.error("❌ Error al iniciar simulación (backend):", error);
+		// 🔹 Reloj local (sin SSE)
+		const inicioUTC = new Date(`${fechaInicioSimulacion}T00:00:00Z`);
+		setSimClock(inicioUTC);
+		simStartRef.current = inicioUTC;
+		setSimulacionActiva(true);
+		setTiempoRealMs(0);
+		setTickActual(0);
+		setTimeScale(DESIRED_TIME_SCALE);
+
+		if (simIntervalRef.current) clearInterval(simIntervalRef.current);
+		simIntervalRef.current = setInterval(() => {
+			setSimClock(prev => prev ? new Date(prev.getTime() + DESIRED_TIME_SCALE * REAL_TICK_MS) : null);
+			setTickActual(prev => prev + 1);
+			setTiempoRealMs(prev => prev + REAL_TICK_MS);
+		}, REAL_TICK_MS);
+
+		if (eventSourceRef.current) {
+			eventSourceRef.current.close();
+			eventSourceRef.current = null;
 		}
 	};
 

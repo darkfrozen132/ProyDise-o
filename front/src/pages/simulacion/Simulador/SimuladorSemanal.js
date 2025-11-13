@@ -16,15 +16,12 @@ import {
 	iniciarSimulacion, 
 	pausarSimulacion, 
 	reanudarSimulacion, 
-	detenerSimulacion,
-	conectarStreamSimulacion,
-	obtenerEstadoSimulacion
+	detenerSimulacion
 } from '../../../config/api';
 
 /* Constantes de configuracion de tiempo de simulacion */
 const DESIRED_TIME_SCALE = 500; // Valor de K
 const REAL_TICK_MS = 1000; // Intervalo del reloj (1s)
-const MODO_LOCAL = true;
 
 /* Reparar iconos por defecto de Leaflet */
 delete L.Icon.Default.prototype._getIconUrl;
@@ -176,7 +173,13 @@ const SimuladorSemanal = () => {
 	const [rutasSolucion, setRutasSolucion] = useState([]); // Rutas que vienen del SSE
 	const eventSourceRef = useRef(null); /* Referencia para el EventSource SSE */
 
-	// ==================== FUNCIÓN PARA CONVERTIR RUTA DEL BACKEND A VUELO ====================
+
+
+	/* ==================== FUNCIÓN PARA CONVERTIR RUTA DEL BACKEND A VUELO ==================== */
+	// NOTA: Esta función se usaba para convertir rutas SSE del backend
+	// en vuelos compatibles con el mapa. En el modo actual (simClock + planFixed)
+	// la simulación construye los flights directamente en el useEffect de simClock.
+	// La dejamos por si volvemos a usar SSE en el futuro.
 	const convertirRutaAVuelo = (ruta) => {
 		// Determinar tipo de avión según capacidad de paquetes
 		let aircraftType, aircraftName;
@@ -243,51 +246,27 @@ const SimuladorSemanal = () => {
 		};
 	};
 
-	// ==================== FUNCIÓN PARA CONVERTIR DATOS MOCK SIMPLES A VUELO ====================
-	const convertirDatoMockAVuelo = (datoMock) => {
-		// Formato del backend: { id, currentLat, currentLng, angle }
-		return {
-			id: datoMock.id,
-			origin: { code: 'MOCK', lat: 0, lng: 0, region: 'Test' },
-			destination: { code: 'MOCK', lat: 0, lng: 0, region: 'Test' },
-			progress: 0.5,
-			altitude: 35000,
-			speed: 850,
-			status: 'active',
-			packageCapacity: 200,
-			currentPackages: 200,
-			packageType: 'MPE',
-			isSameContinentFlight: false,
-			currentLat: datoMock.currentLat,
-			currentLng: datoMock.currentLng,
-			aircraftType: 'boeing737',
-			aircraftName: 'Boeing 737',
-			aircraftColor: '#007bff',
-			rotation: datoMock.angle || 0 // Usar el ángulo del JSON
-		};
-	};
-
-	// ==================== DEBUG: MONITOREAR CAMBIOS EN tiempoRealMs ====================
+	/* ==================== DEBUG: MONITOREAR CAMBIOS EN tiempoRealMs ==================== */
 	useEffect(() => {
-		console.log('🕐 tiempoRealMs actualizado a:', tiempoRealMs, 'ms =', {
+		console.log('tiempoRealMs actualizado a:', tiempoRealMs, 'ms =', {
 			horas: Math.floor(tiempoRealMs / 3600000),
 			minutos: Math.floor((tiempoRealMs % 3600000) / 60000),
 			segundos: Math.floor((tiempoRealMs % 60000) / 1000)
 		});
 	}, [tiempoRealMs]);
 
-	/* Cargar aeropuertos desde la API al montar el componente */
+	/* ==================== Cargar aeropuertos desde API al montar ==================== */
 	useEffect(() => {
 		const fetchAirports = async () => {
 			try {
 				setLoadingAirports(true);
-				console.log('🔄 Iniciando carga de aeropuertos...');
+				console.log('Iniciando carga de aeropuertos...');
 				const data = await getAirports();
-				console.log('✅ Aeropuertos cargados desde API:', data.length, 'aeropuertos');
+				console.log('Aeropuertos cargados desde API:', data.length, 'aeropuertos');
 				setAirports(data);
 			} catch (error) {
-				console.error('❌ Error al cargar aeropuertos desde API:', error);
-				console.log('🔄 Usando datos de fallback...');
+				console.error('Error al cargar aeropuertos desde API:', error);
+				console.log('Usando datos de fallback...');
 				/* Fallback a datos estáticos en caso de error */
 				const fallbackData = [
 					{ name: 'Lima-Jorge Chávez', code: 'SPIM', lat: -12.0219, lng: -77.1143, capacity: 'ILIMITADO', packages: 980, isSede: true, region: 'América del Sur', country: 'Perú', operationType: 'Sede Principal - Hub Sudamericano' },
@@ -296,24 +275,24 @@ const SimuladorSemanal = () => {
 					{ name: 'Amsterdam-Schiphol', code: 'AMS', lat: 52.3105, lng: 4.7683, capacity: 1200, packages: 960, isSede: false, region: 'Europa', country: 'Países Bajos', operationType: 'Aeropuerto Regional' }
 				];
 				setAirports(fallbackData);
-				console.log('✅ Datos de fallback cargados:', fallbackData.length, 'aeropuertos');
+				console.log('Datos de fallback cargados:', fallbackData.length, 'aeropuertos');
 			} finally {
 				setLoadingAirports(false);
-				console.log('✅ Carga de aeropuertos finalizada');
+				console.log('Carga de aeropuertos finalizada');
 			}
 		};
 
 		fetchAirports();
 	}, []);
 
-	/* Cargar planificación fija desde JSON local al montar */
+	/* ==================== Cargar plan fijo desde JSON local al montar ==================== */
 	useEffect(() => {
 		if (vuelosSemana?.vuelos) {
 			setPlanFixed(vuelosSemana.vuelos);
 		}
 	}, [vuelosSemana]);
 
-	/* Actualizar vuelos según el reloj de simulación y la planificación fija */
+	/* ==================== Efecto para actualizar vuelos según simClock ==================== */
 	useEffect(() => {
 		if (!simClock || planFixed.length === 0 || airports.length === 0) return;
 
@@ -326,7 +305,7 @@ const SimuladorSemanal = () => {
 
 			// Ocultar completamente antes del inicio
 			if (simClock < start) {
-				continue; // ❗ No aparece hasta su fechaInicial
+				continue; // No aparece hasta su fechaInicial
 			}
 
 			const totalMs = end - start;
@@ -340,7 +319,7 @@ const SimuladorSemanal = () => {
 			const o = airports.find(a => String(a.code).toUpperCase() === String(vuelo.origenCodigoICAO).toUpperCase());
 			const d = airports.find(a => String(a.code).toUpperCase() === String(vuelo.destinoCodigoICAO).toUpperCase());
 			if (!o || !d) {
-				console.warn('ICAO no encontrado en airports:', vuelo.origenCodigoICAO, vuelo.destinoCodigoICAO);
+				console.warn('ICAO no encontrado:', vuelo.origenCodigoICAO, vuelo.destinoCodigoICAO);
 				continue;
 			}
 
@@ -355,10 +334,7 @@ const SimuladorSemanal = () => {
 			// Estado y color
 			const enVuelo = progress > 0 && progress < 1;
 			const status = progress >= 1 ? 'arrived' : (progress <= 0 ? 'scheduled' : 'active');
-			const aircraftColor =
-				status === 'arrived' ? '#28a745' :
-					progress >= 0.5 ? '#ffc107' :
-						'#007bff';
+			const aircraftColor = '#007bff';
 
 			// Tipo de avión por carga
 			const totalPaquetes = vuelo.totalPaquetes ?? 0;
@@ -396,75 +372,6 @@ const SimuladorSemanal = () => {
 		setFlightsInAir(nuevos.filter(v => v.status === 'active').length);
 	}, [simClock, planFixed, airports]);
 
-
-	/* ==================== POLLING PARA ACTUALIZAR TIEMPO (BLOQUEADO EN MODO LOCAL) ==================== */
-	useEffect(() => {
-		if (!simulacionActiva || MODO_LOCAL) {
-			return; // ← bloquea el polling en modo local
-		}
-
-		console.log('⏱️ Iniciando polling para actualizar tiempo...');
-		const pollingInterval = setInterval(async () => {
-			try {
-				const estado = await obtenerEstadoSimulacion();
-				setHoraSimulada(estado.horaSimulada);
-				setTiempoRealMs(estado.tiempoRealTranscurridoMs);
-				setTickActual(estado.tickActual);
-				setTimeScale(estado.timeScale);
-				setSimulacionActiva(estado.activa);
-			} catch (error) {
-				console.error('❌ Error en polling:', error);
-			}
-		}, 1000);
-
-		return () => {
-			clearInterval(pollingInterval);
-		};
-	}, [simulacionActiva]);
-
-	/* ==================== CONEXIÓN SSE PARA TIEMPO DE SIMULACIÓN ==================== */
-	useEffect(() => {
-		if (!simulacionActiva || MODO_LOCAL) {
-			// si había un SSE abierto, ciérralo
-			if (eventSourceRef.current) {
-				eventSourceRef.current.close();
-				eventSourceRef.current = null;
-			}
-			return; // ← NO conectar SSE en modo local
-		}
-
-		console.log('📡 Conectando al stream SSE de simulación...');
-		const eventSource = conectarStreamSimulacion(
-			(data) => {
-				setHoraSimulada(data.horaSimulada);
-				setTiempoRealMs(data.tiempoRealTranscurridoMs);
-				setTickActual(data.tickActual);
-				setTimeScale(Number.isFinite(data.timeScale) ? data.timeScale : DESIRED_TIME_SCALE);
-				setSimulacionActiva(data.activa);
-
-				if (data.rutasSolucion?.length) {
-					setRutasSolucion(data.rutasSolucion);
-					const nuevosVuelos = data.rutasSolucion.map(ruta => convertirRutaAVuelo(ruta));
-					setFlights(nuevosVuelos);
-					setFlightsInAir(nuevosVuelos.filter(v => v.altitude > 1000).length);
-				}
-			},
-			(error) => {
-				console.error('❌ Error en stream SSE:', error);
-				setSimulacionActiva(false);
-			}
-		);
-
-		eventSourceRef.current = eventSource;
-
-		return () => {
-			if (eventSourceRef.current) {
-				eventSourceRef.current.close();
-				eventSourceRef.current = null;
-			}
-		};
-	}, [simulacionActiva]);
-
 	/* Efecto para avanzar el reloj de simulación en modo local */
 	useEffect(() => {
 		if (!simulacionActiva) {
@@ -494,27 +401,27 @@ const SimuladorSemanal = () => {
 
 	// ==================== FUNCIONES PARA CONTROLAR SIMULACIÓN ====================
 	const handleIniciarSimulacion = async () => {
-		console.log("🎬 Iniciando simulación (plan por API + reloj local) desde:", fechaInicioSimulacion);
+		console.log("Iniciando simulación desde:", fechaInicioSimulacion);
 
 		try {
-			// 🔹 Pasa fecha y K
+			// Pasa fecha y K
 			const factorK = 500;
 			const plan = await getPlanificacionSemanal(fechaInicioSimulacion, factorK);
 
 			const vuelos = Array.isArray(plan?.vuelos) ? plan.vuelos : [];
 			if (!vuelos.length) {
-				alert('El API devolvió un plan vacío.');
+				alert('El plan de vuelo está vacia.');
 				return;
 			}
 			setPlanFixed(vuelos);
-			console.log("✅ Plan fijo recibido:", vuelos.length, "vuelos");
+			console.log("Plan fijo recibido:", vuelos.length, "vuelos");
 		} catch (e) {
-			console.error("❌ Error al cargar plan semanal:", e);
+			console.error("Error al cargar plan semanal:", e);
 			alert("No se pudo obtener el plan semanal del backend.");
 			return;
 		}
 
-		// 🔹 Reloj local (sin SSE)
+		//Reloj local (sin SSE)
 		const inicioUTC = new Date(`${fechaInicioSimulacion}T00:00:00Z`);
 		setSimClock(inicioUTC);
 		simStartRef.current = inicioUTC;

@@ -26,9 +26,9 @@ public class DatabaseCleanupConfig {
     @Transactional
     public CommandLineRunner cleanDatabase() {
         return args -> {
-            log.warn("🧹 ========================================");
-            log.warn("🧹 LIMPIANDO BASE DE DATOS AL INICIAR");
-            log.warn("🧹 ========================================");
+            log.warn(" ========================================");
+            log.warn(" LIMPIANDO BASE DE DATOS AL INICIAR");
+            log.warn(" ========================================");
             
             try {
                 // Deshabilitar verificación de claves foráneas
@@ -80,18 +80,18 @@ public class DatabaseCleanupConfig {
                 Long rutas = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM rutas_solucion", Long.class);
                 Long vueloPedidos = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM vuelo_pedidos", Long.class);
                 
-                log.info("📊 Estado de la base de datos:");
+                log.info("Estado de la base de datos:");
                 log.info("   - Aeropuertos: {}", aeropuertos);
                 log.info("   - Planes de Vuelo: {}", planesVuelo);
                 log.info("   - Pedidos: {}", pedidos);
                 log.info("   - Rutas Solución: {}", rutas);
                 log.info("   - Vuelo-Pedido: {}", vueloPedidos);
                 
-                log.warn("✅ Base de datos limpiada exitosamente");
-                log.warn("🧹 ========================================");
+                log.warn("Base de datos limpiada exitosamente");
+                log.warn("========================================");
                 
             } catch (Exception e) {
-                log.error("❌ Error al limpiar la base de datos: {}", e.getMessage(), e);
+                log.error("Error al limpiar la base de datos: {}", e.getMessage(), e);
                 throw e;
             }
         };

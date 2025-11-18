@@ -32,40 +32,20 @@ L.Icon.Default.mergeOptions({
 });
 
 /* Iconos de aviones personalizados como SVG dentro de divIcon */
-const createAirplaneIcon = (type, color, rotation = 0) => {
-	const iconSvg = {
-		'boeing737': `<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-			<ellipse cx="10" cy="10" rx="1.5" ry="8" fill="${color}" stroke="#ffffff" stroke-width="0.5"/>
-			<ellipse cx="10" cy="8" rx="7" ry="1.2" fill="${color}" stroke="#ffffff" stroke-width="0.5"/>
-			<ellipse cx="10" cy="14" rx="3" ry="0.8" fill="${color}" stroke="#ffffff" stroke-width="0.5"/>
-			<path d="M10 16 L10 18 L9.5 18 L9.5 16 Z" fill="${color}" stroke="#ffffff" stroke-width="0.3"/>
-		</svg>`,
-		'airbus320': `<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-			<ellipse cx="10" cy="10" rx="1.8" ry="9" fill="${color}" stroke="#ffffff" stroke-width="0.5"/>
-			<ellipse cx="10" cy="7.5" rx="8" ry="1.5" fill="${color}" stroke="#ffffff" stroke-width="0.5"/>
-			<ellipse cx="10" cy="14.5" rx="3.5" ry="1" fill="${color}" stroke="#ffffff" stroke-width="0.5"/>
-			<path d="M10 16.5 L10 18.5 L9.2 18.5 L9.2 16.5 Z" fill="${color}" stroke="#ffffff" stroke-width="0.3"/>
-		</svg>`,
-		'boeing777': `<svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+const createAirplaneIcon = (color, rotation = 0) => {
+	const iconSvg = `<svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
 			<ellipse cx="11" cy="11" rx="2" ry="10" fill="${color}" stroke="#ffffff" stroke-width="0.5"/>
 			<ellipse cx="11" cy="8" rx="9" ry="1.8" fill="${color}" stroke="#ffffff" stroke-width="0.5"/>
 			<ellipse cx="11" cy="15" rx="4" ry="1.2" fill="${color}" stroke="#ffffff" stroke-width="0.5"/>
 			<path d="M11 17 L11 19.5 L10 19.5 L10 17 Z" fill="${color}" stroke="#ffffff" stroke-width="0.3"/>
-		</svg>`,
-		'cargo': `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-			<ellipse cx="12" cy="12" rx="2.5" ry="10" fill="${color}" stroke="#ffffff" stroke-width="0.6"/>
-			<ellipse cx="12" cy="9" rx="10" ry="2" fill="${color}" stroke="#ffffff" stroke-width="0.6"/>
-			<ellipse cx="12" cy="16" rx="4.5" ry="1.3" fill="${color}" stroke="#ffffff" stroke-width="0.6"/>
-			<path d="M12 18 L12 21 L11 21 L11 18 Z" fill="${color}" stroke="#ffffff" stroke-width="0.4"/>
-		</svg>`
-	};
+		</svg>`;
 
 	/* Crear divIcon con el SVG correspondiente */
 	return L.divIcon({
-		html: `<div style="transform: rotate(${rotation}deg); display: flex; align-items: center; justify-content: center; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));">${iconSvg[type]}</div>`,
+		html: `<div style="transform: rotate(${rotation}deg); display: flex; align-items: center; justify-content: center; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));">${iconSvg}</div>`,
 		className: 'airplane-icon',
-		iconSize: type === 'cargo' ? [24, 24] : type === 'boeing777' ? [22, 22] : [20, 20],
-		iconAnchor: type === 'cargo' ? [12, 12] : type === 'boeing777' ? [11, 11] : [10, 10],
+		iconSize: [22, 22],
+		iconAnchor: [11, 11],
 		popupAnchor: [0, -12]
 	});
 };
@@ -110,7 +90,7 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes }) {
 		/* Añadir marcadores de vuelos y rutas si la vista es 'flights' o 'routes' */
 		if (activeView === 'flights' || activeView === 'routes') {
 			flights.forEach(flight => {
-				const icon = createAirplaneIcon(flight.aircraftType, flight.aircraftColor, flight.rotation);
+				const icon = createAirplaneIcon(flight.aircraftColor, flight.rotation);
 				const marker = L.marker([flight.currentLat, flight.currentLng], { icon }).bindPopup(`<div class="popup-content"><div class="popup-header"><strong class="popup-title">✈️ Vuelo ${flight.id}</strong></div></div>`);
 				marker.addTo(map); flightMarkers.push(marker);
 				if (showRoutes) {
@@ -181,22 +161,6 @@ const SimuladorSemanal = () => {
 	// la simulación construye los flights directamente en el useEffect de simClock.
 	// La dejamos por si volvemos a usar SSE en el futuro.
 	const convertirRutaAVuelo = (ruta) => {
-		// Determinar tipo de avión según capacidad de paquetes
-		let aircraftType, aircraftName;
-		if (ruta.totalPackages >= 300) {
-			aircraftType = 'boeing777';
-			aircraftName = 'Boeing 777';
-		} else if (ruta.totalPackages >= 200) {
-			aircraftType = 'airbus320';
-			aircraftName = 'Airbus A320';
-		} else if (ruta.totalPackages >= 100) {
-			aircraftType = 'boeing737';
-			aircraftName = 'Boeing 737';
-		} else {
-			aircraftType = 'cargo';
-			aircraftName = 'Cargo';
-		}
-
 		// Determinar color según progreso y estado
 		let aircraftColor;
 		if (!ruta.enVuelo) {
@@ -239,8 +203,6 @@ const SimuladorSemanal = () => {
 			isSameContinentFlight: ruta.regionOrigen === ruta.regionDestino,
 			currentLat: ruta.currentLatitude,
 			currentLng: ruta.currentLongitude,
-			aircraftType,
-			aircraftName,
 			aircraftColor,
 			rotation
 		};
@@ -335,13 +297,7 @@ const SimuladorSemanal = () => {
 			const enVuelo = progress > 0 && progress < 1;
 			const status = progress >= 1 ? 'arrived' : (progress <= 0 ? 'scheduled' : 'active');
 			const aircraftColor = '#007bff';
-
-			// Tipo de avión por carga
 			const totalPaquetes = vuelo.totalPaquetes ?? 0;
-			let aircraftType = 'cargo', aircraftName = 'Cargo';
-			if (totalPaquetes >= 300) { aircraftType = 'boeing777'; aircraftName = 'Boeing 777'; }
-			else if (totalPaquetes >= 200) { aircraftType = 'airbus320'; aircraftName = 'Airbus A320'; }
-			else if (totalPaquetes >= 100) { aircraftType = 'boeing737'; aircraftName = 'Boeing 737'; }
 
 			// 🔀 Política al llegar:
 			// A) Mantenerlo visible en el destino:
@@ -359,7 +315,7 @@ const SimuladorSemanal = () => {
 				speed: enVuelo ? 850 : 0,
 				status,
 				currentLat, currentLng,
-				aircraftType, aircraftName, aircraftColor,
+				aircraftColor,
 				rotation,
 				packageCapacity: totalPaquetes,
 				currentPackages: totalPaquetes,

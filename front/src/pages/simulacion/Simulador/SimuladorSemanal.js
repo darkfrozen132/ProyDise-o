@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer } from 'react-leaflet';
-import { Drawer, IconButton } from '@mui/material';
+import { Drawer, Dialog, DialogTitle, DialogContent, IconButton } from '@mui/material';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import InfoIcon from '@mui/icons-material/Info';
 import { IoArrowBackCircleOutline } from "react-icons/io5";
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -121,7 +122,7 @@ function bearingDegrees(lat1, lon1, lat2, lon2) {
 }
 
 const SimuladorSemanal = () => {
-	const [fechaInicioSimulacion, setFechaInicioSimulacion] = useState("2025-01-01"); // la fecha que envías
+	const [fechaInicioSimulacion, setFechaInicioSimulacion] = useState(""); // la fecha que envías
 	const [planFixed, setPlanFixed] = useState([]);  // lista de vuelos del JSON local
 	const [simClock, setSimClock] = useState(null);  // reloj simulado (Date)
 	const simIntervalRef = useRef(null);
@@ -138,7 +139,8 @@ const SimuladorSemanal = () => {
 	const [simulationStatus, setSimulationStatus] = useState('Monitoreo semanal activo');
 	const [activeView, setActiveView] = useState('flights');
 	const [showRoutes, setShowRoutes] = useState(false);
-	const [startDate, setStartDate] = useState("");
+const [showLegend, setShowLegend] = useState(false);
+
 	/* Datos de aeropuertos - se cargarán desde la API */
 	const [airports, setAirports] = useState([]);
 	const [loadingAirports, setLoadingAirports] = useState(true);
@@ -627,7 +629,7 @@ const SimuladorSemanal = () => {
 					<div className="content-wrapper">
 						{/* Panel de control superior */}
 						<div className="control-panel">
-							<div className="header-control-panel">
+							<div className="header-control-panel" style={{marginTop: '-15px'}}>
 								{/* Botón para regresar a operaciones */}
 								<button className="btn-back" onClick={goBack} title="Regresar">
 									<IoArrowBackCircleOutline size={32} />
@@ -636,85 +638,126 @@ const SimuladorSemanal = () => {
 							</div>
 
 							{/* ==================== PANEL SIMPLE DE TIEMPO SSE ==================== */}
-							<div style={{
-								background: '#f8f9fa',
-								borderRadius: '8px',
-								padding: '15px 20px',
-								marginBottom: '20px',
-								border: '1px solid #dee2e6',
-								display: 'flex',
-								justifyContent: 'space-between',
-								alignItems: 'center',
-								flexWrap: 'wrap',
-								gap: '15px'
-							}}>
-								{/* Información de tiempo */}
-								<div style={{ display: 'flex', gap: '30px', flexWrap: 'wrap' }}>
-									<div>
-										<span style={{ fontSize: '14px', color: '#6c757d', marginRight: '8px' }}>
-											Fecha y hora de simulación:
-										</span>
-										<span style={{ fontSize: '14px', fontWeight: '600', color: '#212529' }}>
-											{simClock  ? simClock.toLocaleString('es-ES', {
-												timeZone: 'UTC',
-												day: '2-digit',
-												month: '2-digit',
-												year: 'numeric',
-												hour: '2-digit',
-												minute: '2-digit',
-												second: '2-digit',
-												hour12: false
-											}) : '--:--:--'}
-										</span>
+							<div>
+								<div style={{
+									background: '#f8f9fa',
+									borderRadius: '8px',
+									padding: '15px 20px',
+									marginTop: '-40px',
+									marginBottom: '-10px',
+									border: '1px solid #dee2e6',
+									display: 'flex',
+									justifyContent: 'space-between',
+									alignItems: 'center',
+									flexWrap: 'wrap',
+									gap: '15px'
+								}}>
+									{/* Selector de fecha de inicio */}
+									<div className="form-group" style={{ margin: 0 }}>
+										<label className="form-label" htmlFor="fecha-inicio">
+											Fecha de Inicio:
+										</label>
+										<input
+											type="date"
+											id="fecha-inicio"
+											className="date-input"
+											value={fechaInicioSimulacion}
+											onChange={(e) => setFechaInicioSimulacion(e.target.value)}
+										/>
 									</div>
-									<div>
-										<span style={{ fontSize: '14px', color: '#6c757d', marginRight: '8px' }}>
-											Tiempo transcurrido:
-										</span>
-										<span style={{ fontSize: '14px', fontWeight: '600', color: '#212529' }}>
-											{tickActual} segundos
-										</span>
-										<span style={{ fontSize: '12px', color: '#6c757d', marginLeft: '8px' }}>
-											(Tick: {tickActual})
-										</span>
+									{/* Panel de información de tiempo */}
+									<div style={{
+										background: '#f8f9fa',
+										borderRadius: '8px',
+										padding: '15px 20px',
+										border: '1px solid #dee2e6',
+										flex: 1,
+										minWidth: '400px'
+									}}>
+										<div style={{
+											display: 'flex',
+											gap: '30px',
+											flexWrap: 'wrap'
+										}}>
+											<div>
+												<span style={{ fontSize: '14px', color: '#6c757d', marginRight: '8px' }}>
+													Fecha y hora de simulación:
+												</span>
+												<span style={{ fontSize: '14px', fontWeight: '600', color: '#212529' }}>
+													{simClock ? simClock.toLocaleString('es-ES', {
+														timeZone: 'UTC',
+														day: '2-digit',
+														month: '2-digit',
+														year: 'numeric',
+														hour: '2-digit',
+														minute: '2-digit',
+														second: '2-digit',
+														hour12: false
+													}) : '--:--:--'}
+												</span>
+											</div>
+											<div>
+												<span style={{ fontSize: '14px', color: '#6c757d', marginRight: '8px' }}>
+													Tiempo transcurrido:
+												</span>
+												<span style={{ fontSize: '14px', fontWeight: '600', color: '#212529' }}>
+													{tickActual} segundos
+												</span>
+												<span style={{ fontSize: '12px', color: '#6c757d', marginLeft: '8px' }}>
+													(Tick: {tickActual})
+												</span>
+											</div>
+										</div>
 									</div>
-								</div>
 
-								{/* Botones de control */}
-								<div style={{ display: 'flex', gap: '10px' }}>
-									<button
-										onClick={handleIniciarSimulacion}
-										disabled={simulacionActiva}
-										style={{
-											padding: '8px 16px',
-											borderRadius: '6px',
-											border: '1px solid #28a745',
-											background: simulacionActiva ? '#e9ecef' : '#28a745',
-											color: simulacionActiva ? '#6c757d' : 'white',
-											fontSize: '14px',
-											fontWeight: '500',
-											cursor: simulacionActiva ? 'not-allowed' : 'pointer',
-											transition: 'all 0.2s'
-										}}
-									>
-										Iniciar
-									</button>
-									<button
-										onClick={handleDetenerSimulacion}
-										style={{
-											padding: '8px 16px',
-											borderRadius: '6px',
-											border: '1px solid #dc3545',
-											background: '#dc3545',
-											color: 'white',
-											fontSize: '14px',
-											fontWeight: '500',
-											cursor: 'pointer',
-											transition: 'all 0.2s'
-										}}
-									>
-										Detener
-									</button>
+									{/* Botones de control */}
+									<div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+										<div className="status-container" style={{ marginBottom: 0 }}>
+											<span className="status-label">Estado:</span>
+											<div className="status-indicator">
+												<span className={`status-dot ${simulacionActiva ? "active" : "stopped"}`} />
+												<span className="status-text">{simulacionActiva ? 'Ejecutándose' : 'Detenida'}</span>
+											</div>
+										</div>
+										{/*contoles de simulacion*/}
+										<div className="simulation-controls">
+											<div className="control-buttons" style={{ display: 'flex', gap: '10px' }}>
+												<button
+													onClick={handleIniciarSimulacion}
+													disabled={simulacionActiva}
+													style={{
+														padding: '8px 16px',
+														borderRadius: '6px',
+														border: '1px solid #28a745',
+														background: simulacionActiva ? '#e9ecef' : '#28a745',
+														color: simulacionActiva ? '#6c757d' : 'white',
+														fontSize: '14px',
+														fontWeight: '500',
+														cursor: simulacionActiva ? 'not-allowed' : 'pointer',
+														transition: 'all 0.2s'
+													}}
+												>
+													Iniciar
+												</button>
+												<button
+													onClick={handleDetenerSimulacion}
+													style={{
+														padding: '8px 16px',
+														borderRadius: '6px',
+														border: '1px solid #dc3545',
+														background: '#dc3545',
+														color: 'white',
+														fontSize: '14px',
+														fontWeight: '500',
+														cursor: 'pointer',
+														transition: 'all 0.2s'
+													}}
+												>
+													Detener
+												</button>
+											</div>
+										</div>
+									</div>
 								</div>
 							</div>
 						</div>
@@ -725,10 +768,111 @@ const SimuladorSemanal = () => {
 								<TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='© OpenStreetMap contributors' noWrap={true} />
 								<DynamicMarkers flights={flights} airports={airports} activeView={activeView} showRoutes={showRoutes} />
 							</MapContainer>
+							{/* Botón de leyenda flotante */}
+							<IconButton
+								onClick={() => setShowLegend(true)}
+								title="Mostrar Leyenda"
+								sx={{
+									position: 'absolute',
+									bottom: '20px',
+									left: '20px',
+									backgroundColor: 'white',
+									boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+									zIndex: 1000,
+									'&:hover': {
+										backgroundColor: '#f5f5f5',
+									},
+								}}
+							>
+								<InfoIcon sx={{ color: '#2c4a6b' }} />
+							</IconButton>
 						</div>
 					</div>
 				</div>
 			</div>
+			{/* Diálogo de Leyenda */}
+			<Dialog
+				open={showLegend}
+				onClose={() => setShowLegend(false)}
+				maxWidth="sm"
+				fullWidth
+			>
+				<DialogTitle
+					sx={{
+						bgcolor: '#2c4a6b',
+						color: 'white',
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'space-between'
+					}}
+				>
+					<div style={{ display: 'flex', alignItems: 'center' }}>
+						<InfoIcon sx={{ mr: 1 }} />
+						Leyenda del Mapa
+					</div>
+					<IconButton
+						onClick={() => setShowLegend(false)}
+						sx={{
+							color: 'white',
+							'&:hover': {
+								backgroundColor: 'rgba(255, 255, 255, 0.1)'
+							}
+						}}
+					>
+						<i className="fas fa-times" />
+					</IconButton>
+				</DialogTitle>
+				<DialogContent sx={{ mt: 2 }}>
+					<div style={{ padding: '20px' }}>
+						<section style={{ marginBottom: '24px' }}>
+							<h3 style={{ marginBottom: '15px', color: '#2c4a6b' }}>Sedes Principales</h3>
+							<div style={{ display: 'flex', alignItems: 'center', marginBottom: '10px' }}>
+								<div style={{ width: '12px', height: '12px', backgroundColor: '#ff6b35', borderRadius: '50%', marginRight: '10px' }}></div>
+								<span>Lima, Bruselas, Baku</span>
+							</div>
+							<div style={{ color: '#666', fontSize: '0.9em', marginLeft: '22px' }}>
+								Capacidad limitada
+							</div>
+						</section>
+
+						<section style={{ marginBottom: '24px' }}>
+							<h3 style={{ marginBottom: '15px', color: '#2c4a6b' }}>Aeropuertos</h3>
+							<div>
+								<div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+									<div style={{ width: '12px', height: '12px', backgroundColor: '#28a745', borderRadius: '50%', marginRight: '10px' }}></div>
+									<span>Baja (0-49%)</span>
+								</div>
+								<div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+									<div style={{ width: '12px', height: '12px', backgroundColor: '#ffc107', borderRadius: '50%', marginRight: '10px' }}></div>
+									<span>Media (50-79%)</span>
+								</div>
+								<div style={{ display: 'flex', alignItems: 'center' }}>
+									<div style={{ width: '12px', height: '12px', backgroundColor: '#dc3545', borderRadius: '50%', marginRight: '10px' }}></div>
+									<span>Alta (80%+)</span>
+								</div>
+							</div>
+						</section>
+
+						<section>
+							<h3 style={{ marginBottom: '15px', color: '#2c4a6b' }}>Aviones</h3>
+							<div>
+								<div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+									<div style={{ width: '12px', height: '12px', backgroundColor: '#28a745', borderRadius: '50%', marginRight: '10px' }}></div>
+									<span>Poca carga (0-49%)</span>
+								</div>
+								<div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+									<div style={{ width: '12px', height: '12px', backgroundColor: '#ffc107', borderRadius: '50%', marginRight: '10px' }}></div>
+									<span>Media (50-79%)</span>
+								</div>
+								<div style={{ display: 'flex', alignItems: 'center' }}>
+									<div style={{ width: '12px', height: '12px', backgroundColor: '#dc3545', borderRadius: '50%', marginRight: '10px' }}></div>
+									<span>Mucha (80%+)</span>
+								</div>
+							</div>
+						</section>
+					</div>
+				</DialogContent>
+			</Dialog>
 		</div>
 	);
 };

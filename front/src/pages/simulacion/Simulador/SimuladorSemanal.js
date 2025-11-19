@@ -1,30 +1,32 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer } from 'react-leaflet';
-import { Drawer, IconButton } from '@mui/material';
+import { Drawer, Dialog, DialogTitle, DialogContent, IconButton } from '@mui/material';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import { IoArrowBackCircleOutline } from "react-icons/io5";
+import { RiResetLeftFill } from "react-icons/ri";
+import { FaStop } from "react-icons/fa6";
+import { FaPlay } from "react-icons/fa6";
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import vuelosSemana from '../../../assets/data/vuelosSemana.json';
 import { getPlanificacionSemanal } from '../../../config/api';
 import './SimuladorSemanal.css';
-import { 
-	getAirports, 
-	getFlights, 
-	iniciarSimulacion, 
-	pausarSimulacion, 
-	reanudarSimulacion, 
-	detenerSimulacion,
-	conectarStreamSimulacion,
-	obtenerEstadoSimulacion
+import {
+	getAirports,
+	getFlights,
+	iniciarSimulacion,
+	pausarSimulacion,
+	reanudarSimulacion,
+	detenerSimulacion
 } from '../../../config/api';
+import LegendDialog from '../../../components/ui/Dialog/LegendDialog';
+import LegendButton from '../../../components/ui/Button/LegendButton';
 
 /* Constantes de configuracion de tiempo de simulacion */
 const DESIRED_TIME_SCALE = 500; // Valor de K
 const REAL_TICK_MS = 1000; // Intervalo del reloj (1s)
-const MODO_LOCAL = true;
 
 /* Reparar iconos por defecto de Leaflet */
 delete L.Icon.Default.prototype._getIconUrl;
@@ -35,40 +37,20 @@ L.Icon.Default.mergeOptions({
 });
 
 /* Iconos de aviones personalizados como SVG dentro de divIcon */
-const createAirplaneIcon = (type, color, rotation = 0) => {
-	const iconSvg = {
-		'boeing737': `<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-			<ellipse cx="10" cy="10" rx="1.5" ry="8" fill="${color}" stroke="#ffffff" stroke-width="0.5"/>
-			<ellipse cx="10" cy="8" rx="7" ry="1.2" fill="${color}" stroke="#ffffff" stroke-width="0.5"/>
-			<ellipse cx="10" cy="14" rx="3" ry="0.8" fill="${color}" stroke="#ffffff" stroke-width="0.5"/>
-			<path d="M10 16 L10 18 L9.5 18 L9.5 16 Z" fill="${color}" stroke="#ffffff" stroke-width="0.3"/>
-		</svg>`,
-		'airbus320': `<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-			<ellipse cx="10" cy="10" rx="1.8" ry="9" fill="${color}" stroke="#ffffff" stroke-width="0.5"/>
-			<ellipse cx="10" cy="7.5" rx="8" ry="1.5" fill="${color}" stroke="#ffffff" stroke-width="0.5"/>
-			<ellipse cx="10" cy="14.5" rx="3.5" ry="1" fill="${color}" stroke="#ffffff" stroke-width="0.5"/>
-			<path d="M10 16.5 L10 18.5 L9.2 18.5 L9.2 16.5 Z" fill="${color}" stroke="#ffffff" stroke-width="0.3"/>
-		</svg>`,
-		'boeing777': `<svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+const createAirplaneIcon = (color, rotation = 0) => {
+	const iconSvg = `<svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
 			<ellipse cx="11" cy="11" rx="2" ry="10" fill="${color}" stroke="#ffffff" stroke-width="0.5"/>
 			<ellipse cx="11" cy="8" rx="9" ry="1.8" fill="${color}" stroke="#ffffff" stroke-width="0.5"/>
 			<ellipse cx="11" cy="15" rx="4" ry="1.2" fill="${color}" stroke="#ffffff" stroke-width="0.5"/>
 			<path d="M11 17 L11 19.5 L10 19.5 L10 17 Z" fill="${color}" stroke="#ffffff" stroke-width="0.3"/>
-		</svg>`,
-		'cargo': `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-			<ellipse cx="12" cy="12" rx="2.5" ry="10" fill="${color}" stroke="#ffffff" stroke-width="0.6"/>
-			<ellipse cx="12" cy="9" rx="10" ry="2" fill="${color}" stroke="#ffffff" stroke-width="0.6"/>
-			<ellipse cx="12" cy="16" rx="4.5" ry="1.3" fill="${color}" stroke="#ffffff" stroke-width="0.6"/>
-			<path d="M12 18 L12 21 L11 21 L11 18 Z" fill="${color}" stroke="#ffffff" stroke-width="0.4"/>
-		</svg>`
-	};
+		</svg>`;
 
 	/* Crear divIcon con el SVG correspondiente */
 	return L.divIcon({
-		html: `<div style="transform: rotate(${rotation}deg); display: flex; align-items: center; justify-content: center; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));">${iconSvg[type]}</div>`,
+		html: `<div style="transform: rotate(${rotation}deg); display: flex; align-items: center; justify-content: center; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));">${iconSvg}</div>`,
 		className: 'airplane-icon',
-		iconSize: type === 'cargo' ? [24, 24] : type === 'boeing777' ? [22, 22] : [20, 20],
-		iconAnchor: type === 'cargo' ? [12, 12] : type === 'boeing777' ? [11, 11] : [10, 10],
+		iconSize: [22, 22],
+		iconAnchor: [11, 11],
 		popupAnchor: [0, -12]
 	});
 };
@@ -113,7 +95,7 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes }) {
 		/* Añadir marcadores de vuelos y rutas si la vista es 'flights' o 'routes' */
 		if (activeView === 'flights' || activeView === 'routes') {
 			flights.forEach(flight => {
-				const icon = createAirplaneIcon(flight.aircraftType, flight.aircraftColor, flight.rotation);
+				const icon = createAirplaneIcon(flight.aircraftColor, flight.rotation);
 				const marker = L.marker([flight.currentLat, flight.currentLng], { icon }).bindPopup(`<div class="popup-content"><div class="popup-header"><strong class="popup-title">✈️ Vuelo ${flight.id}</strong></div></div>`);
 				marker.addTo(map); flightMarkers.push(marker);
 				if (showRoutes) {
@@ -144,10 +126,9 @@ function bearingDegrees(lat1, lon1, lat2, lon2) {
 }
 
 const SimuladorSemanal = () => {
-	const [fechaInicioSimulacion, setFechaInicioSimulacion] = useState("2025-01-01"); // la fecha que envías
+	const [fechaInicioSimulacion, setFechaInicioSimulacion] = useState(""); // la fecha que envías
 	const [planFixed, setPlanFixed] = useState([]);  // lista de vuelos del JSON local
 	const [simClock, setSimClock] = useState(null);  // reloj simulado (Date)
-	const simIntervalRef = useRef(null);
 
 	const simStartRef = useRef(null);
 
@@ -161,7 +142,8 @@ const SimuladorSemanal = () => {
 	const [simulationStatus, setSimulationStatus] = useState('Monitoreo semanal activo');
 	const [activeView, setActiveView] = useState('flights');
 	const [showRoutes, setShowRoutes] = useState(false);
-	const [startDate, setStartDate] = useState("");
+	const [showLegend, setShowLegend] = useState(false);
+
 	/* Datos de aeropuertos - se cargarán desde la API */
 	const [airports, setAirports] = useState([]);
 	const [loadingAirports, setLoadingAirports] = useState(true);
@@ -176,24 +158,14 @@ const SimuladorSemanal = () => {
 	const [rutasSolucion, setRutasSolucion] = useState([]); // Rutas que vienen del SSE
 	const eventSourceRef = useRef(null); /* Referencia para el EventSource SSE */
 
-	// ==================== FUNCIÓN PARA CONVERTIR RUTA DEL BACKEND A VUELO ====================
-	const convertirRutaAVuelo = (ruta) => {
-		// Determinar tipo de avión según capacidad de paquetes
-		let aircraftType, aircraftName;
-		if (ruta.totalPackages >= 300) {
-			aircraftType = 'boeing777';
-			aircraftName = 'Boeing 777';
-		} else if (ruta.totalPackages >= 200) {
-			aircraftType = 'airbus320';
-			aircraftName = 'Airbus A320';
-		} else if (ruta.totalPackages >= 100) {
-			aircraftType = 'boeing737';
-			aircraftName = 'Boeing 737';
-		} else {
-			aircraftType = 'cargo';
-			aircraftName = 'Cargo';
-		}
 
+
+	/* ==================== FUNCIÓN PARA CONVERTIR RUTA DEL BACKEND A VUELO ==================== */
+	// NOTA: Esta función se usaba para convertir rutas SSE del backend
+	// en vuelos compatibles con el mapa. En el modo actual (simClock + planFixed)
+	// la simulación construye los flights directamente en el useEffect de simClock.
+	// La dejamos por si volvemos a usar SSE en el futuro.
+	const convertirRutaAVuelo = (ruta) => {
 		// Determinar color según progreso y estado
 		let aircraftColor;
 		if (!ruta.enVuelo) {
@@ -236,58 +208,32 @@ const SimuladorSemanal = () => {
 			isSameContinentFlight: ruta.regionOrigen === ruta.regionDestino,
 			currentLat: ruta.currentLatitude,
 			currentLng: ruta.currentLongitude,
-			aircraftType,
-			aircraftName,
 			aircraftColor,
 			rotation
 		};
 	};
 
-	// ==================== FUNCIÓN PARA CONVERTIR DATOS MOCK SIMPLES A VUELO ====================
-	const convertirDatoMockAVuelo = (datoMock) => {
-		// Formato del backend: { id, currentLat, currentLng, angle }
-		return {
-			id: datoMock.id,
-			origin: { code: 'MOCK', lat: 0, lng: 0, region: 'Test' },
-			destination: { code: 'MOCK', lat: 0, lng: 0, region: 'Test' },
-			progress: 0.5,
-			altitude: 35000,
-			speed: 850,
-			status: 'active',
-			packageCapacity: 200,
-			currentPackages: 200,
-			packageType: 'MPE',
-			isSameContinentFlight: false,
-			currentLat: datoMock.currentLat,
-			currentLng: datoMock.currentLng,
-			aircraftType: 'boeing737',
-			aircraftName: 'Boeing 737',
-			aircraftColor: '#007bff',
-			rotation: datoMock.angle || 0 // Usar el ángulo del JSON
-		};
-	};
-
-	// ==================== DEBUG: MONITOREAR CAMBIOS EN tiempoRealMs ====================
+	/* ==================== DEBUG: MONITOREAR CAMBIOS EN tiempoRealMs ==================== */
 	useEffect(() => {
-		console.log('🕐 tiempoRealMs actualizado a:', tiempoRealMs, 'ms =', {
+		console.log('tiempoRealMs actualizado a:', tiempoRealMs, 'ms =', {
 			horas: Math.floor(tiempoRealMs / 3600000),
 			minutos: Math.floor((tiempoRealMs % 3600000) / 60000),
 			segundos: Math.floor((tiempoRealMs % 60000) / 1000)
 		});
 	}, [tiempoRealMs]);
 
-	/* Cargar aeropuertos desde la API al montar el componente */
+	/* ==================== Cargar aeropuertos desde API al montar ==================== */
 	useEffect(() => {
 		const fetchAirports = async () => {
 			try {
 				setLoadingAirports(true);
-				console.log('🔄 Iniciando carga de aeropuertos...');
+				console.log('Iniciando carga de aeropuertos...');
 				const data = await getAirports();
-				console.log('✅ Aeropuertos cargados desde API:', data.length, 'aeropuertos');
+				console.log('Aeropuertos cargados desde API:', data.length, 'aeropuertos');
 				setAirports(data);
 			} catch (error) {
-				console.error('❌ Error al cargar aeropuertos desde API:', error);
-				console.log('🔄 Usando datos de fallback...');
+				console.error('Error al cargar aeropuertos desde API:', error);
+				console.log('Usando datos de fallback...');
 				/* Fallback a datos estáticos en caso de error */
 				const fallbackData = [
 					{ name: 'Lima-Jorge Chávez', code: 'SPIM', lat: -12.0219, lng: -77.1143, capacity: 'ILIMITADO', packages: 980, isSede: true, region: 'América del Sur', country: 'Perú', operationType: 'Sede Principal - Hub Sudamericano' },
@@ -296,24 +242,24 @@ const SimuladorSemanal = () => {
 					{ name: 'Amsterdam-Schiphol', code: 'AMS', lat: 52.3105, lng: 4.7683, capacity: 1200, packages: 960, isSede: false, region: 'Europa', country: 'Países Bajos', operationType: 'Aeropuerto Regional' }
 				];
 				setAirports(fallbackData);
-				console.log('✅ Datos de fallback cargados:', fallbackData.length, 'aeropuertos');
+				console.log('Datos de fallback cargados:', fallbackData.length, 'aeropuertos');
 			} finally {
 				setLoadingAirports(false);
-				console.log('✅ Carga de aeropuertos finalizada');
+				console.log('Carga de aeropuertos finalizada');
 			}
 		};
 
 		fetchAirports();
 	}, []);
 
-	/* Cargar planificación fija desde JSON local al montar */
+	/* ==================== Cargar plan fijo desde JSON local al montar ==================== */
 	useEffect(() => {
 		if (vuelosSemana?.vuelos) {
 			setPlanFixed(vuelosSemana.vuelos);
 		}
 	}, [vuelosSemana]);
 
-	/* Actualizar vuelos según el reloj de simulación y la planificación fija */
+	/* ==================== Efecto para actualizar vuelos según simClock ==================== */
 	useEffect(() => {
 		if (!simClock || planFixed.length === 0 || airports.length === 0) return;
 
@@ -326,7 +272,7 @@ const SimuladorSemanal = () => {
 
 			// Ocultar completamente antes del inicio
 			if (simClock < start) {
-				continue; // ❗ No aparece hasta su fechaInicial
+				continue; // No aparece hasta su fechaInicial
 			}
 
 			const totalMs = end - start;
@@ -340,7 +286,7 @@ const SimuladorSemanal = () => {
 			const o = airports.find(a => String(a.code).toUpperCase() === String(vuelo.origenCodigoICAO).toUpperCase());
 			const d = airports.find(a => String(a.code).toUpperCase() === String(vuelo.destinoCodigoICAO).toUpperCase());
 			if (!o || !d) {
-				console.warn('ICAO no encontrado en airports:', vuelo.origenCodigoICAO, vuelo.destinoCodigoICAO);
+				console.warn('ICAO no encontrado:', vuelo.origenCodigoICAO, vuelo.destinoCodigoICAO);
 				continue;
 			}
 
@@ -355,17 +301,8 @@ const SimuladorSemanal = () => {
 			// Estado y color
 			const enVuelo = progress > 0 && progress < 1;
 			const status = progress >= 1 ? 'arrived' : (progress <= 0 ? 'scheduled' : 'active');
-			const aircraftColor =
-				status === 'arrived' ? '#28a745' :
-					progress >= 0.5 ? '#ffc107' :
-						'#007bff';
-
-			// Tipo de avión por carga
 			const totalPaquetes = vuelo.totalPaquetes ?? 0;
-			let aircraftType = 'cargo', aircraftName = 'Cargo';
-			if (totalPaquetes >= 300) { aircraftType = 'boeing777'; aircraftName = 'Boeing 777'; }
-			else if (totalPaquetes >= 200) { aircraftType = 'airbus320'; aircraftName = 'Airbus A320'; }
-			else if (totalPaquetes >= 100) { aircraftType = 'boeing737'; aircraftName = 'Boeing 737'; }
+			const aircraftColor = '#007bff';
 
 			// 🔀 Política al llegar:
 			// A) Mantenerlo visible en el destino:
@@ -383,7 +320,7 @@ const SimuladorSemanal = () => {
 				speed: enVuelo ? 850 : 0,
 				status,
 				currentLat, currentLng,
-				aircraftType, aircraftName, aircraftColor,
+				aircraftColor,
 				rotation,
 				packageCapacity: totalPaquetes,
 				currentPackages: totalPaquetes,
@@ -396,183 +333,104 @@ const SimuladorSemanal = () => {
 		setFlightsInAir(nuevos.filter(v => v.status === 'active').length);
 	}, [simClock, planFixed, airports]);
 
-
-	/* ==================== POLLING PARA ACTUALIZAR TIEMPO (BLOQUEADO EN MODO LOCAL) ==================== */
-	useEffect(() => {
-		if (!simulacionActiva || MODO_LOCAL) {
-			return; // ← bloquea el polling en modo local
-		}
-
-		console.log('⏱️ Iniciando polling para actualizar tiempo...');
-		const pollingInterval = setInterval(async () => {
-			try {
-				const estado = await obtenerEstadoSimulacion();
-				setHoraSimulada(estado.horaSimulada);
-				setTiempoRealMs(estado.tiempoRealTranscurridoMs);
-				setTickActual(estado.tickActual);
-				setTimeScale(estado.timeScale);
-				setSimulacionActiva(estado.activa);
-			} catch (error) {
-				console.error('❌ Error en polling:', error);
-			}
-		}, 1000);
-
-		return () => {
-			clearInterval(pollingInterval);
-		};
-	}, [simulacionActiva]);
-
-	/* ==================== CONEXIÓN SSE PARA TIEMPO DE SIMULACIÓN ==================== */
-	useEffect(() => {
-		if (!simulacionActiva || MODO_LOCAL) {
-			// si había un SSE abierto, ciérralo
-			if (eventSourceRef.current) {
-				eventSourceRef.current.close();
-				eventSourceRef.current = null;
-			}
-			return; // ← NO conectar SSE en modo local
-		}
-
-		console.log('📡 Conectando al stream SSE de simulación...');
-		const eventSource = conectarStreamSimulacion(
-			(data) => {
-				setHoraSimulada(data.horaSimulada);
-				setTiempoRealMs(data.tiempoRealTranscurridoMs);
-				setTickActual(data.tickActual);
-				setTimeScale(Number.isFinite(data.timeScale) ? data.timeScale : DESIRED_TIME_SCALE);
-				setSimulacionActiva(data.activa);
-
-				if (data.rutasSolucion?.length) {
-					setRutasSolucion(data.rutasSolucion);
-					const nuevosVuelos = data.rutasSolucion.map(ruta => convertirRutaAVuelo(ruta));
-					setFlights(nuevosVuelos);
-					setFlightsInAir(nuevosVuelos.filter(v => v.altitude > 1000).length);
-				}
-			},
-			(error) => {
-				console.error('❌ Error en stream SSE:', error);
-				setSimulacionActiva(false);
-			}
-		);
-
-		eventSourceRef.current = eventSource;
-
-		return () => {
-			if (eventSourceRef.current) {
-				eventSourceRef.current.close();
-				eventSourceRef.current = null;
-			}
-		};
-	}, [simulacionActiva]);
-
 	/* Efecto para avanzar el reloj de simulación en modo local */
 	useEffect(() => {
-		if (!simulacionActiva) {
-			if (simIntervalRef.current) {
-				clearInterval(simIntervalRef.current);
-				simIntervalRef.current = null;
-			}
-			return;
-		}
+		if (!simulacionActiva) return;
 
 		const advanceMs = DESIRED_TIME_SCALE * REAL_TICK_MS;
 
-		simIntervalRef.current = setInterval(() => {
+		const id = setInterval(() => {
 			setSimClock(prev => (prev ? new Date(prev.getTime() + advanceMs) : null));
-			setTickActual(prev => prev + REAL_TICK_MS / 1000);
+			setTickActual(prev => prev + 1);          // 1 segundo
 			setTiempoRealMs(prev => prev + REAL_TICK_MS);
 		}, REAL_TICK_MS);
 
-		return () => {
-			if (simIntervalRef.current) {
-				clearInterval(simIntervalRef.current);
-				simIntervalRef.current = null;
-			}
-		};
-	}, [simulacionActiva, DESIRED_TIME_SCALE, REAL_TICK_MS]);
+		return () => clearInterval(id);
+	}, [simulacionActiva]);
 
 
 	// ==================== FUNCIONES PARA CONTROLAR SIMULACIÓN ====================
 	const handleIniciarSimulacion = async () => {
-		console.log("🎬 Iniciando simulación (plan por API + reloj local) desde:", fechaInicioSimulacion);
+		console.log("Iniciando simulación desde:", fechaInicioSimulacion);
+		// 1) Si ya está corriendo, no hacemos nada
+		if (simulacionActiva) {
+			console.log("La simulación ya está activa.");
+			return;
+		}
 
+		// 2) Si ya hubo una simulación (simClock existe) y solo estaba pausada → reanudar
+		if (simClock) {
+			console.log("Reanudando simulación en:", simClock);
+			setSimulacionActiva(true);
+			return;
+		}
+
+		// 3) Si NO hay simClock (por ejemplo después de Reset) pero YA tenemos planFixed,
+		//    solo reiniciamos la simulación desde el inicio usando el plan existente
+		if (planFixed.length > 0 && simStartRef.current) {
+			console.log("Reiniciando simulación usando el plan fijo ya cargado.");
+
+			const inicioUTC = new Date(simStartRef.current);
+			setSimClock(inicioUTC);
+
+			setTiempoRealMs(0);
+			setTickActual(0);
+			setSimulacionActiva(true);   // 🔥 vuelve a encender el intervalo
+			return;
+		}
+
+		// 4) Si llegamos aquí: NO está corriendo, NO hay simClock y NO hay planFixed
+		//    => primera vez (o se borró el plan). Aquí sí llamamos al backend.
 		try {
-			// 🔹 Pasa fecha y K
+			if (!fechaInicioSimulacion) {
+				alert("Por favor, selecciona una fecha de inicio.");
+				return;
+			}
+
+			// Pasa fecha y K
 			const factorK = 500;
 			const plan = await getPlanificacionSemanal(fechaInicioSimulacion, factorK);
 
 			const vuelos = Array.isArray(plan?.vuelos) ? plan.vuelos : [];
 			if (!vuelos.length) {
-				alert('El API devolvió un plan vacío.');
+				alert('El plan de vuelo está vacia.');
 				return;
 			}
 			setPlanFixed(vuelos);
-			console.log("✅ Plan fijo recibido:", vuelos.length, "vuelos");
+			console.log("Plan fijo recibido:", vuelos.length, "vuelos");
 		} catch (e) {
-			console.error("❌ Error al cargar plan semanal:", e);
+			console.error("Error al cargar plan semanal:", e);
 			alert("No se pudo obtener el plan semanal del backend.");
 			return;
 		}
 
-		// 🔹 Reloj local (sin SSE)
+		//Reloj local (sin SSE) -> iniciamos desde 00:00 en la fecha elegida
 		const inicioUTC = new Date(`${fechaInicioSimulacion}T00:00:00Z`);
 		setSimClock(inicioUTC);
 		simStartRef.current = inicioUTC;
-		setSimulacionActiva(true);
+
 		setTiempoRealMs(0);
 		setTickActual(0);
 		setTimeScale(DESIRED_TIME_SCALE);
-
-		if (simIntervalRef.current) clearInterval(simIntervalRef.current);
-		simIntervalRef.current = setInterval(() => {
-			setSimClock(prev => prev ? new Date(prev.getTime() + DESIRED_TIME_SCALE * REAL_TICK_MS) : null);
-			setTickActual(prev => prev + 1);
-			setTiempoRealMs(prev => prev + REAL_TICK_MS);
-		}, REAL_TICK_MS);
-
-		if (eventSourceRef.current) {
-			eventSourceRef.current.close();
-			eventSourceRef.current = null;
-		}
-	};
-
-
-	const handlePausarSimulacion = async () => {
-		try {
-			await pausarSimulacion();
-			setSimulacionActiva(false);
-		} catch (error) {
-			console.error('Error al pausar simulación:', error);
-		}
-	};
-
-	const handleReanudarSimulacion = async () => {
-		try {
-			const response = await reanudarSimulacion();
-			setSimulacionActiva(true);
-		} catch (error) {
-			console.error('Error al reanudar simulación:', error);
-		}
+		setSimulacionActiva(true);
 	};
 
 	const handleDetenerSimulacion = () => {
-		// reloj local
-		if (simIntervalRef.current) {
-			clearInterval(simIntervalRef.current);
-			simIntervalRef.current = null;
-		}
-		// sse backend
-		if (eventSourceRef.current) {
-			eventSourceRef.current.close();
-			eventSourceRef.current = null;
-		}
+		console.log("Simulación pausada");
+  		setSimulacionActiva(false);   // solo pausa
+	};
+
+	const handleResetSimulacion = () => {
+		console.log("Simulación reiniciada completamente.");
+
 		setSimulacionActiva(false);
-		setHoraSimulada(null);
 		setSimClock(null);
 		setTiempoRealMs(0);
 		setTickActual(0);
 		setFlights([]);
 		setFlightsInAir(0);
+		// Si deseas también resetear planificaciones recibidas:
+		// setPlanFixed([]);
 	};
 
 	/* Calcular métricas de saturación de aeropuertos */
@@ -619,6 +477,16 @@ const SimuladorSemanal = () => {
 		);
 	}
 
+	/* ==================== Texto dinamico para los botones ==================== */
+	let startButtonLabel = "Iniciar";
+
+	if (simulacionActiva) {
+		startButtonLabel = "Iniciar";
+	} else if (simClock) {
+		// hubo simulación antes y ahora está pausada
+		startButtonLabel = "Reanudar";
+	}
+
 	return (
 		<div className="section-content" id="simulationSection">
 			{/* Botón semicircular pegado al borde */}
@@ -629,7 +497,7 @@ const SimuladorSemanal = () => {
 					position: 'fixed',
 					top: '50%',
 					transform: 'translateY(-50%)',
-					left: open ? drawerWidth - 30 : 0,
+					left: open ? drawerWidth - 15 : 0,
 					zIndex: 1201,
 					width: 36,
 					height: 72,
@@ -722,14 +590,6 @@ const SimuladorSemanal = () => {
 										<div className="metric-sublabel">operativas</div>
 									</div>
 								</div>
-								<div className="metric-card">
-									<div className="metric-icon"><i className="fas fa-infinity"></i></div>
-									<div className="metric-content">
-										<div className="metric-label">Capacidad total</div>
-										<div className="metric-value">∞</div>
-										<div className="metric-sublabel">ilimitada</div>
-									</div>
-								</div>
 							</div>
 						</div>
 						{/* Aeropuerto más saturado */}
@@ -764,7 +624,7 @@ const SimuladorSemanal = () => {
 					<div className="content-wrapper">
 						{/* Panel de control superior */}
 						<div className="control-panel">
-							<div className="header-control-panel">
+							<div className="header-control-panel" style={{ marginTop: '-15px' }}>
 								{/* Botón para regresar a operaciones */}
 								<button className="btn-back" onClick={goBack} title="Regresar">
 									<IoArrowBackCircleOutline size={32} />
@@ -773,85 +633,153 @@ const SimuladorSemanal = () => {
 							</div>
 
 							{/* ==================== PANEL SIMPLE DE TIEMPO SSE ==================== */}
-							<div style={{
-								background: '#f8f9fa',
-								borderRadius: '8px',
-								padding: '15px 20px',
-								marginBottom: '20px',
-								border: '1px solid #dee2e6',
-								display: 'flex',
-								justifyContent: 'space-between',
-								alignItems: 'center',
-								flexWrap: 'wrap',
-								gap: '15px'
-							}}>
-								{/* Información de tiempo */}
-								<div style={{ display: 'flex', gap: '30px', flexWrap: 'wrap' }}>
-									<div>
-										<span style={{ fontSize: '14px', color: '#6c757d', marginRight: '8px' }}>
-											Fecha y hora de simulación:
-										</span>
-										<span style={{ fontSize: '14px', fontWeight: '600', color: '#212529' }}>
-											{simClock  ? simClock.toLocaleString('es-ES', {
-												timeZone: 'UTC',
-												day: '2-digit',
-												month: '2-digit',
-												year: 'numeric',
-												hour: '2-digit',
-												minute: '2-digit',
-												second: '2-digit',
-												hour12: false
-											}) : '--:--:--'}
-										</span>
+							<div>
+								<div style={{
+									borderRadius: '8px',
+									padding: '15px 20px',
+									marginTop: '-45px',
+									marginBottom: '-35px',
+									display: 'flex',
+									justifyContent: 'space-between',
+									alignItems: 'center',
+									flexWrap: 'wrap',
+									gap: '15px'
+								}}>
+									{/* Selector de fecha de inicio */}
+									<div className="form-group" style={{ margin: 0 }}>
+										<label className="form-label" htmlFor="fecha-inicio">
+											Fecha de Inicio:
+										</label>
+										<input
+											type="date"
+											id="fecha-inicio"
+											className="date-input"
+											value={fechaInicioSimulacion}
+											onChange={(e) => setFechaInicioSimulacion(e.target.value)}
+										/>
 									</div>
-									<div>
-										<span style={{ fontSize: '14px', color: '#6c757d', marginRight: '8px' }}>
-											Tiempo transcurrido:
-										</span>
-										<span style={{ fontSize: '14px', fontWeight: '600', color: '#212529' }}>
-											{tickActual} segundos
-										</span>
-										<span style={{ fontSize: '12px', color: '#6c757d', marginLeft: '8px' }}>
-											(Tick: {tickActual})
-										</span>
+									{/* Panel de información de tiempo */}
+									<div style={{
+										background: '#f8f9fa',
+										borderRadius: '8px',
+										padding: '15px 20px',
+										border: '1px solid #dee2e6',
+										flex: 1,
+										minWidth: '400px'
+									}}>
+										<div style={{
+											display: 'flex',
+											gap: '30px',
+											flexWrap: 'wrap'
+										}}>
+											<div>
+												<span style={{ fontSize: '14px', color: '#6c757d', marginRight: '8px' }}>
+													Fecha y hora de simulación:
+												</span>
+												<span style={{ fontSize: '14px', fontWeight: '600', color: '#212529' }}>
+													{simClock ? simClock.toLocaleString('es-ES', {
+														timeZone: 'UTC',
+														day: '2-digit',
+														month: '2-digit',
+														year: 'numeric',
+														hour: '2-digit',
+														minute: '2-digit',
+														second: '2-digit',
+														hour12: false
+													}) : '--:--:--'}
+												</span>
+											</div>
+											<div>
+												<span style={{ fontSize: '14px', color: '#6c757d', marginRight: '8px' }}>
+													Tiempo transcurrido:
+												</span>
+												<span style={{ fontSize: '14px', fontWeight: '600', color: '#212529' }}>
+													{tickActual} segundos
+												</span>
+												<span style={{ fontSize: '12px', color: '#6c757d', marginLeft: '8px' }}>
+													(Tick: {tickActual})
+												</span>
+											</div>
+										</div>
 									</div>
-								</div>
 
-								{/* Botones de control */}
-								<div style={{ display: 'flex', gap: '10px' }}>
-									<button
-										onClick={handleIniciarSimulacion}
-										disabled={simulacionActiva}
-										style={{
-											padding: '8px 16px',
-											borderRadius: '6px',
-											border: '1px solid #28a745',
-											background: simulacionActiva ? '#e9ecef' : '#28a745',
-											color: simulacionActiva ? '#6c757d' : 'white',
-											fontSize: '14px',
-											fontWeight: '500',
-											cursor: simulacionActiva ? 'not-allowed' : 'pointer',
-											transition: 'all 0.2s'
-										}}
-									>
-										Iniciar
-									</button>
-									<button
-										onClick={handleDetenerSimulacion}
-										style={{
-											padding: '8px 16px',
-											borderRadius: '6px',
-											border: '1px solid #dc3545',
-											background: '#dc3545',
-											color: 'white',
-											fontSize: '14px',
-											fontWeight: '500',
-											cursor: 'pointer',
-											transition: 'all 0.2s'
-										}}
-									>
-										Detener
-									</button>
+									{/* Botones de control */}
+									<div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+										<div className="status-container" style={{ marginBottom: 0 }}>
+											<span className="status-label">Estado:</span>
+											<div className="status-indicator">
+												<span className={`status-dot ${simulacionActiva ? "active" : "stopped"}`} />
+												<span className="status-text">{simulacionActiva ? 'Ejecutándose' : 'Detenida'}</span>
+											</div>
+										</div>
+										{/*contoles de simulacion*/}
+										<div className="simulation-controls">
+											<div className="control-buttons" style={{ display: 'flex', gap: '10px' }}>
+												<button
+													onClick={handleIniciarSimulacion}
+													disabled={simulacionActiva}
+													style={{
+														padding: '8px 16px',
+														borderRadius: '6px',
+														border: simulacionActiva ? '1px solid #e9ecef' : '1px solid #28a745',
+														background: simulacionActiva ? '#e9ecef' : '#28a745',
+														color: simulacionActiva ? '#6c757d' : 'white',
+														fontSize: '14px',
+														fontWeight: '500',
+														cursor: simulacionActiva ? 'not-allowed' : 'pointer',
+														display: 'flex',
+														alignItems: 'center',
+														gap: '8px',
+														transition: 'all 0.2s'
+													}}
+												>	
+													<FaPlay size={18} />
+													{startButtonLabel}
+												</button>
+												<button
+													onClick={handleDetenerSimulacion}
+													style={{
+														padding: '8px 16px',
+														borderRadius: '6px',
+														border: simulacionActiva ? '1px solid #dc3545': '1px solid #e9ecef',
+														background: simulacionActiva ? '#dc3545' : '#e9ecef',
+														color: simulacionActiva ? 'white' : '#6c757d',
+														fontSize: '14px',
+														fontWeight: '500',
+														cursor: simulacionActiva ? 'pointer' : 'not-allowed',
+														display: 'flex',
+														alignItems: 'center',
+														gap: '8px',
+														transition: 'all 0.2s'
+													}}
+												>
+													<FaStop size={18} />
+													Detener
+												</button>
+												<button
+													onClick={handleResetSimulacion}
+													disabled={planFixed.length === 0}
+													style={{
+														padding: '8px 16px',
+														borderRadius: '6px',
+														border: planFixed.length === 0 ? '#e9ecef' : '1px solid #6c757d',
+														background: planFixed.length === 0 ? '#e9ecef' : '#6c757d',
+														color: planFixed.length === 0 ? '#adb5bd' : 'white',
+														fontSize: '14px',
+														fontWeight: '500',
+														cursor: planFixed.length === 0 ? 'not-allowed' : 'pointer',
+														transition: 'all 0.2s',
+														display: 'flex',
+														alignItems: 'center',
+														gap: '8px'
+													}}
+												>
+													<RiResetLeftFill size={18} />
+													Reiniciar
+												</button>
+											</div>
+										</div>
+									</div>
 								</div>
 							</div>
 						</div>
@@ -862,10 +790,17 @@ const SimuladorSemanal = () => {
 								<TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='© OpenStreetMap contributors' noWrap={true} />
 								<DynamicMarkers flights={flights} airports={airports} activeView={activeView} showRoutes={showRoutes} />
 							</MapContainer>
+							{/* Botón de leyenda flotante */}
+							<LegendButton onClick={() => setShowLegend(true)} />
 						</div>
 					</div>
 				</div>
 			</div>
+			{/* Diálogo de Leyenda */}
+			<LegendDialog
+				open={showLegend}
+				onClose={() => setShowLegend(false)}
+			/>
 		</div>
 	);
 };

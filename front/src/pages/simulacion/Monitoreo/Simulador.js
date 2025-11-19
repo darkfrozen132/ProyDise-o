@@ -1,7 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, useMap } from 'react-leaflet';
+import { Drawer, Dialog, DialogTitle, DialogContent, IconButton } from '@mui/material';
+import InfoIcon from '@mui/icons-material/Info';
 import L from 'leaflet';
+import LegendButton from "../../../components/ui/Button/LegendButton";
+import LegendDialog from "../../../components/ui/Dialog/LegendDialog";
 import 'leaflet/dist/leaflet.css';
 import './Simulador.css';
 
@@ -134,8 +138,8 @@ const createAirportIcon = (isSede = false, saturation = 0) => {
         ` : ''}
       </div>`,
     iconSize: [size, size],
-    iconAnchor: [size/2, size/2],
-    popupAnchor: [0, -size/2]
+    iconAnchor: [size / 2, size / 2],
+    popupAnchor: [0, -size / 2]
   });
 };
 
@@ -159,7 +163,7 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes }) {
         const isUnlimited = airport.capacity === 'ILIMITADO';
         const saturation = isUnlimited ? 0 : (airport.packages / airport.capacity) * 100;
         const icon = createAirportIcon(airport.isSede, saturation);
-        
+
         const marker = L.marker([airport.lat, airport.lng], { icon })
           .bindPopup(`
             <div class="popup-content">
@@ -210,7 +214,7 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes }) {
     if (activeView === 'flights' || activeView === 'routes') {
       flights.forEach(flight => {
         const icon = createAirplaneIcon(flight.aircraftType, flight.aircraftColor, flight.rotation);
-  const loadPercentage = (flight.currentPackages / flight.packageCapacity) * 100;
+        const loadPercentage = (flight.currentPackages / flight.packageCapacity) * 100;
         const isIntercontinental = !flight.isSameContinentFlight;
 
         const marker = L.marker([flight.currentLat, flight.currentLng], { icon })
@@ -275,6 +279,7 @@ const Simulador = () => {
   const [flights, setFlights] = useState([]);
   const [flightsInAir, setFlightsInAir] = useState(0);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [showLegend, setShowLegend] = useState(false);
   const activeView = 'flights';
   const showRoutes = false;
   const speed = 1;
@@ -375,7 +380,7 @@ const Simulador = () => {
     intervalRef.current = setInterval(tick, 1000);
     return () => clearInterval(intervalRef.current);
   }, [computeRealtimeFlights, speed]);
-  
+
   const getSaturation = () => {
     const regularAirports = airports.filter(airport => !airport.isSede);
     if (regularAirports.length === 0) return "0.00";
@@ -410,24 +415,7 @@ const Simulador = () => {
               <div className="time-display">{currentTime.toLocaleDateString('es-ES')}, {currentTime.toLocaleTimeString('es-ES')}</div>
             </div>
           </div>
-          {/* Operation modes moved to sidebar */}
-          <div className="modes-section">
-            <h4><i className="fas fa-cogs"></i> Modos de Operación</h4>
-            <div className="modes-sidebar-container">
-              <button className="mode-sidebar-chip active" onClick={() => navigate('/simulador')}>
-                <i className="fas fa-broadcast-tower"></i>
-                <span>Monitoreo en Tiempo Real</span>
-              </button>
-              <button className="mode-sidebar-chip" onClick={() => navigate('/simulador-semanal')}>
-                <i className="fas fa-calendar-week"></i>
-                <span>Simulación Semanal</span>
-              </button>
-              <button className="mode-sidebar-chip" onClick={() => navigate('/simulador-colapso')}>
-                <i className="fas fa-exclamation-triangle"></i>
-                <span>Simulación de Colapso</span>
-              </button>
-            </div>
-          </div>
+          {/* Metricas de saturación */}
           <div className="stats-section">
             <h4><i className="fas fa-chart-line"></i> Métricas de Saturación</h4>
             <div className="metrics-grid">
@@ -463,14 +451,6 @@ const Simulador = () => {
                   <div className="metric-sublabel">operativas</div>
                 </div>
               </div>
-              <div className="metric-card">
-                <div className="metric-icon"><i className="fas fa-infinity"></i></div>
-                <div className="metric-content">
-                  <div className="metric-label">Capacidad total</div>
-                  <div className="metric-value">∞</div>
-                  <div className="metric-sublabel">ilimitada</div>
-                </div>
-              </div>
             </div>
           </div>
           <div className="airport-section">
@@ -484,28 +464,27 @@ const Simulador = () => {
               </div>
             </div>
           </div>
-          <div className="system-alerts">
-            <div className="alert-header">⚠️ ALERTAS DEL SISTEMA</div>
-            <div className="alert-list">
-              <p>• Sistema monitoreando plazos de entrega</p>
-              <p>• Replanificación automática activada</p>
-              <p>• Control de capacidades en tiempo real</p>
-            </div>
-          </div>
         </div>
       </div>
       <div className="simulation-main-content">
         <div className="content-wrapper">
           <div className="map-container">
             <MapContainer
-        center={[20.0, 10.0]} zoom={3} className="flight-map" scrollWheelZoom={false} minZoom={2} maxZoom={10}
+              center={[20.0, 10.0]} zoom={3} className="flight-map" scrollWheelZoom={false} minZoom={2} maxZoom={10}
               zoomControl={true} doubleClickZoom={true} boxZoom={true} keyboard={true} touchZoom={true}>
               <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='© OpenStreetMap contributors' noWrap={true} />
               <DynamicMarkers flights={flights} airports={airports} activeView={activeView} showRoutes={showRoutes} />
             </MapContainer>
+            {/* Botón de leyenda flotante */}
+            <LegendButton onClick={() => setShowLegend(true)} />
           </div>
         </div>
       </div>
+      {/* Diálogo de Leyenda */}
+      <LegendDialog
+        open={showLegend}
+        onClose={() => setShowLegend(false)}
+      />
     </div>
   );
 };

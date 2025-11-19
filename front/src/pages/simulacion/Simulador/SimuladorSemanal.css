@@ -53,6 +53,7 @@ body,
     font-size: 1.2rem;
     color: var(--morapack-primary);
     margin-bottom: 20px;
+    margin-top: -20px;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -443,7 +444,8 @@ body,
 }
 
 .metrics-grid {
-    display: grid;
+    display: flex;
+    flex-direction: column;
     grid-template-columns: 1fr 1fr;
     gap: 15px;
     margin-top: 15px;

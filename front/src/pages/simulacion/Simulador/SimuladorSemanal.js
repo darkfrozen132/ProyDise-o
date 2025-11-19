@@ -11,14 +11,16 @@ import 'leaflet/dist/leaflet.css';
 import vuelosSemana from '../../../assets/data/vuelosSemana.json';
 import { getPlanificacionSemanal } from '../../../config/api';
 import './SimuladorSemanal.css';
-import { 
-	getAirports, 
-	getFlights, 
-	iniciarSimulacion, 
-	pausarSimulacion, 
-	reanudarSimulacion, 
+import {
+	getAirports,
+	getFlights,
+	iniciarSimulacion,
+	pausarSimulacion,
+	reanudarSimulacion,
 	detenerSimulacion
 } from '../../../config/api';
+import LegendDialog from '../../../components/ui/Dialog/LegendDialog';
+import LegendButton from '../../../components/ui/Button/LegendButton';
 
 /* Constantes de configuracion de tiempo de simulacion */
 const DESIRED_TIME_SCALE = 500; // Valor de K
@@ -139,7 +141,7 @@ const SimuladorSemanal = () => {
 	const [simulationStatus, setSimulationStatus] = useState('Monitoreo semanal activo');
 	const [activeView, setActiveView] = useState('flights');
 	const [showRoutes, setShowRoutes] = useState(false);
-const [showLegend, setShowLegend] = useState(false);
+	const [showLegend, setShowLegend] = useState(false);
 
 	/* Datos de aeropuertos - se cargarán desde la API */
 	const [airports, setAirports] = useState([]);
@@ -494,7 +496,7 @@ const [showLegend, setShowLegend] = useState(false);
 					position: 'fixed',
 					top: '50%',
 					transform: 'translateY(-50%)',
-					left: open ? drawerWidth - 30 : 0,
+					left: open ? drawerWidth - 15 : 0,
 					zIndex: 1201,
 					width: 36,
 					height: 72,
@@ -587,14 +589,6 @@ const [showLegend, setShowLegend] = useState(false);
 										<div className="metric-sublabel">operativas</div>
 									</div>
 								</div>
-								<div className="metric-card">
-									<div className="metric-icon"><i className="fas fa-infinity"></i></div>
-									<div className="metric-content">
-										<div className="metric-label">Capacidad total</div>
-										<div className="metric-value">∞</div>
-										<div className="metric-sublabel">ilimitada</div>
-									</div>
-								</div>
 							</div>
 						</div>
 						{/* Aeropuerto más saturado */}
@@ -629,7 +623,7 @@ const [showLegend, setShowLegend] = useState(false);
 					<div className="content-wrapper">
 						{/* Panel de control superior */}
 						<div className="control-panel">
-							<div className="header-control-panel" style={{marginTop: '-15px'}}>
+							<div className="header-control-panel" style={{ marginTop: '-15px' }}>
 								{/* Botón para regresar a operaciones */}
 								<button className="btn-back" onClick={goBack} title="Regresar">
 									<IoArrowBackCircleOutline size={32} />
@@ -640,12 +634,10 @@ const [showLegend, setShowLegend] = useState(false);
 							{/* ==================== PANEL SIMPLE DE TIEMPO SSE ==================== */}
 							<div>
 								<div style={{
-									background: '#f8f9fa',
 									borderRadius: '8px',
 									padding: '15px 20px',
-									marginTop: '-40px',
-									marginBottom: '-10px',
-									border: '1px solid #dee2e6',
+									marginTop: '-45px',
+									marginBottom: '-35px',
 									display: 'flex',
 									justifyContent: 'space-between',
 									alignItems: 'center',
@@ -769,110 +761,16 @@ const [showLegend, setShowLegend] = useState(false);
 								<DynamicMarkers flights={flights} airports={airports} activeView={activeView} showRoutes={showRoutes} />
 							</MapContainer>
 							{/* Botón de leyenda flotante */}
-							<IconButton
-								onClick={() => setShowLegend(true)}
-								title="Mostrar Leyenda"
-								sx={{
-									position: 'absolute',
-									bottom: '20px',
-									left: '20px',
-									backgroundColor: 'white',
-									boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
-									zIndex: 1000,
-									'&:hover': {
-										backgroundColor: '#f5f5f5',
-									},
-								}}
-							>
-								<InfoIcon sx={{ color: '#2c4a6b' }} />
-							</IconButton>
+							<LegendButton onClick={() => setShowLegend(true)} />
 						</div>
 					</div>
 				</div>
 			</div>
 			{/* Diálogo de Leyenda */}
-			<Dialog
+			<LegendDialog
 				open={showLegend}
 				onClose={() => setShowLegend(false)}
-				maxWidth="sm"
-				fullWidth
-			>
-				<DialogTitle
-					sx={{
-						bgcolor: '#2c4a6b',
-						color: 'white',
-						display: 'flex',
-						alignItems: 'center',
-						justifyContent: 'space-between'
-					}}
-				>
-					<div style={{ display: 'flex', alignItems: 'center' }}>
-						<InfoIcon sx={{ mr: 1 }} />
-						Leyenda del Mapa
-					</div>
-					<IconButton
-						onClick={() => setShowLegend(false)}
-						sx={{
-							color: 'white',
-							'&:hover': {
-								backgroundColor: 'rgba(255, 255, 255, 0.1)'
-							}
-						}}
-					>
-						<i className="fas fa-times" />
-					</IconButton>
-				</DialogTitle>
-				<DialogContent sx={{ mt: 2 }}>
-					<div style={{ padding: '20px' }}>
-						<section style={{ marginBottom: '24px' }}>
-							<h3 style={{ marginBottom: '15px', color: '#2c4a6b' }}>Sedes Principales</h3>
-							<div style={{ display: 'flex', alignItems: 'center', marginBottom: '10px' }}>
-								<div style={{ width: '12px', height: '12px', backgroundColor: '#ff6b35', borderRadius: '50%', marginRight: '10px' }}></div>
-								<span>Lima, Bruselas, Baku</span>
-							</div>
-							<div style={{ color: '#666', fontSize: '0.9em', marginLeft: '22px' }}>
-								Capacidad limitada
-							</div>
-						</section>
-
-						<section style={{ marginBottom: '24px' }}>
-							<h3 style={{ marginBottom: '15px', color: '#2c4a6b' }}>Aeropuertos</h3>
-							<div>
-								<div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
-									<div style={{ width: '12px', height: '12px', backgroundColor: '#28a745', borderRadius: '50%', marginRight: '10px' }}></div>
-									<span>Baja (0-49%)</span>
-								</div>
-								<div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
-									<div style={{ width: '12px', height: '12px', backgroundColor: '#ffc107', borderRadius: '50%', marginRight: '10px' }}></div>
-									<span>Media (50-79%)</span>
-								</div>
-								<div style={{ display: 'flex', alignItems: 'center' }}>
-									<div style={{ width: '12px', height: '12px', backgroundColor: '#dc3545', borderRadius: '50%', marginRight: '10px' }}></div>
-									<span>Alta (80%+)</span>
-								</div>
-							</div>
-						</section>
-
-						<section>
-							<h3 style={{ marginBottom: '15px', color: '#2c4a6b' }}>Aviones</h3>
-							<div>
-								<div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
-									<div style={{ width: '12px', height: '12px', backgroundColor: '#28a745', borderRadius: '50%', marginRight: '10px' }}></div>
-									<span>Poca carga (0-49%)</span>
-								</div>
-								<div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
-									<div style={{ width: '12px', height: '12px', backgroundColor: '#ffc107', borderRadius: '50%', marginRight: '10px' }}></div>
-									<span>Media (50-79%)</span>
-								</div>
-								<div style={{ display: 'flex', alignItems: 'center' }}>
-									<div style={{ width: '12px', height: '12px', backgroundColor: '#dc3545', borderRadius: '50%', marginRight: '10px' }}></div>
-									<span>Mucha (80%+)</span>
-								</div>
-							</div>
-						</section>
-					</div>
-				</DialogContent>
-			</Dialog>
+			/>
 		</div>
 	);
 };

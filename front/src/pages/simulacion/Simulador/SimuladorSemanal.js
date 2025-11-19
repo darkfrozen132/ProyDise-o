@@ -296,8 +296,8 @@ const SimuladorSemanal = () => {
 			// Estado y color
 			const enVuelo = progress > 0 && progress < 1;
 			const status = progress >= 1 ? 'arrived' : (progress <= 0 ? 'scheduled' : 'active');
-			const aircraftColor = '#007bff';
 			const totalPaquetes = vuelo.totalPaquetes ?? 0;
+			const aircraftColor = '#007bff';
 
 			// 🔀 Política al llegar:
 			// A) Mantenerlo visible en el destino:

@@ -773,7 +773,7 @@ public class AlgoritmoGeneticoService {
             // Ejemplo: [00:00, 01:10] con Sc=70
             inicio = LocalDateTime.of(fecha, LocalTime.MIDNIGHT);
             fin = inicio.plusMinutes(saltoConsumoMinutos);
-            log.info("Primera iteracion: [{}, {}) = {} minutos", inicio, fin, saltoConsumoMinutos);
+            log.debug("Primera iteracion: [{}, {}) = {} minutos", inicio, fin, saltoConsumoMinutos);
         }
 
         // Cargar pedidos PENDIENTE (excluye los "en vuelo"/ASIGNADO)
@@ -790,7 +790,7 @@ public class AlgoritmoGeneticoService {
                 })
                 .toList();
 
-        log.info("Encontrados {} pedidos PENDIENTE en ventana [{}, {})", 
+        log.debug("Encontrados {} pedidos PENDIENTE en ventana [{}, {})", 
                 pedidos.size(), inicio, fin);
 
         return pedidos;
@@ -1002,7 +1002,7 @@ public class AlgoritmoGeneticoService {
         }
 
         List<VueloEnRutaDTO> vuelos = new ArrayList<>(vuelosMap.values());
-        log.info("Convertidos {} vuelos unicos con pedidos agrupados", vuelos.size());
+        log.debug("Convertidos {} vuelos unicos con pedidos agrupados", vuelos.size());
 
         return vuelos;
     }
@@ -1228,7 +1228,7 @@ public class AlgoritmoGeneticoService {
 
         // Convertir el mapa a lista y crear el response
         List<VueloSimplificadoDTO> vuelos = new ArrayList<>(vuelosMap.values());
-        log.info("Convertidos {} vuelos unicos en formato simplificado", vuelos.size());
+        log.debug("Convertidos {} vuelos unicos en formato simplificado", vuelos.size());
 
         return PlanificacionResponseSimple.conVuelos(vuelos);
     }
@@ -1335,9 +1335,15 @@ public class AlgoritmoGeneticoService {
             }
 
             // 2. Ejecutar AG con progreso
-            ejecutarAlgoritmoGeneticoConProgreso(worldTemporal, controladorAlmacenes, pedidos, estado, callbackProgreso);
+            long inicioAG = System.currentTimeMillis();
+            Solution solucion = ejecutarAlgoritmoGeneticoConProgreso(worldTemporal, controladorAlmacenes, pedidos, estado, callbackProgreso);
+            long duracionAG = System.currentTimeMillis() - inicioAG;
+            
+            int pedidosAsignados = (solucion != null && solucion.vuelosSolucion != null) 
+                ? solucion.vuelosSolucion.stream().mapToInt(v -> v.pedidos.size()).sum() 
+                : 0;
 
-            log.info("✅ Planificación WS completada para sessionId={}", sessionId);
+            log.info("✅ Iteración completada: {} pedidos asignados en {}ms", pedidosAsignados, duracionAG);
 
         } catch (Exception e) {
             log.error("❌ Error en planificación WS", e);
@@ -1554,6 +1560,6 @@ public class AlgoritmoGeneticoService {
             }
         }
 
-        log.info("✅ Estados actualizados: {} pedidos cambiados a ASIGNADO", pedidosActualizados);
+        log.debug("✅ Estados actualizados: {} pedidos cambiados a ASIGNADO", pedidosActualizados);
     }
 }

@@ -5,6 +5,8 @@ import com.proyecto.backend.repository.PedidoRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.jdbc.core.JdbcTemplate;
+// import java.sql.PreparedStatement; // Removing duplicate import
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,6 +16,7 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.sql.PreparedStatement;
 
 @Service
 @RequiredArgsConstructor
@@ -21,6 +24,7 @@ import java.util.Map;
 public class PedidoService {
 
     private final PedidoRepository pedidoRepository;
+    private final JdbcTemplate jdbcTemplate;
 
     /**
      * Obtiene todos los pedidos
@@ -151,6 +155,32 @@ public class PedidoService {
     }
 
     /**
+     * Resetea todos los pedidos a estado PENDIENTE
+     * Usado cuando se cierra el WebSocket o se reinicia la simulación
+     */
+    @Transactional
+    public int resetearTodosAPendiente() {
+        List<Pedido> todosPedidos = pedidoRepository.findAll();
+        int count = 0;
+        
+        for (Pedido pedido : todosPedidos) {
+            if (!"PENDIENTE".equals(pedido.getEstado())) {
+                pedido.setEstado("PENDIENTE");
+                count++;
+            }
+        }
+        
+        if (count > 0) {
+            pedidoRepository.saveAll(todosPedidos);
+            log.info("✅ {} pedidos reseteados a PENDIENTE", count);
+        } else {
+            log.info("ℹ️ Todos los pedidos ya estaban en PENDIENTE");
+        }
+        
+        return count;
+    }
+
+    /**
      * Limpia todos los pedidos de la base de datos con DELETE nativo optimizado
      */
     @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
@@ -161,9 +191,10 @@ public class PedidoService {
     }
 
     /**
-     * Carga pedidos desde el archivo de texto
+     * Carga pedidos desde TODOS los archivos de la carpeta c.1inf54.25.2.pedidos.v01
+     * OPTIMIZADO: Lectura paralela + batch insert grande
      * IMPORTANTE: Limpia la BD antes de cargar para evitar duplicados
-     * Formato nuevo: id_pedido-aaaammdd-hh-mm-dest-###-IdClien
+     * Formato: id_pedido-aaaammdd-hh-mm-dest-###-IdClien
      * Ejemplo: 000000001-20250102-00-54-LOWW-002-0000068
      * @return Lista de pedidos cargados
      */
@@ -172,67 +203,170 @@ public class PedidoService {
         // Limpiar la base de datos antes de cargar
         log.info("Limpiando pedidos existentes...");
         limpiarPedidos();
-        
-        List<Pedido> pedidosParaGuardar = new ArrayList<>();
 
         try {
-            log.info("Iniciando lectura de archivo de pedidos...");
+            log.info("� Cargando pedidos desde Pedidos.txt...");
+            
             ClassPathResource resource = new ClassPathResource("datos/Pedidos.txt");
-
-            // PASO 1: Leer TODO el archivo primero
+            List<Pedido> pedidos = new ArrayList<>();
+            
+            long inicioLectura = System.currentTimeMillis();
+            
             try (BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(resource.getInputStream(), "UTF-8"))) {
-
+                    new InputStreamReader(resource.getInputStream()))) {
+                
                 String linea;
                 int lineaNumero = 0;
-
+                
                 while ((linea = reader.readLine()) != null) {
                     lineaNumero++;
-
-                    // Saltar líneas vacías
+                    
                     if (linea.trim().isEmpty()) {
                         continue;
                     }
-
+                    
                     try {
-                        Pedido pedido = parsearLineaPedido(linea);
-                        if (pedido != null) {
-                            pedidosParaGuardar.add(pedido);
+                        // Formato: ID-YYYYMMDD-HH-MM-AEROPUERTO-CANTIDAD-CLIENTE
+                        // Ejemplo: 000000001-20250102-01-02-EDDI-002-0029360
+                        String[] partes = linea.split("-");
+                        
+                        if (partes.length != 7) {
+                            log.warn("Línea {} tiene formato incorrecto (esperado 7 partes): {}", lineaNumero, linea);
+                            continue;
                         }
+                        
+                        // Parsear fecha YYYYMMDD
+                        String fecha = partes[1];
+                        int anio = Integer.parseInt(fecha.substring(0, 4));
+                        int mes = Integer.parseInt(fecha.substring(4, 6));
+                        int dia = Integer.parseInt(fecha.substring(6, 8));
+                        
+                        Pedido pedido = new Pedido();
+                        pedido.setAnio(anio);
+                        pedido.setMes(mes);
+                        pedido.setDia(dia);
+                        pedido.setHora(Integer.parseInt(partes[2]));
+                        pedido.setMinuto(Integer.parseInt(partes[3]));
+                        pedido.setAeropuertoDestinoId(partes[4]);
+                        pedido.setCantidadProductos(Integer.parseInt(partes[5]));
+                        pedido.setClienteId(partes[6]);
+                        pedido.setEstado("PENDIENTE");
+                        
+                        pedidos.add(pedido);
+                        
                     } catch (Exception e) {
-                        log.warn("Error parseando línea {}: {} - Error: {}", 
-                            lineaNumero, linea, e.getMessage());
+                        log.warn("Error parseando línea {}: {} - {}", lineaNumero, linea, e.getMessage());
                     }
                 }
-
-                log.info("Lectura completada. {} pedidos parseados", pedidosParaGuardar.size());
             }
-
-            // PASO 2: Guardar todos en lotes
-            if (!pedidosParaGuardar.isEmpty()) {
-                log.info("Guardando {} pedidos en la base de datos...", pedidosParaGuardar.size());
+            
+            long finLectura = System.currentTimeMillis();
+            log.info("✓ Lectura completada en {} ms: {} pedidos", (finLectura - inicioLectura), pedidos.size());
+            
+            // Guardar con JDBC batch insert
+            if (!pedidos.isEmpty()) {
+                log.info("💾 Guardando {} pedidos en la base de datos...", pedidos.size());
                 
-                int batchSize = 2000;
-                for (int i = 0; i < pedidosParaGuardar.size(); i += batchSize) {
-                    int end = Math.min(i + batchSize, pedidosParaGuardar.size());
-                    List<Pedido> batch = pedidosParaGuardar.subList(i, end);
-                    guardarBatch(batch);
-                    log.info("Guardados {}/{} pedidos", end, pedidosParaGuardar.size());
+                long inicioGuardado = System.currentTimeMillis();
+                guardarConJdbcBatch(pedidos);
+                long finGuardado = System.currentTimeMillis();
+                
+                long tiempoTotal = finGuardado - inicioLectura;
+                log.info("✅ COMPLETADO: {} pedidos cargados en {} ms total", pedidos.size(), tiempoTotal);
+                log.info("   📊 Lectura: {} ms | Inserción BD: {} ms", 
+                        (finLectura - inicioLectura), (finGuardado - inicioGuardado));
+            }
+            
+            return pedidos;
+            
+        } catch (IOException e) {
+            log.error("Error leyendo archivo Pedidos.txt: {}", e.getMessage());
+            throw new RuntimeException("No se pudo cargar el archivo Pedidos.txt", e);
+        }
+    }
+    
+    /**
+     * Lee un archivo de pedidos (usado para lectura paralela)
+     */
+    private java.util.List<Pedido> leerArchivoPedidos(java.io.File archivo) {
+        java.util.List<Pedido> pedidos = new ArrayList<>(150_000); // ~120k líneas promedio
+        
+        try (BufferedReader reader = new BufferedReader(
+                new java.io.FileReader(archivo, java.nio.charset.StandardCharsets.UTF_8))) {
+
+            String linea;
+            while ((linea = reader.readLine()) != null) {
+                if (linea.trim().isEmpty()) {
+                    continue;
                 }
 
-                log.info("✓ Total de pedidos guardados: {}", pedidosParaGuardar.size());
-                return pedidosParaGuardar;
-            } else {
-                log.info("No hay pedidos para guardar");
-                return new ArrayList<>();
+                try {
+                    Pedido pedido = parsearLineaPedido(linea);
+                    if (pedido != null) {
+                        pedidos.add(pedido);
+                    }
+                } catch (Exception e) {
+                    // Silencioso en paralelo para no saturar logs
+                }
             }
-
+            
+            log.debug("Archivo {} leído: {} pedidos", archivo.getName(), pedidos.size());
+            return pedidos;
+            
         } catch (IOException e) {
-            log.error("Error leyendo archivo de pedidos: {}", e.getMessage());
-            throw new RuntimeException("No se pudo cargar el archivo de pedidos", e);
+            log.error("Error leyendo archivo {}: {}", archivo.getName(), e.getMessage());
+            return new ArrayList<>();
         }
     }
 
+    /**
+     * Guarda un lote de pedidos utilizando JDBC batch OPTIMIZADO con progress tracking
+     * La BD genera IDs automáticamente (auto_increment) - NO se incluye ID en el INSERT
+     * Muestra progreso cada 50,000 pedidos insertados
+     */
+    @Transactional
+    private void guardarConJdbcBatch(List<Pedido> pedidos) {
+        String sql = "INSERT INTO pedidos (anio, mes, dia, hora, minuto, aeropuerto_destino_id, cantidad_productos, cliente_id, estado) " +
+                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+        int batchSize = 1000;
+        int totalPedidos = pedidos.size();
+        int procesados = 0;
+        int progressInterval = 50_000; // Mostrar progreso cada 50k pedidos
+        long inicioBatch = System.currentTimeMillis();
+        
+        // Dividir en chunks y procesar con progress tracking
+        for (int i = 0; i < totalPedidos; i += batchSize) {
+            int end = Math.min(i + batchSize, totalPedidos);
+            List<Pedido> chunk = pedidos.subList(i, end);
+            
+            // Ejecutar batch insert
+            jdbcTemplate.batchUpdate(sql, chunk, batchSize, (PreparedStatement ps, Pedido pedido) -> {
+                ps.setInt(1, pedido.getAnio());
+                ps.setInt(2, pedido.getMes());
+                ps.setInt(3, pedido.getDia());
+                ps.setInt(4, pedido.getHora());
+                ps.setInt(5, pedido.getMinuto());
+                ps.setString(6, pedido.getAeropuertoDestinoId());
+                ps.setInt(7, pedido.getCantidadProductos());
+                ps.setString(8, pedido.getClienteId());
+                ps.setString(9, pedido.getEstado());
+            });
+            
+            procesados = end;
+            
+            // Mostrar progreso cada X pedidos
+            if (procesados % progressInterval == 0 || procesados == totalPedidos) {
+                long tiempoTranscurrido = System.currentTimeMillis() - inicioBatch;
+                double porcentaje = (procesados * 100.0) / totalPedidos;
+                long velocidad = (procesados * 1000L) / Math.max(1, tiempoTranscurrido);
+                long tiempoRestanteMs = ((totalPedidos - procesados) * 1000L) / Math.max(1, velocidad);
+                
+                log.info("   💾 Insertados: {}/{} pedidos ({:.1f}%) - {} pedidos/seg - ETA: {} seg", 
+                    procesados, totalPedidos, porcentaje, velocidad, (tiempoRestanteMs / 1000));
+            }
+        }
+    }
     /**
      * Guarda un lote de pedidos en una transacción separada
      */
@@ -243,11 +377,12 @@ public class PedidoService {
 
     /**
      * Parsea una línea del archivo y crea un objeto Pedido
-     * Formato nuevo: id_pedido-aaaammdd-hh-mm-dest-###-IdClien
+     * El ID del archivo se IGNORA porque algunos se repiten - la BD genera su propio ID
+     * Formato: id_pedido-aaaammdd-hh-mm-dest-###-IdClien
      * Ejemplo: 000000001-20250102-00-54-LOWW-002-0000068
      * 
      * Formato:
-     * - id_pedido: 9 dígitos (ej: 000000001)
+     * - id_pedido: 9 dígitos (ej: 000000001) - SE IGNORA
      * - aaaammdd: 8 dígitos fecha (ej: 20250102 = 2 enero 2025)
      * - hh: 2 dígitos hora (ej: 00)
      * - mm: 2 dígitos minuto (ej: 54)
@@ -268,8 +403,8 @@ public class PedidoService {
         }
 
         try {
-            // Nuevo formato: id_pedido-aaaammdd-hh-mm-dest-###-IdClien
-            String pedidoId = partes[0].trim();  // No se usa en el constructor, solo para logging
+            // Formato: id_pedido-aaaammdd-hh-mm-dest-###-IdClien
+            // partes[0] = ID del archivo - SE IGNORA porque algunos se repiten
             String fechaStr = partes[1].trim();  // aaaammdd
             
             // Extraer año, mes, día de la fecha
@@ -283,9 +418,7 @@ public class PedidoService {
             int cantidadProductos = Integer.parseInt(partes[5].trim());
             String clienteId = partes[6].trim();
 
-            log.debug("Parseado pedido {} - Fecha: {}/{}/{} {}:{} - Destino: {} - Cantidad: {} - Cliente: {}",
-                pedidoId, dia, mes, anio, hora, minuto, aeropuertoDestino, cantidadProductos, clienteId);
-
+            // Crear pedido SIN ID - la BD generará uno automáticamente
             return new Pedido(anio, mes, dia, hora, minuto, aeropuertoDestino, cantidadProductos, clienteId);
 
         } catch (NumberFormatException | StringIndexOutOfBoundsException e) {

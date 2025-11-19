@@ -85,6 +85,11 @@ public class BuscadorRutas {
             List<VueloInstancia> vuelosDisponibles = worldTemporal.getVuelosDesde(aeropuertoActual, dia);
 
             for (VueloInstancia vuelo : vuelosDisponibles) {
+                // ⚠️ FILTRO CRÍTICO: NO usar vuelos que ya despegaron o aterrizaron
+                if (!vuelo.esModificable()) {
+                    continue; // Vuelo EN_VUELO o ATERRIZADO → NO se puede reasignar
+                }
+
                 // No volver al origen
                 if (vuelo.getDestino().equals(rutaActual.vuelosAcumulados.isEmpty() ?
                         aeropuertoActual : rutaActual.vuelosAcumulados.get(0).getOrigen())) {

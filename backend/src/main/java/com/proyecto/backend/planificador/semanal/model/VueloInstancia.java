@@ -43,6 +43,9 @@ public class VueloInstancia {
     private final int capacidadMaxima;
     private int capacidadUsada;
 
+    // Estado del vuelo (PROGRAMADO, EN_VUELO, ATERRIZADO)
+    private EstadoVuelo estado;
+
     /**
      * Constructor: Crea una instancia del vuelo para un dia especifico
      *
@@ -59,6 +62,7 @@ public class VueloInstancia {
         this.fechaBase = fechaBase;
         this.capacidadMaxima = template.getCapacidadMaxima();
         this.capacidadUsada = 0;
+        this.estado = EstadoVuelo.PROGRAMADO; // Inicialmente todos programados
 
         // Calcular salida y llegada en UTC
         this.salidaUTC = calcularSalidaUTC(fechaBase, diaRelativo, template, aeropuertoOrigen);
@@ -239,6 +243,24 @@ public class VueloInstancia {
      */
     public void resetearCapacidad() {
         capacidadUsada = 0;
+    }
+
+    /**
+     * Verifica si el vuelo está modificable (NO ha despegado)
+     *
+     * @return true si el vuelo está PROGRAMADO (puede reasignarse)
+     */
+    public boolean esModificable() {
+        return estado == EstadoVuelo.PROGRAMADO;
+    }
+
+    /**
+     * Actualiza el estado del vuelo
+     *
+     * @param nuevoEstado Nuevo estado
+     */
+    public void setEstado(EstadoVuelo nuevoEstado) {
+        this.estado = nuevoEstado;
     }
 
     /**

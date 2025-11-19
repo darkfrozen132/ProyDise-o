@@ -4,8 +4,10 @@ import { MapContainer, TileLayer } from 'react-leaflet';
 import { Drawer, Dialog, DialogTitle, DialogContent, IconButton } from '@mui/material';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
-import InfoIcon from '@mui/icons-material/Info';
 import { IoArrowBackCircleOutline } from "react-icons/io5";
+import { RiResetLeftFill } from "react-icons/ri";
+import { FaStop } from "react-icons/fa6";
+import { FaPlay } from "react-icons/fa6";
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import vuelosSemana from '../../../assets/data/vuelosSemana.json';
@@ -127,7 +129,6 @@ const SimuladorSemanal = () => {
 	const [fechaInicioSimulacion, setFechaInicioSimulacion] = useState(""); // la fecha que envías
 	const [planFixed, setPlanFixed] = useState([]);  // lista de vuelos del JSON local
 	const [simClock, setSimClock] = useState(null);  // reloj simulado (Date)
-	const simIntervalRef = useRef(null);
 
 	const simStartRef = useRef(null);
 
@@ -334,36 +335,58 @@ const SimuladorSemanal = () => {
 
 	/* Efecto para avanzar el reloj de simulación en modo local */
 	useEffect(() => {
-		if (!simulacionActiva) {
-			if (simIntervalRef.current) {
-				clearInterval(simIntervalRef.current);
-				simIntervalRef.current = null;
-			}
-			return;
-		}
+		if (!simulacionActiva) return;
 
 		const advanceMs = DESIRED_TIME_SCALE * REAL_TICK_MS;
 
-		simIntervalRef.current = setInterval(() => {
+		const id = setInterval(() => {
 			setSimClock(prev => (prev ? new Date(prev.getTime() + advanceMs) : null));
-			setTickActual(prev => prev + REAL_TICK_MS / 1000);
+			setTickActual(prev => prev + 1);          // 1 segundo
 			setTiempoRealMs(prev => prev + REAL_TICK_MS);
 		}, REAL_TICK_MS);
 
-		return () => {
-			if (simIntervalRef.current) {
-				clearInterval(simIntervalRef.current);
-				simIntervalRef.current = null;
-			}
-		};
-	}, [simulacionActiva, DESIRED_TIME_SCALE, REAL_TICK_MS]);
+		return () => clearInterval(id);
+	}, [simulacionActiva]);
 
 
 	// ==================== FUNCIONES PARA CONTROLAR SIMULACIÓN ====================
 	const handleIniciarSimulacion = async () => {
 		console.log("Iniciando simulación desde:", fechaInicioSimulacion);
+		// 1) Si ya está corriendo, no hacemos nada
+		if (simulacionActiva) {
+			console.log("La simulación ya está activa.");
+			return;
+		}
 
+		// 2) Si ya hubo una simulación (simClock existe) y solo estaba pausada → reanudar
+		if (simClock) {
+			console.log("Reanudando simulación en:", simClock);
+			setSimulacionActiva(true);
+			return;
+		}
+
+		// 3) Si NO hay simClock (por ejemplo después de Reset) pero YA tenemos planFixed,
+		//    solo reiniciamos la simulación desde el inicio usando el plan existente
+		if (planFixed.length > 0 && simStartRef.current) {
+			console.log("Reiniciando simulación usando el plan fijo ya cargado.");
+
+			const inicioUTC = new Date(simStartRef.current);
+			setSimClock(inicioUTC);
+
+			setTiempoRealMs(0);
+			setTickActual(0);
+			setSimulacionActiva(true);   // 🔥 vuelve a encender el intervalo
+			return;
+		}
+
+		// 4) Si llegamos aquí: NO está corriendo, NO hay simClock y NO hay planFixed
+		//    => primera vez (o se borró el plan). Aquí sí llamamos al backend.
 		try {
+			if (!fechaInicioSimulacion) {
+				alert("Por favor, selecciona una fecha de inicio.");
+				return;
+			}
+
 			// Pasa fecha y K
 			const factorK = 500;
 			const plan = await getPlanificacionSemanal(fechaInicioSimulacion, factorK);
@@ -381,65 +404,33 @@ const SimuladorSemanal = () => {
 			return;
 		}
 
-		//Reloj local (sin SSE)
+		//Reloj local (sin SSE) -> iniciamos desde 00:00 en la fecha elegida
 		const inicioUTC = new Date(`${fechaInicioSimulacion}T00:00:00Z`);
 		setSimClock(inicioUTC);
 		simStartRef.current = inicioUTC;
-		setSimulacionActiva(true);
+
 		setTiempoRealMs(0);
 		setTickActual(0);
 		setTimeScale(DESIRED_TIME_SCALE);
-
-		if (simIntervalRef.current) clearInterval(simIntervalRef.current);
-		simIntervalRef.current = setInterval(() => {
-			setSimClock(prev => prev ? new Date(prev.getTime() + DESIRED_TIME_SCALE * REAL_TICK_MS) : null);
-			setTickActual(prev => prev + 1);
-			setTiempoRealMs(prev => prev + REAL_TICK_MS);
-		}, REAL_TICK_MS);
-
-		if (eventSourceRef.current) {
-			eventSourceRef.current.close();
-			eventSourceRef.current = null;
-		}
-	};
-
-
-	const handlePausarSimulacion = async () => {
-		try {
-			await pausarSimulacion();
-			setSimulacionActiva(false);
-		} catch (error) {
-			console.error('Error al pausar simulación:', error);
-		}
-	};
-
-	const handleReanudarSimulacion = async () => {
-		try {
-			const response = await reanudarSimulacion();
-			setSimulacionActiva(true);
-		} catch (error) {
-			console.error('Error al reanudar simulación:', error);
-		}
+		setSimulacionActiva(true);
 	};
 
 	const handleDetenerSimulacion = () => {
-		// reloj local
-		if (simIntervalRef.current) {
-			clearInterval(simIntervalRef.current);
-			simIntervalRef.current = null;
-		}
-		// sse backend
-		if (eventSourceRef.current) {
-			eventSourceRef.current.close();
-			eventSourceRef.current = null;
-		}
+		console.log("Simulación pausada");
+  		setSimulacionActiva(false);   // solo pausa
+	};
+
+	const handleResetSimulacion = () => {
+		console.log("Simulación reiniciada completamente.");
+
 		setSimulacionActiva(false);
-		setHoraSimulada(null);
 		setSimClock(null);
 		setTiempoRealMs(0);
 		setTickActual(0);
 		setFlights([]);
 		setFlightsInAir(0);
+		// Si deseas también resetear planificaciones recibidas:
+		// setPlanFixed([]);
 	};
 
 	/* Calcular métricas de saturación de aeropuertos */
@@ -484,6 +475,16 @@ const SimuladorSemanal = () => {
 				</div>
 			</div>
 		);
+	}
+
+	/* ==================== Texto dinamico para los botones ==================== */
+	let startButtonLabel = "Iniciar";
+
+	if (simulacionActiva) {
+		startButtonLabel = "Iniciar";
+	} else if (simClock) {
+		// hubo simulación antes y ahora está pausada
+		startButtonLabel = "Reanudar";
 	}
 
 	return (
@@ -720,32 +721,61 @@ const SimuladorSemanal = () => {
 													style={{
 														padding: '8px 16px',
 														borderRadius: '6px',
-														border: '1px solid #28a745',
+														border: simulacionActiva ? '1px solid #e9ecef' : '1px solid #28a745',
 														background: simulacionActiva ? '#e9ecef' : '#28a745',
 														color: simulacionActiva ? '#6c757d' : 'white',
 														fontSize: '14px',
 														fontWeight: '500',
 														cursor: simulacionActiva ? 'not-allowed' : 'pointer',
+														display: 'flex',
+														alignItems: 'center',
+														gap: '8px',
 														transition: 'all 0.2s'
 													}}
-												>
-													Iniciar
+												>	
+													<FaPlay size={18} />
+													{startButtonLabel}
 												</button>
 												<button
 													onClick={handleDetenerSimulacion}
 													style={{
 														padding: '8px 16px',
 														borderRadius: '6px',
-														border: '1px solid #dc3545',
-														background: '#dc3545',
-														color: 'white',
+														border: simulacionActiva ? '1px solid #dc3545': '1px solid #e9ecef',
+														background: simulacionActiva ? '#dc3545' : '#e9ecef',
+														color: simulacionActiva ? 'white' : '#6c757d',
 														fontSize: '14px',
 														fontWeight: '500',
-														cursor: 'pointer',
+														cursor: simulacionActiva ? 'pointer' : 'not-allowed',
+														display: 'flex',
+														alignItems: 'center',
+														gap: '8px',
 														transition: 'all 0.2s'
 													}}
 												>
+													<FaStop size={18} />
 													Detener
+												</button>
+												<button
+													onClick={handleResetSimulacion}
+													disabled={planFixed.length === 0}
+													style={{
+														padding: '8px 16px',
+														borderRadius: '6px',
+														border: planFixed.length === 0 ? '#e9ecef' : '1px solid #6c757d',
+														background: planFixed.length === 0 ? '#e9ecef' : '#6c757d',
+														color: planFixed.length === 0 ? '#adb5bd' : 'white',
+														fontSize: '14px',
+														fontWeight: '500',
+														cursor: planFixed.length === 0 ? 'not-allowed' : 'pointer',
+														transition: 'all 0.2s',
+														display: 'flex',
+														alignItems: 'center',
+														gap: '8px'
+													}}
+												>
+													<RiResetLeftFill size={18} />
+													Reiniciar
 												</button>
 											</div>
 										</div>

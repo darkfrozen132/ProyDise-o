@@ -14,7 +14,7 @@ import org.springframework.web.socket.config.annotation.*;
  *    - Canal: /topic/estado
  * 
  * 2. WebSocket nativo para planificación (nuevo):
- *    - Endpoint: ws://localhost:8080/ws/planificacion
+ *    - Endpoint: ws://localhost:8000/ws/planificacion
  *    - Comunicación bidireccional JSON puro
  */
 @Configuration

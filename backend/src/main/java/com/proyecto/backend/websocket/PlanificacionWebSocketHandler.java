@@ -154,6 +154,7 @@ public class PlanificacionWebSocketHandler extends TextWebSocketHandler {
     
     /**
      * Inicia la planificación en un thread asíncrono
+     * VERSIÓN SIMPLIFICADA: Ejecuta UNA SOLA VEZ y devuelve todos los vuelos
      */
     private void iniciarPlanificacion(WebSocketSession session, PlanificacionWSRequest request) {
         // Validar parámetros
@@ -164,9 +165,13 @@ public class PlanificacionWebSocketHandler extends TextWebSocketHandler {
         
         // Verificar si ya hay una tarea en ejecución
         if (tareasEnEjecucion.containsKey(session.getId())) {
+            log.warn("⚠️ Ya hay una planificación en curso para sesión: {}", session.getId());
             enviarError(session, "Ya hay una planificación en curso");
             return;
         }
+        
+        log.info("🚀 INICIANDO PLANIFICACIÓN SIMPLIFICADA");
+        log.info("📅 Fecha: {}, Factor K: {}", request.getFecha(), request.getFactorK());
         
         // Validar que la fecha sea 2025 o posterior
         LocalDate fechaSolicitada = request.getFecha();

@@ -1339,8 +1339,8 @@ public class AlgoritmoGeneticoService {
             Solution solucion = ejecutarAlgoritmoGeneticoConProgreso(worldTemporal, controladorAlmacenes, pedidos, estado, callbackProgreso);
             long duracionAG = System.currentTimeMillis() - inicioAG;
             
-            int pedidosAsignados = (solucion != null && solucion.vuelosSolucion != null) 
-                ? solucion.vuelosSolucion.stream().mapToInt(v -> v.pedidos.size()).sum() 
+            int pedidosAsignados = (solucion != null && solucion.getRutas() != null) 
+                ? solucion.getRutas().size() 
                 : 0;
 
             log.info("✅ Iteración completada: {} pedidos asignados en {}ms", pedidosAsignados, duracionAG);

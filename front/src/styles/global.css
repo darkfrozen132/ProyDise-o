@@ -54,3 +54,13 @@ body {
 .main-content.simulador-mode {
   overflow: hidden;
 }
+
+/* Animación de carga/spinner */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

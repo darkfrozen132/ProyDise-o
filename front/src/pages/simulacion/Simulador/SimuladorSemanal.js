@@ -23,6 +23,7 @@ import {
 } from '../../../config/api';
 import LegendDialog from '../../../components/ui/Dialog/LegendDialog';
 import LegendButton from '../../../components/ui/Button/LegendButton';
+import { conectarWebSocketPlanificacion } from '../../../config/websocket';
 
 /* Constantes de configuracion de tiempo de simulacion */
 const DESIRED_TIME_SCALE = 500; // Valor de K
@@ -157,6 +158,19 @@ const SimuladorSemanal = () => {
 	const [timeScale, setTimeScale] = useState(10.0);
 	const [rutasSolucion, setRutasSolucion] = useState([]); // Rutas que vienen del SSE
 	const eventSourceRef = useRef(null); /* Referencia para el EventSource SSE */
+
+	// ==================== ESTADO WEBSOCKET PLANIFICACIÓN ====================
+	const [wsPlanificacion, setWsPlanificacion] = useState(null);
+	const [wsConectado, setWsConectado] = useState(false);
+	const [iteracionesPlanificacion, setIteracionesPlanificacion] = useState([]);
+	const [estadoPlanificacion, setEstadoPlanificacion] = useState('idle'); // idle, running, completed, error, waiting
+	const wsPlanificacionRef = useRef(null);
+	const [autoInicioIntentado, setAutoInicioIntentado] = useState(false);
+	const [intentosRealizados, setIntentosRealizados] = useState(0); // Contador de reintentos
+	const [tiempoRealTranscurrido, setTiempoRealTranscurrido] = useState(0); // Tiempo real en segundos
+	const tiempoInicioRef = useRef(null); // Momento en que se inició la planificación
+	const intervalTiempoRealRef = useRef(null); // Intervalo para actualizar tiempo real
+	const [tiempoSimulacionActual, setTiempoSimulacionActual] = useState(null); // Hora de simulación del backend
 
 
 
@@ -433,6 +447,481 @@ const SimuladorSemanal = () => {
 		// setPlanFixed([]);
 	};
 
+	// ==================== FUNCIONES WEBSOCKET DE PLANIFICACIÓN ====================
+	
+	/**
+	 * Convertir vuelo de planificación al formato del mapa
+	 */
+	const convertirVueloPlanificacionAMapa = (vuelo) => {
+		// Buscar coordenadas de aeropuertos (comparación case-insensitive)
+		const origen = airports.find(a => 
+			String(a.code).toUpperCase() === String(vuelo.origenCodigoICAO).toUpperCase()
+		);
+		const destino = airports.find(a => 
+			String(a.code).toUpperCase() === String(vuelo.destinoCodigoICAO).toUpperCase()
+		);
+		
+		if (!origen || !destino) {
+			console.warn(`⚠️ Aeropuertos no encontrados: ${vuelo.origenCodigoICAO} o ${vuelo.destinoCodigoICAO}`);
+			console.log('📍 Aeropuertos disponibles:', airports.map(a => a.code));
+			return null;
+		}
+
+		// Calcular progreso basado en fechas
+		let progress = 0.0;
+		try {
+			const fechaInicio = new Date(vuelo.fechaInicial);
+			const fechaFin = new Date(vuelo.fechaFinal);
+			const ahora = new Date();
+			
+			const totalDuracion = fechaFin - fechaInicio;
+			const transcurrido = ahora - fechaInicio;
+			
+			if (totalDuracion > 0 && transcurrido > 0) {
+				progress = Math.max(0, Math.min(1, transcurrido / totalDuracion));
+			} else {
+				progress = 0.1; // 10% del trayecto por defecto
+			}
+		} catch (e) {
+			console.warn('⚠️ Error calculando progreso:', e);
+			progress = 0.1;
+		}
+		
+		// Interpolación de posición
+		const currentLat = origen.lat + (destino.lat - origen.lat) * progress;
+		const currentLng = origen.lng + (destino.lng - origen.lng) * progress;
+		
+		// Calcular rotación usando bearingDegrees
+		const brg = bearingDegrees(origen.lat, origen.lng, destino.lat, destino.lng);
+		const rotation = (brg - 90 + 360) % 360;
+		
+		// Determinar estado del vuelo
+		const status = progress >= 1 ? 'arrived' : (progress <= 0 ? 'scheduled' : 'active');
+		
+		// Calcular total de paquetes
+		const totalPaquetes = vuelo.pedidos?.reduce((sum, p) => sum + (p.cantidad || 0), 0) || 0;
+		
+		return {
+			id: `PL-${vuelo.origenCodigoICAO}-${vuelo.destinoCodigoICAO}-${Date.now()}-${Math.random()}`,
+			origin: {
+				code: vuelo.origenCodigoICAO,
+				lat: origen.lat,
+				lng: origen.lng,
+				region: origen.region
+			},
+			destination: {
+				code: vuelo.destinoCodigoICAO,
+				lat: destino.lat,
+				lng: destino.lng,
+				region: destino.region
+			},
+			progress,
+			altitude: progress > 0 && progress < 1 ? 35000 : 0,
+			speed: progress > 0 && progress < 1 ? 850 : 0,
+			status,
+			currentLat,
+			currentLng,
+			aircraftColor: '#3b82f6', // Azul para vuelos de planificación
+			rotation,
+			packageCapacity: totalPaquetes,
+			currentPackages: totalPaquetes,
+			packageType: 'MPE',
+			isSameContinentFlight: origen.region === destino.region,
+			// Datos adicionales de planificación
+			fechaInicial: vuelo.fechaInicial,
+			fechaFinal: vuelo.fechaFinal,
+			pedidos: vuelo.pedidos || []
+		};
+	};
+
+	/**
+	 * Conectar al WebSocket de planificación
+	 */
+	const handleConectarWsPlanificacion = () => {
+		console.log('📡 handleConectarWsPlanificacion llamado');
+		console.log('📡 Estado actual wsRef:', wsPlanificacionRef.current ? 'existe' : 'null');
+		console.log('📡 Estado conectado:', wsPlanificacionRef.current?.estaConectado?.() ? 'SÍ' : 'NO');
+		
+		if (wsPlanificacionRef.current && wsPlanificacionRef.current.estaConectado()) {
+			console.log('⚠️ WebSocket ya está conectado');
+			return;
+		}
+
+		console.log('🚀 Llamando a conectarWebSocketPlanificacion...');
+		const ws = conectarWebSocketPlanificacion(
+			// onMessage: Procesar mensajes del servidor
+			(data) => {
+				console.log('📩 Mensaje de planificación:', data);
+				
+				switch(data.tipo) {
+					case 'conexion':
+						console.log('✅ Conexión establecida');
+						break;
+						
+				case 'progreso':
+					// Agregar iteración a la lista
+					setIteracionesPlanificacion(prev => [data, ...prev].slice(0, 20));
+					setEstadoPlanificacion('running');
+					
+					// Actualizar tiempo de simulación si viene en los datos
+					if (data.datos?.tiempoSimulacionActual) {
+						setTiempoSimulacionActual(data.datos.tiempoSimulacionActual);
+					}
+					
+					console.log(`📊 Progreso - Iteración #${data.datos?.ejecucionNumero || '?'}`);
+					console.log('📦 Datos de progreso:', {
+						tieneSolucion: !!data.solucion,
+						tieneVuelos: !!data.solucion?.vuelos,
+						cantidadVuelos: data.solucion?.vuelos?.length || 0
+					});
+					
+					// ✈️ GRAFICAR VUELOS EN EL MAPA (progreso no suele tener vuelos, solo info)
+					if (data.solucion?.vuelos && data.solucion.vuelos.length > 0) {
+						console.log(`✈️ Recibidos ${data.solucion.vuelos.length} vuelos en progreso #${data.datos?.ejecucionNumero}`);
+						
+						// Convertir vuelos al formato del mapa
+						const vuelosParaMapa = data.solucion.vuelos
+							.map(convertirVueloPlanificacionAMapa)
+							.filter(v => v !== null); // Filtrar vuelos con aeropuertos no encontrados
+						
+						console.log(`🔄 Convertidos ${vuelosParaMapa.length} de ${data.solucion.vuelos.length} vuelos`);
+						
+						// ACUMULAR vuelos en el mapa (no reemplazar)
+						setFlights(prevFlights => {
+							const vuelosActualizados = [...prevFlights, ...vuelosParaMapa];
+							console.log(`📊 Total vuelos en mapa: ${vuelosActualizados.length}`);
+							return vuelosActualizados;
+						});
+						setFlightsInAir(prev => prev + vuelosParaMapa.length);
+						
+						console.log(`🗺️ Graficados ${vuelosParaMapa.length} vuelos en el mapa`);
+					}
+					break;				case 'completado':
+					console.log('🎉 Planificación completada - Intervalo recibido');
+					console.log('📦 Datos completos:', {
+						iteracion: data.datos?.ejecucionNumero,
+						tieneSolucion: !!data.solucion,
+						tieneVuelos: !!data.solucion?.vuelos,
+						cantidadVuelos: data.solucion?.vuelos?.length || 0
+					});
+					
+					// Agregar resultado final a la lista
+					setIteracionesPlanificacion(prev => [data, ...prev].slice(0, 50));
+					
+					// Actualizar tiempo de simulación
+					if (data.datos?.tiempoSimulacionActual) {
+						setTiempoSimulacionActual(data.datos.tiempoSimulacionActual);
+						console.log('⏰ Tiempo simulación actualizado:', data.datos.tiempoSimulacionActual);
+					}
+					
+					// ✈️ GRAFICAR SOLUCIÓN EN EL MAPA
+					if (data.solucion?.vuelos && data.solucion.vuelos.length > 0) {
+						console.log(`✈️ Procesando ${data.solucion.vuelos.length} vuelos de la iteración #${data.datos?.ejecucionNumero}`);
+						console.log('🔍 Ejemplo de vuelo recibido:', data.solucion.vuelos[0]);
+						
+						// Convertir vuelos al formato del mapa
+						const vuelosParaMapa = data.solucion.vuelos
+							.map(convertirVueloPlanificacionAMapa)
+							.filter(v => v !== null);
+						
+						console.log(`� Convertidos ${vuelosParaMapa.length} de ${data.solucion.vuelos.length} vuelos`);
+						
+						if (vuelosParaMapa.length > 0) {
+							console.log('🗺️ Ejemplo de vuelo convertido:', vuelosParaMapa[0]);
+							
+							// Actualizar el mapa ACUMULANDO vuelos (no reemplazar)
+							setFlights(prevFlights => {
+								const vuelosActualizados = [...prevFlights, ...vuelosParaMapa];
+								console.log(`📊 Total vuelos en mapa: ${vuelosActualizados.length} (${prevFlights.length} anteriores + ${vuelosParaMapa.length} nuevos)`);
+								return vuelosActualizados;
+							});
+							
+							setFlightsInAir(prev => {
+								const nuevoTotal = prev + vuelosParaMapa.length;
+								console.log(`✈️ Vuelos en aire actualizados: ${nuevoTotal}`);
+								return nuevoTotal;
+							});
+							
+							console.log(`✅ ${vuelosParaMapa.length} vuelos graficados exitosamente`);
+						} else {
+							console.warn('⚠️ No se pudieron convertir vuelos (aeropuertos no encontrados)');
+						}
+						
+						// 🔄 CONTINUAR con la siguiente iteración
+						const nuevoIntento = intentosRealizados + 1;
+						const maxIntentos = 1000;
+						
+						if (nuevoIntento < maxIntentos) {
+							console.log(`⏩ Solicitando siguiente intervalo... (Iteración ${nuevoIntento})`);
+							setIntentosRealizados(nuevoIntento);
+							
+							// Pequeño delay para visualizar mejor (opcional)
+							setTimeout(() => {
+								const enviado = enviarSolicitudPlanificacion();
+								if (!enviado) {
+									console.error('❌ No se pudo enviar la siguiente solicitud');
+									setEstadoPlanificacion('completed');
+								}
+							}, 100);
+						} else {
+							console.log(`🛑 Máximo de iteraciones alcanzado (${maxIntentos})`);
+							setEstadoPlanificacion('completed');
+							setAutoInicioIntentado(false);
+							
+							if (intervalTiempoRealRef.current) {
+								clearInterval(intervalTiempoRealRef.current);
+								intervalTiempoRealRef.current = null;
+							}
+						}
+					} else {
+						// No hay vuelos en este intervalo, continuar
+						const nuevoIntento = intentosRealizados + 1;
+						const maxIntentos = 1000;
+						
+						if (nuevoIntento < maxIntentos) {
+							console.warn(`⚠️ Sin vuelos en iteración ${data.datos?.ejecucionNumero}. Continuando...`);
+							setIntentosRealizados(nuevoIntento);
+							
+							setTimeout(() => {
+								enviarSolicitudPlanificacion();
+							}, 100);
+						} else {
+							console.log(`🛑 Máximo de iteraciones alcanzado sin vuelos`);
+							setEstadoPlanificacion('completed');
+							setAutoInicioIntentado(false);
+							
+							if (intervalTiempoRealRef.current) {
+								clearInterval(intervalTiempoRealRef.current);
+								intervalTiempoRealRef.current = null;
+							}
+						}
+					}
+					break;
+					
+				case 'error':
+					console.error('❌ Error en planificación:', data.mensaje);
+					
+					// Si el error es "Ya hay una planificación en curso", mantener estado running
+					if (data.mensaje?.includes('Ya hay una planificación en curso')) {
+						console.log('⚠️ Ya hay una planificación en curso, manteniendo estado...');
+						setEstadoPlanificacion('running'); // Mantener como running, no error
+						// NO resetear autoInicioIntentado para evitar múltiples intentos
+					} else {
+						// Para otros errores, marcar como error
+						setEstadoPlanificacion('error');
+						setAutoInicioIntentado(false); // Resetear para permitir nuevo intento
+						alert(`Error en planificación: ${data.mensaje}`);
+						
+						// Detener cronómetro de tiempo real
+						if (intervalTiempoRealRef.current) {
+							clearInterval(intervalTiempoRealRef.current);
+							intervalTiempoRealRef.current = null;
+						}
+					}
+					break;					default:
+						console.log('📨 Mensaje desconocido:', data);
+				}
+			},
+			// onError
+			(error) => {
+				console.error('❌ Error en WebSocket:', error);
+				setEstadoPlanificacion('error');
+			},
+			// onOpen
+			() => {
+				console.log('✅ WebSocket de planificación conectado');
+				setWsConectado(true);
+				setEstadoPlanificacion('idle');
+			},
+			// onClose
+			(event) => {
+				console.log('🔌 WebSocket desconectado. Código:', event.code);
+				setWsConectado(false);
+				setEstadoPlanificacion('idle');
+				wsPlanificacionRef.current = null;
+			}
+		);
+		
+		wsPlanificacionRef.current = ws;
+		setWsPlanificacion(ws);
+	};
+
+	/**
+	 * Desconectar WebSocket de planificación
+	 */
+	const handleDesconectarWsPlanificacion = () => {
+		if (wsPlanificacionRef.current) {
+			wsPlanificacionRef.current.cerrar();
+			setWsConectado(false);
+			setWsPlanificacion(null);
+		}
+	};
+
+	/**
+	 * Iniciar planificación con WebSocket
+	 */
+	// Función para enviar solicitud de planificación (sin validaciones de estado)
+	const enviarSolicitudPlanificacion = () => {
+		if (!wsPlanificacionRef.current?.estaConectado()) {
+			console.warn('⚠️ WebSocket no conectado');
+			return false;
+		}
+
+		if (!fechaInicioSimulacion) {
+			console.warn('⚠️ No hay fecha de inicio seleccionada');
+			return false;
+		}
+
+		// Enviar solicitud de planificación
+		wsPlanificacionRef.current.iniciarPlanificacion(
+			fechaInicioSimulacion,
+			5, // Factor K para simulación semanal
+			{
+				tamanioPoblacion: 20,
+				maxGeneraciones: 20,
+				limiteGeneracionesSinMejora: 10
+			}
+		);
+		
+		console.log('📤 Solicitud de planificación enviada para fecha:', fechaInicioSimulacion);
+		return true;
+	};
+
+	const handleIniciarPlanificacion = () => {
+		if (!wsPlanificacionRef.current || !wsPlanificacionRef.current.estaConectado()) {
+			console.warn('⚠️ WebSocket no conectado, esperando...');
+			return;
+		}
+
+		if (!fechaInicioSimulacion) {
+			console.warn('⚠️ No hay fecha de inicio seleccionada');
+			alert('Por favor, selecciona una fecha de inicio');
+			return;
+		}
+
+		// No iniciar si ya hay una planificación en curso
+		if (estadoPlanificacion === 'running') {
+			console.warn('⚠️ Ya hay una planificación en curso');
+			return;
+		}
+
+		// 🧹 LIMPIAR TODO para nueva planificación
+		console.log('🧹 Limpiando estado para nueva planificación...');
+		setIteracionesPlanificacion([]);
+		setFlights([]); // Limpiar vuelos del mapa
+		setFlightsInAir(0);
+		setIntentosRealizados(0);
+		setEstadoPlanificacion('running');
+		
+		// 🕐 INICIAR CRONÓMETRO DE TIEMPO REAL
+		tiempoInicioRef.current = Date.now();
+		setTiempoRealTranscurrido(0);
+		
+		// Actualizar tiempo real cada segundo
+		if (intervalTiempoRealRef.current) {
+			clearInterval(intervalTiempoRealRef.current);
+		}
+		intervalTiempoRealRef.current = setInterval(() => {
+			if (tiempoInicioRef.current) {
+				const transcurrido = Math.floor((Date.now() - tiempoInicioRef.current) / 1000);
+				setTiempoRealTranscurrido(transcurrido);
+			}
+		}, 1000);
+
+		console.log('🚀 Iniciando planificación para fecha:', fechaInicioSimulacion);
+		enviarSolicitudPlanificacion();
+	};
+
+	/**
+	 * Limpiar iteraciones de planificación
+	 */
+	const handleLimpiarIteraciones = () => {
+		setIteracionesPlanificacion([]);
+		setEstadoPlanificacion('idle');
+		setAutoInicioIntentado(false); // Permitir nuevo auto-inicio
+	};
+
+	/**
+	 * Detener planificación continua y limpiar mapa
+	 */
+	const handleDetenerPlanificacion = () => {
+		console.log('🛑 Deteniendo planificación continua...');
+		
+		// Detener cronómetro
+		if (intervalTiempoRealRef.current) {
+			clearInterval(intervalTiempoRealRef.current);
+			intervalTiempoRealRef.current = null;
+		}
+		
+		// Resetear estado
+		setEstadoPlanificacion('idle');
+		setAutoInicioIntentado(false);
+		
+		console.log('✅ Planificación detenida. Vuelos permanecen en el mapa.');
+	};
+
+	/**
+	 * Limpiar todos los vuelos del mapa
+	 */
+	const handleLimpiarMapa = () => {
+		console.log('🧹 Limpiando mapa...');
+		setFlights([]);
+		setFlightsInAir(0);
+		setIteracionesPlanificacion([]);
+		setIntentosRealizados(0);
+		console.log('✅ Mapa limpiado');
+	};
+
+	// Auto-conectar WebSocket al montar el componente
+	useEffect(() => {
+		console.log('='.repeat(80));
+		console.log('🔌 AUTO-CONECTANDO WEBSOCKET DE PLANIFICACIÓN');
+		console.log('URL:', 'ws://localhost:8000/ws/planificacion');
+		console.log('='.repeat(80));
+		
+		// Delay para evitar problemas con React Strict Mode (doble ejecución en desarrollo)
+		const timer = setTimeout(() => {
+			console.log('⏰ Iniciando conexión WebSocket...');
+			handleConectarWsPlanificacion();
+		}, 100);
+		
+		// Cleanup al desmontar
+		return () => {
+			clearTimeout(timer);
+			if (wsPlanificacionRef.current) {
+				console.log('🧹 Limpiando WebSocket de planificación...');
+				wsPlanificacionRef.current.cerrar();
+			}
+			// Limpiar intervalo de tiempo real
+			if (intervalTiempoRealRef.current) {
+				clearInterval(intervalTiempoRealRef.current);
+			}
+		};
+	}, []);
+
+	// Auto-iniciar planificación cuando se selecciona fecha y WebSocket está conectado
+	useEffect(() => {
+		// Solo auto-iniciar si:
+		// 1. WebSocket está conectado
+		// 2. Hay fecha seleccionada
+		// 3. No se ha intentado auto-iniciar aún
+		// 4. No hay planificación en curso (estado idle)
+		if (wsConectado && fechaInicioSimulacion && !autoInicioIntentado && estadoPlanificacion === 'idle') {
+			console.log('🚀 Auto-iniciando planificación...');
+			setAutoInicioIntentado(true);
+			
+			// Pequeño delay para asegurar que la conexión esté estable
+			setTimeout(() => {
+				handleIniciarPlanificacion();
+			}, 500);
+		}
+	}, [wsConectado, fechaInicioSimulacion, autoInicioIntentado, estadoPlanificacion]);
+
+	// Resetear flag cuando cambia la fecha
+	useEffect(() => {
+		setAutoInicioIntentado(false);
+	}, [fechaInicioSimulacion]);
+
 	/* Calcular métricas de saturación de aeropuertos */
 	const getSaturation = () => {
 		const regularAirports = airports.filter(airport => !airport.isSede);
@@ -645,6 +1134,45 @@ const SimuladorSemanal = () => {
 									flexWrap: 'wrap',
 									gap: '15px'
 								}}>
+									{/* Indicador de WebSocket */}
+									<div style={{
+										padding: '10px 15px',
+										background: wsConectado ? '#d4edda' : '#f8d7da',
+										border: `2px solid ${wsConectado ? '#28a745' : '#dc3545'}`,
+										borderRadius: '8px',
+										display: 'flex',
+										alignItems: 'center',
+										gap: '10px'
+									}}>
+										<span style={{
+											width: '12px',
+											height: '12px',
+											borderRadius: '50%',
+											background: wsConectado ? '#28a745' : '#dc3545',
+											display: 'inline-block',
+											animation: wsConectado ? 'none' : 'pulse 1.5s infinite'
+										}}></span>
+										<span style={{ fontSize: '14px', fontWeight: '600', color: wsConectado ? '#155724' : '#721c24' }}>
+											WebSocket: {wsConectado ? 'Conectado ✅' : 'Desconectado ❌'}
+										</span>
+										{!wsConectado && (
+											<button
+												onClick={handleConectarWsPlanificacion}
+												style={{
+													padding: '4px 12px',
+													fontSize: '12px',
+													background: '#007bff',
+													color: 'white',
+													border: 'none',
+													borderRadius: '4px',
+													cursor: 'pointer'
+												}}
+											>
+												Reconectar
+											</button>
+										)}
+									</div>
+
 									{/* Selector de fecha de inicio */}
 									<div className="form-group" style={{ margin: 0 }}>
 										<label className="form-label" htmlFor="fecha-inicio">
@@ -677,16 +1205,30 @@ const SimuladorSemanal = () => {
 													Fecha y hora de simulación:
 												</span>
 												<span style={{ fontSize: '14px', fontWeight: '600', color: '#212529' }}>
-													{simClock ? simClock.toLocaleString('es-ES', {
-														timeZone: 'UTC',
-														day: '2-digit',
-														month: '2-digit',
-														year: 'numeric',
-														hour: '2-digit',
-														minute: '2-digit',
-														second: '2-digit',
-														hour12: false
-													}) : '--:--:--'}
+													{tiempoSimulacionActual ? 
+														new Date(tiempoSimulacionActual).toLocaleString('es-ES', {
+															timeZone: 'UTC',
+															day: '2-digit',
+															month: '2-digit',
+															year: 'numeric',
+															hour: '2-digit',
+															minute: '2-digit',
+															second: '2-digit',
+															hour12: false
+														})
+														: fechaInicioSimulacion ? 
+														new Date(fechaInicioSimulacion).toLocaleString('es-ES', {
+															timeZone: 'UTC',
+															day: '2-digit',
+															month: '2-digit',
+															year: 'numeric',
+															hour: '2-digit',
+															minute: '2-digit',
+															second: '2-digit',
+															hour12: false
+														}) 
+														: '--:--:--'
+													}
 												</span>
 											</div>
 											<div>
@@ -694,10 +1236,14 @@ const SimuladorSemanal = () => {
 													Tiempo transcurrido:
 												</span>
 												<span style={{ fontSize: '14px', fontWeight: '600', color: '#212529' }}>
-													{tickActual} segundos
+													{tiempoRealTranscurrido > 0 ? (
+														<>
+															{Math.floor(tiempoRealTranscurrido / 60)}m {tiempoRealTranscurrido % 60}s
+														</>
+													) : '0s'}
 												</span>
 												<span style={{ fontSize: '12px', color: '#6c757d', marginLeft: '8px' }}>
-													(Tick: {tickActual})
+													({estadoPlanificacion === 'running' || estadoPlanificacion === 'waiting' ? 'En ejecución' : 'Detenido'})
 												</span>
 											</div>
 										</div>
@@ -712,6 +1258,32 @@ const SimuladorSemanal = () => {
 												<span className="status-text">{simulacionActiva ? 'Ejecutándose' : 'Detenida'}</span>
 											</div>
 										</div>
+										
+										{/* Indicador de planificación WebSocket en tiempo real */}
+										{(estadoPlanificacion === 'running' || estadoPlanificacion === 'waiting') && (
+											<div style={{
+												padding: '8px 12px',
+												background: '#d1ecf1',
+												border: '1px solid #17a2b8',
+												borderRadius: '6px',
+												display: 'flex',
+												alignItems: 'center',
+												gap: '8px',
+												fontSize: '13px',
+												color: '#0c5460'
+											}}>
+												<span style={{ 
+													display: 'inline-block',
+													width: '12px',
+													height: '12px',
+													borderRadius: '50%',
+													border: '2px solid currentColor',
+													borderTopColor: 'transparent',
+													animation: 'spin 1s linear infinite'
+												}}></span>
+												{`⏱️ Planificación continua... (Iteración ${intentosRealizados})`}
+											</div>
+										)}
 										{/*contoles de simulacion*/}
 										<div className="simulation-controls">
 											<div className="control-buttons" style={{ display: 'flex', gap: '10px' }}>
@@ -779,10 +1351,58 @@ const SimuladorSemanal = () => {
 												</button>
 											</div>
 										</div>
+
+										{/* Controles de planificación WebSocket */}
+										{wsConectado && (
+											<div style={{ display: 'flex', gap: '10px', marginLeft: '20px', paddingLeft: '20px', borderLeft: '2px solid #dee2e6' }}>
+												<button
+													onClick={handleDetenerPlanificacion}
+													disabled={estadoPlanificacion !== 'running'}
+													style={{
+														padding: '8px 16px',
+														borderRadius: '6px',
+														border: estadoPlanificacion === 'running' ? '1px solid #ffc107' : '1px solid #e9ecef',
+														background: estadoPlanificacion === 'running' ? '#ffc107' : '#e9ecef',
+														color: estadoPlanificacion === 'running' ? 'white' : '#6c757d',
+														fontSize: '14px',
+														fontWeight: '500',
+														cursor: estadoPlanificacion === 'running' ? 'pointer' : 'not-allowed',
+														transition: 'all 0.2s',
+														display: 'flex',
+														alignItems: 'center',
+														gap: '8px'
+													}}
+												>
+													<FaStop size={16} />
+													Detener Planificación
+												</button>
+												<button
+													onClick={handleLimpiarMapa}
+													disabled={flights.length === 0}
+													style={{
+														padding: '8px 16px',
+														borderRadius: '6px',
+														border: flights.length > 0 ? '1px solid #17a2b8' : '1px solid #e9ecef',
+														background: flights.length > 0 ? '#17a2b8' : '#e9ecef',
+														color: flights.length > 0 ? 'white' : '#6c757d',
+														fontSize: '14px',
+														fontWeight: '500',
+														cursor: flights.length > 0 ? 'pointer' : 'not-allowed',
+														transition: 'all 0.2s',
+														display: 'flex',
+														alignItems: 'center',
+														gap: '8px'
+													}}
+												>
+													🧹 Limpiar Mapa
+												</button>
+											</div>
+										)}
 									</div>
 								</div>
 							</div>
 						</div>
+
 
 						{/* Mapa interactivo */}
 						<div className="map-container">

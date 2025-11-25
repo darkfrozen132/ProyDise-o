@@ -28,6 +28,11 @@ body,
     background: var(--morapack-light);
 }
 
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
 .section-content {
     display: flex;
     height: 100vh;

@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulación en Tiempo Real - Package Planner</title>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .card h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .control-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #555;
+        }
+
+        input, select {
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 5px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        button {
+            flex: 1;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            background: #dc2626;
+        }
+
+        .btn-warning {
+            background: #f59e0b;
+            color: white;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+
+        .status-connected {
+            background: #10b981;
+            color: white;
+        }
+
+        .status-disconnected {
+            background: #ef4444;
+            color: white;
+        }
+
+        .status-running {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #e0e0e0;
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.5s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 28px;
+            font-weight: bold;
+            margin: 5px 0;
+        }
+
+        .metric-label {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        #console {
+            background: #1e1e1e;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            padding: 15px;
+            border-radius: 5px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .console-line {
+            margin: 2px 0;
+        }
+
+        .console-error {
+            color: #ff6b6b;
+        }
+
+        .console-success {
+            color: #51cf66;
+        }
+
+        .console-info {
+            color: #339af0;
+        }
+
+        .preset-buttons {
+            display: flex;
+            gap: 10px;
+            margin: 10px 0;
+        }
+
+        .preset-btn {
+            padding: 8px 16px;
+            background: #f3f4f6;
+            border: 2px solid #d1d5db;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .preset-btn:hover {
+            background: #e5e7eb;
+            border-color: #9ca3af;
+        }
+
+        .preset-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Simulación de Logística en Tiempo Real</h1>
+
+        <!-- Panel de Control -->
+        <div class="card">
+            <h2>⚙️ Configuración de Simulación</h2>
+            
+            <div class="control-panel">
+                <div class="input-group">
+                    <label for="fecha">📅 Fecha de Inicio:</label>
+                    <input type="date" id="fecha" value="2025-01-02">
+                </div>
+
+                <div class="input-group">
+                    <label for="factorK">⚡ Factor K (1-75):</label>
+                    <input type="number" id="factorK" value="5" min="1" max="75">
+                </div>
+
+                <div class="input-group">
+                    <label for="poblacion">👥 Población:</label>
+                    <input type="number" id="poblacion" value="20" min="5" max="100">
+                </div>
+
+                <div class="input-group">
+                    <label for="generaciones">🔄 Generaciones:</label>
+                    <input type="number" id="generaciones" value="20" min="5" max="100">
+                </div>
+            </div>
+
+            <div class="preset-buttons">
+                <button class="preset-btn" onclick="setPreset('fast')">⚡ Ultra Rápido</button>
+                <button class="preset-btn active" onclick="setPreset('balanced')">⚖️ Balanceado</button>
+                <button class="preset-btn" onclick="setPreset('quality')">🎯 Máxima Calidad</button>
+            </div>
+
+            <div class="button-group">
+                <button class="btn-primary" id="btnStart" onclick="startSimulation()">
+                    ▶️ Iniciar Simulación
+                </button>
+                <button class="btn-warning" id="btnPause" onclick="pauseSimulation()" disabled>
+                    ⏸️ Pausar
+                </button>
+                <button class="btn-danger" id="btnCancel" onclick="cancelSimulation()" disabled>
+                    ⏹️ Cancelar
+                </button>
+            </div>
+        </div>
+
+        <!-- Estado de Conexión -->
+        <div class="card">
+            <h2>🔌 Estado de Conexión</h2>
+            <span class="status-badge status-disconnected" id="statusBadge">Desconectado</span>
+            <p id="connectionInfo" style="margin-top: 10px; color: #666;">No conectado</p>
+        </div>
+
+        <!-- Métricas en Tiempo Real -->
+        <div class="card">
+            <h2>📊 Métricas en Tiempo Real</h2>
+            
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressBar" style="width: 0%">0%</div>
+            </div>
+
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-label">Iteración Actual</div>
+                    <div class="metric-value" id="metricIteration">0</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Pedidos Procesados</div>
+                    <div class="metric-value" id="metricProcessed">0</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Fitness Actual</div>
+                    <div class="metric-value" id="metricFitness">0.00</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Mejor Fitness</div>
+                    <div class="metric-value" id="metricBest">0.00</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Duración (ms)</div>
+                    <div class="metric-value" id="metricDuration">0</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Tiempo Simulado</div>
+                    <div class="metric-value" id="metricTime" style="font-size: 14px;">--:--</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Consola de Eventos -->
+        <div class="card">
+            <h2>📝 Consola de Eventos</h2>
+            <div id="console"></div>
+        </div>
+    </div>
+
+    <script>
+        // ============ CONFIGURACIÓN ============
+        const API_URL = 'http://localhost:8000/api/simulations';
+        const WS_URL = 'http://localhost:8000/ws';
+
+        let stompClient = null;
+        let currentSessionId = null;
+        let subscription = null;
+
+        // ============ INICIALIZACIÓN ============
+        window.addEventListener('load', () => {
+            log('🚀 Aplicación iniciada', 'info');
+            connectWebSocket();
+        });
+
+        // ============ WEBSOCKET STOMP ============
+        function connectWebSocket() {
+            const socket = new SockJS(WS_URL);
+            stompClient = Stomp.over(socket);
+
+            stompClient.connect({}, (frame) => {
+                log('✅ WebSocket conectado', 'success');
+                updateConnectionStatus(true);
+            }, (error) => {
+                log('❌ Error de conexión: ' + error, 'error');
+                updateConnectionStatus(false);
+                // Reintentar en 5 segundos
+                setTimeout(connectWebSocket, 5000);
+            });
+
+            stompClient.debug = null; // Desactivar logs de STOMP
+        }
+
+        function subscribeToSession(sessionId) {
+            if (!stompClient || !stompClient.connected) {
+                log('⚠️ WebSocket no conectado', 'error');
+                return;
+            }
+
+            const topic = `/topic/simulations/${sessionId}`;
+            
+            subscription = stompClient.subscribe(topic, (message) => {
+                const data = JSON.parse(message.body);
+                handleSimulationUpdate(data);
+            });
+
+            log(`📡 Suscrito a ${topic}`, 'info');
+        }
+
+        function unsubscribe() {
+            if (subscription) {
+                subscription.unsubscribe();
+                subscription = null;
+                log('🔌 Desuscrito del canal', 'info');
+            }
+        }
+
+        // ============ CONTROL DE SIMULACIÓN ============
+        async function startSimulation() {
+            const request = {
+                accion: "iniciar",
+                fecha: document.getElementById('fecha').value,
+                factorK: parseInt(document.getElementById('factorK').value),
+                tamanioPoblacion: parseInt(document.getElementById('poblacion').value),
+                maxGeneraciones: parseInt(document.getElementById('generaciones').value),
+                limiteGeneracionesSinMejora: Math.floor(parseInt(document.getElementById('generaciones').value) / 2)
+            };
+
+            try {
+                log('📤 Enviando solicitud de simulación...', 'info');
+                
+                const response = await fetch(`${API_URL}/start`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(request)
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    currentSessionId = data.sessionId;
+                    log(`✅ Simulación iniciada: ${currentSessionId}`, 'success');
+                    log(`📡 Tópico: ${data.subscriptionTopic}`, 'info');
+                    
+                    subscribeToSession(currentSessionId);
+                    updateButtons(true);
+                } else {
+                    log(`❌ Error: ${data.message}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Error de red: ${error.message}`, 'error');
+            }
+        }
+
+        async function cancelSimulation() {
+            if (!currentSessionId) return;
+
+            try {
+                const response = await fetch(`${API_URL}/${currentSessionId}/cancel`, {
+                    method: 'POST'
+                });
+
+                const data = await response.json();
+                log(data.success ? '🛑 Simulación cancelada' : `❌ ${data.message}`, 
+                    data.success ? 'info' : 'error');
+                
+                if (data.success) {
+                    resetUI();
+                }
+            } catch (error) {
+                log(`❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function pauseSimulation() {
+            if (!currentSessionId) return;
+
+            try {
+                const response = await fetch(`${API_URL}/${currentSessionId}/pause`, {
+                    method: 'POST'
+                });
+
+                const data = await response.json();
+                log(data.success ? '⏸️ Simulación pausada' : `❌ ${data.message}`, 
+                    data.success ? 'info' : 'error');
+            } catch (error) {
+                log(`❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        // ============ MANEJO DE ACTUALIZACIONES ============
+        function handleSimulationUpdate(data) {
+            log(`📊 Actualización recibida: Iteración ${data.iterationNumber || 0}`, 'info');
+
+            if (data.status === 'COMPLETED') {
+                log('🎉 ¡Simulación completada!', 'success');
+                resetUI();
+            } else if (data.status === 'ERROR') {
+                log(`❌ Error: ${data.errorMessage}`, 'error');
+                resetUI();
+            } else if (data.status === 'RUNNING') {
+                updateMetrics(data);
+            }
+        }
+
+        function updateMetrics(data) {
+            // Actualizar métricas
+            document.getElementById('metricIteration').textContent = data.iterationNumber || 0;
+            document.getElementById('metricProcessed').textContent = data.processedOrders || 0;
+            document.getElementById('metricFitness').textContent = (data.currentFitness || 0).toFixed(2);
+            document.getElementById('metricBest').textContent = (data.bestFitness || 0).toFixed(2);
+            document.getElementById('metricDuration').textContent = data.durationMs || 0;
+
+            // Actualizar tiempo simulado
+            if (data.currentSimulationTime) {
+                const time = new Date(data.currentSimulationTime);
+                document.getElementById('metricTime').textContent = 
+                    time.toLocaleString('es-ES', { hour: '2-digit', minute: '2-digit' });
+            }
+
+            // Actualizar barra de progreso
+            const progress = data.totalOrders > 0 
+                ? Math.round((data.processedOrders / data.totalOrders) * 100)
+                : 0;
+            
+            const progressBar = document.getElementById('progressBar');
+            progressBar.style.width = progress + '%';
+            progressBar.textContent = progress + '%';
+        }
+
+        // ============ UI HELPERS ============
+        function updateConnectionStatus(connected) {
+            const badge = document.getElementById('statusBadge');
+            const info = document.getElementById('connectionInfo');
+
+            if (connected) {
+                badge.className = 'status-badge status-connected';
+                badge.textContent = 'Conectado';
+                info.textContent = 'WebSocket STOMP conectado correctamente';
+            } else {
+                badge.className = 'status-badge status-disconnected';
+                badge.textContent = 'Desconectado';
+                info.textContent = 'Intentando reconectar...';
+            }
+        }
+
+        function updateButtons(running) {
+            document.getElementById('btnStart').disabled = running;
+            document.getElementById('btnPause').disabled = !running;
+            document.getElementById('btnCancel').disabled = !running;
+        }
+
+        function resetUI() {
+            updateButtons(false);
+            unsubscribe();
+            currentSessionId = null;
+        }
+
+        function log(message, type = 'info') {
+            const console = document.getElementById('console');
+            const line = document.createElement('div');
+            line.className = `console-line console-${type}`;
+            
+            const timestamp = new Date().toLocaleTimeString('es-ES');
+            line.textContent = `[${timestamp}] ${message}`;
+            
+            console.appendChild(line);
+            console.scrollTop = console.scrollHeight;
+        }
+
+        // ============ PRESETS ============
+        function setPreset(preset) {
+            // Actualizar botones activos
+            document.querySelectorAll('.preset-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            switch(preset) {
+                case 'fast':
+                    document.getElementById('poblacion').value = 10;
+                    document.getElementById('generaciones').value = 10;
+                    document.getElementById('factorK').value = 14;
+                    log('⚡ Preset: Ultra Rápido', 'info');
+                    break;
+                case 'balanced':
+                    document.getElementById('poblacion').value = 20;
+                    document.getElementById('generaciones').value = 20;
+                    document.getElementById('factorK').value = 5;
+                    log('⚖️ Preset: Balanceado', 'info');
+                    break;
+                case 'quality':
+                    document.getElementById('poblacion').value = 50;
+                    document.getElementById('generaciones').value = 50;
+                    document.getElementById('factorK').value = 1;
+                    log('🎯 Preset: Máxima Calidad', 'info');
+                    break;
+            }
+        }
+    </script>
+</body>
+</html>

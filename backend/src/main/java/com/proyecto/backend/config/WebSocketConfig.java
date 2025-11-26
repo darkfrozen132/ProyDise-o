@@ -1,48 +1,78 @@
 package com.proyecto.backend.config;
 
-import com.proyecto.backend.websocket.PlanificacionWebSocketHandler;
-import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
 import org.springframework.web.socket.config.annotation.*;
 
 /**
- * Configuración de WebSocket
+ * Configuración de WebSocket con STOMP para comunicación en tiempo real
  * 
- * 1. STOMP + SockJS (existente):
- *    - Endpoint: ws://localhost:8000/ws
- *    - Canal: /topic/estado
+ * Arquitectura:
+ * - Protocolo: STOMP sobre WebSocket con SockJS fallback
+ * - Broker: Simple in-memory broker (producción: RabbitMQ/ActiveMQ)
+ * - Endpoints: /ws (STOMP), /topic/simulations/{id} (subscripción)
  * 
- * 2. WebSocket nativo para planificación (nuevo):
- *    - Endpoint: ws://localhost:8000/ws/planificacion
- *    - Comunicación bidireccional JSON puro
+ * Flujo:
+ * 1. Cliente conecta a ws://localhost:8000/ws
+ * 2. Cliente se subscribe a /topic/simulations/{sessionId}
+ * 3. Servidor envía actualizaciones automáticamente vía SimpMessagingTemplate
+ * 
+ * Ventajas STOMP vs WebSocket nativo:
+ * - Protocolo estándar con ACK/NACK
+ * - SockJS fallback automático (HTTP Long-Polling)
+ * - Integración nativa con Spring
+ * - Multiplexión de canales
+ * 
+ * @author Sistema Package Planner
+ * @version 2.0
  */
+@Slf4j
 @Configuration
-@EnableWebSocket
 @EnableWebSocketMessageBroker
-@RequiredArgsConstructor
-public class WebSocketConfig implements WebSocketMessageBrokerConfigurer, WebSocketConfigurer {
+public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
-    private final PlanificacionWebSocketHandler planificacionHandler;
-
-    // ============ STOMP CONFIG (existente) ============
+    /**
+     * Configura el broker de mensajes
+     * 
+     * - enableSimpleBroker("/topic"): Habilita broker simple en memoria
+     * - setApplicationDestinationPrefixes("/app"): Prefijo para mensajes del cliente al servidor
+     */
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
+        // Broker simple para /topic (en producción: usar RabbitMQ o ActiveMQ)
         config.enableSimpleBroker("/topic");
+        
+        // Prefijo para mensajes del cliente (opcional, para futuro)
         config.setApplicationDestinationPrefixes("/app");
+        
+        log.info("✅ Broker STOMP configurado: /topic/* habilitado");
     }
 
+    /**
+     * Registra los endpoints STOMP
+     * 
+     * - Endpoint: /ws
+     * - SockJS: Habilitado (fallback HTTP Long-Polling)
+     * - CORS: Permitir todos los orígenes (desarrollo)
+     */
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws")
-                .setAllowedOriginPatterns("*")
-                .withSockJS();
+                .setAllowedOriginPatterns("*") // ⚠️ En producción: especificar dominios
+                .withSockJS(); // Habilitar SockJS fallback
+        
+        log.info("✅ Endpoint STOMP registrado: ws://localhost:8000/ws (SockJS habilitado)");
     }
 
-    // ============ WEBSOCKET NATIVO (nuevo) ============
+    /**
+     * Configura opciones de transporte (opcional)
+     */
     @Override
-    public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-        registry.addHandler(planificacionHandler, "/ws/planificacion")
-                .setAllowedOrigins("*"); // En producción: configurar CORS específico
+    public void configureWebSocketTransport(WebSocketTransportRegistration registration) {
+        registration
+                .setMessageSizeLimit(512 * 1024) // 512KB por mensaje
+                .setSendBufferSizeLimit(1024 * 1024) // 1MB buffer
+                .setSendTimeLimit(20000); // 20 segundos timeout
     }
 }

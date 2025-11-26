@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Visualizador AG - SkyRoute</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.1/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    <style>
+        body { 
+            font-family: 'Segoe UI', sans-serif; 
+            padding: 20px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            margin: 0;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255,255,255,0.1);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 2.5em;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: rgba(255,255,255,0.2);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            transition: transform 0.3s;
+        }
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+        .progress-container {
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 15px;
+            overflow: hidden;
+            position: relative;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #8BC34A);
+            transition: width 0.5s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            box-shadow: 0 0 20px rgba(76, 175, 80, 0.5);
+        }
+        .rutas-container {
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            padding: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .rutas-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        .rutas-container::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+        }
+        .rutas-container::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.3);
+            border-radius: 10px;
+        }
+        .ruta-item {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            border-left: 4px solid #4CAF50;
+            animation: slideIn 0.3s ease;
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        .controls {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 12px 25px;
+            font-size: 1em;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 0 5px;
+            font-weight: bold;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        button:hover:not(:disabled) { 
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        .btn-connect { background: #2196F3; color: white; }
+        .btn-start { background: #4CAF50; color: white; }
+        .btn-stop { background: #F44336; color: white; }
+        button:disabled { 
+            background: #999; 
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+        .status-connected { background: #4CAF50; }
+        .status-disconnected { background: #F44336; animation: none; }
+        .status-running { background: #FFC107; }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .no-rutas {
+            text-align: center;
+            opacity: 0.6;
+            padding: 40px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧬 Visualizador de Algoritmo Genético</h1>
+            <p>Monitoreo en tiempo real del proceso de optimización</p>
+            <p>
+                <span class="status-indicator status-disconnected" id="statusDot"></span>
+                <span id="statusText">Desconectado</span>
+            </p>
+        </div>
+
+        <div class="controls">
+            <button onclick="conectar()" class="btn-connect" id="btnConnect">1. Conectar WebSocket</button>
+            <button onclick="iniciarSimulacion()" class="btn-start" id="btnStart" disabled>2. Iniciar Simulación</button>
+            <button onclick="detenerSimulacion()" class="btn-stop" id="btnStop" disabled>3. Detener</button>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">🔄 Generación Actual</div>
+                <div class="stat-value" id="statGeneracion">0 / 0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">⭐ Mejor Fitness</div>
+                <div class="stat-value" id="statFitness">0.0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">📦 Pedidos Procesados</div>
+                <div class="stat-value" id="statPedidos">0 / 0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">⏱️ Tiempo Transcurrido</div>
+                <div class="stat-value" id="statTiempo">0.0s</div>
+            </div>
+        </div>
+
+        <div class="progress-container">
+            <h3>📊 Progreso del Algoritmo</h3>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill" style="width: 0%">0%</div>
+            </div>
+        </div>
+
+        <div class="rutas-container">
+            <h3>✈️ Rutas Asignadas (<span id="rutasCount">0</span>)</h3>
+            <div id="rutasList">
+                <div class="no-rutas">No hay rutas asignadas aún...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const BASE_URL = 'http://localhost:8000';
+        let stompClient = null;
+        let currentSimId = null;
+        let startTime = null;
+        let timerInterval = null;
+        
+        // 🗺️ Diccionario de aeropuertos con coordenadas (cargado de la API)
+        let aeropuertosMap = {};
+
+        // ========== CARGAR AEROPUERTOS ==========
+        async function cargarAeropuertos() {
+            console.log("📍 Cargando aeropuertos desde API...");
+            
+            try {
+                const response = await fetch(BASE_URL + '/api/aeropuertos/listar');
+                const aeropuertos = await response.json();
+                
+                // Crear diccionario: codigo ICAO -> {lat, lon, ciudad, pais}
+                aeropuertos.forEach(aero => {
+                    aeropuertosMap[aero.codigoICAO] = {
+                        lat: aero.latitud,
+                        lon: aero.longitud,
+                        ciudad: aero.ciudad,
+                        pais: aero.pais,
+                        continente: aero.continente
+                    };
+                });
+                
+                console.log(`✅ ${aeropuertos.length} aeropuertos cargados:`, aeropuertosMap);
+                return true;
+                
+            } catch (error) {
+                console.error("❌ Error cargando aeropuertos:", error);
+                alert("⚠️ No se pudieron cargar las coordenadas de aeropuertos.\n\nLas rutas no se mostrarán en el mapa.");
+                return false;
+            }
+        }
+        
+        // ========== CONEXIÓN ==========
+        async function conectar() {
+            console.log("🔌 Conectando al servidor...");
+            updateStatus('Cargando aeropuertos...', 'disconnected');
+            
+            // 1. Cargar aeropuertos primero
+            const aeropuertosCargados = await cargarAeropuertos();
+            
+            if (!aeropuertosCargados) {
+                updateStatus('Error cargando aeropuertos', 'disconnected');
+                return;
+            }
+            
+            // 2. Conectar WebSocket
+            updateStatus('Conectando...', 'disconnected');
+            const socket = new SockJS(BASE_URL + '/ws');
+            stompClient = Stomp.over(socket);
+            stompClient.debug = null; // Silenciar logs de STOMP
+
+            stompClient.connect({}, function(frame) {
+                console.log("✅ Conectado exitosamente");
+                updateStatus('Conectado - Listo para iniciar', 'connected');
+                document.getElementById('btnStart').disabled = false;
+                document.getElementById('btnConnect').disabled = true;
+            }, function(error) {
+                console.error("❌ Error de conexión:", error);
+                updateStatus('Error de conexión', 'disconnected');
+                alert("❌ No se pudo conectar al servidor.\n\nVerifica que:\n1. El backend esté corriendo (puerto 8000)\n2. El WebSocket endpoint esté activo");
+            });
+        }
+
+        // ========== INICIAR SIMULACIÓN ==========
+        function iniciarSimulacion() {
+            console.log("🚀 Iniciando simulación...");
+            updateStatus('Iniciando simulación...', 'running');
+            
+            // Resetear visualizador
+            resetearVisualizador();
+            
+            fetch(BASE_URL + '/api/simulations/start', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    fecha: "2025-01-02",
+                    factorK: 5,
+                    tamanioPoblacion: 10,
+                    maxGeneraciones: 10,
+                    limiteGeneracionesSinMejora: 5
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                currentSimId = data.sessionId;
+                console.log("✅ Simulación iniciada con ID:", currentSimId);
+                
+                // Iniciar cronómetro
+                startTime = Date.now();
+                timerInterval = setInterval(actualizarTiempo, 100);
+                
+                // Suscribirse al canal
+                suscribirse(currentSimId);
+                
+                updateStatus('Simulación ejecutándose...', 'running');
+                document.getElementById('btnStart').disabled = true;
+                document.getElementById('btnStop').disabled = false;
+            })
+            .catch(err => {
+                console.error("❌ Error al iniciar simulación:", err);
+                updateStatus('Error al iniciar', 'disconnected');
+                alert("❌ Error al iniciar simulación:\n\n" + err.message);
+                clearInterval(timerInterval);
+            });
+        }
+
+        // ========== SUSCRIPCIÓN ==========
+        function suscribirse(sessionId) {
+            const topic = '/topic/simulations/' + sessionId;
+            console.log("📡 Suscribiéndose al canal:", topic);
+
+            stompClient.subscribe(topic, function(mensaje) {
+                const data = JSON.parse(mensaje.body);
+                console.log("📥 Mensaje recibido:", data);
+                
+                if (data.tipo === "PROGRESO_AG") {
+                    actualizarVisualizador(data);
+                } else if (data.status === "COMPLETED") {
+                    finalizarSimulacion("✅ Simulación completada");
+                } else if (data.status === "CANCELLED") {
+                    finalizarSimulacion("🛑 Simulación cancelada");
+                } else if (data.status === "ERROR") {
+                    finalizarSimulacion("❌ Error en simulación");
+                }
+            });
+        }
+
+        // ========== ACTUALIZAR VISUALIZADOR ==========
+        function actualizarVisualizador(progreso) {
+            // Generación
+            document.getElementById('statGeneracion').textContent = 
+                `${progreso.generacion} / ${progreso.maxGeneraciones}`;
+            
+            // Fitness
+            document.getElementById('statFitness').textContent = 
+                progreso.mejorFitness ? progreso.mejorFitness.toFixed(2) : '0.0';
+            
+            // Pedidos
+            document.getElementById('statPedidos').textContent = 
+                `${progreso.pedidosProcesados || 0} / ${progreso.pedidosTotales || 0}`;
+            
+            // Barra de progreso
+            const progresoPct = (progreso.progreso || 0).toFixed(1);
+            document.getElementById('progressFill').style.width = progresoPct + '%';
+            document.getElementById('progressFill').textContent = progresoPct + '%';
+            
+            // Rutas
+            if (progreso.solucion && progreso.solucion.rutas) {
+                mostrarRutas(progreso.solucion.rutas);
+            }
+        }
+
+        // ========== MOSTRAR RUTAS ==========
+        function mostrarRutas(rutas) {
+            document.getElementById('rutasCount').textContent = rutas.length;
+            
+            const lista = document.getElementById('rutasList');
+            
+            if (rutas.length === 0) {
+                lista.innerHTML = '<div class="no-rutas">No hay rutas asignadas aún...</div>';
+                return;
+            }
+            
+            // 🗺️ PREPARAR DATOS PARA TU MAPA
+            const rutasConCoordenadas = rutas.map(ruta => {
+                const origenData = aeropuertosMap[ruta.origen];
+                const destinoData = aeropuertosMap[ruta.destino];
+                
+                return {
+                    pedidoId: ruta.pedidoId,
+                    vueloId: ruta.vueloId,
+                    origen: {
+                        codigo: ruta.origen,
+                        lat: origenData?.lat,
+                        lon: origenData?.lon,
+                        ciudad: origenData?.ciudad,
+                        pais: origenData?.pais
+                    },
+                    destino: {
+                        codigo: ruta.destino,
+                        lat: destinoData?.lat,
+                        lon: destinoData?.lon,
+                        ciudad: destinoData?.ciudad,
+                        pais: destinoData?.pais
+                    },
+                    salida: ruta.salida,
+                    llegada: ruta.llegada,
+                    duracionHoras: ruta.duracionHoras,
+                    distanciaKm: ruta.distanciaKm
+                };
+            });
+            
+            // 🎨 IMPRIMIR DATOS PARA TU FRONTEND (COPIAR ESTO)
+            console.log("═══════════════════════════════════════════");
+            console.log("🗺️  DATOS PARA TU MAPA (array de rutas):");
+            console.log("═══════════════════════════════════════════");
+            console.log(JSON.stringify(rutasConCoordenadas, null, 2));
+            console.log("═══════════════════════════════════════════");
+            console.log(`Total de ${rutasConCoordenadas.length} rutas`);
+            console.log("═══════════════════════════════════════════");
+            
+            // También lo guardamos en window para que puedas accederlo desde la consola
+            window.ultimasRutas = rutasConCoordenadas;
+            console.log("💡 TIP: Accede a los datos escribiendo 'window.ultimasRutas' en la consola");
+            
+            // Mostrar en la interfaz
+            lista.innerHTML = rutas.map((ruta, idx) => `
+                <div class="ruta-item">
+                    <strong>#${idx + 1}</strong> 
+                    Pedido <strong>${ruta.pedidoId}</strong>: 
+                    <strong>${ruta.origen}</strong> → <strong>${ruta.destino}</strong> 
+                    (Vuelo: ${ruta.vueloId})
+                    <br>
+                    <small>
+                        🕐 ${ruta.salida || 'N/A'} → ${ruta.llegada || 'N/A'} 
+                        | ⏱️ ${ruta.duracionHoras ? ruta.duracionHoras.toFixed(2) + 'h' : 'N/A'} 
+                        | 📏 ${ruta.distanciaKm ? ruta.distanciaKm.toFixed(0) + 'km' : 'N/A'}
+                    </small>
+                </div>
+            `).join('');
+        }
+
+        // ========== ACTUALIZAR TIEMPO ==========
+        function actualizarTiempo() {
+            if (startTime) {
+                const elapsed = (Date.now() - startTime) / 1000;
+                document.getElementById('statTiempo').textContent = 
+                    elapsed.toFixed(1) + 's';
+            }
+        }
+
+        // ========== DETENER ==========
+        function detenerSimulacion() {
+            if (!currentSimId) return;
+            
+            console.log("🛑 Deteniendo simulación...");
+            
+            fetch(BASE_URL + `/api/simulations/${currentSimId}/cancel`, { 
+                method: 'POST' 
+            }).then(() => {
+                console.log("✅ Orden de cancelación enviada");
+                finalizarSimulacion("🛑 Simulación detenida por el usuario");
+            }).catch(err => {
+                console.error("❌ Error al detener:", err);
+            });
+        }
+
+        // ========== FINALIZAR ==========
+        function finalizarSimulacion(mensaje) {
+            console.log(mensaje);
+            updateStatus(mensaje, 'connected');
+            clearInterval(timerInterval);
+            document.getElementById('btnStart').disabled = false;
+            document.getElementById('btnStop').disabled = true;
+        }
+
+        // ========== RESETEAR ==========
+        function resetearVisualizador() {
+            document.getElementById('statGeneracion').textContent = '0 / 0';
+            document.getElementById('statFitness').textContent = '0.0';
+            document.getElementById('statPedidos').textContent = '0 / 0';
+            document.getElementById('statTiempo').textContent = '0.0s';
+            document.getElementById('progressFill').style.width = '0%';
+            document.getElementById('progressFill').textContent = '0%';
+            document.getElementById('rutasCount').textContent = '0';
+            document.getElementById('rutasList').innerHTML = 
+                '<div class="no-rutas">Esperando datos...</div>';
+        }
+
+        // ========== STATUS ==========
+        function updateStatus(text, type) {
+            document.getElementById('statusText').textContent = text;
+            const dot = document.getElementById('statusDot');
+            dot.className = 'status-indicator status-' + type;
+        }
+    </script>
+</body>
+</html>

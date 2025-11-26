@@ -10,9 +10,12 @@ import { FaStop } from "react-icons/fa6";
 import { FaPlay } from "react-icons/fa6";
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import SockJS from 'sockjs-client';
+import { Client } from '@stomp/stompjs';
 import vuelosSemana from '../../../assets/data/vuelosSemana.json';
 import { getPlanificacionSemanal } from '../../../config/api';
 import './SimuladorSemanal.css';
+import './WebSocketStomp.css';
 import {
 	getAirports,
 	getFlights,
@@ -38,7 +41,43 @@ L.Icon.Default.mergeOptions({
 });
 
 /* Iconos de aviones personalizados como SVG dentro de divIcon */
-const createAirplaneIcon = (color, rotation = 0) => {
+/**
+ * Determinar color del avión basado en el estado del vuelo
+ * - Verde: Completado / En ruta sin retrasos
+ * - Rojo: Retrasado
+ * - Azul: En curso normal
+ */
+const getAircraftColorByStatus = (flight) => {
+	// Si el vuelo tiene un color personalizado (ej: del WebSocket), usarlo
+	if (flight.aircraftColor && flight.aircraftColor !== '#10b981') {
+		return flight.aircraftColor;
+	}
+	
+	// Lógica de estado basada en progreso y status
+	if (flight.status === 'completed' || flight.progress >= 100) {
+		return '#10b981'; // Verde - Completado
+	}
+	
+	if (flight.status === 'delayed' || flight.retrasado) {
+		return '#ef4444'; // Rojo - Retrasado
+	}
+	
+	// Estado normal basado en progreso
+	if (flight.progress > 75) {
+		return '#22c55e'; // Verde claro - Casi llegando
+	} else if (flight.progress > 50) {
+		return '#3b82f6'; // Azul - En ruta
+	} else if (flight.progress > 25) {
+		return '#60a5fa'; // Azul claro - Iniciando
+	}
+	
+	return '#3b82f6'; // Azul por defecto
+};
+
+const createAirplaneIcon = (flight, rotation = 0) => {
+	// Determinar color basado en el estado del vuelo
+	const color = getAircraftColorByStatus(flight);
+	
 	const iconSvg = `<svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
 			<ellipse cx="11" cy="11" rx="2" ry="10" fill="${color}" stroke="#ffffff" stroke-width="0.5"/>
 			<ellipse cx="11" cy="8" rx="9" ry="1.8" fill="${color}" stroke="#ffffff" stroke-width="0.5"/>
@@ -46,14 +85,104 @@ const createAirplaneIcon = (color, rotation = 0) => {
 			<path d="M11 17 L11 19.5 L10 19.5 L10 17 Z" fill="${color}" stroke="#ffffff" stroke-width="0.3"/>
 		</svg>`;
 
-	/* Crear divIcon con el SVG correspondiente */
+	/* Crear divIcon con el SVG correspondiente y transición suave */
 	return L.divIcon({
-		html: `<div style="transform: rotate(${rotation}deg); display: flex; align-items: center; justify-content: center; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));">${iconSvg}</div>`,
-		className: 'airplane-icon',
+		html: `<div style="transform: rotate(${rotation}deg); display: flex; align-items: center; justify-content: center; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2)); transition: transform 0.3s ease-out, filter 0.3s ease-out;">${iconSvg}</div>`,
+		className: 'airplane-icon-animated',
 		iconSize: [22, 22],
 		iconAnchor: [11, 11],
 		popupAnchor: [0, -12]
 	});
+};
+
+/**
+ * Crear popup detallado para un vuelo
+ */
+const createFlightPopup = (flight) => {
+	const statusIcon = 
+		flight.status === 'completed' || flight.progress >= 100 ? '✅' :
+		flight.status === 'delayed' || flight.retrasado ? '🔴' : '🔵';
+	
+	const statusText = 
+		flight.status === 'completed' || flight.progress >= 100 ? 'Completado' :
+		flight.status === 'delayed' || flight.retrasado ? 'Retrasado' : 'En curso';
+	
+	const color = getAircraftColorByStatus(flight);
+	
+	return `
+		<div style="min-width: 200px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+			<div style="background: linear-gradient(135deg, ${color}dd 0%, ${color}aa 100%); color: white; padding: 8px 12px; margin: -10px -10px 10px -10px; border-radius: 4px 4px 0 0;">
+				<strong style="font-size: 15px;">✈️ ${flight.id}</strong>
+			</div>
+			
+			<div style="padding: 4px 0;">
+				<div style="margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid #e5e7eb;">
+					<div style="font-size: 13px; color: #6b7280; margin-bottom: 4px;">
+						<strong>Ruta:</strong>
+					</div>
+					<div style="font-size: 14px; font-weight: 600; color: #1f2937;">
+						${flight.origin?.code || 'N/A'} → ${flight.destination?.code || 'N/A'}
+					</div>
+					${flight.origin?.region && flight.destination?.region ? 
+						`<div style="font-size: 11px; color: #9ca3af; margin-top: 2px;">
+							${flight.isSameContinentFlight ? '🌍 Mismo continente' : '🌏 Intercontinental'}
+						</div>` : ''
+					}
+				</div>
+				
+				<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
+					<div>
+						<div style="font-size: 11px; color: #6b7280;">Progreso</div>
+						<div style="font-size: 14px; font-weight: 600; color: #1f2937;">
+							${Math.round(flight.progress || 0)}%
+						</div>
+					</div>
+					<div>
+						<div style="font-size: 11px; color: #6b7280;">Estado</div>
+						<div style="font-size: 13px; font-weight: 600;">
+							${statusIcon} ${statusText}
+						</div>
+					</div>
+				</div>
+				
+				${flight.speed ? 
+					`<div style="margin-bottom: 6px;">
+						<div style="font-size: 11px; color: #6b7280;">Velocidad</div>
+						<div style="font-size: 13px; color: #1f2937;">${flight.speed} km/h</div>
+					</div>` : ''
+				}
+				
+				${flight.altitude ? 
+					`<div style="margin-bottom: 6px;">
+						<div style="font-size: 11px; color: #6b7280;">Altitud</div>
+						<div style="font-size: 13px; color: #1f2937;">${flight.altitude.toLocaleString()} ft</div>
+					</div>` : ''
+				}
+				
+				${flight.packageType ? 
+					`<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #e5e7eb;">
+						<div style="font-size: 11px; color: #6b7280;">Tipo de paquete</div>
+						<div style="font-size: 13px; color: #1f2937; font-weight: 500;">
+							${flight.packageType === 'AG' ? '📦 Algoritmo Genético' : 
+							  flight.packageType === 'Inicial' ? '🎯 Planificación Inicial' : 
+							  flight.packageType}
+						</div>
+						${flight.currentPackages !== undefined && flight.packageCapacity !== undefined ?
+							`<div style="font-size: 12px; color: #6b7280; margin-top: 2px;">
+								Capacidad: ${flight.currentPackages}/${flight.packageCapacity} paquetes
+							</div>` : ''
+						}
+					</div>` : ''
+				}
+				
+				${flight.pedidoId ? 
+					`<div style="margin-top: 6px; font-size: 11px; color: #6b7280;">
+						Pedido: <span style="font-family: monospace; color: #1f2937;">${flight.pedidoId}</span>
+					</div>` : ''
+				}
+			</div>
+		</div>
+	`;
 };
 
 /* Iconos de aeropuertos personalizados */
@@ -79,36 +208,163 @@ const createAirportIcon = (isSede = false, saturation = 0) => {
 /* Componente para manejar marcadores dinámicos en el mapa */
 function DynamicMarkers({ flights, airports, activeView, showRoutes }) {
 	const map = (0, require('react-leaflet').useMap)();
+	const markersRef = React.useRef({}); // Guardar marcadores por ID para animarlos
+	const polylinesRef = React.useRef({});
+	
 	/* Actualizar marcadores cuando cambian vuelos, aeropuertos, vista activa o rutas */
 	React.useEffect(() => {
-		const airportMarkers = []; const flightMarkers = [];
-		map.eachLayer(layer => { if (layer instanceof L.Marker || layer instanceof L.Polyline) map.removeLayer(layer); });
+		console.log(`🗺️ DynamicMarkers - Recibidos ${flights.length} vuelos, activeView: ${activeView}`);
+		
+		const airportMarkers = [];
+		
+		// Limpiar marcadores de aeropuertos antiguos
+		map.eachLayer(layer => { 
+			if (layer instanceof L.Marker && layer.options.isAirport) {
+				map.removeLayer(layer); 
+			}
+		});
+		
 		/* Añadir marcadores de aeropuertos si la vista es 'airports' o 'flights' */
 		if (activeView === 'airports' || activeView === 'flights') {
+			console.log(`🏢 Añadiendo ${airports.length} aeropuertos al mapa`);
 			airports.forEach(airport => {
 				const isUnlimited = airport.capacity === 'ILIMITADO';
 				const saturation = isUnlimited ? 0 : (airport.packages / airport.capacity) * 100;
 				const icon = createAirportIcon(airport.isSede, saturation);
-				const marker = L.marker([airport.lat, airport.lng], { icon }).bindPopup(`<div class="popup-content"><div class="popup-header"><strong class="popup-title ${airport.isSede ? 'sede-title' : 'airport-title'}">${airport.name}</strong></div></div>`);
-				marker.addTo(map); airportMarkers.push(marker);
+				const marker = L.marker([airport.lat, airport.lng], { 
+					icon,
+					isAirport: true // Flag para identificar
+				}).bindPopup(`<div class="popup-content"><div class="popup-header"><strong class="popup-title ${airport.isSede ? 'sede-title' : 'airport-title'}">${airport.name}</strong></div></div>`);
+				marker.addTo(map); 
+				airportMarkers.push(marker);
 			});
 		}
-		/* Añadir marcadores de vuelos y rutas si la vista es 'flights' o 'routes' */
+		
+		/* Actualizar o crear marcadores de vuelos con animación */
 		if (activeView === 'flights' || activeView === 'routes') {
-			flights.forEach(flight => {
-				const icon = createAirplaneIcon(flight.aircraftColor, flight.rotation);
-				const marker = L.marker([flight.currentLat, flight.currentLng], { icon }).bindPopup(`<div class="popup-content"><div class="popup-header"><strong class="popup-title">✈️ Vuelo ${flight.id}</strong></div></div>`);
-				marker.addTo(map); flightMarkers.push(marker);
+			console.log(`✈️ Actualizando ${flights.length} vuelos en el mapa con animación`);
+			
+			const currentFlightIds = new Set();
+			
+			flights.forEach((flight, index) => {
+				currentFlightIds.add(flight.id);
+				const existingMarker = markersRef.current[flight.id];
+				
+				if (existingMarker) {
+					// 🎬 ANIMAR: Mover marcador existente suavemente a nueva posición
+					const currentLatLng = existingMarker.getLatLng();
+					const newLatLng = L.latLng(flight.currentLat, flight.currentLng);
+					
+					// Solo animar si hay cambio significativo (> 0.001 grados ≈ 100m)
+					const distance = currentLatLng.distanceTo(newLatLng);
+					if (distance > 100) {
+						animateMarker(existingMarker, currentLatLng, newLatLng, 1000); // 1 segundo de animación
+					}
+					
+					// Actualizar ícono (ahora con estado dinámico)
+					const newIcon = createAirplaneIcon(flight, flight.rotation);
+					existingMarker.setIcon(newIcon);
+					
+					// Actualizar popup con información detallada
+					const popupContent = createFlightPopup(flight);
+					existingMarker.setPopupContent(popupContent);
+					
+				} else {
+					// 🆕 CREAR: Nuevo marcador para este vuelo
+					console.log(`  ✈️ Vuelo nuevo ${index + 1}: ${flight.id} - Color: ${flight.aircraftColor} - Pos: [${flight.currentLat}, ${flight.currentLng}]`);
+					
+					const icon = createAirplaneIcon(flight, flight.rotation);
+					const popupContent = createFlightPopup(flight);
+					
+					const marker = L.marker([flight.currentLat, flight.currentLng], { 
+						icon,
+						isFlight: true // Flag para identificar
+					}).bindPopup(popupContent);
+					
+					marker.addTo(map);
+					markersRef.current[flight.id] = marker;
+				}
+				
+				// Actualizar o crear polyline de ruta
 				if (showRoutes) {
-					const polyline = L.polyline([[flight.origin.lat, flight.origin.lng], [flight.destination.lat, flight.destination.lng]], { color: '#888', weight: 2, opacity: 0.6, dashArray: '5, 5' });
-					polyline.addTo(map);
+					const routeKey = `${flight.origin.lat},${flight.origin.lng}-${flight.destination.lat},${flight.destination.lng}`;
+					
+					if (!polylinesRef.current[routeKey]) {
+						const polyline = L.polyline(
+							[[flight.origin.lat, flight.origin.lng], [flight.destination.lat, flight.destination.lng]], 
+							{ color: '#888', weight: 2, opacity: 0.6, dashArray: '5, 5' }
+						);
+						polyline.addTo(map);
+						polylinesRef.current[routeKey] = polyline;
+					}
 				}
 			});
+			
+			// Remover marcadores de vuelos que ya no existen
+			Object.keys(markersRef.current).forEach(flightId => {
+				if (!currentFlightIds.has(flightId)) {
+					map.removeLayer(markersRef.current[flightId]);
+					delete markersRef.current[flightId];
+				}
+			});
+			
+			// Limpiar polylines si showRoutes está desactivado
+			if (!showRoutes) {
+				Object.values(polylinesRef.current).forEach(polyline => map.removeLayer(polyline));
+				polylinesRef.current = {};
+			}
+			
+			console.log(`✅ Total marcadores de vuelos activos: ${Object.keys(markersRef.current).length}`);
+		} else {
+			// Si no estamos en vista de vuelos, limpiar todos los marcadores de vuelos
+			Object.values(markersRef.current).forEach(marker => map.removeLayer(marker));
+			markersRef.current = {};
+			
+			Object.values(polylinesRef.current).forEach(polyline => map.removeLayer(polyline));
+			polylinesRef.current = {};
 		}
-		/* Limpiar marcadores al desmontar o actualizar */
-		return () => { airportMarkers.forEach(m => map.removeLayer(m)); flightMarkers.forEach(m => map.removeLayer(m)); };
+		
+		/* Limpiar marcadores de aeropuertos al desmontar */
+		return () => { 
+			airportMarkers.forEach(m => map.removeLayer(m)); 
+		};
 	}, [flights, airports, activeView, showRoutes, map]);
+	
 	return null;
+}
+
+/**
+ * Animar movimiento suave de marcador entre dos posiciones
+ * También actualiza la rotación del avión en la dirección del movimiento
+ */
+function animateMarker(marker, startLatLng, endLatLng, duration = 1000) {
+	const startTime = Date.now();
+	const startLat = startLatLng.lat;
+	const startLng = startLatLng.lng;
+	const endLat = endLatLng.lat;
+	const endLng = endLatLng.lng;
+	
+	// Calcular el ángulo de rotación basado en la dirección del movimiento
+	const rotation = bearingDegrees(startLat, startLng, endLat, endLng);
+	
+	function frame() {
+		const elapsed = Date.now() - startTime;
+		const progress = Math.min(elapsed / duration, 1);
+		
+		// Easing suave (ease-out cúbico) - más realista para movimiento de aviones
+		const eased = 1 - Math.pow(1 - progress, 3);
+		
+		const currentLat = startLat + (endLat - startLat) * eased;
+		const currentLng = startLng + (endLng - startLng) * eased;
+		
+		marker.setLatLng([currentLat, currentLng]);
+		
+		if (progress < 1) {
+			requestAnimationFrame(frame);
+		}
+	}
+	
+	requestAnimationFrame(frame);
 }
 
 /* Función para parsear fecha simulada en UTC */
@@ -148,6 +404,7 @@ const SimuladorSemanal = () => {
 	/* Datos de aeropuertos - se cargarán desde la API */
 	const [airports, setAirports] = useState([]);
 	const [loadingAirports, setLoadingAirports] = useState(true);
+	const airportsRef = useRef([]); // 🔥 Ref para tener siempre el valor actual de airports
 	const intervalRef = useRef(); /* Referencia para el intervalo de simulación */
 
 	// ==================== ESTADO SSE (TIEMPO DE SIMULACIÓN Y RUTAS) ====================
@@ -171,6 +428,20 @@ const SimuladorSemanal = () => {
 	const tiempoInicioRef = useRef(null); // Momento en que se inició la planificación
 	const intervalTiempoRealRef = useRef(null); // Intervalo para actualizar tiempo real
 	const [tiempoSimulacionActual, setTiempoSimulacionActual] = useState(null); // Hora de simulación del backend
+
+	// ==================== NUEVO: ESTADO WEBSOCKET STOMP (SIMULACIÓN SEMANAL) ====================
+	const [wsStompConectado, setWsStompConectado] = useState(false);
+	const [sessionId, setSessionId] = useState(null);
+	const [progresoAG, setProgresoAG] = useState(null);
+	const [mensajesSimulacion, setMensajesSimulacion] = useState([]);
+	const [estadoSimulacionStomp, setEstadoSimulacionStomp] = useState('disconnected'); // disconnected, connecting, connected, running, completed, error
+	const stompClientRef = useRef(null);
+	const subscriptionRef = useRef(null);
+
+	// 🔥 Refs para las funciones de procesamiento (evitan circular dependencies)
+	const procesarVuelosDirectosRef = useRef(null);
+	const procesarRutasSimulacionRef = useRef(null);
+	const procesarRutasSnapshotRef = useRef(null);
 
 
 
@@ -245,18 +516,45 @@ const SimuladorSemanal = () => {
 				const data = await getAirports();
 				console.log('Aeropuertos cargados desde API:', data.length, 'aeropuertos');
 				setAirports(data);
+				airportsRef.current = data; // 🔥 Actualizar ref
 			} catch (error) {
 				console.error('Error al cargar aeropuertos desde API:', error);
 				console.log('Usando datos de fallback...');
 				/* Fallback a datos estáticos en caso de error */
 				const fallbackData = [
+					{ name: 'Bruselas-Charleroi', code: 'EBCI', lat: 50.4592, lng: 4.4538, capacity: 'ILIMITADO', packages: 1200, isSede: true, region: 'Europa', country: 'Bélgica', operationType: 'Sede Principal - Hub Europeo' },
 					{ name: 'Lima-Jorge Chávez', code: 'SPIM', lat: -12.0219, lng: -77.1143, capacity: 'ILIMITADO', packages: 980, isSede: true, region: 'América del Sur', country: 'Perú', operationType: 'Sede Principal - Hub Sudamericano' },
 					{ name: 'Bogotá', code: 'SKBO', lat: 4.7016, lng: -74.1469, capacity: 900, packages: 720, isSede: false, region: 'América del Sur', country: 'Colombia', operationType: 'Aeropuerto Regional' },
 					{ name: 'Bruselas', code: 'BRU', lat: 50.9010, lng: 4.4844, capacity: 'ILIMITADO', packages: 850, isSede: true, region: 'Europa', country: 'Bélgica', operationType: 'Sede Principal - Hub Europeo' },
-					{ name: 'Amsterdam-Schiphol', code: 'AMS', lat: 52.3105, lng: 4.7683, capacity: 1200, packages: 960, isSede: false, region: 'Europa', country: 'Países Bajos', operationType: 'Aeropuerto Regional' }
+					{ name: 'Amsterdam-Schiphol', code: 'AMS', lat: 52.3105, lng: 4.7683, capacity: 1200, packages: 960, isSede: false, region: 'Europa', country: 'Países Bajos', operationType: 'Aeropuerto Regional' },
+					// Agregar todos los aeropuertos que el backend envía
+					{ name: 'Muscat', code: 'OOMS', lat: 23.5933, lng: 58.2844, capacity: 800, packages: 0, isSede: false, region: 'Asia', country: 'Omán', operationType: 'Aeropuerto Regional' },
+					{ name: 'Brasilia', code: 'SBBR', lat: -15.8697, lng: -47.9206, capacity: 950, packages: 0, isSede: false, region: 'América del Sur', country: 'Brasil', operationType: 'Aeropuerto Regional' },
+					{ name: 'Quito', code: 'SEQM', lat: -0.1277, lng: -78.3575, capacity: 750, packages: 0, isSede: false, region: 'América del Sur', country: 'Ecuador', operationType: 'Aeropuerto Regional' },
+					{ name: 'New Delhi', code: 'VIDP', lat: 28.5562, lng: 77.1000, capacity: 1100, packages: 0, isSede: false, region: 'Asia', country: 'India', operationType: 'Aeropuerto Regional' },
+					{ name: 'Amman', code: 'OJAI', lat: 31.7226, lng: 35.9932, capacity: 700, packages: 0, isSede: false, region: 'Asia', country: 'Jordania', operationType: 'Aeropuerto Regional' },
+					{ name: 'Amsterdam-Schiphol', code: 'EHAM', lat: 52.3105, lng: 4.7683, capacity: 1200, packages: 0, isSede: false, region: 'Europa', country: 'Países Bajos', operationType: 'Aeropuerto Regional' },
+					{ name: 'Prague', code: 'LKPR', lat: 50.1008, lng: 14.2600, capacity: 850, packages: 0, isSede: false, region: 'Europa', country: 'República Checa', operationType: 'Aeropuerto Regional' },
+					{ name: 'Sana\'a', code: 'OYSN', lat: 15.4762, lng: 44.2189, capacity: 600, packages: 0, isSede: false, region: 'Asia', country: 'Yemen', operationType: 'Aeropuerto Regional' },
+					{ name: 'Minsk', code: 'UMMS', lat: 53.8824, lng: 28.0307, capacity: 750, packages: 0, isSede: false, region: 'Europa', country: 'Bielorrusia', operationType: 'Aeropuerto Regional' },
+					{ name: 'Porto Alegre', code: 'SGAS', lat: -29.9944, lng: -51.1714, capacity: 800, packages: 0, isSede: false, region: 'América del Sur', country: 'Brasil', operationType: 'Aeropuerto Regional' },
+					{ name: 'Sofia', code: 'LBSF', lat: 42.6950, lng: 23.4114, capacity: 700, packages: 0, isSede: false, region: 'Europa', country: 'Bulgaria', operationType: 'Aeropuerto Regional' },
+					{ name: 'Berlin-Tempelhof', code: 'EDDI', lat: 52.4726, lng: 13.4040, capacity: 900, packages: 0, isSede: false, region: 'Europa', country: 'Alemania', operationType: 'Aeropuerto Regional' },
+					{ name: 'La Paz', code: 'SLLP', lat: -16.5133, lng: -68.1925, capacity: 650, packages: 0, isSede: false, region: 'América del Sur', country: 'Bolivia', operationType: 'Aeropuerto Regional' },
+					{ name: 'Dubai', code: 'OMDB', lat: 25.2528, lng: 55.3644, capacity: 1300, packages: 0, isSede: false, region: 'Asia', country: 'EAU', operationType: 'Aeropuerto Regional' },
+					{ name: 'Buenos Aires-Ezeiza', code: 'SABE', lat: -34.8222, lng: -58.5358, capacity: 1000, packages: 0, isSede: false, region: 'América del Sur', country: 'Argentina', operationType: 'Aeropuerto Regional' },
+					{ name: 'Riyadh', code: 'OERK', lat: 24.9578, lng: 46.6987, capacity: 950, packages: 0, isSede: false, region: 'Asia', country: 'Arabia Saudita', operationType: 'Aeropuerto Regional' },
+					{ name: 'Karachi', code: 'OPKC', lat: 24.9056, lng: 67.1608, capacity: 900, packages: 0, isSede: false, region: 'Asia', country: 'Pakistán', operationType: 'Aeropuerto Regional' },
+					{ name: 'Vienna', code: 'LOWW', lat: 48.1103, lng: 16.5697, capacity: 950, packages: 0, isSede: false, region: 'Europa', country: 'Austria', operationType: 'Aeropuerto Regional' },
+					{ name: 'Asunción', code: 'SUAA', lat: -25.2400, lng: -57.5194, capacity: 600, packages: 0, isSede: false, region: 'América del Sur', country: 'Paraguay', operationType: 'Aeropuerto Regional' },
+					{ name: 'Tirana', code: 'LATI', lat: 41.4147, lng: 19.7206, capacity: 550, packages: 0, isSede: false, region: 'Europa', country: 'Albania', operationType: 'Aeropuerto Regional' },
+					{ name: 'Zagreb', code: 'LDZA', lat: 45.7429, lng: 16.0688, capacity: 700, packages: 0, isSede: false, region: 'Europa', country: 'Croacia', operationType: 'Aeropuerto Regional' },
+					{ name: 'Damascus', code: 'OSDI', lat: 33.4114, lng: 36.5156, capacity: 650, packages: 0, isSede: false, region: 'Asia', country: 'Siria', operationType: 'Aeropuerto Regional' },
+					{ name: 'Baku', code: 'UBBB', lat: 40.4675, lng: 50.0467, capacity: 800, packages: 0, isSede: false, region: 'Asia', country: 'Azerbaiyán', operationType: 'Aeropuerto Regional' }
 				];
 				setAirports(fallbackData);
-				console.log('Datos de fallback cargados:', fallbackData.length, 'aeropuertos');
+				airportsRef.current = fallbackData; // 🔥 Actualizar ref con fallback
+				console.log('✅ Datos de fallback cargados:', fallbackData.length, 'aeropuertos');
 			} finally {
 				setLoadingAirports(false);
 				console.log('Carga de aeropuertos finalizada');
@@ -273,94 +571,25 @@ const SimuladorSemanal = () => {
 		}
 	}, [vuelosSemana]);
 
-	/* ==================== Efecto para actualizar vuelos según simClock ==================== */
-	useEffect(() => {
-		if (!simClock || planFixed.length === 0 || airports.length === 0) return;
+	/* ==================== VUELOS LOCALES DESHABILITADOS - SOLO WEBSOCKET ==================== */
+	// ❌ COMENTADO: Ya no usamos vuelos locales basados en planFixed y simClock
+	// ✅ AHORA: Todos los vuelos vienen del WebSocket mediante procesarRutasSimulacion()
+	
+	// useEffect(() => {
+	// 	if (!simClock || planFixed.length === 0 || airports.length === 0) return;
+	// 	... código comentado ...
+	// }, [simClock, planFixed, airports]);
 
-		const nuevos = [];
-
-		for (const vuelo of planFixed) {
-			const start = parseSimDateUTC(vuelo.fechaInicial);
-			const end = parseSimDateUTC(vuelo.fechaFinal);
-			if (!start || !end) continue;
-
-			// Ocultar completamente antes del inicio
-			if (simClock < start) {
-				continue; // No aparece hasta su fechaInicial
-			}
-
-			const totalMs = end - start;
-			// Evitar divisiones raras si el backend manda algo mal
-			if (!(totalMs > 0)) continue;
-
-			const elapsed = Math.max(0, Math.min(totalMs, simClock - start));
-			const progress = elapsed / totalMs; // 0..1
-
-			// Busca aeropuertos por código ICAO
-			const o = airports.find(a => String(a.code).toUpperCase() === String(vuelo.origenCodigoICAO).toUpperCase());
-			const d = airports.find(a => String(a.code).toUpperCase() === String(vuelo.destinoCodigoICAO).toUpperCase());
-			if (!o || !d) {
-				console.warn('ICAO no encontrado:', vuelo.origenCodigoICAO, vuelo.destinoCodigoICAO);
-				continue;
-			}
-
-			// Interpolación lineal
-			const currentLat = o.lat + (d.lat - o.lat) * progress;
-			const currentLng = o.lng + (d.lng - o.lng) * progress;
-
-			// Rotación (si tu SVG apunta a la derecha, ajusta -90)
-			const brg = bearingDegrees(o.lat, o.lng, d.lat, d.lng);
-			const rotation = (brg - 90 + 360) % 360;
-
-			// Estado y color
-			const enVuelo = progress > 0 && progress < 1;
-			const status = progress >= 1 ? 'arrived' : (progress <= 0 ? 'scheduled' : 'active');
-			const totalPaquetes = vuelo.totalPaquetes ?? 0;
-			const aircraftColor = '#007bff';
-
-			// 🔀 Política al llegar:
-			// A) Mantenerlo visible en el destino:
-			const mostrarAlLlegar = true;
-			if (!mostrarAlLlegar && progress >= 1) {
-				continue; // ❗ Ocúltalo tras llegar
-			}
-
-			nuevos.push({
-				id: `${vuelo.origenCodigoICAO}-${vuelo.destinoCodigoICAO}-${start.getTime()}`,
-				origin: { code: o.code, lat: o.lat, lng: o.lng, region: o.region },
-				destination: { code: d.code, lat: d.lat, lng: d.lng, region: d.region },
-				progress,
-				altitude: enVuelo ? 35000 : 0,
-				speed: enVuelo ? 850 : 0,
-				status,
-				currentLat, currentLng,
-				aircraftColor,
-				rotation,
-				packageCapacity: totalPaquetes,
-				currentPackages: totalPaquetes,
-				packageType: 'MPE',
-				isSameContinentFlight: o.region === d.region,
-			});
-		}
-
-		setFlights(nuevos);
-		setFlightsInAir(nuevos.filter(v => v.status === 'active').length);
-	}, [simClock, planFixed, airports]);
-
-	/* Efecto para avanzar el reloj de simulación en modo local */
-	useEffect(() => {
-		if (!simulacionActiva) return;
-
-		const advanceMs = DESIRED_TIME_SCALE * REAL_TICK_MS;
-
-		const id = setInterval(() => {
-			setSimClock(prev => (prev ? new Date(prev.getTime() + advanceMs) : null));
-			setTickActual(prev => prev + 1);          // 1 segundo
-			setTiempoRealMs(prev => prev + REAL_TICK_MS);
-		}, REAL_TICK_MS);
-
-		return () => clearInterval(id);
-	}, [simulacionActiva]);
+	/* ==================== RELOJ LOCAL DESHABILITADO - SOLO WEBSOCKET ==================== */
+	// ❌ COMENTADO: Ya no avanzamos el reloj localmente
+	// ✅ AHORA: El tiempo viene del backend en los mensajes WebSocket
+	
+	// useEffect(() => {
+	// 	if (!simulacionActiva) return;
+	// 	const advanceMs = DESIRED_TIME_SCALE * REAL_TICK_MS;
+	// 	const id = setInterval(() => { ... }, REAL_TICK_MS);
+	// 	return () => clearInterval(id);
+	// }, [simulacionActiva]);
 
 
 	// ==================== FUNCIONES PARA CONTROLAR SIMULACIÓN ====================
@@ -922,6 +1151,583 @@ const SimuladorSemanal = () => {
 		setAutoInicioIntentado(false);
 	}, [fechaInicioSimulacion]);
 
+	// ==================== FUNCIONES WEBSOCKET STOMP (SIMULACIÓN SEMANAL) ====================
+	
+	/**
+	 * Conectar WebSocket STOMP
+	 */
+	const conectarWebSocketStomp = useCallback(() => {
+		if (stompClientRef.current && stompClientRef.current.active) {
+			console.log('⚠️ WebSocket STOMP ya está conectado');
+			return;
+		}
+
+		console.log('📡 Conectando WebSocket STOMP...');
+		setEstadoSimulacionStomp('connecting');
+
+		const socket = new SockJS('http://localhost:8000/ws');
+		
+		const stompClient = new Client({
+			webSocketFactory: () => socket,
+			reconnectDelay: 5000,
+			heartbeatIncoming: 4000,
+			heartbeatOutgoing: 4000,
+			
+			onConnect: () => {
+				console.log('✅ WebSocket STOMP conectado');
+				setWsStompConectado(true);
+				setEstadoSimulacionStomp('connected');
+				agregarMensaje('✅ Conexión WebSocket establecida', 'success');
+			},
+			
+			onStompError: (frame) => {
+				console.error('❌ Error STOMP:', frame.headers['message']);
+				console.error('Detalles:', frame.body);
+				setEstadoSimulacionStomp('error');
+				agregarMensaje(`❌ Error STOMP: ${frame.headers['message']}`, 'error');
+			},
+			
+			onWebSocketError: (error) => {
+				console.error('❌ Error WebSocket:', error);
+				setWsStompConectado(false);
+				setEstadoSimulacionStomp('error');
+				agregarMensaje('❌ Error de conexión WebSocket', 'error');
+			},
+			
+			onDisconnect: () => {
+				console.log('🔌 WebSocket STOMP desconectado');
+				setWsStompConectado(false);
+				setEstadoSimulacionStomp('disconnected');
+				agregarMensaje('🔌 WebSocket desconectado', 'warning');
+			}
+		});
+
+		stompClient.activate();
+		stompClientRef.current = stompClient;
+	}, []);
+
+	/**
+	 * Desconectar WebSocket STOMP
+	 */
+	const desconectarWebSocketStomp = useCallback(() => {
+		if (subscriptionRef.current) {
+			subscriptionRef.current.unsubscribe();
+			subscriptionRef.current = null;
+		}
+
+		if (stompClientRef.current) {
+			stompClientRef.current.deactivate();
+			stompClientRef.current = null;
+		}
+
+		setWsStompConectado(false);
+		setEstadoSimulacionStomp('disconnected');
+		console.log('🔌 WebSocket STOMP desconectado completamente');
+	}, []);
+
+	/**
+	 * Agregar mensaje al log
+	 */
+	const agregarMensaje = useCallback((mensaje, tipo = 'info') => {
+		const nuevoMensaje = {
+			id: Date.now(),
+			texto: mensaje,
+			tipo, // success, error, warning, info
+			timestamp: new Date().toLocaleTimeString('es-ES')
+		};
+		setMensajesSimulacion(prev => [nuevoMensaje, ...prev].slice(0, 50));
+	}, []);
+
+	/**
+	 * Iniciar simulación semanal con WebSocket STOMP
+	 */
+	const iniciarSimulacionWebSocketStomp = useCallback(async () => {
+		if (!fechaInicioSimulacion) {
+			alert('Por favor, selecciona una fecha de inicio');
+			return;
+		}
+
+		if (!wsStompConectado) {
+			alert('WebSocket no conectado. Conectando...');
+			conectarWebSocketStomp();
+			return;
+		}
+
+		try {
+			console.log('🚀 Iniciando simulación semanal con WebSocket STOMP...');
+			
+			// 🧹 LIMPIAR VUELOS ANTERIORES antes de iniciar nueva simulación
+			console.log('🧹 Limpiando vuelos anteriores...');
+			setFlights([]);
+			setFlightsInAir(0);
+			setProgresoAG(null);
+			setMensajesSimulacion([]);
+			
+			setEstadoSimulacionStomp('running');
+			agregarMensaje(`🚀 Iniciando simulación para ${fechaInicioSimulacion}`, 'info');
+
+			// 1. Llamar al endpoint REST para iniciar
+			const response = await fetch('http://localhost:8000/api/simulations/start', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					fecha: fechaInicioSimulacion,
+					factorK: 5 // Factor K fijo para simulación semanal
+				})
+			});
+
+			if (!response.ok) {
+				throw new Error(`Error HTTP: ${response.status}`);
+			}
+
+			const data = await response.json();
+			console.log('📨 Respuesta del servidor:', data);
+
+			if (!data.sessionId) {
+				throw new Error('No se recibió sessionId del servidor');
+			}
+
+			setSessionId(data.sessionId);
+			agregarMensaje(`✅ Simulación iniciada - Session ID: ${data.sessionId}`, 'success');
+
+			// 2. Suscribirse al topic del WebSocket
+			const topicUrl = `/topic/simulations/${data.sessionId}`;
+			console.log(`📡 Suscribiéndose a: ${topicUrl}`);
+
+			const subscription = stompClientRef.current.subscribe(
+				topicUrl,
+				(message) => {
+					try {
+						const datos = JSON.parse(message.body);
+						console.log('📨 Mensaje recibido:', datos);
+						procesarMensajeSimulacion(datos);
+					} catch (error) {
+						console.error('❌ Error parseando mensaje:', error);
+						agregarMensaje('❌ Error procesando mensaje del servidor', 'error');
+					}
+				}
+			);
+
+			subscriptionRef.current = subscription;
+			agregarMensaje(`📡 Suscrito a: ${topicUrl}`, 'success');
+
+		} catch (error) {
+			console.error('❌ Error iniciando simulación:', error);
+			setEstadoSimulacionStomp('error');
+			agregarMensaje(`❌ Error: ${error.message}`, 'error');
+			alert(`Error al iniciar simulación: ${error.message}`);
+		}
+	}, [fechaInicioSimulacion, wsStompConectado, conectarWebSocketStomp, agregarMensaje]);
+
+	/**
+	 * Procesar mensajes recibidos del WebSocket
+	 */
+	const procesarMensajeSimulacion = useCallback((datos) => {
+		// Determinar tipo de mensaje
+		if (datos.tipo === 'PROGRESO_AG') {
+			// Mensaje de progreso del Algoritmo Genético
+			console.log(`🧬 Progreso AG - Generación ${datos.generacion}/${datos.maxGeneraciones}`);
+			
+			setProgresoAG({
+				generacion: datos.generacion,
+				maxGeneraciones: datos.maxGeneraciones,
+				progreso: datos.progreso,
+				mejorFitness: datos.mejorFitness,
+				fitnessPromedio: datos.fitnessPromedio,
+				pedidosProcesados: datos.pedidosProcesados,
+				pedidosTotales: datos.pedidosTotales,
+				fechaSimulada: datos.fechaSimulada
+			});
+
+			agregarMensaje(
+				`🧬 Generación ${datos.generacion}/${datos.maxGeneraciones} - Fitness: ${datos.mejorFitness?.toFixed(2)} - Progreso: ${datos.progreso?.toFixed(1)}%`,
+				'info'
+			);
+
+			// 🔥 NUEVO: Procesar vuelos directos (no rutas con subRutas)
+			// Usar refs para llamar a las funciones más recientes (evita closure problem)
+			if (datos.solucion?.vuelos && datos.solucion.vuelos.length > 0) {
+				console.log(`✈️ Procesando ${datos.solucion.vuelos.length} vuelos directos...`);
+				if (procesarVuelosDirectosRef.current) {
+					procesarVuelosDirectosRef.current(datos.solucion.vuelos);
+				}
+			} 
+			// Fallback: Si viene en formato antiguo (rutas con subRutas)
+			else if (datos.solucion?.rutas) {
+				console.log(`✈️ Procesando ${datos.solucion.rutas.length} rutas...`);
+				if (procesarRutasSimulacionRef.current) {
+					procesarRutasSimulacionRef.current(datos.solucion.rutas);
+				}
+			}
+
+		} else if (datos.status === 'RUNNING') {
+			// Snapshot de simulación en curso
+			console.log(`🎮 Simulación corriendo - Iteración ${datos.iteration}`);
+			
+			agregarMensaje(
+				`🎮 Iteración ${datos.iteration} - ${datos.processedOrders}/${datos.totalOrders} pedidos`,
+				'info'
+			);
+
+			if (datos.solution?.routes) {
+				// Procesar rutas si vienen en el snapshot
+				if (procesarRutasSnapshotRef.current) {
+					procesarRutasSnapshotRef.current(datos.solution.routes);
+				}
+			}
+
+		} else if (datos.status === 'COMPLETED') {
+			// Simulación completada
+			console.log('🎉 Simulación completada exitosamente');
+			setEstadoSimulacionStomp('completed');
+			agregarMensaje('🎉 Simulación completada exitosamente', 'success');
+
+			if (datos.solution?.routes) {
+				if (procesarRutasSnapshotRef.current) {
+					procesarRutasSnapshotRef.current(datos.solution.routes);
+				}
+			}
+
+			// Desuscribirse del topic
+			if (subscriptionRef.current) {
+				subscriptionRef.current.unsubscribe();
+				subscriptionRef.current = null;
+			}
+
+		} else if (datos.tipo === 'ERROR') {
+			// Error en la simulación
+			console.error('❌ Error en simulación:', datos.mensaje);
+			setEstadoSimulacionStomp('error');
+			agregarMensaje(`❌ Error: ${datos.mensaje}`, 'error');
+		}
+	}, [agregarMensaje]); // 🔥 No incluir funciones de procesamiento (causa circular reference)
+
+	/**
+	 * 🆕 Procesar vuelos DIRECTOS (formato nuevo del backend)
+	 * Formato: {origenCodigoICAO, destinoCodigoICAO, fechaInicial, fechaFinal, pedidos, totalPaquetes}
+	 */
+	const procesarVuelosDirectos = useCallback((vuelos) => {
+		const currentAirports = airportsRef.current; // 🔥 Usar ref para tener valor actual
+		console.log(`\n🔍 procesarVuelosDirectos - Recibidos ${vuelos?.length || 0} vuelos`);
+		console.log(`📍 Aeropuertos disponibles: ${currentAirports.length}`);
+		
+		if (!vuelos || vuelos.length === 0) {
+			console.warn('⚠️ No hay vuelos para procesar');
+			return;
+		}
+		
+		const nuevosVuelos = [];
+
+		vuelos.forEach((vuelo, index) => {
+			console.log(`\n✈️ Vuelo ${index + 1}/${vuelos.length}`);
+			console.log(`   Origen: ${vuelo.origenCodigoICAO} → Destino: ${vuelo.destinoCodigoICAO}`);
+			console.log(`   Paquetes: ${vuelo.totalPaquetes}`);
+			
+			// Buscar aeropuertos de origen y destino (case-insensitive)
+			const origen = currentAirports.find(a => 
+				a.code.toUpperCase() === vuelo.origenCodigoICAO.toUpperCase()
+			);
+			const destino = currentAirports.find(a => 
+				a.code.toUpperCase() === vuelo.destinoCodigoICAO.toUpperCase()
+			);
+
+			if (!origen) {
+				console.error(`   ❌ Aeropuerto ORIGEN no encontrado: "${vuelo.origenCodigoICAO}"`);
+				console.log(`   📋 Aeropuertos disponibles (primeros 5):`, currentAirports.slice(0, 5).map(a => a.code));
+				return;
+			}
+			
+			if (!destino) {
+				console.error(`   ❌ Aeropuerto DESTINO no encontrado: "${vuelo.destinoCodigoICAO}"`);
+				console.log(`   📋 Aeropuertos disponibles (primeros 5):`, currentAirports.slice(0, 5).map(a => a.code));
+				return;
+			}
+
+			console.log(`   ✅ Origen: ${origen.code} [${origen.lat}, ${origen.lng}]`);
+			console.log(`   ✅ Destino: ${destino.code} [${destino.lat}, ${destino.lng}]`);
+
+			// 🔥 Usar progreso fijo para visualización inmediata
+			const progress = 0.5; // Mitad del recorrido
+
+			// Interpolación de posición
+			const currentLat = origen.lat + (destino.lat - origen.lat) * progress;
+			const currentLng = origen.lng + (destino.lng - origen.lng) * progress;
+
+			// Calcular rotación
+			const brg = bearingDegrees(origen.lat, origen.lng, destino.lat, destino.lng);
+			const rotation = (brg - 90 + 360) % 360;
+
+			// Crear objeto de vuelo
+			const nuevoVuelo = {
+				id: `WS-${vuelo.pedidos?.[0]?.idPedido || index}-${Date.now()}-${Math.random()}`,
+				origin: {
+					code: vuelo.origenCodigoICAO,
+					lat: origen.lat,
+					lng: origen.lng,
+					region: origen.region
+				},
+				destination: {
+					code: vuelo.destinoCodigoICAO,
+					lat: destino.lat,
+					lng: destino.lng,
+					region: destino.region
+				},
+				progress,
+				altitude: 35000, // Siempre en vuelo
+				speed: 850, // Siempre con velocidad
+				status: 'active', // Siempre activo para visualización
+				currentLat,
+				currentLng,
+				aircraftColor: '#10b981', // 🟢 Verde para vuelos del WebSocket
+				rotation,
+				packageCapacity: vuelo.totalPaquetes || 1,
+				currentPackages: vuelo.totalPaquetes || 1,
+				packageType: 'WS',
+				isSameContinentFlight: origen.region === destino.region,
+				vuelo: `WS-${vuelo.pedidos?.[0]?.idPedido || index}`,
+				pedidoId: vuelo.pedidos?.[0]?.idPedido,
+				fechaInicial: vuelo.fechaInicial,
+				fechaFinal: vuelo.fechaFinal
+			};
+			
+			console.log(`   ✅ Vuelo creado en posición: [${currentLat.toFixed(2)}, ${currentLng.toFixed(2)}]`);
+			nuevosVuelos.push(nuevoVuelo);
+		});
+
+		console.log(`\n📊 ============================================`);
+		console.log(`📊 Total de vuelos WebSocket creados: ${nuevosVuelos.length}`);
+		console.log(`📊 ============================================\n`);
+		
+		if (nuevosVuelos.length > 0) {
+			console.log(`🗺️ Primer vuelo (ejemplo):`, {
+				id: nuevosVuelos[0].id,
+				from: nuevosVuelos[0].origin.code,
+				to: nuevosVuelos[0].destination.code,
+				position: [nuevosVuelos[0].currentLat, nuevosVuelos[0].currentLng],
+				color: nuevosVuelos[0].aircraftColor,
+				packages: nuevosVuelos[0].packageCapacity
+			});
+			
+			// 🔥 REEMPLAZAR todos los vuelos (no acumular)
+			console.log(`🔄 Reemplazando flights array con ${nuevosVuelos.length} vuelos nuevos`);
+			setFlights(nuevosVuelos);
+			
+			// ✅ Verificar que el estado se actualizó
+			setTimeout(() => {
+				console.log(`✅ Verificación: flights.length después de setFlights = ${nuevosVuelos.length}`);
+			}, 100);
+			
+			const vuelosActivos = nuevosVuelos.filter(v => v.status === 'active').length;
+			setFlightsInAir(vuelosActivos);
+			console.log(`✈️ Vuelos activos: ${vuelosActivos}`);
+		} else {
+			console.error(`❌ ¡NO SE CREARON VUELOS!`);
+			console.error(`   Vuelos recibidos:`, vuelos);
+			console.error(`   Aeropuertos disponibles:`, currentAirports.length);
+		}
+	}, []); // 🔥 Sin dependencias, usa airportsRef.current
+	
+	// 🔥 Actualizar ref después de crear la función
+	procesarVuelosDirectosRef.current = procesarVuelosDirectos;
+
+	/**
+	 * Procesar rutas recibidas del WebSocket y convertirlas a vuelos en el mapa
+	 * (FORMATO ANTIGUO - con subRutas)
+	 */
+	const procesarRutasSimulacion = useCallback((rutas) => {
+		const currentAirports = airportsRef.current; // 🔥 Usar ref
+		console.log(`🔍 procesarRutasSimulacion - Recibidas ${rutas?.length || 0} rutas`);
+		console.log(`📍 Aeropuertos disponibles: ${currentAirports.length}`);
+		
+		if (!rutas || rutas.length === 0) {
+			console.warn('⚠️ No hay rutas para procesar');
+			return;
+		}
+		
+		const nuevosVuelos = [];
+
+		rutas.forEach((ruta, rutaIdx) => {
+			console.log(`\n📦 Ruta ${rutaIdx + 1}/${rutas.length} - PedidoID: ${ruta.pedidoId}`);
+			console.log(`   SubRutas: ${ruta.subRutas?.length || 0}`);
+			
+			if (!ruta.subRutas || ruta.subRutas.length === 0) {
+				console.warn(`   ⚠️ Esta ruta no tiene subRutas`);
+				return;
+			}
+			
+			ruta.subRutas.forEach((subRuta, idx) => {
+				console.log(`\n  ✈️ SubRuta ${idx + 1}/${ruta.subRutas.length}: ${subRuta.origen} → ${subRuta.destino}`);
+				
+				// Buscar aeropuertos de origen y destino (case-insensitive)
+				const origen = currentAirports.find(a => 
+					a.code.toUpperCase() === subRuta.origen.toUpperCase()
+				);
+				const destino = currentAirports.find(a => 
+					a.code.toUpperCase() === subRuta.destino.toUpperCase()
+				);
+
+				if (!origen) {
+					console.error(`     ❌ Aeropuerto ORIGEN no encontrado: "${subRuta.origen}"`);
+					console.log(`     📋 Aeropuertos disponibles (primeros 5):`, currentAirports.slice(0, 5).map(a => a.code));
+					return;
+				}
+				
+				if (!destino) {
+					console.error(`     ❌ Aeropuerto DESTINO no encontrado: "${subRuta.destino}"`);
+					console.log(`     📋 Aeropuertos disponibles (primeros 5):`, currentAirports.slice(0, 5).map(a => a.code));
+					return;
+				}
+
+				console.log(`     ✅ Origen: ${origen.code} [${origen.lat}, ${origen.lng}]`);
+				console.log(`     ✅ Destino: ${destino.code} [${destino.lat}, ${destino.lng}]`);
+
+				// 🔥 Usar progreso fijo para visualización inmediata
+				const progress = 0.5; // Mitad del recorrido
+
+				// Interpolación de posición
+				const currentLat = origen.lat + (destino.lat - origen.lat) * progress;
+				const currentLng = origen.lng + (destino.lng - origen.lng) * progress;
+
+				// Calcular rotación
+				const brg = bearingDegrees(origen.lat, origen.lng, destino.lat, destino.lng);
+				const rotation = (brg - 90 + 360) % 360;
+
+				// Crear objeto de vuelo
+				const nuevoVuelo = {
+					id: `AG-${ruta.pedidoId}-${idx}-${Date.now()}-${Math.random()}`,
+					origin: {
+						code: subRuta.origen,
+						lat: origen.lat,
+						lng: origen.lng,
+						region: origen.region
+					},
+					destination: {
+						code: subRuta.destino,
+						lat: destino.lat,
+						lng: destino.lng,
+						region: destino.region
+					},
+					progress,
+					altitude: 35000, // Siempre en vuelo
+					speed: 850, // Siempre con velocidad
+					status: 'active', // Siempre activo para visualización
+					currentLat,
+					currentLng,
+					aircraftColor: '#10b981', // 🟢 Verde para vuelos del AG
+					rotation,
+					packageCapacity: 1,
+					currentPackages: 1,
+					packageType: 'AG',
+					isSameContinentFlight: origen.region === destino.region,
+					vuelo: subRuta.vuelo,
+					pedidoId: ruta.pedidoId
+				};
+				
+				console.log(`     ✅ Vuelo creado en posición: [${currentLat.toFixed(2)}, ${currentLng.toFixed(2)}]`);
+				nuevosVuelos.push(nuevoVuelo);
+			});
+		});
+
+		console.log(`\n📊 ============================================`);
+		console.log(`📊 Total de vuelos WebSocket creados: ${nuevosVuelos.length}`);
+		console.log(`📊 ============================================\n`);
+		
+		if (nuevosVuelos.length > 0) {
+			console.log(`🗺️ Primer vuelo (ejemplo):`, {
+				id: nuevosVuelos[0].id,
+				from: nuevosVuelos[0].origin.code,
+				to: nuevosVuelos[0].destination.code,
+				position: [nuevosVuelos[0].currentLat, nuevosVuelos[0].currentLng],
+				color: nuevosVuelos[0].aircraftColor
+			});
+			
+			// 🔥 REEMPLAZAR todos los vuelos (no acumular)
+			// Esto asegura que siempre mostramos solo los vuelos de la última generación
+			console.log(`🔄 Reemplazando flights array con ${nuevosVuelos.length} vuelos nuevos`);
+			setFlights(nuevosVuelos);
+			
+			const vuelosActivos = nuevosVuelos.filter(v => v.status === 'active').length;
+			setFlightsInAir(vuelosActivos);
+			console.log(`✈️ Vuelos activos: ${vuelosActivos}`);
+		} else {
+			console.error(`❌ ¡NO SE CREARON VUELOS!`);
+			console.error(`   Rutas recibidas:`, rutas);
+			console.error(`   Aeropuertos disponibles:`, currentAirports.length);
+		}
+	}, []); // 🔥 Sin dependencias, usa airportsRef.current
+	
+	// 🔥 Actualizar ref después de crear la función
+	procesarRutasSimulacionRef.current = procesarRutasSimulacion;
+
+	/**
+	 * Procesar rutas del snapshot de simulación
+	 */
+	const procesarRutasSnapshot = useCallback((routes) => {
+		// Similar a procesarRutasSimulacion pero para formato de snapshot
+		// Implementar según el formato específico de tu backend
+		console.log(`📊 Procesando ${routes.length} rutas del snapshot`);
+	}, []); // 🔥 Sin dependencias
+	procesarRutasSnapshotRef.current = procesarRutasSnapshot;
+
+	/**
+	 * Cancelar simulación en curso
+	 */
+	const cancelarSimulacionStomp = useCallback(async () => {
+		if (!sessionId) {
+			alert('No hay simulación activa para cancelar');
+			return;
+		}
+
+		try {
+			console.log(`🛑 Cancelando simulación ${sessionId}...`);
+			
+			const response = await fetch(`http://localhost:8000/api/simulations/${sessionId}/cancel`, {
+				method: 'POST'
+			});
+
+			if (response.ok) {
+				agregarMensaje('🛑 Simulación cancelada', 'warning');
+				setEstadoSimulacionStomp('cancelled');
+				
+				// Desuscribirse
+				if (subscriptionRef.current) {
+					subscriptionRef.current.unsubscribe();
+					subscriptionRef.current = null;
+				}
+			} else {
+				throw new Error('Error al cancelar simulación');
+			}
+		} catch (error) {
+			console.error('❌ Error cancelando simulación:', error);
+			agregarMensaje(`❌ Error: ${error.message}`, 'error');
+		}
+	}, [sessionId, agregarMensaje]);
+
+	/**
+	 * Limpiar todo (mensajes, vuelos, estado)
+	 */
+	const limpiarTodoStomp = useCallback(() => {
+		setMensajesSimulacion([]);
+		setProgresoAG(null);
+		setFlights([]);
+		setFlightsInAir(0);
+		setSessionId(null);
+		setEstadoSimulacionStomp('connected');
+		console.log('🧹 Todo limpiado');
+	}, []);
+
+	// Auto-conectar WebSocket STOMP al montar (OPCIONAL)
+	useEffect(() => {
+		// Comentar si no quieres auto-conexión
+		// conectarWebSocketStomp();
+		
+		return () => {
+			desconectarWebSocketStomp();
+		};
+	}, [conectarWebSocketStomp, desconectarWebSocketStomp]);
+
 	/* Calcular métricas de saturación de aeropuertos */
 	const getSaturation = () => {
 		const regularAirports = airports.filter(airport => !airport.isSede);
@@ -1399,6 +2205,329 @@ const SimuladorSemanal = () => {
 											</div>
 										)}
 									</div>
+								</div>
+							</div>
+
+							{/* ==================== PANEL WEBSOCKET STOMP (SIMULACIÓN SEMANAL) ==================== */}
+							<div style={{
+								marginTop: '20px',
+								padding: '20px',
+								background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+								borderRadius: '12px',
+								boxShadow: '0 10px 30px rgba(0,0,0,0.2)'
+							}}>
+								<div style={{
+									display: 'flex',
+									justifyContent: 'space-between',
+									alignItems: 'center',
+									marginBottom: '20px'
+								}}>
+									<h3 style={{ color: 'white', margin: 0, fontSize: '20px', fontWeight: '600' }}>
+										🌐 WebSocket STOMP - Simulación en Tiempo Real
+									</h3>
+									
+									{/* Indicador de estado */}
+									<div style={{
+										padding: '8px 16px',
+										borderRadius: '20px',
+										background: wsStompConectado ? '#10b981' : '#ef4444',
+										color: 'white',
+										fontWeight: '600',
+										fontSize: '14px',
+										display: 'flex',
+										alignItems: 'center',
+										gap: '8px',
+										boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+									}}>
+										<span style={{
+											width: '10px',
+											height: '10px',
+											borderRadius: '50%',
+											background: 'white',
+											animation: wsStompConectado ? 'pulse 2s infinite' : 'none'
+										}}></span>
+										{wsStompConectado ? 'CONECTADO' : 'DESCONECTADO'}
+									</div>
+								</div>
+
+								{/* Controles */}
+								<div style={{
+									display: 'flex',
+									gap: '12px',
+									flexWrap: 'wrap',
+									marginBottom: '20px'
+								}}>
+									{!wsStompConectado ? (
+										<button
+											onClick={conectarWebSocketStomp}
+											style={{
+												padding: '10px 20px',
+												background: '#10b981',
+												color: 'white',
+												border: 'none',
+												borderRadius: '8px',
+												fontWeight: '600',
+												cursor: 'pointer',
+												transition: 'all 0.3s',
+												boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)'
+											}}
+										>
+											🔌 Conectar WebSocket
+										</button>
+									) : (
+										<>
+											<button
+												onClick={iniciarSimulacionWebSocketStomp}
+												disabled={estadoSimulacionStomp === 'running' || !fechaInicioSimulacion}
+												style={{
+													padding: '10px 20px',
+													background: estadoSimulacionStomp === 'running' ? '#6b7280' : '#3b82f6',
+													color: 'white',
+													border: 'none',
+													borderRadius: '8px',
+													fontWeight: '600',
+													cursor: estadoSimulacionStomp === 'running' ? 'not-allowed' : 'pointer',
+													transition: 'all 0.3s',
+													boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
+												}}
+											>
+												🚀 Iniciar Simulación Semanal
+											</button>
+
+											<button
+												onClick={cancelarSimulacionStomp}
+												disabled={!sessionId || estadoSimulacionStomp !== 'running'}
+												style={{
+													padding: '10px 20px',
+													background: sessionId && estadoSimulacionStomp === 'running' ? '#ef4444' : '#6b7280',
+													color: 'white',
+													border: 'none',
+													borderRadius: '8px',
+													fontWeight: '600',
+													cursor: sessionId && estadoSimulacionStomp === 'running' ? 'pointer' : 'not-allowed',
+													transition: 'all 0.3s'
+												}}
+											>
+												🛑 Cancelar Simulación
+											</button>
+
+											<button
+												onClick={limpiarTodoStomp}
+												style={{
+													padding: '10px 20px',
+													background: '#f59e0b',
+													color: 'white',
+													border: 'none',
+													borderRadius: '8px',
+													fontWeight: '600',
+													cursor: 'pointer',
+													transition: 'all 0.3s'
+												}}
+											>
+												🧹 Limpiar Todo
+											</button>
+											
+											{/* 🔥 BOTÓN DE PRUEBA - Añadir vuelos manualmente */}
+											<button
+												onClick={() => {
+													console.log('🧪 PRUEBA: Añadiendo vuelos de prueba...');
+													const vuelosPrueba = [
+														{
+															id: `TEST-${Date.now()}-1`,
+															origin: { code: 'KJFK', lat: 40.6413, lng: -73.7781, region: 'North America' },
+															destination: { code: 'EGLL', lat: 51.4700, lng: -0.4543, region: 'Europe' },
+															progress: 0.5,
+															altitude: 35000,
+															speed: 850,
+															status: 'active',
+															currentLat: 46.0, // Mitad del Atlántico
+															currentLng: -37.0,
+															aircraftColor: '#10b981', // Verde
+															rotation: 45,
+															packageCapacity: 1,
+															currentPackages: 1,
+															packageType: 'TEST'
+														},
+														{
+															id: `TEST-${Date.now()}-2`,
+															origin: { code: 'EGLL', lat: 51.4700, lng: -0.4543, region: 'Europe' },
+															destination: { code: 'RJTT', lat: 35.5494, lng: 139.7798, region: 'Asia' },
+															progress: 0.3,
+															altitude: 35000,
+															speed: 850,
+															status: 'active',
+															currentLat: 55.0, // Europa del Este
+															currentLng: 50.0,
+															aircraftColor: '#ef4444', // Rojo
+															rotation: 90,
+															packageCapacity: 1,
+															currentPackages: 1,
+															packageType: 'TEST'
+														}
+													];
+													
+													console.log('🧪 Vuelos de prueba:', vuelosPrueba);
+													setFlights(prev => [...prev, ...vuelosPrueba]);
+													setFlightsInAir(prev => prev + 2);
+													console.log('✅ Vuelos de prueba añadidos');
+												}}
+												style={{
+													padding: '10px 20px',
+													background: '#8b5cf6',
+													color: 'white',
+													border: 'none',
+													borderRadius: '8px',
+													fontWeight: '600',
+													cursor: 'pointer',
+													transition: 'all 0.3s'
+												}}
+											>
+												🧪 Test Vuelos
+											</button>
+
+											<button
+												onClick={desconectarWebSocketStomp}
+												style={{
+													padding: '10px 20px',
+													background: '#6b7280',
+													color: 'white',
+													border: 'none',
+													borderRadius: '8px',
+													fontWeight: '600',
+													cursor: 'pointer',
+													transition: 'all 0.3s'
+												}}
+											>
+												🔌 Desconectar
+											</button>
+										</>
+									)}
+								</div>
+
+								{/* Progreso del AG */}
+								{progresoAG && (
+									<div style={{
+										background: 'rgba(255, 255, 255, 0.95)',
+										borderRadius: '10px',
+										padding: '20px',
+										marginBottom: '20px',
+										boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
+									}}>
+										<h4 style={{ margin: '0 0 15px 0', color: '#1f2937', fontSize: '16px', fontWeight: '600' }}>
+											🧬 Progreso del Algoritmo Genético
+										</h4>
+										
+										{/* Barra de progreso */}
+										<div style={{
+											width: '100%',
+											height: '30px',
+											background: '#e5e7eb',
+											borderRadius: '15px',
+											overflow: 'hidden',
+											marginBottom: '15px',
+											position: 'relative'
+										}}>
+											<div style={{
+												width: `${progresoAG.progreso || 0}%`,
+												height: '100%',
+												background: 'linear-gradient(90deg, #10b981 0%, #3b82f6 100%)',
+												transition: 'width 0.5s ease',
+												display: 'flex',
+												alignItems: 'center',
+												justifyContent: 'center',
+												color: 'white',
+												fontWeight: '600',
+												fontSize: '14px'
+											}}>
+												{progresoAG.progreso?.toFixed(1)}%
+											</div>
+										</div>
+
+										{/* Métricas */}
+										<div style={{
+											display: 'grid',
+											gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+											gap: '15px'
+										}}>
+											<div style={{ background: '#f3f4f6', padding: '12px', borderRadius: '8px' }}>
+												<div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Generación</div>
+												<div style={{ fontSize: '20px', fontWeight: '700', color: '#1f2937' }}>
+													{progresoAG.generacion} / {progresoAG.maxGeneraciones}
+												</div>
+											</div>
+
+											<div style={{ background: '#f3f4f6', padding: '12px', borderRadius: '8px' }}>
+												<div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Mejor Fitness</div>
+												<div style={{ fontSize: '20px', fontWeight: '700', color: '#10b981' }}>
+													{progresoAG.mejorFitness?.toFixed(2)}
+												</div>
+											</div>
+
+											<div style={{ background: '#f3f4f6', padding: '12px', borderRadius: '8px' }}>
+												<div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Fitness Promedio</div>
+												<div style={{ fontSize: '20px', fontWeight: '700', color: '#3b82f6' }}>
+													{progresoAG.fitnessPromedio?.toFixed(2)}
+												</div>
+											</div>
+
+											<div style={{ background: '#f3f4f6', padding: '12px', borderRadius: '8px' }}>
+												<div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Pedidos Procesados</div>
+												<div style={{ fontSize: '20px', fontWeight: '700', color: '#f59e0b' }}>
+													{progresoAG.pedidosProcesados} / {progresoAG.pedidosTotales}
+												</div>
+											</div>
+										</div>
+									</div>
+								)}
+
+								{/* Log de mensajes */}
+								<div style={{
+									background: 'rgba(255, 255, 255, 0.95)',
+									borderRadius: '10px',
+									padding: '15px',
+									maxHeight: '300px',
+									overflowY: 'auto',
+									boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
+								}}>
+									<h4 style={{ margin: '0 0 12px 0', color: '#1f2937', fontSize: '14px', fontWeight: '600' }}>
+										📝 Log de Eventos ({mensajesSimulacion.length})
+									</h4>
+									
+									{mensajesSimulacion.length === 0 ? (
+										<div style={{ textAlign: 'center', color: '#6b7280', padding: '20px', fontSize: '14px' }}>
+											No hay mensajes aún
+										</div>
+									) : (
+										<div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+											{mensajesSimulacion.map(msg => (
+												<div
+													key={msg.id}
+													style={{
+														padding: '10px 12px',
+														borderRadius: '6px',
+														background: 
+															msg.tipo === 'success' ? '#d1fae5' :
+															msg.tipo === 'error' ? '#fee2e2' :
+															msg.tipo === 'warning' ? '#fef3c7' :
+															'#dbeafe',
+														borderLeft: `4px solid ${
+															msg.tipo === 'success' ? '#10b981' :
+															msg.tipo === 'error' ? '#ef4444' :
+															msg.tipo === 'warning' ? '#f59e0b' :
+															'#3b82f6'
+														}`,
+														fontSize: '13px',
+														color: '#1f2937'
+													}}
+												>
+													<span style={{ fontWeight: '600', marginRight: '8px', fontSize: '11px', color: '#6b7280' }}>
+														{msg.timestamp}
+													</span>
+													{msg.texto}
+												</div>
+											))}
+										</div>
+									)}
 								</div>
 							</div>
 						</div>

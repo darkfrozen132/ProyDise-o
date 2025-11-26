@@ -1,6 +1,6 @@
 package com.proyecto.backend.controller;
 
-import com.proyecto.backend.service.WebSocketService;
+import com.proyecto.backend.simulation.service.WebSocketService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.messaging.handler.annotation.MessageMapping;

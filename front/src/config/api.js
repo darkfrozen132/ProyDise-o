@@ -1,10 +1,17 @@
 import axios from 'axios';
 
+// ==================== CONFIGURACIÓN CENTRALIZADA ====================
+// 🔧 Base URL del Backend (ajustar según tu entorno)
+const API_BASE_URL = process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
 
-const API_BASE_URL = "http://127.0.0.1:8000/api";
+// URL para REST API
+const REST_API_URL = `${API_BASE_URL}/api`;
+
+// URL para WebSocket (STOMP + SockJS)
+const WS_URL = `${API_BASE_URL}/ws`;
 
 const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: REST_API_URL,
   timeout: 300000,
   headers: {
     'Content-Type': 'application/json',
@@ -72,14 +79,14 @@ export const transformAirportData = (backendAirport) => {
 // Función para obtener aeropuertos transformados
 export const getAirports = async () => {
   try {
-    console.log('Solicitando aeropuertos a:', API_BASE_URL + '/aeropuertos/listar');
+    console.log('Solicitando aeropuertos a:', REST_API_URL + '/aeropuertos/listar');
     const response = await api.get('/aeropuertos/listar');
-    console.log('Respuesta recibida:', response.data);
+    console.log('✅ Respuesta recibida:', response.data.length, 'aeropuertos');
     const transformed = response.data.map(transformAirportData);
-    console.log('Aeropuertos transformados:', transformed);
+    console.log('✅ Aeropuertos transformados:', transformed.length, 'aeropuertos');
     return transformed;
   } catch (error) {
-    console.error('Error al obtener aeropuertos:', error);
+    console.error('❌ Error al obtener aeropuertos:', error);
     throw error;
   }
 };
@@ -324,5 +331,5 @@ export const getPlanificacionSemanal = async (fecha, factorK) => {
 };
 
 export default api;
-export { API_BASE_URL };
+export { API_BASE_URL, REST_API_URL, WS_URL };
   

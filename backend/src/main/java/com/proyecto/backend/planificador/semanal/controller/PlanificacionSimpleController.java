@@ -62,11 +62,11 @@ public class PlanificacionSimpleController {
             parametros.setMaxGeneraciones(maxGeneraciones);
             parametros.setLimiteGeneracionesSinMejora(limiteGeneracionesSinMejora);
             
-            PlanificacionRequest request = new PlanificacionRequest(
-                    fecha,
-                    factorK,
-                    parametros
-            );
+            PlanificacionRequest request = new PlanificacionRequest();
+            request.setFecha(fecha);
+            request.setFactorK(factorK);
+            request.setParametrosGenetico(parametros);
+            // startTime por defecto es 00:00
             
             long inicio = System.currentTimeMillis();
             

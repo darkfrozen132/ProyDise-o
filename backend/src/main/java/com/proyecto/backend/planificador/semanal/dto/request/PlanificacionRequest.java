@@ -5,8 +5,12 @@ import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 /**
  * Request para ejecutar la planificacion de rutas con el algoritmo genetico
@@ -28,6 +32,10 @@ public class PlanificacionRequest {
 
     @NotNull(message = "La fecha es obligatoria")
     private LocalDate fecha;
+
+    @JsonFormat(pattern = "HH:mm")
+    @JsonProperty("hora")
+    private LocalTime startTime = LocalTime.of(0, 0);
 
     @Min(value = 1, message = "K debe ser al menos 1")
     private int factorK;
@@ -98,5 +106,15 @@ public class PlanificacionRequest {
      */
     public int calcularRangoConsumoMinutos() {
         return getParametrosGenetico().calcularSaltoConsumo(factorK);
+    }
+
+    /**
+     * Obtiene la fecha y hora de inicio combinadas
+     *
+     * @return LocalDateTime con fecha y hora de inicio
+     */
+    public LocalDateTime getStartDateTime() {
+        LocalTime time = (startTime != null) ? startTime : LocalTime.of(0, 0);
+        return LocalDateTime.of(fecha, time);
     }
 }

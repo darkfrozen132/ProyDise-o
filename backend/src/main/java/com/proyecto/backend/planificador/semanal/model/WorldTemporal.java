@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -34,6 +35,9 @@ public class WorldTemporal {
     private final LocalDate fechaInicio;
     private final LocalDate fechaFin;
     private final int numeroDias;
+    
+    // Hora de inicio de la simulacion (para filtrar vuelos anteriores)
+    private final LocalDateTime horaInicioSimulacion;
 
     // Vuelos expandidos: Map<id, VueloInstancia>
     // Ejemplo key: "SPIM-SEQM-20250117-0334"
@@ -51,13 +55,25 @@ public class WorldTemporal {
      * @param numeroDias Numero de dias del horizonte temporal
      */
     public WorldTemporal(World worldBase, LocalDate fechaInicio, int numeroDias) {
+        this(worldBase, fechaInicio.atStartOfDay(), numeroDias);
+    }
+    
+    /**
+     * Constructor con hora de inicio especifica
+     *
+     * @param worldBase World base con templates
+     * @param horaInicio Fecha y hora de inicio de la simulacion (UTC)
+     * @param numeroDias Numero de dias del horizonte temporal
+     */
+    public WorldTemporal(World worldBase, LocalDateTime horaInicio, int numeroDias) {
         this.worldBase = worldBase;
-        this.fechaInicio = fechaInicio;
+        this.fechaInicio = horaInicio.toLocalDate();
+        this.horaInicioSimulacion = horaInicio;
         this.numeroDias = numeroDias;
         this.fechaFin = fechaInicio.plusDays(numeroDias - 1);
 
-        log.info("Creando WorldTemporal para horizonte: {} a {} ({} dias)",
-                fechaInicio, fechaFin, numeroDias);
+        log.info("Creando WorldTemporal para horizonte: {} a {} ({} dias), hora inicio: {}",
+                fechaInicio, fechaFin, numeroDias, horaInicio);
 
         // Expandir vuelos
         long inicio = System.currentTimeMillis();
@@ -71,11 +87,13 @@ public class WorldTemporal {
 
     /**
      * Expande todos los templates de vuelos para el horizonte temporal
+     * Solo incluye vuelos que salgan despues de la hora de inicio de la simulacion
      *
      * @return Map de vuelos expandidos
      */
     private Map<String, VueloInstancia> expandirVuelos() {
         Map<String, VueloInstancia> vuelos = new HashMap<>();
+        int vuelosFiltrados = 0;
 
         // Para cada template
         for (PlanDeVuelo template : worldBase.getPlanesVuelo()) {
@@ -93,8 +111,20 @@ public class WorldTemporal {
                 VueloInstancia instancia = new VueloInstancia(
                         template, dia, fechaInicio, origen, destino
                 );
+                
+                // Filtrar vuelos que salgan antes de la hora de inicio de la simulacion
+                if (instancia.getSalidaUTC().isBefore(horaInicioSimulacion)) {
+                    vuelosFiltrados++;
+                    continue;
+                }
+                
                 vuelos.put(instancia.getId(), instancia);
             }
+        }
+        
+        if (vuelosFiltrados > 0) {
+            log.info("Se filtraron {} vuelos que salian antes de {}", 
+                    vuelosFiltrados, horaInicioSimulacion);
         }
 
         return vuelos;
@@ -343,5 +373,55 @@ public class WorldTemporal {
      */
     public double calcularDistanciaKm(String codigo1, String codigo2) {
         return worldBase.calcularDistanciaKm(codigo1, codigo2);
+    }
+
+    /**
+     * Crea una copia independiente del WorldTemporal para evaluación paralela.
+     * Los vuelos expandidos se copian con sus capacidades reseteadas.
+     * 
+     * @return Nueva instancia de WorldTemporal con vuelos independientes
+     */
+    public WorldTemporal copiarParaEvaluacion() {
+        // Crear nuevo mapa de vuelos con capacidades reseteadas
+        Map<String, VueloInstancia> vuelosCopiados = new HashMap<>();
+        for (Map.Entry<String, VueloInstancia> entry : vuelosExpandidos.entrySet()) {
+            vuelosCopiados.put(entry.getKey(), entry.getValue().copiar());
+        }
+        
+        // Reconstruir índice por día y origen
+        Map<Integer, Map<String, List<VueloInstancia>>> indiceCopiado = new HashMap<>();
+        for (Map.Entry<Integer, Map<String, List<VueloInstancia>>> diaEntry : vuelosPorDiaYOrigen.entrySet()) {
+            int dia = diaEntry.getKey();
+            Map<String, List<VueloInstancia>> origenMap = new HashMap<>();
+            
+            for (Map.Entry<String, List<VueloInstancia>> origenEntry : diaEntry.getValue().entrySet()) {
+                String origen = origenEntry.getKey();
+                List<VueloInstancia> vuelosOrigen = new ArrayList<>();
+                
+                for (VueloInstancia vuelo : origenEntry.getValue()) {
+                    // Usar el vuelo copiado del mapa principal
+                    vuelosOrigen.add(vuelosCopiados.get(vuelo.getId()));
+                }
+                origenMap.put(origen, vuelosOrigen);
+            }
+            indiceCopiado.put(dia, origenMap);
+        }
+        
+        return new WorldTemporal(this, vuelosCopiados, indiceCopiado);
+    }
+
+    /**
+     * Constructor privado para copia
+     */
+    private WorldTemporal(WorldTemporal original, 
+                          Map<String, VueloInstancia> vuelosCopiados,
+                          Map<Integer, Map<String, List<VueloInstancia>>> indiceCopiado) {
+        this.worldBase = original.worldBase;
+        this.fechaInicio = original.fechaInicio;
+        this.fechaFin = original.fechaFin;
+        this.numeroDias = original.numeroDias;
+        this.horaInicioSimulacion = original.horaInicioSimulacion;
+        this.vuelosExpandidos = vuelosCopiados;
+        this.vuelosPorDiaYOrigen = indiceCopiado;
     }
 }

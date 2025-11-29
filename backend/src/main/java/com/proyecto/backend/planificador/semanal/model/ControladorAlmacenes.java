@@ -318,4 +318,21 @@ public class ControladorAlmacenes {
         return String.format("ControladorAlmacenes[%d aeropuertos, %d con capacidad limitada, %d slots (%d dias)]",
                 almacenesRegistrados, almacenesConCapacidad, numeroSlots, numeroSlots / 24);
     }
+
+    /**
+     * Crea una copia independiente del controlador para evaluación paralela.
+     * La copia tiene todas las reservas limpiadas.
+     * 
+     * @return Nueva instancia de ControladorAlmacenes sin reservas
+     */
+    public ControladorAlmacenes copiarParaEvaluacion() {
+        ControladorAlmacenes copia = new ControladorAlmacenes(numeroSlots / 24, fechaBase);
+        
+        // Copiar los aeropuertos registrados (sin reservas)
+        for (Map.Entry<String, Almacen> entry : almacenes.entrySet()) {
+            copia.registrarAeropuerto(entry.getKey(), entry.getValue().capacidadMaxima);
+        }
+        
+        return copia;
+    }
 }

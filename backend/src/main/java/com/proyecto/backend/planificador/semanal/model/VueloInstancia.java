@@ -341,4 +341,29 @@ public class VueloInstancia {
         return String.format("VueloInstancia[%s, salida=%s UTC, llegada=%s UTC, capacidad=%d/%d (%.1f%%)]",
                 id, salidaUTC, llegadaUTC, capacidadUsada, capacidadMaxima, getPorcentajeOcupacion());
     }
+
+    /**
+     * Crea una copia independiente de este vuelo para evaluación paralela.
+     * La copia tiene la capacidad reseteada a 0.
+     * 
+     * @return Nueva instancia de VueloInstancia con capacidad reseteada
+     */
+    public VueloInstancia copiar() {
+        return new VueloInstancia(this);
+    }
+
+    /**
+     * Constructor de copia privado
+     */
+    private VueloInstancia(VueloInstancia original) {
+        this.template = original.template;
+        this.diaRelativo = original.diaRelativo;
+        this.fechaBase = original.fechaBase;
+        this.salidaUTC = original.salidaUTC;
+        this.llegadaUTC = original.llegadaUTC;
+        this.id = original.id;
+        this.capacidadMaxima = original.capacidadMaxima;
+        this.capacidadUsada = 0; // Resetear capacidad para evaluación independiente
+        this.estado = EstadoVuelo.PROGRAMADO;
+    }
 }

@@ -72,8 +72,10 @@ public class SimulationService {
      * @return UUID de la sesión creada
      */
     public UUID startSimulation(SimulationRequest request) {
-        log.info("🚀 Iniciando nueva simulación con fecha={}, factorK={}", 
-                request.getStartDate(), request.getFactorK());
+        log.info("🚀 Iniciando nueva simulación con fecha={}, hora={}, factorK={}", 
+                request.getStartDate(), 
+                request.getStartTime() != null ? request.getStartTime() : "00:00",
+                request.getFactorK());
 
         // 1. Crear sesión
         SimulationSession session = SimulationSession.create(request);
@@ -193,8 +195,11 @@ public class SimulationService {
 
         try {
             int iteration = 0;
-            LocalDateTime currentTime = session.getConfiguration().getStartDate().atStartOfDay();
+            // 🆕 Usar getStartDateTime() que combina fecha + hora de inicio
+            LocalDateTime currentTime = session.getConfiguration().getStartDateTime();
             int saltoConsumo = calculateSaltoConsumo(session.getConfiguration().getFactorK());
+            
+            log.info("⏰ Tiempo inicial de simulación: {}", currentTime);
 
             // 🆕 ESTADO EN RAM: Inicializar estado de pedidos para esta sesión
             List<PedidoSemanal> todosPedidos = world.orders();

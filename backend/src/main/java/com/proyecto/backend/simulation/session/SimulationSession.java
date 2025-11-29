@@ -83,12 +83,13 @@ public class SimulationSession {
         this.currentFitness = new AtomicReference<>(0.0);
         this.bestFitness = new AtomicReference<>(0.0);
 
-        // Inicialización de tiempo
+        // Inicialización de tiempo - usar getStartDateTime() para incluir hora de inicio
         this.lastUpdateTimestamp = new AtomicLong(System.currentTimeMillis());
-        this.currentSimulationTime = new AtomicReference<>(configuration.getStartDate().atStartOfDay());
+        this.currentSimulationTime = new AtomicReference<>(configuration.getStartDateTime());
         this.latestSnapshot = new AtomicReference<>(null);
 
-        log.info("✅ Sesión creada: {} con factorK={}", sessionName, configuration.getFactorK());
+        log.info("✅ Sesión creada: {} con factorK={}, inicio={}", 
+                sessionName, configuration.getFactorK(), configuration.getStartDateTime());
     }
 
     /**

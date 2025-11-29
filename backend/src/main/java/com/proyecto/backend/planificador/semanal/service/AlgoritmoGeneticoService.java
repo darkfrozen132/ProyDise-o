@@ -78,12 +78,14 @@
         int numeroDias = calcularHorizonteDias(request, pedidos);
         log.info("Horizonte temporal: {} dias", numeroDias);
 
-        // Crear WorldTemporal para esta ejecucion
-        WorldTemporal worldTemporal = new WorldTemporal(world, request.getFecha(), numeroDias);
+        // Usar la hora de inicio del request (por defecto 00:00)
+        LocalDateTime fechaBaseUTC = request.getStartDateTime();
+
+        // Crear WorldTemporal para esta ejecucion (filtra vuelos anteriores a fechaBaseUTC)
+        WorldTemporal worldTemporal = new WorldTemporal(world, fechaBaseUTC, numeroDias);
         log.info("WorldTemporal creado: {}", worldTemporal.getEstadisticas());
 
         // Crear controlador de almacenes para rastrear ocupacion
-        LocalDateTime fechaBaseUTC = LocalDateTime.of(request.getFecha(), LocalTime.MIDNIGHT);
         ControladorAlmacenes controladorAlmacenes = new ControladorAlmacenes(numeroDias, fechaBaseUTC);
 
         // Registrar todos los aeropuertos con sus capacidades
@@ -139,12 +141,14 @@
         int numeroDias = calcularHorizonteDias(request, pedidos);
         log.info("Horizonte temporal: {} dias", numeroDias);
 
-        // Crear WorldTemporal para esta ejecucion
-        WorldTemporal worldTemporal = new WorldTemporal(world, request.getFecha(), numeroDias);
+        // Usar la hora de inicio del request (por defecto 00:00)
+        LocalDateTime fechaBaseUTC = request.getStartDateTime();
+
+        // Crear WorldTemporal para esta ejecucion (filtra vuelos anteriores a fechaBaseUTC)
+        WorldTemporal worldTemporal = new WorldTemporal(world, fechaBaseUTC, numeroDias);
         log.info("WorldTemporal creado: {}", worldTemporal.getEstadisticas());
 
         // Crear controlador de almacenes para rastrear ocupacion
-        LocalDateTime fechaBaseUTC = LocalDateTime.of(request.getFecha(), LocalTime.MIDNIGHT);
         ControladorAlmacenes controladorAlmacenes = new ControladorAlmacenes(numeroDias, fechaBaseUTC);
 
         // Registrar todos los aeropuertos con sus capacidades
@@ -199,21 +203,20 @@
         log.info("Pedidos pendientes a planificar: {}", pedidosPendientes.size());
 
         // 2. Calcular horizonte dinamico (fecha maxima de pedido + 3 dias)
-        LocalDate fechaBase = state.getTiempoRealInicio().toLocalDate();
-        int diasNecesarios = calcularHorizonteDinamico(fechaBase, tiempoHasta);
+        LocalDateTime fechaBaseUTC = state.getTiempoRealInicio();
+        int diasNecesarios = calcularHorizonteDinamico(fechaBaseUTC.toLocalDate(), tiempoHasta);
         log.info("Horizonte dinamico: {} dias", diasNecesarios);
 
         // 3. Obtener World base
         World world = worldCacheService.getWorld();
 
-        // 4. Crear WorldTemporal con horizonte dinamico
-        WorldTemporal worldTemporal = new WorldTemporal(world, fechaBase, diasNecesarios);
+        // 4. Crear WorldTemporal con horizonte dinamico (filtra vuelos anteriores a fechaBaseUTC)
+        WorldTemporal worldTemporal = new WorldTemporal(world, fechaBaseUTC, diasNecesarios);
 
         // 5. Inicializar WorldTemporal desde state (cargar capacidades ya usadas)
         inicializarWorldDesdeState(worldTemporal, state);
 
         // 6. Crear ControladorAlmacenes y cargar desde state
-        LocalDateTime fechaBaseUTC = LocalDateTime.of(fechaBase, LocalTime.MIDNIGHT);
         ControladorAlmacenes controladorAlmacenes = new ControladorAlmacenes(diasNecesarios, fechaBaseUTC);
 
         // Registrar aeropuertos
@@ -1468,11 +1471,19 @@
 
             World world = worldCacheService.getWorld();
             LocalDate fecha = tiempoActualSimulacion.toLocalDate();
-            List<PedidoSemanal> pedidos = cargarPedidosEnRango(new PlanificacionRequest(fecha, factorK, null), tiempoActualSimulacion);
-            int numeroDias = calcularHorizonteDias(new PlanificacionRequest(fecha, factorK, null), pedidos);
+            
+            // Crear request con la hora de la simulación
+            PlanificacionRequest tempRequest = new PlanificacionRequest();
+            tempRequest.setFecha(fecha);
+            tempRequest.setStartTime(tiempoActualSimulacion.toLocalTime());
+            tempRequest.setFactorK(factorK);
+            
+            List<PedidoSemanal> pedidos = cargarPedidosEnRango(tempRequest, tiempoActualSimulacion);
+            int numeroDias = calcularHorizonteDias(tempRequest, pedidos);
 
-            WorldTemporal worldTemporal = new WorldTemporal(world, fecha, numeroDias);
-            LocalDateTime fechaBaseUTC = LocalDateTime.of(fecha, LocalTime.MIDNIGHT);
+            // Usar hora de inicio de la simulación
+            LocalDateTime fechaBaseUTC = tiempoActualSimulacion;
+            WorldTemporal worldTemporal = new WorldTemporal(world, fechaBaseUTC, numeroDias);
             ControladorAlmacenes controladorAlmacenes = new ControladorAlmacenes(numeroDias, fechaBaseUTC);
 
             for (Aeropuerto aeropuerto : world.getAeropuertos().values()) {

@@ -9,18 +9,19 @@ import lombok.Setter;
 import lombok.ToString;
 
 /**
- * Entidad que representa un Pedido/Envío en el sistema MoraPack
+ * Entidad que representa un Pedido/Envío SEMANAL en el sistema MoraPack
+ * Usado para planificaciones de una semana completa
  * 
  * Formato de archivo: dd-hh-mm-dest-###-IdClien
  * Ejemplo: 30-09-15-SEQM-145-0054321
  */
 @Entity
-@Table(name = "pedidos")
+@Table(name = "pedidos_semanal")
 @Getter
 @Setter
 @NoArgsConstructor
 @ToString
-public class Pedido {
+public class PedidoSemanal {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -58,14 +59,11 @@ public class Pedido {
     @NotNull(message = "El ID del cliente es obligatorio")
     private String clienteId;
 
-    @Column(nullable = false, length = 20)
-    private String estado; // PENDIENTE, ASIGNADO, EN_RUTA, ENTREGADO, CANCELADO
-
     /**
      * Constructor con todos los parametros
      */
-    public Pedido(int anio, int mes, int dia, int hora, int minuto, String aeropuertoDestinoId, 
-                  int cantidadProductos, String clienteId) {
+    public PedidoSemanal(int anio, int mes, int dia, int hora, int minuto, String aeropuertoDestinoId, 
+                         int cantidadProductos, String clienteId) {
         this.anio = anio;
         this.mes = mes;
         this.dia = dia;
@@ -74,21 +72,13 @@ public class Pedido {
         this.aeropuertoDestinoId = aeropuertoDestinoId;
         this.cantidadProductos = cantidadProductos;
         this.clienteId = clienteId;
-        this.estado = "PENDIENTE";
-    }
-
-    @PrePersist
-    protected void onCreate() {
-        if (estado == null || estado.isEmpty()) {
-            estado = "PENDIENTE";
-        }
     }
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof Pedido)) return false;
-        Pedido pedido = (Pedido) o;
+        if (!(o instanceof PedidoSemanal)) return false;
+        PedidoSemanal pedido = (PedidoSemanal) o;
         return id != null && id.equals(pedido.id);
     }
 

@@ -1,14 +1,15 @@
 package com.proyecto.backend.simulation.service;
 
-import com.proyecto.backend.model.Pedido;
+import com.proyecto.backend.model.PedidoSemanal;
 import com.proyecto.backend.model.PlanDeVuelo;
 import com.proyecto.backend.planificador.semanal.service.AlgoritmoGeneticoService;
-import com.proyecto.backend.repository.PedidoRepository;
+import com.proyecto.backend.repository.PedidoSemanalRepository;
 import com.proyecto.backend.repository.PlanDeVueloRepository;
 import com.proyecto.backend.simulation.dto.ProgresoAGDTO;
 import com.proyecto.backend.simulation.dto.SimulationRequest;
 import com.proyecto.backend.simulation.dto.SimulationSnapshot;
 import com.proyecto.backend.simulation.session.SimulationSession;
+import com.proyecto.backend.simulation.state.SessionStateManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -26,6 +27,7 @@ import java.util.concurrent.Executors;
  * Características:
  * - Gestión de múltiples simulaciones simultáneas con Virtual Threads
  * - Sin bloqueo de BD (sin @Transactional en simulación)
+ * - Estado de pedidos COMPLETAMENTE EN RAM (SessionStateManager)
  * - Comunicación en tiempo real vía WebSocket/STOMP
  * - Throttling inteligente (500ms) para no saturar el frontend
  * - Limpieza automática de sesiones antiguas
@@ -34,9 +36,10 @@ import java.util.concurrent.Executors;
  * - Cada simulación corre en su propio Virtual Thread
  * - Estado thread-safe con AtomicBoolean/AtomicReference
  * - ConcurrentHashMap para gestión de sesiones
+ * - Cada sesión tiene su propio estado de pedidos AISLADO
  * 
  * @author Sistema Package Planner
- * @version 1.0
+ * @version 2.0 - Estado en RAM
  */
 @Slf4j
 @Service
@@ -44,10 +47,11 @@ import java.util.concurrent.Executors;
 public class SimulationService {
 
     // ============ DEPENDENCIAS ============
-    private final PedidoRepository pedidoRepository;
+    private final PedidoSemanalRepository pedidoSemanalRepository;
     private final PlanDeVueloRepository planDeVueloRepository;
     private final WebSocketService webSocketService;
     private final AlgoritmoGeneticoService algoritmoGeneticoService;
+    private final SessionStateManager sessionStateManager;
 
     // ============ GESTIÓN DE SESIONES ============
     private final ConcurrentHashMap<UUID, SimulationSession> activeSessions = new ConcurrentHashMap<>();
@@ -180,9 +184,11 @@ public class SimulationService {
     /**
      * Ejecuta la simulación en un Virtual Thread
      * NO tiene @Transactional para no bloquear la BD
+     * ESTADO DE PEDIDOS EN RAM: Cada sesión tiene su propio estado aislado
      */
     private void runSimulation(SimulationSession session, WorldSnapshot world) {
         session.setExecutionThread(Thread.currentThread());
+        String sessionId = session.getSessionId().toString();
         log.info("🎯 Iniciando ejecución de {}", session.getSessionName());
 
         try {
@@ -190,12 +196,16 @@ public class SimulationService {
             LocalDateTime currentTime = session.getConfiguration().getStartDate().atStartOfDay();
             int saltoConsumo = calculateSaltoConsumo(session.getConfiguration().getFactorK());
 
-            // Filtrar solo pedidos PENDIENTES no procesados aún (lista mutable)
-            List<Pedido> remainingOrders = new ArrayList<>(world.orders().stream()
-                    .filter(p -> "PENDIENTE".equals(p.getEstado()))
-                    .toList());
+            // 🆕 ESTADO EN RAM: Inicializar estado de pedidos para esta sesión
+            List<PedidoSemanal> todosPedidos = world.orders();
+            sessionStateManager.inicializarSesion(sessionId, todosPedidos);
             
-            log.info("📊 Iniciando simulación con {} pedidos PENDIENTES totales", remainingOrders.size());
+            // Filtrar pedidos PENDIENTES usando SessionStateManager (RAM, no BD)
+            List<PedidoSemanal> remainingOrders = new ArrayList<>(
+                sessionStateManager.filtrarPedidosPendientes(sessionId, todosPedidos)
+            );
+            
+            log.info("📊 Sesión {} iniciada con {} pedidos PENDIENTES en RAM", sessionId, remainingOrders.size());
 
             while (session.isRunning() && !remainingOrders.isEmpty()) {
                 // Verificar pausa
@@ -217,7 +227,7 @@ public class SimulationService {
                 
                 // 1. Buscar pedidos en ventana de tiempo
                 LocalDateTime windowEnd = currentTime.plusMinutes(saltoConsumo);
-                List<Pedido> pendingOrders = findOrdersInWindow(remainingOrders, currentTime, windowEnd);
+                List<PedidoSemanal> pendingOrders = findOrdersInWindow(remainingOrders, currentTime, windowEnd);
 
                 if (pendingOrders.isEmpty()) {
                     // No hay pedidos en esta ventana, avanzar al siguiente grupo de pedidos
@@ -236,13 +246,14 @@ public class SimulationService {
                         currentTime
                 );
 
-                // 3. Marcar pedidos como procesados (en memoria, no en BD todavía)
-                pendingOrders.forEach(p -> p.setEstado("ASIGNADO"));
+                // 3. 🆕 Marcar pedidos como PLANIFICADOS en RAM (SessionStateManager)
+                Set<Long> pedidosAsignados = pendingOrders.stream()
+                        .map(PedidoSemanal::getId)
+                        .collect(java.util.stream.Collectors.toSet());
+                sessionStateManager.marcarComoAsignados(sessionId, pedidosAsignados);
                 
-                // 4. Actualizar lista de pedidos restantes
-                remainingOrders = remainingOrders.stream()
-                        .filter(p -> "PENDIENTE".equals(p.getEstado()))
-                        .toList();
+                // 4. Actualizar lista de pedidos restantes desde RAM
+                remainingOrders = sessionStateManager.filtrarPedidosPendientes(sessionId, todosPedidos);
                 
                 log.debug("✅ Procesados {} pedidos. Restantes: {}", 
                         pendingOrders.size(), remainingOrders.size());
@@ -288,7 +299,9 @@ public class SimulationService {
             session.error();
             sendErrorUpdate(session, e.getMessage());
         } finally {
-            log.info("🏁 {} finalizado", session.getSessionName());
+            // 🆕 Limpiar estado de sesión de RAM
+            sessionStateManager.limpiarSesion(sessionId);
+            log.info("🏁 {} finalizado. Estado de sesión limpiado de RAM.", session.getSessionName());
         }
     }
 
@@ -298,7 +311,7 @@ public class SimulationService {
      * Ejecuta el algoritmo genético REAL con callback de progreso
      */
     private SimulationResult runGeneticAlgorithm(
-            List<Pedido> orders,
+            List<PedidoSemanal> orders,
             List<PlanDeVuelo> flights,
             SimulationRequest config,
             SimulationSession session,
@@ -352,17 +365,20 @@ public class SimulationService {
     /**
      * Carga un snapshot inmutable de los datos de BD
      * Se ejecuta UNA SOLA VEZ al inicio (sin bloqueo transaccional)
+     * 
+     * 🆕 ESTADO EN RAM: Los pedidos se cargan sin filtrar por estado
+     * El estado se maneja completamente en SessionStateManager
      */
     private WorldSnapshot loadWorldSnapshot(SimulationRequest request) {
         log.info("📦 Cargando snapshot del mundo...");
 
-        // Cargar TODOS los pedidos pendientes
-        List<Pedido> allOrders = pedidoRepository.findByEstado("PENDIENTE");
+        // 🆕 Cargar TODOS los pedidos (sin filtro por estado - estado en RAM)
+        List<PedidoSemanal> allOrders = pedidoSemanalRepository.findAll();
         
         // Cargar TODOS los planes de vuelo disponibles
         List<PlanDeVuelo> allFlights = planDeVueloRepository.findAll();
 
-        log.info("✅ Snapshot cargado: {} pedidos, {} vuelos", 
+        log.info("✅ Snapshot cargado: {} pedidos totales, {} vuelos", 
                 allOrders.size(), allFlights.size());
 
         return new WorldSnapshot(allOrders, allFlights);
@@ -371,8 +387,8 @@ public class SimulationService {
     /**
      * Busca pedidos en la ventana de tiempo [start, end)
      */
-    private List<Pedido> findOrdersInWindow(
-            List<Pedido> orders,
+    private List<PedidoSemanal> findOrdersInWindow(
+            List<PedidoSemanal> orders,
             LocalDateTime start,
             LocalDateTime end) {
         
@@ -523,7 +539,7 @@ public class SimulationService {
      * Snapshot inmutable del mundo (pedidos + vuelos)
      */
     private record WorldSnapshot(
-            List<Pedido> orders,
+            List<PedidoSemanal> orders,
             List<PlanDeVuelo> flights
     ) {
         public int totalOrders() {

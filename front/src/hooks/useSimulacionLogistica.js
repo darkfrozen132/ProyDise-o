@@ -233,7 +233,7 @@ export const useSimulacionLogistica = () => {
 
     if (data.solucion) {
       setSolucion({
-        rutas: data.solucion.rutas || [],
+        rutas: data.solucion.vuelos || [],  // CORREGIDO: usar 'vuelos' en lugar de 'rutas'
         metricas: data.solucion.metricas || {
           totalRutas: 0,
           totalVuelos: 0,

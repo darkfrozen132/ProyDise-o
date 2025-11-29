@@ -1,6 +1,6 @@
 package com.proyecto.backend.planificador.semanal.model;
 
-import com.proyecto.backend.model.Pedido;
+import com.proyecto.backend.model.PedidoSemanal;
 import lombok.Data;
 
 import java.util.ArrayList;
@@ -22,7 +22,7 @@ public class Solution {
     public static final double PESO_VIOLACION_CAPACIDAD = -1000.0; // Penalizacion critica
 
     // Rutas planificadas por pedido
-    private Map<Pedido, List<SubRuta>> rutas;
+    private Map<PedidoSemanal, List<SubRuta>> rutas;
 
     // Uso de capacidad por vuelo (key: identificador unico del vuelo)
     private Map<String, Integer> capacidadUsada;
@@ -57,7 +57,7 @@ public class Solution {
      * @param pedido Pedido
      * @param subrutas Lista de subrutas planificadas
      */
-    public void agregarRutas(Pedido pedido, List<SubRuta> subrutas) {
+    public void agregarRutas(PedidoSemanal pedido, List<SubRuta> subrutas) {
         this.rutas.put(pedido, new ArrayList<>(subrutas));
     }
 
@@ -67,7 +67,7 @@ public class Solution {
      * @param pedido Pedido
      * @return Lista de subrutas o lista vacia si no existe
      */
-    public List<SubRuta> getRutas(Pedido pedido) {
+    public List<SubRuta> getRutas(PedidoSemanal pedido) {
         return rutas.getOrDefault(pedido, new ArrayList<>());
     }
 
@@ -149,8 +149,8 @@ public class Solution {
         this.pedidosNoEntregados = 0;
 
         // Clasificar cada pedido
-        for (Map.Entry<Pedido, List<SubRuta>> entry : rutas.entrySet()) {
-            Pedido pedido = entry.getKey();
+        for (Map.Entry<PedidoSemanal, List<SubRuta>> entry : rutas.entrySet()) {
+            PedidoSemanal pedido = entry.getKey();
             List<SubRuta> subrutas = entry.getValue();
 
             EstadoEntrega estado = calculador.calcularEstadoEntrega(pedido, subrutas);

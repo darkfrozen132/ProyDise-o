@@ -1,12 +1,11 @@
 package com.proyecto.backend.service;
 
-import com.proyecto.backend.model.Pedido;
-import com.proyecto.backend.repository.PedidoRepository;
+import com.proyecto.backend.model.PedidoSemanal;
+import com.proyecto.backend.repository.PedidoSemanalRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
-// import java.sql.PreparedStatement; // Removing duplicate import
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,64 +22,48 @@ import java.sql.PreparedStatement;
 @Slf4j
 public class PedidoService {
 
-    private final PedidoRepository pedidoRepository;
+    private final PedidoSemanalRepository pedidoSemanalRepository;
     private final JdbcTemplate jdbcTemplate;
 
     /**
-     * Obtiene todos los pedidos
+     * Obtiene todos los pedidos semanales
      */
     @Transactional(readOnly = true)
-    public List<Pedido> obtenerTodos() {
-        return pedidoRepository.findAll();
+    public List<PedidoSemanal> obtenerTodos() {
+        return pedidoSemanalRepository.findAll();
     }
 
     /**
      * Busca un pedido por ID
      */
     @Transactional(readOnly = true)
-    public Pedido buscarPorId(Long id) {
-        return pedidoRepository.findById(id)
+    public PedidoSemanal buscarPorId(Long id) {
+        return pedidoSemanalRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Pedido no encontrado: " + id));
-    }
-
-    /**
-     * Busca pedidos por estado
-     */
-    @Transactional(readOnly = true)
-    public List<Pedido> buscarPorEstado(String estado) {
-        return pedidoRepository.findByEstado(estado);
     }
 
     /**
      * Busca pedidos por aeropuerto destino
      */
     @Transactional(readOnly = true)
-    public List<Pedido> buscarPorAeropuertoDestino(String aeropuertoDestinoId) {
-        return pedidoRepository.findByAeropuertoDestinoId(aeropuertoDestinoId);
+    public List<PedidoSemanal> buscarPorAeropuertoDestino(String aeropuertoDestinoId) {
+        return pedidoSemanalRepository.findByAeropuertoDestinoId(aeropuertoDestinoId);
     }
 
     /**
      * Busca pedidos por cliente
      */
     @Transactional(readOnly = true)
-    public List<Pedido> buscarPorCliente(String clienteId) {
-        return pedidoRepository.findByClienteId(clienteId);
+    public List<PedidoSemanal> buscarPorCliente(String clienteId) {
+        return pedidoSemanalRepository.findByClienteId(clienteId);
     }
 
     /**
      * Busca pedidos por día
      */
     @Transactional(readOnly = true)
-    public List<Pedido> buscarPorDia(int dia) {
-        return pedidoRepository.findByDia(dia);
-    }
-
-    /**
-     * Busca pedidos por estado y aeropuerto destino
-     */
-    @Transactional(readOnly = true)
-    public List<Pedido> buscarPorEstadoYDestino(String estado, String aeropuertoDestinoId) {
-        return pedidoRepository.findByEstadoAndAeropuertoDestinoId(estado, aeropuertoDestinoId);
+    public List<PedidoSemanal> buscarPorDia(int dia) {
+        return pedidoSemanalRepository.findByDia(dia);
     }
 
     /**
@@ -88,15 +71,10 @@ public class PedidoService {
      */
     @Transactional(readOnly = true)
     public Map<String, Long> obtenerEstadisticas() {
-        List<Pedido> pedidos = pedidoRepository.findAll();
+        List<PedidoSemanal> pedidos = pedidoSemanalRepository.findAll();
         
         return Map.of(
-            "total", (long) pedidos.size(),
-            "pendientes", pedidoRepository.countByEstado("PENDIENTE"),
-            "asignados", pedidoRepository.countByEstado("ASIGNADO"),
-            "enRuta", pedidoRepository.countByEstado("EN_RUTA"),
-            "entregados", pedidoRepository.countByEstado("ENTREGADO"),
-            "cancelados", pedidoRepository.countByEstado("CANCELADO")
+            "total", (long) pedidos.size()
         );
     }
 
@@ -104,18 +82,18 @@ public class PedidoService {
      * Crea un nuevo pedido
      */
     @Transactional
-    public Pedido crear(Pedido pedido) {
+    public PedidoSemanal crear(PedidoSemanal pedido) {
         log.info("Creando pedido para cliente: {} con destino: {}", 
             pedido.getClienteId(), pedido.getAeropuertoDestinoId());
-        return pedidoRepository.save(pedido);
+        return pedidoSemanalRepository.save(pedido);
     }
 
     /**
      * Actualiza un pedido existente
      */
     @Transactional
-    public Pedido actualizar(Long id, Pedido pedido) {
-        Pedido existente = buscarPorId(id);
+    public PedidoSemanal actualizar(Long id, PedidoSemanal pedido) {
+        PedidoSemanal existente = buscarPorId(id);
 
         existente.setAnio(pedido.getAnio());
         existente.setMes(pedido.getMes());
@@ -125,23 +103,9 @@ public class PedidoService {
         existente.setAeropuertoDestinoId(pedido.getAeropuertoDestinoId());
         existente.setCantidadProductos(pedido.getCantidadProductos());
         existente.setClienteId(pedido.getClienteId());
-        existente.setEstado(pedido.getEstado());
 
         log.info("Actualizando pedido ID: {}", id);
-        return pedidoRepository.save(existente);
-    }
-
-    /**
-     * Actualiza el estado de un pedido
-     */
-    @Transactional
-    public Pedido actualizarEstado(Long id, String nuevoEstado) {
-        Pedido pedido = buscarPorId(id);
-        String estadoAnterior = pedido.getEstado();
-        pedido.setEstado(nuevoEstado);
-        
-        log.info("Actualizando estado del pedido ID: {} de {} a {}", id, estadoAnterior, nuevoEstado);
-        return pedidoRepository.save(pedido);
+        return pedidoSemanalRepository.save(existente);
     }
 
     /**
@@ -149,35 +113,9 @@ public class PedidoService {
      */
     @Transactional
     public void eliminar(Long id) {
-        Pedido pedido = buscarPorId(id);
-        pedidoRepository.delete(pedido);
+        PedidoSemanal pedido = buscarPorId(id);
+        pedidoSemanalRepository.delete(pedido);
         log.info("Pedido eliminado: ID {}", id);
-    }
-
-    /**
-     * Resetea todos los pedidos a estado PENDIENTE
-     * Usado cuando se cierra el WebSocket o se reinicia la simulación
-     */
-    @Transactional
-    public int resetearTodosAPendiente() {
-        List<Pedido> todosPedidos = pedidoRepository.findAll();
-        int count = 0;
-        
-        for (Pedido pedido : todosPedidos) {
-            if (!"PENDIENTE".equals(pedido.getEstado())) {
-                pedido.setEstado("PENDIENTE");
-                count++;
-            }
-        }
-        
-        if (count > 0) {
-            pedidoRepository.saveAll(todosPedidos);
-            log.info("✅ {} pedidos reseteados a PENDIENTE", count);
-        } else {
-            log.info("ℹ️ Todos los pedidos ya estaban en PENDIENTE");
-        }
-        
-        return count;
     }
 
     /**
@@ -185,30 +123,30 @@ public class PedidoService {
      */
     @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public void limpiarPedidos() {
-        long count = pedidoRepository.count();
-        pedidoRepository.deleteAllNative();
-        log.info("Se eliminaron {} pedidos de la base de datos (DELETE nativo)", count);
+        long count = pedidoSemanalRepository.count();
+        pedidoSemanalRepository.deleteAllNative();
+        log.info("Se eliminaron {} pedidos semanales de la base de datos (DELETE nativo)", count);
     }
 
     /**
-     * Carga pedidos desde TODOS los archivos de la carpeta c.1inf54.25.2.pedidos.v01
-     * OPTIMIZADO: Lectura paralela + batch insert grande
+     * Carga pedidos desde el archivo Pedidos.txt a la tabla pedidos_semanal
+     * OPTIMIZADO: Lectura + batch insert grande
      * IMPORTANTE: Limpia la BD antes de cargar para evitar duplicados
      * Formato: id_pedido-aaaammdd-hh-mm-dest-###-IdClien
      * Ejemplo: 000000001-20250102-00-54-LOWW-002-0000068
      * @return Lista de pedidos cargados
      */
     @Transactional
-    public List<Pedido> cargarDesdeArchivo() {
+    public List<PedidoSemanal> cargarDesdeArchivo() {
         // Limpiar la base de datos antes de cargar
-        log.info("Limpiando pedidos existentes...");
+        log.info("Limpiando pedidos semanales existentes...");
         limpiarPedidos();
 
         try {
-            log.info("� Cargando pedidos desde Pedidos.txt...");
+            log.info("📦 Cargando pedidos desde Pedidos.txt a tabla pedidos_semanal...");
             
             ClassPathResource resource = new ClassPathResource("datos/Pedidos.txt");
-            List<Pedido> pedidos = new ArrayList<>();
+            List<PedidoSemanal> pedidos = new ArrayList<>();
             
             long inicioLectura = System.currentTimeMillis();
             
@@ -241,7 +179,7 @@ public class PedidoService {
                         int mes = Integer.parseInt(fecha.substring(4, 6));
                         int dia = Integer.parseInt(fecha.substring(6, 8));
                         
-                        Pedido pedido = new Pedido();
+                        PedidoSemanal pedido = new PedidoSemanal();
                         pedido.setAnio(anio);
                         pedido.setMes(mes);
                         pedido.setDia(dia);
@@ -250,7 +188,6 @@ public class PedidoService {
                         pedido.setAeropuertoDestinoId(partes[4]);
                         pedido.setCantidadProductos(Integer.parseInt(partes[5]));
                         pedido.setClienteId(partes[6]);
-                        pedido.setEstado("PENDIENTE");
                         
                         pedidos.add(pedido);
                         
@@ -265,14 +202,14 @@ public class PedidoService {
             
             // Guardar con JDBC batch insert
             if (!pedidos.isEmpty()) {
-                log.info("💾 Guardando {} pedidos en la base de datos...", pedidos.size());
+                log.info("💾 Guardando {} pedidos semanales en la base de datos...", pedidos.size());
                 
                 long inicioGuardado = System.currentTimeMillis();
                 guardarConJdbcBatch(pedidos);
                 long finGuardado = System.currentTimeMillis();
                 
                 long tiempoTotal = finGuardado - inicioLectura;
-                log.info("✅ COMPLETADO: {} pedidos cargados en {} ms total", pedidos.size(), tiempoTotal);
+                log.info("✅ COMPLETADO: {} pedidos semanales cargados en {} ms total", pedidos.size(), tiempoTotal);
                 log.info("   📊 Lectura: {} ms | Inserción BD: {} ms", 
                         (finLectura - inicioLectura), (finGuardado - inicioGuardado));
             }
@@ -284,40 +221,6 @@ public class PedidoService {
             throw new RuntimeException("No se pudo cargar el archivo Pedidos.txt", e);
         }
     }
-    
-    /**
-     * Lee un archivo de pedidos (usado para lectura paralela)
-     */
-    private java.util.List<Pedido> leerArchivoPedidos(java.io.File archivo) {
-        java.util.List<Pedido> pedidos = new ArrayList<>(150_000); // ~120k líneas promedio
-        
-        try (BufferedReader reader = new BufferedReader(
-                new java.io.FileReader(archivo, java.nio.charset.StandardCharsets.UTF_8))) {
-
-            String linea;
-            while ((linea = reader.readLine()) != null) {
-                if (linea.trim().isEmpty()) {
-                    continue;
-                }
-
-                try {
-                    Pedido pedido = parsearLineaPedido(linea);
-                    if (pedido != null) {
-                        pedidos.add(pedido);
-                    }
-                } catch (Exception e) {
-                    // Silencioso en paralelo para no saturar logs
-                }
-            }
-            
-            log.debug("Archivo {} leído: {} pedidos", archivo.getName(), pedidos.size());
-            return pedidos;
-            
-        } catch (IOException e) {
-            log.error("Error leyendo archivo {}: {}", archivo.getName(), e.getMessage());
-            return new ArrayList<>();
-        }
-    }
 
     /**
      * Guarda un lote de pedidos utilizando JDBC batch OPTIMIZADO con progress tracking
@@ -325,9 +228,9 @@ public class PedidoService {
      * Muestra progreso cada 50,000 pedidos insertados
      */
     @Transactional
-    private void guardarConJdbcBatch(List<Pedido> pedidos) {
-        String sql = "INSERT INTO pedidos (anio, mes, dia, hora, minuto, aeropuerto_destino_id, cantidad_productos, cliente_id, estado) " +
-                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    private void guardarConJdbcBatch(List<PedidoSemanal> pedidos) {
+        String sql = "INSERT INTO pedidos_semanal (anio, mes, dia, hora, minuto, aeropuerto_destino_id, cantidad_productos, cliente_id) " +
+                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
         int batchSize = 1000;
         int totalPedidos = pedidos.size();
@@ -338,10 +241,10 @@ public class PedidoService {
         // Dividir en chunks y procesar con progress tracking
         for (int i = 0; i < totalPedidos; i += batchSize) {
             int end = Math.min(i + batchSize, totalPedidos);
-            List<Pedido> chunk = pedidos.subList(i, end);
+            List<PedidoSemanal> chunk = pedidos.subList(i, end);
             
             // Ejecutar batch insert
-            jdbcTemplate.batchUpdate(sql, chunk, batchSize, (PreparedStatement ps, Pedido pedido) -> {
+            jdbcTemplate.batchUpdate(sql, chunk, batchSize, (PreparedStatement ps, PedidoSemanal pedido) -> {
                 ps.setInt(1, pedido.getAnio());
                 ps.setInt(2, pedido.getMes());
                 ps.setInt(3, pedido.getDia());
@@ -350,7 +253,6 @@ public class PedidoService {
                 ps.setString(6, pedido.getAeropuertoDestinoId());
                 ps.setInt(7, pedido.getCantidadProductos());
                 ps.setString(8, pedido.getClienteId());
-                ps.setString(9, pedido.getEstado());
             });
             
             procesados = end;
@@ -367,30 +269,14 @@ public class PedidoService {
             }
         }
     }
-    /**
-     * Guarda un lote de pedidos en una transacción separada
-     */
-    @Transactional
-    private void guardarBatch(List<Pedido> pedidos) {
-        pedidoRepository.saveAll(pedidos);
-    }
 
     /**
-     * Parsea una línea del archivo y crea un objeto Pedido
+     * Parsea una línea del archivo y crea un objeto PedidoSemanal
      * El ID del archivo se IGNORA porque algunos se repiten - la BD genera su propio ID
      * Formato: id_pedido-aaaammdd-hh-mm-dest-###-IdClien
      * Ejemplo: 000000001-20250102-00-54-LOWW-002-0000068
-     * 
-     * Formato:
-     * - id_pedido: 9 dígitos (ej: 000000001) - SE IGNORA
-     * - aaaammdd: 8 dígitos fecha (ej: 20250102 = 2 enero 2025)
-     * - hh: 2 dígitos hora (ej: 00)
-     * - mm: 2 dígitos minuto (ej: 54)
-     * - dest: 4 caracteres código ICAO aeropuerto (ej: LOWW)
-     * - ###: 3 dígitos cantidad productos (ej: 002)
-     * - IdClien: 7 dígitos ID cliente (ej: 0000068)
      */
-    private Pedido parsearLineaPedido(String linea) {
+    private PedidoSemanal parsearLineaPedido(String linea) {
         if (linea == null || linea.trim().isEmpty()) {
             return null;
         }
@@ -404,7 +290,6 @@ public class PedidoService {
 
         try {
             // Formato: id_pedido-aaaammdd-hh-mm-dest-###-IdClien
-            // partes[0] = ID del archivo - SE IGNORA porque algunos se repiten
             String fechaStr = partes[1].trim();  // aaaammdd
             
             // Extraer año, mes, día de la fecha
@@ -419,7 +304,7 @@ public class PedidoService {
             String clienteId = partes[6].trim();
 
             // Crear pedido SIN ID - la BD generará uno automáticamente
-            return new Pedido(anio, mes, dia, hora, minuto, aeropuertoDestino, cantidadProductos, clienteId);
+            return new PedidoSemanal(anio, mes, dia, hora, minuto, aeropuertoDestino, cantidadProductos, clienteId);
 
         } catch (NumberFormatException | StringIndexOutOfBoundsException e) {
             log.warn("Error parseando línea: {} - Error: {}", linea, e.getMessage());

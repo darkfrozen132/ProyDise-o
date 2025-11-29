@@ -1,6 +1,6 @@
 package com.proyecto.backend.planificador.semanal.model;
 
-import com.proyecto.backend.model.Pedido;
+import com.proyecto.backend.model.PedidoSemanal;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDate;
@@ -57,7 +57,7 @@ public class DecodificadorGenetico {
      * @param pedidos Lista de pedidos a planificar
      * @return Solucion generada
      */
-    public Solution decodificar(Chromosome cromosoma, List<Pedido> pedidos) {
+    public Solution decodificar(Chromosome cromosoma, List<PedidoSemanal> pedidos) {
         // Validar que el cromosoma tenga el numero correcto de genes
         if (cromosoma.getNumGenes() != pedidos.size()) {
             throw new IllegalArgumentException(
@@ -78,7 +78,7 @@ public class DecodificadorGenetico {
 
         // Procesar pedidos en orden de prioridad
         for (PedidoConPrioridad pedidoPriorizado : pedidosOrdenados) {
-            Pedido pedido = pedidoPriorizado.pedido;
+            PedidoSemanal pedido = pedidoPriorizado.pedido;
 
             try {
                 List<SubRuta> subrutas = generarRutasPedido(pedido);
@@ -116,7 +116,7 @@ public class DecodificadorGenetico {
      * @param pedidos Lista de pedidos
      * @return Lista de pedidos ordenados por prioridad (descendente)
      */
-    private List<PedidoConPrioridad> ordenarPedidosPorPrioridad(Chromosome cromosoma, List<Pedido> pedidos) {
+    private List<PedidoConPrioridad> ordenarPedidosPorPrioridad(Chromosome cromosoma, List<PedidoSemanal> pedidos) {
         return IntStream.range(0, pedidos.size())
             .mapToObj(i -> new PedidoConPrioridad(pedidos.get(i), cromosoma.getGen(i)))
             .sorted(Comparator.comparingDouble((PedidoConPrioridad p) -> p.prioridad).reversed())
@@ -129,7 +129,7 @@ public class DecodificadorGenetico {
      * @param pedido Pedido a procesar
      * @return Lista de subrutas (normalmente 1)
      */
-    private List<SubRuta> generarRutasPedido(Pedido pedido) {
+    private List<SubRuta> generarRutasPedido(PedidoSemanal pedido) {
         List<SubRuta> subrutas = new ArrayList<>();
 
         String destino = pedido.getAeropuertoDestinoId();
@@ -161,10 +161,10 @@ public class DecodificadorGenetico {
      * Clase interna para asociar pedido con su prioridad
      */
     private static class PedidoConPrioridad {
-        final Pedido pedido;
+        final PedidoSemanal pedido;
         final double prioridad;
 
-        PedidoConPrioridad(Pedido pedido, double prioridad) {
+        PedidoConPrioridad(PedidoSemanal pedido, double prioridad) {
             this.pedido = pedido;
             this.prioridad = prioridad;
         }

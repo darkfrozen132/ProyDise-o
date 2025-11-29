@@ -1,10 +1,10 @@
 package com.proyecto.backend.config;
 
 import com.proyecto.backend.model.Aeropuerto;
-import com.proyecto.backend.model.Pedido;
+import com.proyecto.backend.model.PedidoSemanal;
 import com.proyecto.backend.model.PlanDeVuelo;
 import com.proyecto.backend.repository.AeropuertoRepository;
-import com.proyecto.backend.repository.PedidoRepository;
+import com.proyecto.backend.repository.PedidoSemanalRepository;
 import com.proyecto.backend.repository.PlanDeVueloRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,7 +23,7 @@ import java.time.format.DateTimeFormatter;
 public class DataInitializer implements CommandLineRunner {
 
     private final AeropuertoRepository aeropuertoRepository;
-    private final PedidoRepository pedidoRepository;
+    private final PedidoSemanalRepository pedidoSemanalRepository;
     private final PlanDeVueloRepository planDeVueloRepository;
 
     @Override
@@ -34,13 +34,13 @@ public class DataInitializer implements CommandLineRunner {
         if (planDeVueloRepository.count() == 0) {
             loadPlanesDeVuelo();
         }
-        if (pedidoRepository.count() == 0) {
+        if (pedidoSemanalRepository.count() == 0) {
             loadPedidos();
         }
         log.info("✅ Inicialización completada: {} aeropuertos, {} vuelos, {} pedidos",
                 aeropuertoRepository.count(),
                 planDeVueloRepository.count(),
-                pedidoRepository.count());
+                pedidoSemanalRepository.count());
     }
 
     private void loadAeropuertos() {
@@ -104,25 +104,45 @@ public class DataInitializer implements CommandLineRunner {
             BufferedReader reader = new BufferedReader(new InputStreamReader(resource.getInputStream()));
             String line;
             int count = 0;
+            int lineNumber = 0;
             while ((line = reader.readLine()) != null) {
+                lineNumber++;
+                if (line.trim().isEmpty()) continue;
+                
                 String[] parts = line.split("-");
-                if (parts.length >= 6) {
-                    Pedido pedido = new Pedido();
-                    pedido.setDia(Integer.parseInt(parts[0].trim()));
-                    pedido.setHora(Integer.parseInt(parts[1].trim()));
-                    pedido.setMinuto(Integer.parseInt(parts[2].trim()));
-                    pedido.setAeropuertoDestinoId(parts[3].trim());
-                    pedido.setCantidadProductos(Integer.parseInt(parts[4].trim()));
-                    pedido.setClienteId(parts[5].trim());
-                    pedido.setAnio(2025);
-                    pedido.setMes(1);
-                    pedido.setEstado("PENDIENTE");
-                    pedidoRepository.save(pedido);
-                    count++;
+                // Formato: ID-YYYYMMDD-HH-MM-AEROPUERTO-CANTIDAD-CLIENTE (7 partes)
+                // Ejemplo: 000000001-20250102-00-00-SCEL-002-0004130
+                if (parts.length == 7) {
+                    try {
+                        PedidoSemanal pedido = new PedidoSemanal();
+                        
+                        // Parsear fecha YYYYMMDD
+                        String fecha = parts[1].trim();
+                        int anio = Integer.parseInt(fecha.substring(0, 4));
+                        int mes = Integer.parseInt(fecha.substring(4, 6));
+                        int dia = Integer.parseInt(fecha.substring(6, 8));
+                        
+                        pedido.setAnio(anio);
+                        pedido.setMes(mes);
+                        pedido.setDia(dia);
+                        pedido.setHora(Integer.parseInt(parts[2].trim()));
+                        pedido.setMinuto(Integer.parseInt(parts[3].trim()));
+                        pedido.setAeropuertoDestinoId(parts[4].trim());
+                        pedido.setCantidadProductos(Integer.parseInt(parts[5].trim()));
+                        pedido.setClienteId(parts[6].trim());
+                        
+                        pedidoSemanalRepository.save(pedido);
+                        count++;
+                    } catch (Exception e) {
+                        log.warn("⚠️ Error parseando línea {}: {} - {}", lineNumber, line, e.getMessage());
+                    }
+                } else {
+                    log.warn("⚠️ Línea {} tiene formato incorrecto ({} partes, esperadas 7): {}", 
+                            lineNumber, parts.length, line);
                 }
             }
             reader.close();
-            log.info("✅ Cargados {} pedidos", count);
+            log.info("✅ Cargados {} pedidos semanales", count);
         } catch (Exception e) {
             log.error("❌ Error cargando pedidos: {}", e.getMessage());
         }

@@ -1,0 +1,19 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://morapack-test-db.cfsefdaj5iud.us-east-1.rds.amazonaws.com:5432/morapack
+    username: morapack
+    password: UQ4jdLJKWULADFrryA4v
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+logging:
+  level:
+    com.morapack.skyroute.simulation: TRACE #si quieres todo
+
+server:
+  port: 8080

@@ -4,9 +4,10 @@
     import com.proyecto.backend.planificador.semanal.dto.request.PlanificacionRequest;
     import com.proyecto.backend.planificador.semanal.dto.response.*;
     import com.proyecto.backend.simulation.dto.ProgresoAGDTO;
+    import com.proyecto.backend.simulation.state.SessionStateManager;
     import com.proyecto.backend.model.Aeropuerto;
-    import com.proyecto.backend.model.Pedido;
-    import com.proyecto.backend.repository.PedidoRepository;
+    import com.proyecto.backend.model.PedidoSemanal;
+    import com.proyecto.backend.repository.PedidoSemanalRepository;
     import lombok.RequiredArgsConstructor;
     import lombok.extern.slf4j.Slf4j;
     import org.springframework.stereotype.Service;
@@ -28,7 +29,7 @@
     public class AlgoritmoGeneticoService {
 
         private final WorldCacheService worldCacheService;
-        private final PedidoRepository pedidoRepository;
+        private final PedidoSemanalRepository pedidoSemanalRepository;
 
         // Constantes de negocio
         private static final int PLAZO_MISMO_CONTINENTE_DIAS = 2;
@@ -65,7 +66,7 @@
             World world = worldCacheService.getWorld();
 
             // Cargar pedidos en el rango de tiempo
-            List<Pedido> pedidos = cargarPedidosEnRango(request);
+            List<PedidoSemanal> pedidos = cargarPedidosEnRango(request);
             log.debug("Cargados {} pedidos para procesar", pedidos.size());
 
             if (pedidos.isEmpty()) {
@@ -126,7 +127,7 @@
         World world = worldCacheService.getWorld();
 
         // Cargar pedidos en el rango de tiempo
-        List<Pedido> pedidos = cargarPedidosEnRango(request);
+        List<PedidoSemanal> pedidos = cargarPedidosEnRango(request);
         log.info("Cargados {} pedidos para procesar", pedidos.size());
 
         if (pedidos.isEmpty()) {
@@ -188,7 +189,7 @@
             java.time.temporal.ChronoUnit.MINUTES.between(state.getTiempoRealInicio(), tiempoHasta));
 
         // 1. Filtrar pedidos PENDIENTES del state
-        List<Pedido> pedidosPendientes = filtrarPedidosPendientes(state, tiempoHasta);
+        List<PedidoSemanal> pedidosPendientes = filtrarPedidosPendientes(state, tiempoHasta);
 
         if (pedidosPendientes.isEmpty()) {
             log.info("No hay pedidos pendientes para planificar en esta ventana");
@@ -239,15 +240,15 @@
     /**
      * Filtra los pedidos PENDIENTES dentro de la ventana de tiempo
      */
-    private List<Pedido> filtrarPedidosPendientes(SimulationState state, LocalDateTime tiempoHasta) {
-        List<Pedido> pedidos = new ArrayList<>();
+    private List<PedidoSemanal> filtrarPedidosPendientes(SimulationState state, LocalDateTime tiempoHasta) {
+        List<PedidoSemanal> pedidos = new ArrayList<>();
 
         for (PedidoState pedidoState : state.getPedidos().values()) {
             if (pedidoState.getEstado() == EstadoPedido.PENDIENTE) {
                 // Verificar si el pedido esta en la ventana
                 if (pedidoState.getFechaCreacion().isBefore(tiempoHasta)) {
                     // Cargar el pedido desde el repositorio
-                    Pedido pedido = pedidoRepository.findById(pedidoState.getId()).orElse(null);
+                    PedidoSemanal pedido = pedidoSemanalRepository.findById(pedidoState.getId()).orElse(null);
                     if (pedido != null) {
                         pedidos.add(pedido);
                     }
@@ -343,8 +344,8 @@
                                              WorldTemporal worldTemporal) {
         int pedidosPlanificados = 0;
 
-        for (Map.Entry<Pedido, List<SubRuta>> entry : solucion.getRutas().entrySet()) {
-            Pedido pedido = entry.getKey();
+        for (Map.Entry<PedidoSemanal, List<SubRuta>> entry : solucion.getRutas().entrySet()) {
+            PedidoSemanal pedido = entry.getKey();
             List<SubRuta> subrutas = entry.getValue();
 
             PedidoState pedidoState = state.getPedidos().get(pedido.getId());
@@ -419,7 +420,7 @@
      */
     private Solution ejecutarAlgoritmoGenetico(WorldTemporal worldTemporal,
                                                ControladorAlmacenes controladorAlmacenes,
-                                               List<Pedido> pedidos) {
+                                               List<PedidoSemanal> pedidos) {
         log.info("Iniciando algoritmo genetico: poblacion={}, generaciones={}, elite={}",
                 TAMANIO_POBLACION, MAX_GENERACIONES, ELITE_K);
 
@@ -512,8 +513,9 @@
         Individuo mejorIndividuo = poblacion.get(0);
         log.info("Algoritmo genetico completado: Fitness final = {:.2f}", mejorIndividuo.fitness);
 
-        // Actualizar estado de pedidos planificados
-        actualizarEstadoPedidosPlanificados(mejorIndividuo.solucion);
+        // ❌ DESACTIVADO: Ya no guardamos estados en BD, solo en RAM
+        // El estado se mantiene en PedidoState (memoria) durante la simulación
+        // actualizarEstadoPedidosPlanificados(mejorIndividuo.solucion);
 
         return mejorIndividuo.solucion;
     }
@@ -529,7 +531,7 @@
      */
     private Solution ejecutarAlgoritmoGeneticoConParametros(WorldTemporal worldTemporal,
                                                              ControladorAlmacenes controladorAlmacenes,
-                                                             List<Pedido> pedidos,
+                                                             List<PedidoSemanal> pedidos,
                                                              SimulationState.ParametrosAG parametros) {
         log.info("Iniciando algoritmo genetico: poblacion={}, generaciones={}, elite={}",
                 parametros.getTamanioPoblacion(), parametros.getMaxGeneraciones(), parametros.getEliteK());
@@ -629,8 +631,9 @@
         Individuo mejorIndividuo = poblacion.get(0);
         log.info("Algoritmo genetico completado: Fitness final = {:.2f}", mejorIndividuo.fitness);
 
-        // Actualizar estado de pedidos planificados
-        actualizarEstadoPedidosPlanificados(mejorIndividuo.solucion);
+        // ❌ DESACTIVADO: Ya no guardamos estados en BD, solo en RAM
+        // El estado se mantiene en PedidoState (memoria) durante la simulación
+        // actualizarEstadoPedidosPlanificados(mejorIndividuo.solucion);
 
         return mejorIndividuo.solucion;
     }
@@ -664,7 +667,7 @@
      * - Speedup: ~2x sin saturar CPU
      */
     private void evaluarPoblacion(List<Individuo> poblacion, DecodificadorGenetico decodificador,
-                                   List<Pedido> pedidos, WorldTemporal worldTemporal,
+                                   List<PedidoSemanal> pedidos, WorldTemporal worldTemporal,
                                    ControladorAlmacenes controladorAlmacenes) {
         
         // Filtrar solo no evaluados
@@ -775,13 +778,13 @@
      * @param pedidos Lista de pedidos
      * @return Numero de dias del horizonte
      */
-    private int calcularHorizonteDias(PlanificacionRequest request, List<Pedido> pedidos) {
+    private int calcularHorizonteDias(PlanificacionRequest request, List<PedidoSemanal> pedidos) {
         // Por defecto: 7 dias (una semana)
         int diasBase = 7;
 
         // Calcular dia maximo de los pedidos
         LocalDate fechaMaxPedido = request.getFecha();
-        for (Pedido pedido : pedidos) {
+        for (PedidoSemanal pedido : pedidos) {
             LocalDate fechaPedido = LocalDate.of(pedido.getAnio(), pedido.getMes(), pedido.getDia());
             if (fechaPedido.isAfter(fechaMaxPedido)) {
                 fechaMaxPedido = fechaPedido;
@@ -803,11 +806,11 @@
      * @param request Request con parametros
      * @return Lista de pedidos a procesar
      */
-    private List<Pedido> cargarPedidosEnRango(PlanificacionRequest request) {
+    private List<PedidoSemanal> cargarPedidosEnRango(PlanificacionRequest request) {
         return cargarPedidosEnRango(request, null);
     }
     
-    private List<Pedido> cargarPedidosEnRango(PlanificacionRequest request, LocalDateTime tiempoActualSimulacion) {
+    private List<PedidoSemanal> cargarPedidosEnRango(PlanificacionRequest request, LocalDateTime tiempoActualSimulacion) {
         LocalDate fecha = request.getFecha();
         int saltoConsumoMinutos = request.calcularRangoConsumoMinutos(); // Sc = K × Sa (ej: 70 min)
 
@@ -829,10 +832,10 @@
             log.debug("Primera iteracion: [{}, {}) = {} minutos", inicio, fin, saltoConsumoMinutos);
         }
 
-        // Cargar pedidos PENDIENTE (excluye los "en vuelo"/ASIGNADO)
+        // 🆕 ESTADO EN RAM: Cargar TODOS los pedidos (sin filtro por estado)
+        // El filtro por estado PENDIENTE se hace en SessionStateManager
         // cuyo deadline este dentro de la ventana [inicio, fin]
-        List<Pedido> pedidos = pedidoRepository.findAll().stream()
-                .filter(p -> "PENDIENTE".equals(p.getEstado()))
+        List<PedidoSemanal> pedidos = pedidoSemanalRepository.findAll().stream()
                 .filter(p -> {
                     LocalDateTime fechaPedido = LocalDateTime.of(
                         p.getAnio(), p.getMes(), p.getDia(), p.getHora(), p.getMinuto()
@@ -843,7 +846,7 @@
                 })
                 .toList();
 
-        log.debug("Encontrados {} pedidos PENDIENTE en ventana [{}, {})", 
+        log.debug("Encontrados {} pedidos en ventana [{}, {})", 
                 pedidos.size(), inicio, fin);
 
         return pedidos;
@@ -857,7 +860,7 @@
      * @param fin Fecha/hora de fin del rango
      * @return true si el pedido esta en el rango
      */
-    private boolean estaDentroDelRango(Pedido pedido, LocalDateTime inicio, LocalDateTime fin) {
+    private boolean estaDentroDelRango(PedidoSemanal pedido, LocalDateTime inicio, LocalDateTime fin) {
         // Construir la fecha/hora del pedido
         LocalDateTime fechaPedido = LocalDateTime.of(
                 pedido.getAnio(),
@@ -877,7 +880,7 @@
      * @param pedidos Pedidos a procesar
      * @return Solucion vacia
      */
-    private Solution crearSolucionVacia(List<Pedido> pedidos) {
+    private Solution crearSolucionVacia(List<PedidoSemanal> pedidos) {
         Solution solucion = new Solution();
 
         // Marcar todos como no entregados por ahora
@@ -931,7 +934,7 @@
      */
     private PlanificacionResponse convertirAResponse(
             Solution solucion, WorldTemporal worldTemporal, PlanificacionRequest request,
-            List<Pedido> pedidos, long inicio) {
+            List<PedidoSemanal> pedidos, long inicio) {
 
         PlanificacionResponse response = new PlanificacionResponse();
 
@@ -983,8 +986,8 @@
         Map<String, VueloEnRutaDTO> vuelosMap = new HashMap<>();
 
         // Recorrer todas las rutas para extraer los vuelos y agrupar pedidos
-        for (Map.Entry<Pedido, List<SubRuta>> entry : solucion.getRutas().entrySet()) {
-            Pedido pedido = entry.getKey();
+        for (Map.Entry<PedidoSemanal, List<SubRuta>> entry : solucion.getRutas().entrySet()) {
+            PedidoSemanal pedido = entry.getKey();
             String pedidoId = "Ped" + pedido.getId();  // ID del pedido: Ped123
 
             for (SubRuta subruta : entry.getValue()) {
@@ -1070,8 +1073,8 @@
     private List<RutaPlanificadaDTO> convertirRutas(Solution solucion, WorldTemporal worldTemporal) {
         List<RutaPlanificadaDTO> rutas = new ArrayList<>();
 
-        for (Map.Entry<Pedido, List<SubRuta>> entry : solucion.getRutas().entrySet()) {
-            Pedido pedido = entry.getKey();
+        for (Map.Entry<PedidoSemanal, List<SubRuta>> entry : solucion.getRutas().entrySet()) {
+            PedidoSemanal pedido = entry.getKey();
             List<SubRuta> subrutas = entry.getValue();
 
             RutaPlanificadaDTO dto = new RutaPlanificadaDTO();
@@ -1172,10 +1175,10 @@
      * @param pedidos Lista de pedidos
      * @return Lista de DTOs
      */
-    private List<PlanificacionResponse.PedidoResumenDTO> convertirPedidosAResumen(List<Pedido> pedidos) {
+    private List<PlanificacionResponse.PedidoResumenDTO> convertirPedidosAResumen(List<PedidoSemanal> pedidos) {
         List<PlanificacionResponse.PedidoResumenDTO> resumen = new ArrayList<>();
 
-        for (Pedido pedido : pedidos) {
+        for (PedidoSemanal pedido : pedidos) {
             PlanificacionResponse.PedidoResumenDTO dto = new PlanificacionResponse.PedidoResumenDTO();
             dto.setId(pedido.getId());
 
@@ -1188,7 +1191,8 @@
             dto.setDestino(pedido.getAeropuertoDestinoId());
             dto.setCantidad(pedido.getCantidadProductos());
             dto.setClienteId(pedido.getClienteId());
-            dto.setEstado(pedido.getEstado());
+            // 🆕 ESTADO EN RAM: Ya no se usa el estado de BD
+            dto.setEstado("PENDIENTE"); // Por defecto, el estado real está en SessionStateManager
 
             resumen.add(dto);
         }
@@ -1236,8 +1240,8 @@
         Map<String, VueloSimplificadoDTO> vuelosMap = new HashMap<>();
 
         // Recorrer todas las rutas para extraer los vuelos y agrupar pedidos
-        for (Map.Entry<Pedido, List<SubRuta>> entry : solucion.getRutas().entrySet()) {
-            Pedido pedido = entry.getKey();
+        for (Map.Entry<PedidoSemanal, List<SubRuta>> entry : solucion.getRutas().entrySet()) {
+            PedidoSemanal pedido = entry.getKey();
             Long pedidoId = pedido.getId();
 
             for (SubRuta subruta : entry.getValue()) {
@@ -1248,6 +1252,9 @@
                     if (vuelosMap.containsKey(vueloId)) {
                         VueloSimplificadoDTO vueloDTO = vuelosMap.get(vueloId);
                         vueloDTO.agregarPedido(pedidoId, vueloUso.getCantidadAsignada());
+                        // Actualizar cantidad total
+                        Integer cantidadActual = vueloDTO.getQuantity() != null ? vueloDTO.getQuantity() : 0;
+                        vueloDTO.setQuantity(cantidadActual + vueloUso.getCantidadAsignada());
                     } else {
                         // Crear nuevo DTO de vuelo simplificado
                         VueloSimplificadoDTO dto = new VueloSimplificadoDTO();
@@ -1259,15 +1266,40 @@
                         // Obtener fechas UTC reales desde VueloInstancia y formatearlas
                         VueloInstancia instancia = worldTemporal.getVuelo(vueloId);
                         if (instancia != null) {
-                            // Formato: yyyy-MM-dd HH:mm
-                            dto.setFechaInicial(formatearFecha(instancia.getSalidaUTC()));
-                            dto.setFechaFinal(formatearFecha(instancia.getLlegadaUTC()));
+                            LocalDateTime salidaUTC = instancia.getSalidaUTC();
+                            LocalDateTime llegadaUTC = instancia.getLlegadaUTC();
+                            
+                            // Formato: yyyy-MM-dd HH:mm (para compatibilidad)
+                            dto.setFechaInicial(formatearFecha(salidaUTC));
+                            dto.setFechaFinal(formatearFecha(llegadaUTC));
+                            
+                            // 🆕 NUEVOS CAMPOS PARA FRONTEND:
+                            // 1. FlightId: {ORIGEN}-{DESTINO}-{HORA}
+                            String hora = String.format("%02d%02d", salidaUTC.getHour(), salidaUTC.getMinute());
+                            dto.setFlightId(vueloUso.getOrigen() + "-" + vueloUso.getDestino() + "-" + hora);
+                            
+                            // 2. DepartureUtc y ArrivalUtc en formato ISO-8601 con 'Z'
+                            dto.setDepartureUtc(formatearFechaUTC(salidaUTC));
+                            dto.setArrivalUtc(formatearFechaUTC(llegadaUTC));
+                            
+                            // 3. Quantity (se actualizará con el total de paquetes)
+                            dto.setQuantity(vueloUso.getCantidadAsignada());
+                            
+                            // 4. SlackMinutes (calcular holgura vs deadline del pedido)
+                            // Por ahora lo dejamos en 0, se calculará después con todos los pedidos
+                            dto.setSlackMinutes(0);
+                            
                         } else {
                             // Fallback (no debería ocurrir)
                             log.warn("VueloInstancia no encontrada para ID: {}", vueloId);
                             LocalDateTime ahora = LocalDateTime.now();
                             dto.setFechaInicial(formatearFecha(ahora));
                             dto.setFechaFinal(formatearFecha(ahora.plusHours(2)));
+                            dto.setDepartureUtc(formatearFechaUTC(ahora));
+                            dto.setArrivalUtc(formatearFechaUTC(ahora.plusHours(2)));
+                            dto.setFlightId(vueloUso.getOrigen() + "-" + vueloUso.getDestino() + "-0000");
+                            dto.setQuantity(vueloUso.getCantidadAsignada());
+                            dto.setSlackMinutes(0);
                         }
 
                         // Agregar primer pedido
@@ -1279,9 +1311,51 @@
             }
         }
 
+        // 🆕 Calcular slackMinutes para cada vuelo (holgura vs deadline más ajustado)
+        for (Map.Entry<PedidoSemanal, List<SubRuta>> entry : solucion.getRutas().entrySet()) {
+            PedidoSemanal pedido = entry.getKey();
+            
+            // Calcular deadline del pedido
+            LocalDateTime deadlinePedido = LocalDateTime.of(
+                pedido.getAnio(), 
+                pedido.getMes(), 
+                pedido.getDia(), 
+                pedido.getHora(), 
+                pedido.getMinuto()
+            );
+            
+            // Para cada subruta del pedido, encontrar el último vuelo (llegada final)
+            for (SubRuta subruta : entry.getValue()) {
+                if (subruta.getVuelos().isEmpty()) continue;
+                
+                // El último vuelo de la subruta determina cuándo llega el pedido
+                VueloUso ultimoVuelo = subruta.getVuelos().get(subruta.getVuelos().size() - 1);
+                String ultimoVueloId = ultimoVuelo.generarId();
+                
+                VueloInstancia instanciaUltimo = worldTemporal.getVuelo(ultimoVueloId);
+                if (instanciaUltimo != null) {
+                    LocalDateTime llegadaFinal = instanciaUltimo.getLlegadaUTC();
+                    
+                    // Calcular holgura: minutos entre llegada y deadline
+                    long minutosHolgura = java.time.Duration.between(llegadaFinal, deadlinePedido).toMinutes();
+                    
+                    // Actualizar el slackMinutes del último vuelo con la holgura más crítica
+                    VueloSimplificadoDTO vueloDTO = vuelosMap.get(ultimoVueloId);
+                    if (vueloDTO != null) {
+                        // Si ya tiene un slack calculado, tomar el menor (más crítico)
+                        if (vueloDTO.getSlackMinutes() == null || vueloDTO.getSlackMinutes() == 0) {
+                            vueloDTO.setSlackMinutes((int) minutosHolgura);
+                        } else {
+                            vueloDTO.setSlackMinutes(Math.min(vueloDTO.getSlackMinutes(), (int) minutosHolgura));
+                        }
+                    }
+                }
+            }
+        }
+        
         // Convertir el mapa a lista y crear el response
         List<VueloSimplificadoDTO> vuelos = new ArrayList<>(vuelosMap.values());
-        log.debug("Convertidos {} vuelos unicos en formato simplificado", vuelos.size());
+        log.debug("Convertidos {} vuelos unicos en formato simplificado con slackMinutes", vuelos.size());
 
         return PlanificacionResponseSimple.conVuelos(vuelos);
     }
@@ -1299,6 +1373,24 @@
                 fecha.getDayOfMonth(),
                 fecha.getHour(),
                 fecha.getMinute());
+    }
+    
+    /**
+     * Formatea una fecha a string en formato ISO-8601 UTC
+     * Formato: yyyy-MM-ddTHH:mm:ssZ
+     * Ejemplo: "2025-01-15T13:00:00Z"
+     *
+     * @param fecha Fecha a formatear (asumida como UTC)
+     * @return String formateado en ISO-8601 con 'Z'
+     */
+    private String formatearFechaUTC(LocalDateTime fecha) {
+        return String.format("%04d-%02d-%02dT%02d:%02d:%02dZ",
+                fecha.getYear(),
+                fecha.getMonthValue(),
+                fecha.getDayOfMonth(),
+                fecha.getHour(),
+                fecha.getMinute(),
+                fecha.getSecond());
     }
 
     // ============================================================================
@@ -1376,7 +1468,7 @@
 
             World world = worldCacheService.getWorld();
             LocalDate fecha = tiempoActualSimulacion.toLocalDate();
-            List<Pedido> pedidos = cargarPedidosEnRango(new PlanificacionRequest(fecha, factorK, null), tiempoActualSimulacion);
+            List<PedidoSemanal> pedidos = cargarPedidosEnRango(new PlanificacionRequest(fecha, factorK, null), tiempoActualSimulacion);
             int numeroDias = calcularHorizonteDias(new PlanificacionRequest(fecha, factorK, null), pedidos);
 
             WorldTemporal worldTemporal = new WorldTemporal(world, fecha, numeroDias);
@@ -1414,7 +1506,7 @@
     private Solution ejecutarAlgoritmoGeneticoConProgreso(
             WorldTemporal worldTemporal,
             ControladorAlmacenes controladorAlmacenes,
-            List<Pedido> pedidos,
+            List<PedidoSemanal> pedidos,
             EstadoEjecucion estado,
             java.util.function.Consumer<ProgresoAGDTO> callbackProgreso) {
 
@@ -1491,8 +1583,9 @@
 
         log.debug("Algoritmo genético completado: Fitness final = {}", mejorFitnessGlobal);
         
-        // Actualizar estado de pedidos planificados
-        actualizarEstadoPedidosPlanificados(mejorSolucionGlobal);
+        // ❌ DESACTIVADO: Ya no guardamos estados en BD, solo en RAM
+        // El estado se mantiene en PedidoState (memoria) durante la simulación
+        // actualizarEstadoPedidosPlanificados(mejorSolucionGlobal);
         
         return mejorSolucionGlobal;
     }
@@ -1577,13 +1670,29 @@
     }
 
     /**
-     * Actualiza el estado de los pedidos planificados a "ASIGNADO"
-     * Esto evita que se replanifiquen en futuras ejecuciones
+     * ❌ DEPRECATED - Ya no se usa
      * 
-     * @param solucion Solución generada por el AG
+     * Antes este método actualizaba el estado de los pedidos en la BD.
+     * Ahora el estado se mantiene SOLO EN RAM mediante PedidoState y StateUpdater.
+     * 
+     * RAZÓN DEL CAMBIO:
+     * - La simulación no debe modificar datos reales en la BD
+     * - El estado en RAM es suficiente durante la simulación
+     * - Los pedidos asignados se controlan via PedidoState.estado
+     * - StateUpdater.java actualiza estados en RAM durante la simulación
+     *
+     * @deprecated Ya no se usa. Estados se manejan en RAM via PedidoState
+     * @param solucion Solución generada por el AG (ignorada)
      */
+    @Deprecated
     @Transactional
     private void actualizarEstadoPedidosPlanificados(Solution solucion) {
+        // ⚠️ MÉTODO DESACTIVADO - NO HACE NADA
+        // El código original está comentado abajo por referencia
+        log.debug("⚠️ actualizarEstadoPedidosPlanificados() DESACTIVADO - Estados solo en RAM");
+        
+        /*
+        // CÓDIGO ORIGINAL (ya no se ejecuta):
         if (solucion == null || solucion.getRutas().isEmpty()) {
             log.debug("No hay solución o rutas para actualizar estados");
             return;
@@ -1592,18 +1701,16 @@
         int pedidosActualizados = 0;
         Set<Long> pedidosUnicos = new HashSet<>();
 
-        // Extraer todos los pedidos únicos de la solución
-        for (Map.Entry<Pedido, List<SubRuta>> entry : solucion.getRutas().entrySet()) {
+        for (Map.Entry<PedidoSemanal, List<SubRuta>> entry : solucion.getRutas().entrySet()) {
             pedidosUnicos.add(entry.getKey().getId());
         }
 
-        // Actualizar estado en BD
         for (Long pedidoId : pedidosUnicos) {
             try {
-                Pedido pedido = pedidoRepository.findById(pedidoId).orElse(null);
+                PedidoSemanal pedido = pedidoSemanalRepository.findById(pedidoId).orElse(null);
                 if (pedido != null && "PENDIENTE".equals(pedido.getEstado())) {
                     pedido.setEstado("ASIGNADO");
-                    pedidoRepository.save(pedido);
+                    pedidoSemanalRepository.save(pedido);
                     pedidosActualizados++;
                 }
             } catch (Exception e) {
@@ -1612,5 +1719,6 @@
         }
 
         log.debug("✅ Estados actualizados: {} pedidos cambiados a ASIGNADO", pedidosActualizados);
+        */
     }
 }

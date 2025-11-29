@@ -1,7 +1,7 @@
 package com.proyecto.backend.planificador.semanal.model;
 
 import com.proyecto.backend.model.Aeropuerto;
-import com.proyecto.backend.model.Pedido;
+import com.proyecto.backend.model.PedidoSemanal;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDate;
@@ -44,7 +44,7 @@ public class DecodificadorBasico {
      * @param pedidos Lista de pedidos a procesar
      * @return Solucion con rutas generadas y metricas calculadas
      */
-    public Solution generarSolucion(List<Pedido> pedidos) {
+    public Solution generarSolucion(List<PedidoSemanal> pedidos) {
         Solution solucion = new Solution();
 
         log.info("Iniciando generacion de rutas para {} pedidos", pedidos.size());
@@ -52,7 +52,7 @@ public class DecodificadorBasico {
         int rutasGeneradas = 0;
         int rutasFallidas = 0;
 
-        for (Pedido pedido : pedidos) {
+        for (PedidoSemanal pedido : pedidos) {
             try {
                 List<SubRuta> subrutas = generarRutasPedido(pedido);
 
@@ -94,7 +94,7 @@ public class DecodificadorBasico {
      * @param pedido Pedido a procesar
      * @return Lista de subrutas (normalmente 1)
      */
-    private List<SubRuta> generarRutasPedido(Pedido pedido) {
+    private List<SubRuta> generarRutasPedido(PedidoSemanal pedido) {
         List<SubRuta> subrutas = new ArrayList<>();
 
         String destino = pedido.getAeropuertoDestinoId();

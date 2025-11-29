@@ -1,8 +1,8 @@
 package com.proyecto.backend.simulation.service;
 
-import com.proyecto.backend.model.Pedido;
+import com.proyecto.backend.model.PedidoSemanal;
 import com.proyecto.backend.model.PlanDeVuelo;
-import com.proyecto.backend.repository.PedidoRepository;
+import com.proyecto.backend.repository.PedidoSemanalRepository;
 import com.proyecto.backend.repository.PlanDeVueloRepository;
 import com.proyecto.backend.simulation.dto.SimulationRequest;
 import com.proyecto.backend.simulation.dto.SimulationSnapshot;
@@ -35,7 +35,7 @@ import static org.mockito.Mockito.*;
 class SimulationServiceTest {
 
     @Mock
-    private PedidoRepository pedidoRepository;
+    private PedidoSemanalRepository pedidoSemanalRepository;
 
     @Mock
     private PlanDeVueloRepository planDeVueloRepository;
@@ -47,7 +47,7 @@ class SimulationServiceTest {
     private SimulationService simulationService;
 
     private SimulationRequest mockRequest;
-    private List<Pedido> mockOrders;
+    private List<PedidoSemanal> mockOrders;
     private List<PlanDeVuelo> mockFlights;
 
     @BeforeEach
@@ -64,7 +64,7 @@ class SimulationServiceTest {
         // Configurar pedidos de prueba
         mockOrders = new ArrayList<>();
         for (int i = 0; i < 10; i++) {
-            Pedido pedido = new Pedido();
+            PedidoSemanal pedido = new PedidoSemanal();
             pedido.setId((long) i);
             pedido.setAnio(2025);
             pedido.setMes(1);
@@ -74,7 +74,7 @@ class SimulationServiceTest {
             pedido.setAeropuertoDestinoId("SKBO");
             pedido.setCantidadProductos(10);
             pedido.setClienteId("CLI00" + i);
-            pedido.setEstado("PENDIENTE");
+            // Ya no hay campo estado - el estado se maneja en RAM
             mockOrders.add(pedido);
         }
 
@@ -95,7 +95,7 @@ class SimulationServiceTest {
     @Test
     void testStartSimulation_Success() {
         // Configurar mocks
-        when(pedidoRepository.findByEstado("PENDIENTE")).thenReturn(mockOrders);
+        when(pedidoSemanalRepository.findAll()).thenReturn(mockOrders);
         when(planDeVueloRepository.findAll()).thenReturn(mockFlights);
 
         // Ejecutar
@@ -112,14 +112,14 @@ class SimulationServiceTest {
         assertTrue(session.isRunning(), "La sesión debe estar running");
         
         // Verificar que se cargaron los datos
-        verify(pedidoRepository, times(1)).findByEstado("PENDIENTE");
+        verify(pedidoSemanalRepository, times(1)).findAll();
         verify(planDeVueloRepository, times(1)).findAll();
     }
 
     @Test
     void testCancelSimulation_Success() throws InterruptedException {
         // Iniciar simulación
-        when(pedidoRepository.findByEstado("PENDIENTE")).thenReturn(mockOrders);
+        when(pedidoSemanalRepository.findAll()).thenReturn(mockOrders);
         when(planDeVueloRepository.findAll()).thenReturn(mockFlights);
         
         UUID sessionId = simulationService.startSimulation(mockRequest);
@@ -151,7 +151,7 @@ class SimulationServiceTest {
     @Test
     void testPauseSimulation_Success() throws InterruptedException {
         // Iniciar simulación
-        when(pedidoRepository.findByEstado("PENDIENTE")).thenReturn(mockOrders);
+        when(pedidoSemanalRepository.findAll()).thenReturn(mockOrders);
         when(planDeVueloRepository.findAll()).thenReturn(mockFlights);
         
         UUID sessionId = simulationService.startSimulation(mockRequest);
@@ -172,7 +172,7 @@ class SimulationServiceTest {
     @Test
     void testResumeSimulation_Success() throws InterruptedException {
         // Iniciar y pausar simulación
-        when(pedidoRepository.findByEstado("PENDIENTE")).thenReturn(mockOrders);
+        when(pedidoSemanalRepository.findAll()).thenReturn(mockOrders);
         when(planDeVueloRepository.findAll()).thenReturn(mockFlights);
         
         UUID sessionId = simulationService.startSimulation(mockRequest);
@@ -192,7 +192,7 @@ class SimulationServiceTest {
     @Test
     void testGetSimulationStatus_Success() throws InterruptedException {
         // Iniciar simulación
-        when(pedidoRepository.findByEstado("PENDIENTE")).thenReturn(mockOrders);
+        when(pedidoSemanalRepository.findAll()).thenReturn(mockOrders);
         when(planDeVueloRepository.findAll()).thenReturn(mockFlights);
         
         UUID sessionId = simulationService.startSimulation(mockRequest);
@@ -221,7 +221,7 @@ class SimulationServiceTest {
     @Test
     void testGetActiveSessions() {
         // Iniciar múltiples simulaciones
-        when(pedidoRepository.findByEstado("PENDIENTE")).thenReturn(mockOrders);
+        when(pedidoSemanalRepository.findAll()).thenReturn(mockOrders);
         when(planDeVueloRepository.findAll()).thenReturn(mockFlights);
         
         UUID sessionId1 = simulationService.startSimulation(mockRequest);
@@ -246,7 +246,7 @@ class SimulationServiceTest {
     @Test
     void testMultipleSimultaneousSimulations() {
         // Iniciar múltiples simulaciones simultáneas
-        when(pedidoRepository.findByEstado("PENDIENTE")).thenReturn(mockOrders);
+        when(pedidoSemanalRepository.findAll()).thenReturn(mockOrders);
         when(planDeVueloRepository.findAll()).thenReturn(mockFlights);
         
         List<UUID> sessionIds = new ArrayList<>();

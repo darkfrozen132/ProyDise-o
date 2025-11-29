@@ -1,7 +1,7 @@
 package com.proyecto.backend.planificador.semanal.model;
 
 import com.proyecto.backend.model.Aeropuerto;
-import com.proyecto.backend.model.Pedido;
+import com.proyecto.backend.model.PedidoSemanal;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDate;
@@ -54,7 +54,7 @@ public class CalculadorPlazos {
      * @param subrutas Lista de subrutas asignadas (puede ser vacia si no se entrego)
      * @return Estado de entrega
      */
-    public EstadoEntrega calcularEstadoEntrega(Pedido pedido, List<SubRuta> subrutas) {
+    public EstadoEntrega calcularEstadoEntrega(PedidoSemanal pedido, List<SubRuta> subrutas) {
         // Si no hay rutas, no se entrego
         if (subrutas == null || subrutas.isEmpty()) {
             return EstadoEntrega.NO_ENTREGADO;
@@ -163,7 +163,7 @@ public class CalculadorPlazos {
      * @param pedido Pedido a evaluar
      * @return Fecha limite de entrega
      */
-    public LocalDateTime calcularFechaLimitePedido(Pedido pedido) {
+    public LocalDateTime calcularFechaLimitePedido(PedidoSemanal pedido) {
         // Obtener aeropuerto destino
         Aeropuerto destino = worldTemporal.getAeropuerto(pedido.getAeropuertoDestinoId());
         if (destino == null) {

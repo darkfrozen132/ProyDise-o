@@ -366,49 +366,55 @@
             document.getElementById('progressFill').style.width = progresoPct + '%';
             document.getElementById('progressFill').textContent = progresoPct + '%';
             
-            // Rutas
-            if (progreso.solucion && progreso.solucion.rutas) {
-                mostrarRutas(progreso.solucion.rutas);
+            // Rutas (CORREGIDO: usar 'vuelos' en lugar de 'rutas')
+            if (progreso.solucion && progreso.solucion.vuelos) {
+                console.log("✅ Recibidos vuelos:", progreso.solucion.vuelos);
+                mostrarRutas(progreso.solucion.vuelos);
+            } else {
+                console.warn("⚠️ No se encontró progreso.solucion.vuelos:", progreso.solucion);
             }
         }
 
         // ========== MOSTRAR RUTAS ==========
-        function mostrarRutas(rutas) {
-            document.getElementById('rutasCount').textContent = rutas.length;
+        function mostrarRutas(vuelos) {
+            console.log("📊 Mostrando vuelos recibidos:", vuelos);
+            document.getElementById('rutasCount').textContent = vuelos.length;
             
             const lista = document.getElementById('rutasList');
             
-            if (rutas.length === 0) {
+            if (vuelos.length === 0) {
                 lista.innerHTML = '<div class="no-rutas">No hay rutas asignadas aún...</div>';
                 return;
             }
             
-            // 🗺️ PREPARAR DATOS PARA TU MAPA
-            const rutasConCoordenadas = rutas.map(ruta => {
-                const origenData = aeropuertosMap[ruta.origen];
-                const destinoData = aeropuertosMap[ruta.destino];
+            // 🗺️ PREPARAR DATOS PARA TU MAPA (CORREGIDO con campos del backend)
+            const rutasConCoordenadas = vuelos.map(vuelo => {
+                const origenData = aeropuertosMap[vuelo.origenCodigoICAO];
+                const destinoData = aeropuertosMap[vuelo.destinoCodigoICAO];
                 
                 return {
-                    pedidoId: ruta.pedidoId,
-                    vueloId: ruta.vueloId,
+                    flightId: vuelo.flightId,
                     origen: {
-                        codigo: ruta.origen,
+                        codigo: vuelo.origenCodigoICAO,
                         lat: origenData?.lat,
                         lon: origenData?.lon,
                         ciudad: origenData?.ciudad,
                         pais: origenData?.pais
                     },
                     destino: {
-                        codigo: ruta.destino,
+                        codigo: vuelo.destinoCodigoICAO,
                         lat: destinoData?.lat,
                         lon: destinoData?.lon,
                         ciudad: destinoData?.ciudad,
                         pais: destinoData?.pais
                     },
-                    salida: ruta.salida,
-                    llegada: ruta.llegada,
-                    duracionHoras: ruta.duracionHoras,
-                    distanciaKm: ruta.distanciaKm
+                    departureUtc: vuelo.departureUtc,
+                    arrivalUtc: vuelo.arrivalUtc,
+                    fechaInicial: vuelo.fechaInicial,
+                    fechaFinal: vuelo.fechaFinal,
+                    quantity: vuelo.quantity,
+                    slackMinutes: vuelo.slackMinutes,
+                    pedidos: vuelo.pedidos
                 };
             });
             
@@ -425,21 +431,45 @@
             window.ultimasRutas = rutasConCoordenadas;
             console.log("💡 TIP: Accede a los datos escribiendo 'window.ultimasRutas' en la consola");
             
-            // Mostrar en la interfaz
-            lista.innerHTML = rutas.map((ruta, idx) => `
-                <div class="ruta-item">
+            // Mostrar en la interfaz con los NUEVOS CAMPOS
+            lista.innerHTML = rutas.map((ruta, idx) => {
+                // Determinar color según slackMinutes
+                let slackColor = '#999';
+                let slackEmoji = '⏱️';
+                if (ruta.slackMinutes !== undefined && ruta.slackMinutes !== null) {
+                    if (ruta.slackMinutes > 30) {
+                        slackColor = '#4CAF50';  // Verde
+                        slackEmoji = '✅';
+                    } else if (ruta.slackMinutes > 0) {
+                        slackColor = '#FFC107';  // Amarillo
+                        slackEmoji = '⚠️';
+                    } else {
+                        slackColor = '#F44336';  // Rojo
+                        slackEmoji = '❌';
+                    }
+                }
+                
+                return `
+                <div class="ruta-item" style="border-left-color: ${slackColor}">
                     <strong>#${idx + 1}</strong> 
-                    Pedido <strong>${ruta.pedidoId}</strong>: 
-                    <strong>${ruta.origen}</strong> → <strong>${ruta.destino}</strong> 
-                    (Vuelo: ${ruta.vueloId})
+                    ${ruta.flightId ? `<strong>${ruta.flightId}</strong>` : `Vuelo ${idx + 1}`}
+                    <br>
+                    <strong>${ruta.origenCodigoICAO || ruta.origen}</strong> → 
+                    <strong>${ruta.destinoCodigoICAO || ruta.destino}</strong>
                     <br>
                     <small>
-                        🕐 ${ruta.salida || 'N/A'} → ${ruta.llegada || 'N/A'} 
-                        | ⏱️ ${ruta.duracionHoras ? ruta.duracionHoras.toFixed(2) + 'h' : 'N/A'} 
-                        | 📏 ${ruta.distanciaKm ? ruta.distanciaKm.toFixed(0) + 'km' : 'N/A'}
+                        � ${ruta.departureUtc || ruta.fechaInicial || 'N/A'}<br>
+                        🛬 ${ruta.arrivalUtc || ruta.fechaFinal || 'N/A'}<br>
+                        📦 Paquetes: <strong>${ruta.quantity || ruta.totalLoad || 'N/A'}</strong><br>
+                        ${slackEmoji} Holgura: <strong style="color: ${slackColor}">
+                            ${ruta.slackMinutes !== undefined && ruta.slackMinutes !== null 
+                                ? (ruta.slackMinutes > 0 ? '+' : '') + ruta.slackMinutes + ' min' 
+                                : 'N/A'}
+                        </strong>
                     </small>
                 </div>
-            `).join('');
+            `;
+            }).join('');
         }
 
         // ========== ACTUALIZAR TIEMPO ==========

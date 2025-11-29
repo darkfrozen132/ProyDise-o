@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer } from 'react-leaflet';
 import { Drawer, Dialog, DialogTitle, DialogContent, IconButton } from '@mui/material';
@@ -206,7 +206,7 @@ const createAirportIcon = (isSede = false, saturation = 0) => {
 };
 
 /* Componente para manejar marcadores dinámicos en el mapa */
-function DynamicMarkers({ flights, airports, activeView, showRoutes }) {
+function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMovimiento }) {
 	const map = (0, require('react-leaflet').useMap)();
 	const markersRef = React.useRef({}); // Guardar marcadores por ID para animarlos
 	const polylinesRef = React.useRef({});
@@ -240,43 +240,57 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes }) {
 			});
 		}
 		
-		/* Actualizar o crear marcadores de vuelos con animación */
+		/* Actualizar o crear marcadores de vuelos con animación (SISTEMA REACTIVO) */
 		if (activeView === 'flights' || activeView === 'routes') {
-			console.log(`✈️ Actualizando ${flights.length} vuelos en el mapa con animación`);
+			console.log(`✈️ Actualizando ${vuelosEnMovimiento.length} vuelos en el mapa con sistema reactivo`);
 			
 			const currentFlightIds = new Set();
 			
-			flights.forEach((flight, index) => {
+			vuelosEnMovimiento.forEach((flight, index) => {
+				// Verificar que las coordenadas sean válidas
+				if (!flight.currentLat || !flight.currentLng || 
+						isNaN(flight.currentLat) || isNaN(flight.currentLng)) {
+					return;
+				}
+				
 				currentFlightIds.add(flight.id);
 				const existingMarker = markersRef.current[flight.id];
+				
+				// ✅ Usar posiciones pre-calculadas del useMemo
+				const position = { lat: flight.currentLat, lng: flight.currentLng };
+				const progress = flight.progress || 0;
+				const status = flight.status || 'active';
 				
 				if (existingMarker) {
 					// 🎬 ANIMAR: Mover marcador existente suavemente a nueva posición
 					const currentLatLng = existingMarker.getLatLng();
-					const newLatLng = L.latLng(flight.currentLat, flight.currentLng);
+					const newLatLng = L.latLng(position.lat, position.lng);
 					
-					// Solo animar si hay cambio significativo (> 0.001 grados ≈ 100m)
+					// 🎬 Animar solo si el cambio es significativo (> 100m)
+					// Esto suaviza correcciones del backend o saltos temporales
 					const distance = currentLatLng.distanceTo(newLatLng);
 					if (distance > 100) {
 						animateMarker(existingMarker, currentLatLng, newLatLng, 1000); // 1 segundo de animación
+					} else {
+						existingMarker.setLatLng(newLatLng); // actualización instantánea
 					}
 					
-					// Actualizar ícono (ahora con estado dinámico)
+					// Actualizar ícono (ahora con estado y color dinámicos)
 					const newIcon = createAirplaneIcon(flight, flight.rotation);
 					existingMarker.setIcon(newIcon);
 					
-					// Actualizar popup con información detallada
+					// Actualizar popup con información detallada y actualizada
 					const popupContent = createFlightPopup(flight);
 					existingMarker.setPopupContent(popupContent);
 					
 				} else {
 					// 🆕 CREAR: Nuevo marcador para este vuelo
-					console.log(`  ✈️ Vuelo nuevo ${index + 1}: ${flight.id} - Color: ${flight.aircraftColor} - Pos: [${flight.currentLat}, ${flight.currentLng}]`);
+					console.log(`  ✈️ Vuelo nuevo ${index + 1}: ${flight.id} - Interpolación: ${!!flight.fechaInicial} - Pos: [${position.lat.toFixed(3)}, ${position.lng.toFixed(3)}]`);
 					
 					const icon = createAirplaneIcon(flight, flight.rotation);
 					const popupContent = createFlightPopup(flight);
 					
-					const marker = L.marker([flight.currentLat, flight.currentLng], { 
+					const marker = L.marker([position.lat, position.lng], { 
 						icon,
 						isFlight: true // Flag para identificar
 					}).bindPopup(popupContent);
@@ -328,9 +342,86 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes }) {
 		return () => { 
 			airportMarkers.forEach(m => map.removeLayer(m)); 
 		};
-	}, [flights, airports, activeView, showRoutes, map]);
+	}, [vuelosEnMovimiento, airports, activeView, showRoutes, map]); // 🎯 USA vuelosEnMovimiento
 	
 	return null;
+}
+
+/**
+ * 🆕 SISTEMA HÍBRIDO: Calcular posición interpolada basada en tiempo
+ * Inspirado en MapaVuelos.tsx - Interpolación lineal continua
+ */
+function calculateInterpolatedPosition(vuelo, tiempoActualMs) {
+	// Verificar que el vuelo tenga timestamps
+	if (!vuelo.fechaInicial || !vuelo.fechaFinal) {
+		console.warn(`⚠️ Vuelo ${vuelo.id} sin timestamps - usando fallback`);
+		// Fallback: retornar posición actual
+		return {
+			lat: vuelo.currentLat || vuelo.origin?.lat,
+			lng: vuelo.currentLng || vuelo.origin?.lng,
+			progress: vuelo.progress || 0,
+			status: vuelo.status || 'active'
+		};
+	}
+
+	// Extraer timestamps
+	const horaSalida = new Date(vuelo.fechaInicial).getTime();
+	const horaLlegada = new Date(vuelo.fechaFinal).getTime();
+	const duracionVuelo = horaLlegada - horaSalida;
+	
+	// 🐛 DEBUG: Log solo cada 2 segundos para no saturar consola
+	if (Math.random() < 0.02) { // 2% de probabilidad (aprox cada 50 frames = 2.5 seg)
+		const tiempoActual = new Date(tiempoActualMs);
+		const salida = new Date(horaSalida);
+		const llegada = new Date(horaLlegada);
+		const enVuelo = tiempoActualMs >= horaSalida && tiempoActualMs < horaLlegada;
+		console.log(`🔍 Interpolando ${vuelo.id}:`);
+		console.log(`   Salida:  ${salida.toISOString()}`);
+		console.log(`   Llegada: ${llegada.toISOString()}`);
+		console.log(`   Actual:  ${tiempoActual.toISOString()} ${enVuelo ? '✈️ EN VUELO' : '⏸️'}`);
+		console.log(`   Duración: ${(duracionVuelo / 1000 / 60).toFixed(0)} minutos`);
+	}
+
+	// Si el vuelo no ha empezado, está en origen
+	if (tiempoActualMs < horaSalida) {
+		return {
+			lat: vuelo.origin.lat,
+			lng: vuelo.origin.lng,
+			progress: 0,
+			status: 'waiting'
+		};
+	}
+
+	// Si el vuelo ya terminó, está en destino
+	if (tiempoActualMs >= horaLlegada) {
+		return {
+			lat: vuelo.destination.lat,
+			lng: vuelo.destination.lng,
+			progress: 100,
+			status: 'completed'
+		};
+	}
+
+	// Calcular progreso (0-100%)
+	const tiempoTranscurrido = tiempoActualMs - horaSalida;
+	const progreso = (tiempoTranscurrido / duracionVuelo) * 100;
+	const ratio = progreso / 100;
+
+	// Interpolación lineal entre origen y destino
+	const lat = vuelo.origin.lat + (vuelo.destination.lat - vuelo.origin.lat) * ratio;
+	const lng = vuelo.origin.lng + (vuelo.destination.lng - vuelo.origin.lng) * ratio;
+
+	// 🐛 DEBUG: Log de posición calculada (solo algunos frames)
+	if (Math.random() < 0.02) {
+		console.log(`   ✈️ Progreso: ${progreso.toFixed(1)}% | Pos: [${lat.toFixed(3)}, ${lng.toFixed(3)}]`);
+	}
+
+	return {
+		lat,
+		lng,
+		progress: progreso,
+		status: 'active'
+	};
 }
 
 /**
@@ -438,10 +529,24 @@ const SimuladorSemanal = () => {
 	const stompClientRef = useRef(null);
 	const subscriptionRef = useRef(null);
 
+	// ========== SISTEMA DE TIEMPO SIMULADO (REACTIVO) ==========
+	const [tiempoSimuladoBackend, setTiempoSimuladoBackend] = useState(null);
+	const [ultimaActualizacionReal, setUltimaActualizacionReal] = useState(null);
+	const [tiempoMovimiento, setTiempoMovimiento] = useState(0);
+	const [tiempoSimulado, setTiempoSimulado] = useState(Date.now());
+	const [speedMultiplier, setSpeedMultiplier] = useState(DESIRED_TIME_SCALE); // 500x
+	const tiempoSimuladoBackendRef = useRef(null); // 🆕 Ref para verificar si ya se inicializó
+
 	// 🔥 Refs para las funciones de procesamiento (evitan circular dependencies)
 	const procesarVuelosDirectosRef = useRef(null);
 	const procesarRutasSimulacionRef = useRef(null);
+	
+	// 🆔 Contador único para generar IDs de vuelos (evita duplicados)
+	const contadorVuelosRef = useRef(0);
 	const procesarRutasSnapshotRef = useRef(null);
+	const procesarSegmentsSnapshotRef = useRef(null); // 🆕 Para nueva estructura JSON
+	
+	// ✅ ELIMINADO: Refs de tiempo movidas a estado reactivo (ver línea ~215)
 
 
 
@@ -571,6 +676,94 @@ const SimuladorSemanal = () => {
 		}
 	}, [vuelosSemana]);
 
+	// ========== INTERVALO: Incrementar tiempoMovimiento ==========
+	useEffect(() => {
+		if (!ultimaActualizacionReal || !tiempoSimuladoBackend) return;
+
+		console.log('🕐 Iniciando intervalo de tiempo simulado');
+
+		const interval = setInterval(() => {
+			const tiempoReal = Date.now() - ultimaActualizacionReal;
+			setTiempoMovimiento(tiempoReal);
+		}, 50); // 20 FPS (cada 50ms)
+
+		return () => {
+			console.log('🛑 Deteniendo intervalo de tiempo simulado');
+			clearInterval(interval);
+		};
+	}, [ultimaActualizacionReal, tiempoSimuladoBackend]);
+
+	// ========== CALCULAR: Tiempo Simulado ==========
+	useEffect(() => {
+		if (!tiempoSimuladoBackend) {
+			setTiempoSimulado(Date.now());
+			return;
+		}
+
+		// Calcular tiempo simulado: base + (tiempo_real × velocidad)
+		const msSimuladosPasados = tiempoMovimiento * speedMultiplier;
+		const nuevoTiempoSimulado = tiempoSimuladoBackend + msSimuladosPasados;
+		
+		setTiempoSimulado(nuevoTiempoSimulado);
+
+		// Debug cada 2 segundos (solo algunos frames)
+		if (Math.random() < 0.02) {
+			const fechaSimulada = new Date(nuevoTiempoSimulado);
+			console.log(`⏰ Tiempo simulado: ${fechaSimulada.toISOString()}`);
+			console.log(`   Base: ${new Date(tiempoSimuladoBackend).toISOString()}`);
+			console.log(`   Δ Real: ${(tiempoMovimiento / 1000).toFixed(1)}s`);
+			console.log(`   Velocidad: ${speedMultiplier}x`);
+		}
+	}, [tiempoSimuladoBackend, tiempoMovimiento, speedMultiplier]);
+
+	// ========== CALCULAR: Vuelos en Movimiento (REACTIVO) ==========
+	const vuelosEnMovimiento = useMemo(() => {
+		if (!tiempoSimulado || flights.length === 0) {
+			return [];
+		}
+
+		// Debug cada 2 segundos
+		if (Math.random() < 0.02) {
+			console.log(`✈️ Re-calculando posiciones de ${flights.length} vuelos`);
+			console.log(`   Tiempo simulado: ${new Date(tiempoSimulado).toISOString()}`);
+		}
+
+		return flights.map(flight => {
+			// Calcular posición interpolada basada en tiempo simulado
+			const interpolated = calculateInterpolatedPosition(flight, tiempoSimulado);
+			
+			// Calcular rotación del avión
+			const bearing = bearingDegrees(
+				interpolated.lat,
+				interpolated.lng,
+				flight.destination.lat,
+				flight.destination.lng
+			);
+			const rotation = (bearing - 90 + 360) % 360;
+
+			return {
+				...flight,
+				currentLat: interpolated.lat,
+				currentLng: interpolated.lng,
+				progress: interpolated.progress,
+				status: interpolated.status,
+				rotation: rotation
+			};
+		});
+	}, [flights, tiempoSimulado]); // 🎯 DEPENDENCIAS REACTIVAS
+
+	// Debug: Cantidad de vuelos en el aire
+	useEffect(() => {
+		const enAire = vuelosEnMovimiento.filter(v => 
+			v.status === 'active' && v.progress > 0 && v.progress < 100
+		).length;
+		
+		if (enAire !== flightsInAir) {
+			setFlightsInAir(enAire);
+			console.log(`🛫 Aviones en el aire: ${enAire}/${vuelosEnMovimiento.length}`);
+		}
+	}, [vuelosEnMovimiento, flightsInAir]);
+
 	/* ==================== VUELOS LOCALES DESHABILITADOS - SOLO WEBSOCKET ==================== */
 	// ❌ COMENTADO: Ya no usamos vuelos locales basados en planFixed y simClock
 	// ✅ AHORA: Todos los vuelos vienen del WebSocket mediante procesarRutasSimulacion()
@@ -672,6 +865,7 @@ const SimuladorSemanal = () => {
 		setTickActual(0);
 		setFlights([]);
 		setFlightsInAir(0);
+		contadorVuelosRef.current = 0; // 🆔 Resetear contador de IDs únicos
 		// Si deseas también resetear planificaciones recibidas:
 		// setPlanFixed([]);
 	};
@@ -730,8 +924,12 @@ const SimuladorSemanal = () => {
 		// Calcular total de paquetes
 		const totalPaquetes = vuelo.pedidos?.reduce((sum, p) => sum + (p.cantidad || 0), 0) || 0;
 		
+		// Generar ID único con contador incremental (SIN Date.now() para evitar duplicados)
+		contadorVuelosRef.current += 1;
+		const idUnico = `PL-${vuelo.origenCodigoICAO}-${vuelo.destinoCodigoICAO}-${contadorVuelosRef.current}`;
+		
 		return {
-			id: `PL-${vuelo.origenCodigoICAO}-${vuelo.destinoCodigoICAO}-${Date.now()}-${Math.random()}`,
+			id: idUnico,
 			origin: {
 				code: vuelo.origenCodigoICAO,
 				lat: origen.lat,
@@ -792,9 +990,14 @@ const SimuladorSemanal = () => {
 					setIteracionesPlanificacion(prev => [data, ...prev].slice(0, 20));
 					setEstadoPlanificacion('running');
 					
-					// Actualizar tiempo de simulación si viene en los datos
+					// 🕐 ACTUALIZAR TIEMPO SIMULADO DEL BACKEND (Planificación)
 					if (data.datos?.tiempoSimulacionActual) {
 						setTiempoSimulacionActual(data.datos.tiempoSimulacionActual);
+						setTiempoSimuladoBackend(data.datos.tiempoSimulacionActual);
+						tiempoSimuladoBackendRef.current = data.datos.tiempoSimulacionActual; // 🆕 Sincronizar ref
+						setUltimaActualizacionReal(Date.now());
+						setTiempoMovimiento(0); // Resetear movimiento
+						console.log(`⏰ Tiempo simulado actualizado (planificación): ${data.datos.tiempoSimulacionActual}`);
 					}
 					
 					console.log(`📊 Progreso - Iteración #${data.datos?.ejecucionNumero || '?'}`);
@@ -813,17 +1016,23 @@ const SimuladorSemanal = () => {
 							.map(convertirVueloPlanificacionAMapa)
 							.filter(v => v !== null); // Filtrar vuelos con aeropuertos no encontrados
 						
-						console.log(`🔄 Convertidos ${vuelosParaMapa.length} de ${data.solucion.vuelos.length} vuelos`);
+					console.log(`🔄 Convertidos ${vuelosParaMapa.length} de ${data.solucion.vuelos.length} vuelos`);
+					
+					// ACUMULAR vuelos en el mapa (sin duplicados)
+					setFlights(prevFlights => {
+						// Crear un mapa de vuelos existentes por ID
+						const flightsMap = new Map(prevFlights.map(f => [f.id, f]));
 						
-						// ACUMULAR vuelos en el mapa (no reemplazar)
-						setFlights(prevFlights => {
-							const vuelosActualizados = [...prevFlights, ...vuelosParaMapa];
-							console.log(`📊 Total vuelos en mapa: ${vuelosActualizados.length}`);
-							return vuelosActualizados;
+						// Agregar o actualizar vuelos nuevos
+						vuelosParaMapa.forEach(vuelo => {
+							flightsMap.set(vuelo.id, vuelo);
 						});
-						setFlightsInAir(prev => prev + vuelosParaMapa.length);
 						
-						console.log(`🗺️ Graficados ${vuelosParaMapa.length} vuelos en el mapa`);
+						const vuelosActualizados = Array.from(flightsMap.values());
+						console.log(`📊 Total vuelos en mapa: ${vuelosActualizados.length} (sin duplicados)`);
+						return vuelosActualizados;
+					});
+					setFlightsInAir(prev => prev + vuelosParaMapa.length);						console.log(`🗺️ Graficados ${vuelosParaMapa.length} vuelos en el mapa`);
 					}
 					break;				case 'completado':
 					console.log('🎉 Planificación completada - Intervalo recibido');
@@ -837,10 +1046,14 @@ const SimuladorSemanal = () => {
 					// Agregar resultado final a la lista
 					setIteracionesPlanificacion(prev => [data, ...prev].slice(0, 50));
 					
-					// Actualizar tiempo de simulación
+					// 🕐 ACTUALIZAR TIEMPO SIMULADO DEL BACKEND (Planificación completada)
 					if (data.datos?.tiempoSimulacionActual) {
 						setTiempoSimulacionActual(data.datos.tiempoSimulacionActual);
-						console.log('⏰ Tiempo simulación actualizado:', data.datos.tiempoSimulacionActual);
+						setTiempoSimuladoBackend(data.datos.tiempoSimulacionActual);
+						tiempoSimuladoBackendRef.current = data.datos.tiempoSimulacionActual; // 🆕 Sincronizar ref
+						setUltimaActualizacionReal(Date.now());
+						setTiempoMovimiento(0); // Resetear movimiento
+						console.log('⏰ Tiempo simulación actualizado (completado):', data.datos.tiempoSimulacionActual);
 					}
 					
 					// ✈️ GRAFICAR SOLUCIÓN EN EL MAPA
@@ -858,10 +1071,18 @@ const SimuladorSemanal = () => {
 						if (vuelosParaMapa.length > 0) {
 							console.log('🗺️ Ejemplo de vuelo convertido:', vuelosParaMapa[0]);
 							
-							// Actualizar el mapa ACUMULANDO vuelos (no reemplazar)
+							// Actualizar el mapa ACUMULANDO vuelos (sin duplicados)
 							setFlights(prevFlights => {
-								const vuelosActualizados = [...prevFlights, ...vuelosParaMapa];
-								console.log(`📊 Total vuelos en mapa: ${vuelosActualizados.length} (${prevFlights.length} anteriores + ${vuelosParaMapa.length} nuevos)`);
+								// Crear un mapa de vuelos existentes por ID
+								const flightsMap = new Map(prevFlights.map(f => [f.id, f]));
+								
+								// Agregar o actualizar vuelos nuevos
+								vuelosParaMapa.forEach(vuelo => {
+									flightsMap.set(vuelo.id, vuelo);
+								});
+								
+								const vuelosActualizados = Array.from(flightsMap.values());
+								console.log(`📊 Total vuelos en mapa: ${vuelosActualizados.length} (sin duplicados)`);
 								return vuelosActualizados;
 							});
 							
@@ -1001,7 +1222,7 @@ const SimuladorSemanal = () => {
 			return false;
 		}
 
-		// Enviar solicitud de planificación
+		// Enviar solicitud de planificación (ahora es async)
 		wsPlanificacionRef.current.iniciarPlanificacion(
 			fechaInicioSimulacion,
 			5, // Factor K para simulación semanal
@@ -1010,7 +1231,12 @@ const SimuladorSemanal = () => {
 				maxGeneraciones: 20,
 				limiteGeneracionesSinMejora: 10
 			}
-		);
+		).then(sessionId => {
+			console.log('✅ Planificación iniciada con ID:', sessionId);
+		}).catch(error => {
+			console.error('❌ Error al iniciar planificación:', error);
+			setEstadoPlanificacion('error');
+		});
 		
 		console.log('📤 Solicitud de planificación enviada para fecha:', fechaInicioSimulacion);
 		return true;
@@ -1041,8 +1267,15 @@ const SimuladorSemanal = () => {
 		setFlightsInAir(0);
 		setIntentosRealizados(0);
 		setEstadoPlanificacion('running');
+		contadorVuelosRef.current = 0; // 🆔 Resetear contador de IDs únicos
 		
-		// 🕐 INICIAR CRONÓMETRO DE TIEMPO REAL
+		// 🕐 INICIAR TIEMPO DE SIMULACIÓN (basado en fecha elegida por usuario)
+		const fechaSimulacion = new Date(`${fechaInicioSimulacion}T00:00:00Z`);
+		simStartRef.current = fechaSimulacion;
+		setSimClock(fechaSimulacion);
+		console.log('🕐 Tiempo de simulación iniciado en:', fechaSimulacion.toISOString());
+		
+		// 🕐 INICIAR CRONÓMETRO DE TIEMPO REAL (para UI)
 		tiempoInicioRef.current = Date.now();
 		setTiempoRealTranscurrido(0);
 		
@@ -1093,12 +1326,27 @@ const SimuladorSemanal = () => {
 	 * Limpiar todos los vuelos del mapa
 	 */
 	const handleLimpiarMapa = () => {
-		console.log('🧹 Limpiando mapa...');
+		console.log('🧹 Limpiando mapa y reseteando simulación...');
+		
+		// Limpiar vuelos
 		setFlights([]);
 		setFlightsInAir(0);
 		setIteracionesPlanificacion([]);
 		setIntentosRealizados(0);
-		console.log('✅ Mapa limpiado');
+		contadorVuelosRef.current = 0;
+		
+		// ✅ RESETEAR TIEMPO SIMULADO
+		setTiempoSimuladoBackend(null);
+		tiempoSimuladoBackendRef.current = null; // 🆕 También resetear la ref
+		setUltimaActualizacionReal(null);
+		setTiempoMovimiento(0);
+		setTiempoSimulado(Date.now());
+		
+		// Limpiar progreso
+		setProgresoAG(null);
+		setMensajesSimulacion([]);
+		
+		console.log('✅ Mapa limpiado y simulación reseteada');
 	};
 
 	// Auto-conectar WebSocket al montar el componente
@@ -1225,12 +1473,16 @@ const SimuladorSemanal = () => {
 		console.log('🔌 WebSocket STOMP desconectado completamente');
 	}, []);
 
+	// 🆔 Contador para IDs únicos de mensajes
+	const contadorMensajesRef = useRef(0);
+	
 	/**
 	 * Agregar mensaje al log
 	 */
 	const agregarMensaje = useCallback((mensaje, tipo = 'info') => {
+		contadorMensajesRef.current += 1;
 		const nuevoMensaje = {
-			id: Date.now(),
+			id: `msg-${Date.now()}-${contadorMensajesRef.current}-${Math.random().toString(36).substr(2, 9)}`,
 			texto: mensaje,
 			tipo, // success, error, warning, info
 			timestamp: new Date().toLocaleTimeString('es-ES')
@@ -1262,6 +1514,7 @@ const SimuladorSemanal = () => {
 			setFlightsInAir(0);
 			setProgresoAG(null);
 			setMensajesSimulacion([]);
+			contadorVuelosRef.current = 0; // 🆔 Resetear contador de IDs únicos
 			
 			setEstadoSimulacionStomp('running');
 			agregarMensaje(`🚀 Iniciando simulación para ${fechaInicioSimulacion}`, 'info');
@@ -1330,6 +1583,19 @@ const SimuladorSemanal = () => {
 			// Mensaje de progreso del Algoritmo Genético
 			console.log(`🧬 Progreso AG - Generación ${datos.generacion}/${datos.maxGeneraciones}`);
 			
+			// 🕐 ACTUALIZAR TIEMPO SIMULADO DEL BACKEND (convertir a timestamp)
+			if (datos.fechaSimulada) {
+				const timestampSimulado = new Date(datos.fechaSimulada).getTime();
+				
+				// ✅ ACTUALIZAR ESTADO Y REF
+				setTiempoSimuladoBackend(timestampSimulado);
+				tiempoSimuladoBackendRef.current = timestampSimulado; // 🆕 Sincronizar ref
+				setUltimaActualizacionReal(Date.now());
+				setTiempoMovimiento(0); // Resetear movimiento
+				
+				console.log(`⏰ Backend - Tiempo simulado actualizado: ${datos.fechaSimulada}`);
+			}
+			
 			setProgresoAG({
 				generacion: datos.generacion,
 				maxGeneraciones: datos.maxGeneraciones,
@@ -1362,29 +1628,51 @@ const SimuladorSemanal = () => {
 				}
 			}
 
-		} else if (datos.status === 'RUNNING') {
-			// Snapshot de simulación en curso
-			console.log(`🎮 Simulación corriendo - Iteración ${datos.iteration}`);
+		} else if (datos.type === 'PROGRESS' || datos.status === 'RUNNING') {
+			// 🆕 NUEVA ESTRUCTURA: SimulationMessage con snapshot
+			console.log(`🎮 Simulación corriendo - Snapshot recibido`);
 			
-			agregarMensaje(
-				`🎮 Iteración ${datos.iteration} - ${datos.processedOrders}/${datos.totalOrders} pedidos`,
-				'info'
-			);
-
-			if (datos.solution?.routes) {
-				// Procesar rutas si vienen en el snapshot
+			if (datos.snapshot) {
+				const snapshot = datos.snapshot;
+				console.log(`📊 Snapshot: ${snapshot.processedOrders}/${snapshot.totalOrders} pedidos procesados`);
+				console.log(`📈 Fitness: ${snapshot.fitness?.toFixed(4)}`);
+				
+				agregarMensaje(
+					`🎮 Progreso: ${snapshot.processedOrders}/${snapshot.totalOrders} pedidos - Fitness: ${snapshot.fitness?.toFixed(4)}`,
+					'info'
+				);
+				
+				// 🆕 PROCESAR SEGMENTS del snapshot (nueva estructura)
+				if (snapshot.orderPlans && snapshot.orderPlans.length > 0) {
+					console.log(`✈️ Procesando segments del snapshot...`);
+					if (procesarSegmentsSnapshotRef.current) {
+						procesarSegmentsSnapshotRef.current(snapshot);
+					}
+				}
+			}
+			// Fallback para estructura antigua
+			else if (datos.solution?.routes) {
+				console.log(`✈️ [Formato antiguo] Procesando ${datos.solution.routes.length} rutas...`);
 				if (procesarRutasSnapshotRef.current) {
 					procesarRutasSnapshotRef.current(datos.solution.routes);
 				}
 			}
 
-		} else if (datos.status === 'COMPLETED') {
+		} else if (datos.type === 'COMPLETED' || datos.status === 'COMPLETED') {
 			// Simulación completada
 			console.log('🎉 Simulación completada exitosamente');
 			setEstadoSimulacionStomp('completed');
 			agregarMensaje('🎉 Simulación completada exitosamente', 'success');
 
-			if (datos.solution?.routes) {
+			// 🆕 Procesar snapshot final si existe
+			if (datos.snapshot?.orderPlans) {
+				console.log(`✈️ Procesando snapshot final...`);
+				if (procesarSegmentsSnapshotRef.current) {
+					procesarSegmentsSnapshotRef.current(datos.snapshot);
+				}
+			}
+			// Fallback para formato antiguo
+			else if (datos.solution?.routes) {
 				if (procesarRutasSnapshotRef.current) {
 					procesarRutasSnapshotRef.current(datos.solution.routes);
 				}
@@ -1408,6 +1696,184 @@ const SimuladorSemanal = () => {
 	 * 🆕 Procesar vuelos DIRECTOS (formato nuevo del backend)
 	 * Formato: {origenCodigoICAO, destinoCodigoICAO, fechaInicial, fechaFinal, pedidos, totalPaquetes}
 	 */
+	/**
+	 * 🆕 Procesar segments del snapshot (nueva estructura JSON)
+	 * Extrae todos los segments de orderPlans → routes → segments
+	 */
+	const procesarSegmentsSnapshot = useCallback((snapshot) => {
+		const currentAirports = airportsRef.current;
+		console.log(`\n🔍 procesarSegmentsSnapshot - Snapshot recibido`);
+		console.log(`📍 Aeropuertos disponibles: ${currentAirports.length}`);
+		console.log(`⏰ Tiempo simulado: ${snapshot.generatedAt}`);
+		
+		if (!snapshot.orderPlans || snapshot.orderPlans.length === 0) {
+			console.warn('⚠️ No hay orderPlans en el snapshot');
+			return;
+		}
+		
+		const nuevosVuelos = [];
+		let segmentIndex = 0;
+		
+		// Iterar por cada orderPlan
+		snapshot.orderPlans.forEach((orderPlan, orderIndex) => {
+			const orderId = orderPlan.orderId;
+			const orderSlackMinutes = orderPlan.slackMinutes;
+			
+			console.log(`\n📦 Pedido ${orderIndex + 1}/${snapshot.orderPlans.length}: ${orderId}`);
+			console.log(`   Holgura: ${orderSlackMinutes} minutos ${orderSlackMinutes > 0 ? '✅' : '⚠️'}`);
+			
+			// Iterar por cada ruta del pedido
+			orderPlan.routes.forEach((route, routeIndex) => {
+				console.log(`   📍 Ruta ${routeIndex + 1}: ${route.segments.length} segmentos`);
+				
+				// Iterar por cada segment (VUELO) de la ruta
+				route.segments.forEach((segment, segIndex) => {
+					segmentIndex++;
+					
+					console.log(`\n   ✈️ Segment ${segmentIndex}: ${segment.flightId}`);
+					console.log(`      ${segment.origin} → ${segment.destination}`);
+					console.log(`      Despegue: ${segment.departureUtc}`);
+					console.log(`      Llegada:  ${segment.arrivalUtc}`);
+					console.log(`      Cantidad: ${segment.quantity} paquetes`);
+					
+					// Buscar aeropuertos de origen y destino
+					const origen = currentAirports.find(a => 
+						a.code.toUpperCase() === segment.origin.toUpperCase()
+					);
+					const destino = currentAirports.find(a => 
+						a.code.toUpperCase() === segment.destination.toUpperCase()
+					);
+					
+					if (!origen) {
+						console.error(`      ❌ Aeropuerto ORIGEN no encontrado: "${segment.origin}"`);
+						return;
+					}
+					
+					if (!destino) {
+						console.error(`      ❌ Aeropuerto DESTINO no encontrado: "${segment.destination}"`);
+						return;
+					}
+					
+					console.log(`      ✅ Origen: ${origen.code} [${origen.lat.toFixed(2)}, ${origen.lng.toFixed(2)}]`);
+					console.log(`      ✅ Destino: ${destino.code} [${destino.lat.toFixed(2)}, ${destino.lng.toFixed(2)}]`);
+					
+					// Calcular rotación del avión
+					const brg = bearingDegrees(origen.lat, origen.lng, destino.lat, destino.lng);
+					const rotation = (brg - 90 + 360) % 360;
+					
+					// Determinar estado basado en holgura
+					let status = 'active';
+					if (orderSlackMinutes <= 0) {
+						status = 'retrasado';
+					}
+					
+					// Posición inicial (será calculada por interpolación)
+					const progress = 0;
+					const currentLat = origen.lat;
+					const currentLng = origen.lng;
+					
+					// 🆕 Crear ID único combinando múltiples factores para evitar duplicados
+					const uniqueId = `SNAP-${segment.flightId}-${orderId}-${routeIndex}-${segIndex}-${segmentIndex}-${Math.random().toString(36).substr(2, 6)}`;
+					
+					// 🆕 Crear objeto de vuelo con timestamps del segment
+					const nuevoVuelo = {
+						id: uniqueId,
+						flightId: segment.flightId,
+						origin: {
+							code: segment.origin,
+							lat: origen.lat,
+							lng: origen.lng,
+							region: origen.region
+						},
+						destination: {
+							code: segment.destination,
+							lat: destino.lat,
+							lng: destino.lng,
+							region: destino.region
+						},
+						// ⏰ TIMESTAMPS PARA INTERPOLACIÓN HÍBRIDA
+						fechaInicial: segment.departureUtc,
+						fechaFinal: segment.arrivalUtc,
+						// Información del pedido
+						pedidoId: orderId,
+						slackMinutes: orderSlackMinutes,
+						// Posición y estado
+						progress,
+						currentLat,
+						currentLng,
+						rotation,
+						status,
+						// Metadatos
+						altitude: 35000,
+						speed: 850,
+						packageCapacity: segment.quantity,
+						currentPackages: segment.quantity,
+						packageType: 'SNAPSHOT',
+						isSameContinentFlight: origen.region === destino.region,
+						aircraftColor: orderSlackMinutes <= 0 ? '#ef4444' : '#10b981', // Rojo si retrasado
+					};
+					
+					console.log(`      ✅ Vuelo creado con interpolación temporal`);
+					console.log(`      🎬 Sistema híbrido ACTIVADO`);
+					
+					nuevosVuelos.push(nuevoVuelo);
+				});
+			});
+		});
+		
+		console.log(`\n📊 ============================================`);
+		console.log(`📊 Total de segments procesados: ${segmentIndex}`);
+		console.log(`📊 Total de vuelos creados: ${nuevosVuelos.length}`);
+		const vuelosConInterpolacion = nuevosVuelos.filter(v => v.fechaInicial && v.fechaFinal).length;
+		console.log(`🎬 Vuelos con interpolación temporal: ${vuelosConInterpolacion}/${nuevosVuelos.length}`);
+		console.log(`📊 ============================================\n`);
+		
+		if (nuevosVuelos.length > 0) {
+			console.log(`🗺️ Primer vuelo (ejemplo):`, {
+				id: nuevosVuelos[0].id,
+				flightId: nuevosVuelos[0].flightId,
+				from: nuevosVuelos[0].origin.code,
+				to: nuevosVuelos[0].destination.code,
+				departure: nuevosVuelos[0].fechaInicial,
+				arrival: nuevosVuelos[0].fechaFinal,
+				orderId: nuevosVuelos[0].pedidoId,
+				status: nuevosVuelos[0].status
+			});
+			
+			// 🔥 ELIMINAR DUPLICADOS usando Map
+			const flightsMap = new Map(nuevosVuelos.map(v => [v.id, v]));
+			const vuelosUnicos = Array.from(flightsMap.values());
+			
+			if (vuelosUnicos.length < nuevosVuelos.length) {
+				console.warn(`⚠️ Se encontraron ${nuevosVuelos.length - vuelosUnicos.length} vuelos duplicados, eliminados`);
+			}
+			
+			// 🔥 REEMPLAZAR todos los vuelos (sin duplicados)
+			console.log(`🔄 Reemplazando flights array con ${vuelosUnicos.length} vuelos únicos`);
+			setFlights(vuelosUnicos);
+			
+			// 🆕 AUTO-INICIALIZAR TIEMPO SIMULADO basado en los vuelos
+			// Si el backend no envía tiempoSimulacionActual, usar la fecha más temprana de los vuelos
+			const vuelosConFecha = vuelosUnicos.filter(v => v.fechaInicial);
+			if (vuelosConFecha.length > 0) {
+				const fechaMasTemprana = Math.min(
+					...vuelosConFecha.map(v => new Date(v.fechaInicial).getTime())
+				);
+				
+				// Verificar si tiempoSimuladoBackend aún no está establecido usando ref
+				if (tiempoSimuladoBackendRef.current === null) {
+					console.log(`🕐 AUTO-INICIALIZANDO tiempo simulado a: ${new Date(fechaMasTemprana).toISOString()}`);
+					tiempoSimuladoBackendRef.current = fechaMasTemprana; // Marcar como inicializado
+					setTiempoSimuladoBackend(fechaMasTemprana);
+					setUltimaActualizacionReal(Date.now());
+					setTiempoMovimiento(0);
+				}
+			}
+		}
+	}, []);
+	
+	procesarSegmentsSnapshotRef.current = procesarSegmentsSnapshot;
+
 	const procesarVuelosDirectos = useCallback((vuelos) => {
 		const currentAirports = airportsRef.current; // 🔥 Usar ref para tener valor actual
 		console.log(`\n🔍 procesarVuelosDirectos - Recibidos ${vuelos?.length || 0} vuelos`);
@@ -1419,6 +1885,7 @@ const SimuladorSemanal = () => {
 		}
 		
 		const nuevosVuelos = [];
+		const baseTimestamp = Date.now(); // 🆕 Timestamp base para todo el lote
 
 		vuelos.forEach((vuelo, index) => {
 			console.log(`\n✈️ Vuelo ${index + 1}/${vuelos.length}`);
@@ -1447,11 +1914,23 @@ const SimuladorSemanal = () => {
 
 			console.log(`   ✅ Origen: ${origen.code} [${origen.lat}, ${origen.lng}]`);
 			console.log(`   ✅ Destino: ${destino.code} [${destino.lat}, ${destino.lng}]`);
+			
+			// 🆕 USAR FECHA DE SIMULACIÓN (no fecha actual del sistema)
+			const tieneFechas = vuelo.fechaInicial && vuelo.fechaFinal;
+			if (tieneFechas) {
+				const salida = new Date(vuelo.fechaInicial).getTime();
+				const llegada = new Date(vuelo.fechaFinal).getTime();
+				
+				console.log(`   ⏰ Fechas: ${vuelo.fechaInicial} → ${vuelo.fechaFinal}`);
+				console.log(`   ✈️ Vuelo configurado correctamente para animación`);
+			} else {
+				console.log(`   ⚠️ Sin fechas de vuelo - usando posición estática`);
+			}
 
-			// 🔥 Usar progreso fijo para visualización inmediata
+			// 🔥 Usar progreso fijo para visualización inmediata (si no hay fechas)
 			const progress = 0.5; // Mitad del recorrido
 
-			// Interpolación de posición
+			// Interpolación de posición inicial
 			const currentLat = origen.lat + (destino.lat - origen.lat) * progress;
 			const currentLng = origen.lng + (destino.lng - origen.lng) * progress;
 
@@ -1459,9 +1938,12 @@ const SimuladorSemanal = () => {
 			const brg = bearingDegrees(origen.lat, origen.lng, destino.lat, destino.lng);
 			const rotation = (brg - 90 + 360) % 360;
 
-			// Crear objeto de vuelo
+			// 🆕 ID único: baseTimestamp + índice + micro-timestamp + random
+			const uniqueId = `WS-${vuelo.pedidos?.[0]?.idPedido || index}-${baseTimestamp}-${index}-${Math.random().toString(36).substr(2, 9)}`;
+
+			// Crear objeto de vuelo (con timestamps para interpolación híbrida)
 			const nuevoVuelo = {
-				id: `WS-${vuelo.pedidos?.[0]?.idPedido || index}-${Date.now()}-${Math.random()}`,
+				id: uniqueId,
 				origin: {
 					code: vuelo.origenCodigoICAO,
 					lat: origen.lat,
@@ -1493,11 +1975,16 @@ const SimuladorSemanal = () => {
 			};
 			
 			console.log(`   ✅ Vuelo creado en posición: [${currentLat.toFixed(2)}, ${currentLng.toFixed(2)}]`);
+			if (nuevoVuelo.fechaInicial && nuevoVuelo.fechaFinal) {
+				console.log(`   🎬 Sistema híbrido ACTIVADO para este vuelo`);
+			}
 			nuevosVuelos.push(nuevoVuelo);
 		});
 
 		console.log(`\n📊 ============================================`);
 		console.log(`📊 Total de vuelos WebSocket creados: ${nuevosVuelos.length}`);
+		const vuelosConInterpolacion = nuevosVuelos.filter(v => v.fechaInicial && v.fechaFinal).length;
+		console.log(`🎬 Vuelos con interpolación temporal: ${vuelosConInterpolacion}/${nuevosVuelos.length}`);
 		console.log(`📊 ============================================\n`);
 		
 		if (nuevosVuelos.length > 0) {
@@ -1510,16 +1997,42 @@ const SimuladorSemanal = () => {
 				packages: nuevosVuelos[0].packageCapacity
 			});
 			
-			// 🔥 REEMPLAZAR todos los vuelos (no acumular)
-			console.log(`🔄 Reemplazando flights array con ${nuevosVuelos.length} vuelos nuevos`);
-			setFlights(nuevosVuelos);
+			// 🔥 ELIMINAR DUPLICADOS usando Map
+			const flightsMap = new Map(nuevosVuelos.map(v => [v.id, v]));
+			const vuelosUnicos = Array.from(flightsMap.values());
+			
+			if (vuelosUnicos.length < nuevosVuelos.length) {
+				console.warn(`⚠️ Se encontraron ${nuevosVuelos.length - vuelosUnicos.length} vuelos duplicados, eliminados`);
+			}
+			
+			// 🔥 REEMPLAZAR todos los vuelos (sin duplicados)
+			console.log(`🔄 Reemplazando flights array con ${vuelosUnicos.length} vuelos únicos`);
+			setFlights(vuelosUnicos);
+			
+			// 🆕 AUTO-INICIALIZAR TIEMPO SIMULADO basado en los vuelos
+			// Si el backend no envía tiempoSimulacionActual, usar la fecha más temprana de los vuelos
+			const vuelosConFecha = vuelosUnicos.filter(v => v.fechaInicial);
+			if (vuelosConFecha.length > 0) {
+				const fechaMasTemprana = Math.min(
+					...vuelosConFecha.map(v => new Date(v.fechaInicial).getTime())
+				);
+				
+				// Verificar si tiempoSimuladoBackend aún no está establecido usando ref
+				if (tiempoSimuladoBackendRef.current === null) {
+					console.log(`🕐 AUTO-INICIALIZANDO tiempo simulado a: ${new Date(fechaMasTemprana).toISOString()}`);
+					tiempoSimuladoBackendRef.current = fechaMasTemprana; // Marcar como inicializado
+					setTiempoSimuladoBackend(fechaMasTemprana);
+					setUltimaActualizacionReal(Date.now());
+					setTiempoMovimiento(0);
+				}
+			}
 			
 			// ✅ Verificar que el estado se actualizó
 			setTimeout(() => {
-				console.log(`✅ Verificación: flights.length después de setFlights = ${nuevosVuelos.length}`);
+				console.log(`✅ Verificación: flights.length después de setFlights = ${vuelosUnicos.length}`);
 			}, 100);
 			
-			const vuelosActivos = nuevosVuelos.filter(v => v.status === 'active').length;
+			const vuelosActivos = vuelosUnicos.filter(v => v.status === 'active').length;
 			setFlightsInAir(vuelosActivos);
 			console.log(`✈️ Vuelos activos: ${vuelosActivos}`);
 		} else {
@@ -1547,6 +2060,7 @@ const SimuladorSemanal = () => {
 		}
 		
 		const nuevosVuelos = [];
+		const baseTimestamp = Date.now(); // 🆕 Timestamp base para todo el lote
 
 		rutas.forEach((ruta, rutaIdx) => {
 			console.log(`\n📦 Ruta ${rutaIdx + 1}/${rutas.length} - PedidoID: ${ruta.pedidoId}`);
@@ -1594,9 +2108,12 @@ const SimuladorSemanal = () => {
 				const brg = bearingDegrees(origen.lat, origen.lng, destino.lat, destino.lng);
 				const rotation = (brg - 90 + 360) % 360;
 
+				// 🆕 ID único: AG + pedidoId + rutaIdx + subRutaIdx + timestamp + random
+				const uniqueId = `AG-${ruta.pedidoId}-${rutaIdx}-${idx}-${baseTimestamp}-${Math.random().toString(36).substr(2, 9)}`;
+
 				// Crear objeto de vuelo
 				const nuevoVuelo = {
-					id: `AG-${ruta.pedidoId}-${idx}-${Date.now()}-${Math.random()}`,
+					id: uniqueId,
 					origin: {
 						code: subRuta.origen,
 						lat: origen.lat,
@@ -1643,12 +2160,20 @@ const SimuladorSemanal = () => {
 				color: nuevosVuelos[0].aircraftColor
 			});
 			
-			// 🔥 REEMPLAZAR todos los vuelos (no acumular)
-			// Esto asegura que siempre mostramos solo los vuelos de la última generación
-			console.log(`🔄 Reemplazando flights array con ${nuevosVuelos.length} vuelos nuevos`);
-			setFlights(nuevosVuelos);
+			// 🔥 ELIMINAR DUPLICADOS usando Map
+			const flightsMap = new Map(nuevosVuelos.map(v => [v.id, v]));
+			const vuelosUnicos = Array.from(flightsMap.values());
 			
-			const vuelosActivos = nuevosVuelos.filter(v => v.status === 'active').length;
+			if (vuelosUnicos.length < nuevosVuelos.length) {
+				console.warn(`⚠️ Se encontraron ${nuevosVuelos.length - vuelosUnicos.length} vuelos duplicados, eliminados`);
+			}
+			
+			// 🔥 REEMPLAZAR todos los vuelos (sin duplicados)
+			// Esto asegura que siempre mostramos solo los vuelos de la última generación
+			console.log(`🔄 Reemplazando flights array con ${vuelosUnicos.length} vuelos únicos`);
+			setFlights(vuelosUnicos);
+			
+			const vuelosActivos = vuelosUnicos.filter(v => v.status === 'active').length;
 			setFlightsInAir(vuelosActivos);
 			console.log(`✈️ Vuelos activos: ${vuelosActivos}`);
 		} else {
@@ -2535,9 +3060,15 @@ const SimuladorSemanal = () => {
 
 						{/* Mapa interactivo */}
 						<div className="map-container">
-							<MapContainer center={[20.0, 10.0]} zoom={3} className="flight-map" scrollWheelZoom={false} minZoom={2} maxZoom={10} zoomControl={true} doubleClickZoom={true} boxZoom={true} keyboard={true} touchZoom={true}>
-								<TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='© OpenStreetMap contributors' noWrap={true} />
-								<DynamicMarkers flights={flights} airports={airports} activeView={activeView} showRoutes={showRoutes} />
+							<MapContainer center={[20.0, 10.0]} zoom={3} className="flight-map" scrollWheelZoom={false} minZoom={2} maxZoom={10} zoomControl={true} doubleClickZoom={true} boxZoom={true} keyboard={true} touchZoom={true} worldCopyJump={true} maxBoundsViscosity={1.0} maxBounds={[[-90, -180], [90, 180]]}>
+								<TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='© OpenStreetMap contributors' noWrap={true} bounds={[[-90, -180], [90, 180]]} />
+								<DynamicMarkers 
+									flights={flights} 
+									airports={airports} 
+									activeView={activeView} 
+									showRoutes={showRoutes} 
+									vuelosEnMovimiento={vuelosEnMovimiento}
+								/>
 							</MapContainer>
 							{/* Botón de leyenda flotante */}
 							<LegendButton onClick={() => setShowLegend(true)} />

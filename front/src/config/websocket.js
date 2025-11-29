@@ -1,13 +1,15 @@
 // ==================== CONFIGURACIÓN WEBSOCKET ====================
 import { useState, useEffect } from 'react';
+import SockJS from 'sockjs-client';
+import { Client } from '@stomp/stompjs';
 
 // URL base del WebSocket (simulación antigua)
 const WS_BASE_URL = process.env.REACT_APP_API_URL 
   ? process.env.REACT_APP_API_URL.replace('http://', 'ws://').replace('https://', 'wss://')
   : 'ws://127.0.0.1:8000';
 
-// URL del WebSocket de planificación (NUEVA - según websocket.md)
-const WS_PLANIFICACION_URL = 'ws://localhost:8000/ws/planificacion';
+// URL del backend para STOMP (sin ws://, es HTTP porque SockJS maneja la conexión)
+const STOMP_BACKEND_URL = 'http://localhost:8000';
 
 /**
  * Conectar al WebSocket de la simulación   
@@ -112,127 +114,187 @@ export const useWebSocket = (onMessage, onError) => {
 // ==================== WEBSOCKET DE PLANIFICACIÓN ====================
 
 /**
- * Conectar al WebSocket de Planificación en Tiempo Real
- * Según especificación en websocket.md
+ * Conectar al WebSocket de Planificación usando STOMP
+ * Usa SockJS + STOMP para conectarse al backend Spring Boot
  * @param {Function} onMessage - Callback cuando llegan datos: (data) => {}
  * @param {Function} onError - Callback cuando hay error: (error) => {}
  * @param {Function} onOpen - Callback cuando se conecta: () => {}
  * @param {Function} onClose - Callback cuando se desconecta: () => {}
- * @returns {WebSocket} Instancia con métodos: enviar(), iniciarPlanificacion(), cerrar()
+ * @returns {Object} Objeto con métodos: enviar(), iniciarPlanificacion(), cerrar()
  */
 export const conectarWebSocketPlanificacion = (onMessage, onError, onOpen, onClose) => {
-  console.log('🔄 Intentando conectar a:', WS_PLANIFICACION_URL);
+  console.log('🔄 Conectando a STOMP en:', STOMP_BACKEND_URL + '/ws');
   
-  let ws;
+  // Crear cliente STOMP con SockJS
+  const stompClient = new Client({
+    webSocketFactory: () => new SockJS(STOMP_BACKEND_URL + '/ws'),
+    debug: (str) => {
+      // Solo mostrar mensajes importantes, no todo el tráfico STOMP
+      if (str.includes('ERROR') || str.includes('CONNECTED')) {
+        console.log('🔌 STOMP:', str);
+      }
+    },
+    reconnectDelay: 5000,
+    heartbeatIncoming: 4000,
+    heartbeatOutgoing: 4000,
+  });
+  
+  let currentSubscription = null;
+  let currentSessionId = null;
+  
+  // Configurar callbacks
+  stompClient.onConnect = (frame) => {
+    console.log('✅ STOMP conectado exitosamente');
+    console.log('🔌 Frame de conexión:', frame);
+    if (onOpen) onOpen();
+  };
+  
+  stompClient.onStompError = (frame) => {
+    console.error('❌ Error STOMP:', frame.headers['message']);
+    console.error('� Detalles:', frame.body);
+    if (onError) onError(new Error(frame.headers['message']));
+  };
+  
+  stompClient.onWebSocketError = (error) => {
+    console.error('❌ Error en WebSocket:', error);
+    if (onError) onError(error);
+  };
+  
+  stompClient.onWebSocketClose = (event) => {
+    console.log('🔌 WebSocket cerrado');
+    if (onClose) onClose(event);
+  };
+  
+  // Activar cliente
   try {
-    ws = new WebSocket(WS_PLANIFICACION_URL);
+    stompClient.activate();
   } catch (error) {
-    console.error('❌ Error al crear WebSocket:', error);
+    console.error('❌ Error al activar STOMP:', error);
     if (onError) onError(error);
     return null;
   }
   
-  ws.onopen = () => {
-    console.log('🔌 WebSocket Planificación conectado:', WS_PLANIFICACION_URL);
-    if (onOpen) onOpen();
-  };
-  
-  ws.onmessage = (event) => {
-    try {
-      const data = JSON.parse(event.data);
-      console.log('📩 Planificación - Mensaje recibido:', data);
-      
-      // Clasificar mensaje por tipo
-      switch(data.tipo) {
-        case 'conexion':
-          console.log('✅ Conexión establecida:', data.mensaje);
-          break;
-        case 'progreso':
-          console.log(`📊 Iteración #${data.datos?.ejecucionNumero || data.ejecucionNumero}: ${data.datos?.duracionRealMs || data.duracionRealMs}ms`);
-          break;
-        case 'completado':
-          console.log('🎉 Planificación completada:', data.solucion?.totalVuelos, 'vuelos');
-          break;
-        case 'error':
-          console.error('❌ Error en planificación:', data.mensaje);
-          break;
-        default:
-          console.log('📨 Mensaje tipo:', data.tipo);
+  /**
+   * Suscribirse a los mensajes de una simulación específica
+   * @param {string} sessionId - ID de la sesión de simulación
+   */
+  const suscribirseASimulacion = (sessionId) => {
+    if (!stompClient.connected) {
+      console.warn('⚠️ No conectado a STOMP, esperando...');
+      return;
+    }
+    
+    // Desuscribirse del canal anterior si existe
+    if (currentSubscription) {
+      currentSubscription.unsubscribe();
+    }
+    
+    currentSessionId = sessionId;
+    const topic = `/topic/simulations/${sessionId}`;
+    console.log('� Suscribiéndose a:', topic);
+    
+    currentSubscription = stompClient.subscribe(topic, (message) => {
+      try {
+        const data = JSON.parse(message.body);
+        console.log('📩 Mensaje STOMP recibido:', data);
+        
+        // Clasificar mensaje por tipo
+        if (data.tipo === 'PROGRESO_AG') {
+          console.log(`📊 Progreso AG - Generación ${data.generacion}/${data.maxGeneraciones}`);
+        } else if (data.status === 'COMPLETED') {
+          console.log('🎉 Simulación completada');
+        } else if (data.status === 'CANCELLED') {
+          console.log('� Simulación cancelada');
+        } else if (data.status === 'ERROR') {
+          console.error('❌ Error en simulación:', data.message);
+        }
+        
+        onMessage(data);
+      } catch (error) {
+        console.error('❌ Error al parsear mensaje STOMP:', error);
+        onMessage(message.body);
       }
-      
-      onMessage(data);
-    } catch (error) {
-      console.error('❌ Error al parsear mensaje:', error);
-      onMessage(event.data);
-    }
-  };
-  
-  ws.onerror = (error) => {
-    console.error('❌ Error en WebSocket Planificación:', error);
-    console.error('⚠️ Verifica que el servidor esté corriendo en:', WS_PLANIFICACION_URL);
-    if (onError) onError(error);
-  };
-  
-  ws.onclose = (event) => {
-    if (event.wasClean) {
-      console.log('🔌 WebSocket Planificación cerrado limpiamente. Código:', event.code);
-    } else {
-      console.warn('⚠️ WebSocket Planificación cerrado inesperadamente. Código:', event.code, 'Razón:', event.reason);
-    }
-    if (onClose) onClose(event);
+    });
   };
   
   /**
    * Iniciar planificación con parámetros
+   * Llama al endpoint REST y luego se suscribe al canal WebSocket
    * @param {string} fecha - Fecha inicial (YYYY-MM-DD)
-   * @param {number} factorK - Factor de amplificación temporal (recomendado: 14)
+   * @param {number} factorK - Factor de amplificación temporal
    * @param {Object} opciones - Opciones del algoritmo genético
    */
-  ws.iniciarPlanificacion = (fecha, factorK, opciones = {}) => {
-    const request = {
-      accion: "iniciar",
-      fecha,
-      factorK,
-      ...opciones
-    };
+  const iniciarPlanificacion = async (fecha, factorK, opciones = {}) => {
+    console.log('🚀 Iniciando planificación vía REST...');
     
-    if (ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify(request));
-      console.log('📤 Planificación iniciada:', request);
-    } else {
-      console.warn('⚠️ WebSocket no conectado. Estado:', ws.readyState);
+    try {
+      const response = await fetch(`${STOMP_BACKEND_URL}/api/simulations/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fecha,
+          factorK,
+          tamanioPoblacion: opciones.tamanioPoblacion || 10,
+          maxGeneraciones: opciones.maxGeneraciones || 10,
+          limiteGeneracionesSinMejora: opciones.limiteGeneracionesSinMejora || 5
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      const sessionId = data.sessionId;
+      
+      console.log('✅ Simulación iniciada con ID:', sessionId);
+      
+      // Suscribirse al canal de esta simulación
+      suscribirseASimulacion(sessionId);
+      
+      return sessionId;
+    } catch (error) {
+      console.error('❌ Error al iniciar planificación:', error);
+      if (onError) onError(error);
+      throw error;
     }
   };
   
   /**
-   * Enviar mensaje personalizado
+   * Enviar mensaje personalizado (no usado en STOMP, mantenido para compatibilidad)
    */
-  ws.enviar = (mensaje) => {
-    if (ws.readyState === WebSocket.OPEN) {
-      const data = typeof mensaje === 'string' ? mensaje : JSON.stringify(mensaje);
-      ws.send(data);
-      console.log('📤 Mensaje enviado:', mensaje);
-    } else {
-      console.warn('⚠️ WebSocket no conectado');
-    }
+  const enviar = (mensaje) => {
+    console.warn('⚠️ enviar() no implementado para STOMP');
+    // En STOMP normalmente no enviamos mensajes arbitrarios
+    // Todo se maneja vía REST + suscripciones
   };
   
   /**
    * Verificar conexión
    */
-  ws.estaConectado = () => ws.readyState === WebSocket.OPEN;
+  const estaConectado = () => stompClient.connected;
   
   /**
    * Cerrar conexión
    */
-  ws.cerrar = () => {
-    if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
-      ws.close();
-      console.log('🔌 Cerrando WebSocket Planificación...');
+  const cerrar = () => {
+    if (currentSubscription) {
+      currentSubscription.unsubscribe();
+      currentSubscription = null;
     }
+    stompClient.deactivate();
+    console.log('🔌 Cerrando conexión STOMP...');
   };
   
-  return ws;
+  // Retornar objeto con métodos públicos
+  return {
+    enviar,
+    iniciarPlanificacion,
+    suscribirseASimulacion,
+    estaConectado,
+    cerrar,
+    stompClient
+  };
 };
 
 /**
@@ -281,5 +343,5 @@ export default {
   conectarWebSocketPlanificacion,
   useWebSocketPlanificacion,
   WS_BASE_URL,
-  WS_PLANIFICACION_URL
+  STOMP_BACKEND_URL
 };

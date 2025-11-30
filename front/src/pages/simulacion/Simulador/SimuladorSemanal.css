@@ -29,13 +29,20 @@ body,
 }
 
 @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.3; }
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.3;
+    }
 }
 
-.section-content {
+#simulationSection.section-content {
     display: flex;
-    height: 100vh;
+    height: calc(100vh - var(--header-height))!important;  /* 100vh - 64px */
     overflow: hidden;
     box-sizing: border-box;
 }
@@ -50,19 +57,18 @@ body,
     padding: 20px;
     box-sizing: border-box;
     flex-shrink: 0;
-    height: 100vh;
+    height: 100%;
     overflow-y: auto;
 }
 
-.sidebar-header h3 {
-    font-size: 1.2rem;
+.sidebar-header h2 {
     color: var(--morapack-primary);
-    margin-bottom: 20px;
+    margin-bottom: 10px;
+    font-size: 24px;
+    font-weight: 700;
+    border-bottom: 3px solid var(--morapack-accent);
+    padding-bottom: 10px;
     margin-top: -20px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-weight: 600;
 }
 
 .sidebar-menu {
@@ -169,28 +175,29 @@ body,
     background: var(--color-high);
 }
 
-.simulation-main-content {
+#simulationSection .simulation-main-content {
     flex-grow: 1;
     display: flex;
     flex-direction: column;
-    /*padding: 20px;*/
+    padding: 5px;
     box-sizing: border-box;
-    height: 100vh;
-    overflow-y: auto;
+    height: 100%; /* resta altura del navbar */
+    overflow: hidden;          /* evita scroll extra */
 }
 
-.content-wrapper {
-    display: flex;
+#simulationSection .content-wrapper {
+    flex: 1 1 auto;
     flex-direction: column;
-    height: 100%;
+    display: flex;
 }
 
-.control-panel {
+#simulationSection .control-panel {
     background: var(--morapack-white);
-    padding: 20px;
-    border-radius: 12px;
-    box-shadow: var(--box-shadow);
-    margin-bottom: 20px;
+    padding: 24px 32px 16px 32px;
+    padding-bottom: 25px !important;
+    border-radius: 0px;
+    box-shadow: none;
+    margin-bottom: 0;
     flex-shrink: 0;
     display: flex;
     flex-wrap: wrap;
@@ -371,13 +378,13 @@ body,
     color: #fff;
 }
 
-.map-container {
-    flex-grow: 1;
-    border-radius: 12px;
+#simulationSection .map-container {
+    flex: 1 1 auto;      /* ya no crece para llenar todo */
+    height: auto;        /* 60% de la altura de la pantalla */
+    min-height: 0;   /* por si la pantalla es muy chica */
+    border-radius: 0;
     overflow: hidden;
-    box-shadow: var(--box-shadow);
-    min-height: 400px;
-    height: 70vh;
+    box-shadow: none;
     position: relative;
 }
 
@@ -438,7 +445,7 @@ body,
 .airport-section,
 .system-alerts {
     padding: 20px;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: none;
 }
 
 .time-display,
@@ -467,8 +474,8 @@ body,
 }
 
 .metric-icon {
-    width: 40px;
-    height: 40px;
+    width: 28px;
+    height: 28px;
     border-radius: 50%;
     background: var(--morapack-primary);
     color: #fff;
@@ -476,6 +483,7 @@ body,
     align-items: center;
     justify-content: center;
     font-size: 1.2rem;
+    flex-shrink: 0;
 }
 
 .airport-info {
@@ -561,18 +569,24 @@ body,
     color: #333;
 }
 
-.date-input {
-    padding: 6px 10px;
-    border-radius: 6px;
-    border: 1px solid #ccc;
-    font-size: 0.95rem;
-}
 
 .form-group {
     display: flex;
     align-items: center;
     gap: 10px;
     margin-bottom: 1rem;
+}
+
+.row-fecha-inicio {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.btn-back-wrapper {
+	margin-top: -4px; /* Ajusta fino */
+	display: flex;
+	align-items: center;
 }
 
 /* ===== PANEL DE CONTROL SUPERIOR =====*/
@@ -670,7 +684,7 @@ body,
     transform: scale(1.1);
 }
 
-.header-control-panel{
+.header-control-panel {
     display: flex;
     align-items: baseline;
     gap: 10px;

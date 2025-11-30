@@ -1,23 +1,24 @@
-import { IconButton } from "@mui/material";
+import { Box, IconButton } from "@mui/material";
 import InfoIcon from "@mui/icons-material/Info";
 
 export default function LegendButton({ onClick, style }) {
     return (
         <IconButton
             onClick={onClick}
-            title="Mostrar Leyenda"
+            title="Leyenda"
             sx={{
                 position: "absolute",
                 bottom: "20px",
                 left: "20px",
-                backgroundColor: "white",
-                boxShadow: "0 2px 6px rgba(0,0,0,0.3)",
+                padding: 0,
+                backgroundColor: "transparent",
+                boxShadow: "none",
                 zIndex: 1000,
-                "&:hover": { backgroundColor: "#f5f5f5" },
+                "&:hover": { boxShadow: "0 0 10px 4px #ddecfcff" },
                 ...style,  // permite override desde otros lados
             }}
         >
-            <InfoIcon sx={{ color: "#2c4a6b" }} />
+            <InfoIcon sx={{ color: "#2c4a6b", fontSize: 30, stroke: "white", strokeWidth: 0.8,}} />
         </IconButton>
     );
 }

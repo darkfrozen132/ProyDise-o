@@ -38,7 +38,7 @@
 
         // Parametros del algoritmo genetico (valores por defecto - MODO DEMO RÁPIDO)
         private static final int TAMANIO_POBLACION_DEFAULT = 10;      // Numero de individuos (reducido de 20)
-        private static final int MAX_GENERACIONES_DEFAULT = 5;       // Generaciones maximas (reducido de 20)
+        private static final int MAX_GENERACIONES_DEFAULT = 2;       // Generaciones maximas (reducido de 5 a 2)
         private static final int NO_MEJORA_LIMITE_DEFAULT = 3;       // Parar si 3 gen sin mejora (reducido de 10)
         private static final int ELITE_K = 4;                 // Mejores preservados (elitismo)
         private static final double PROB_CRUCE = 0.8;         // Probabilidad de cruce
@@ -813,6 +813,9 @@
         return cargarPedidosEnRango(request, null);
     }
     
+    // 🆕 SEDES/HUBS que no deben ser destino (constante para evitar recrear)
+    private static final List<String> SEDES_HUBS = List.of("SPIM", "EBCI", "UBBB");
+    
     private List<PedidoSemanal> cargarPedidosEnRango(PlanificacionRequest request, LocalDateTime tiempoActualSimulacion) {
         LocalDate fecha = request.getFecha();
         int saltoConsumoMinutos = request.calcularRangoConsumoMinutos(); // Sc = K × Sa (ej: 70 min)
@@ -822,34 +825,34 @@
         
         if (tiempoActualSimulacion != null) {
             // Iteraciones posteriores: ventana desde tiempo actual hasta tiempo + Sc
-            // Ejemplo: Si tiempo es 01:10 → ventana [01:10, 02:20]
             inicio = tiempoActualSimulacion;
             fin = tiempoActualSimulacion.plusMinutes(saltoConsumoMinutos);
             log.info("Ventana desde {}: [{}, {}] = {} minutos", 
                      tiempoActualSimulacion, inicio, fin, saltoConsumoMinutos);
         } else {
             // Primera iteración: ventana desde medianoche hasta medianoche + Sc
-            // Ejemplo: [00:00, 01:10] con Sc=70
             inicio = LocalDateTime.of(fecha, LocalTime.MIDNIGHT);
             fin = inicio.plusMinutes(saltoConsumoMinutos);
             log.debug("Primera iteracion: [{}, {}) = {} minutos", inicio, fin, saltoConsumoMinutos);
         }
 
-        // 🆕 ESTADO EN RAM: Cargar TODOS los pedidos (sin filtro por estado)
-        // El filtro por estado PENDIENTE se hace en SessionStateManager
-        // cuyo deadline este dentro de la ventana [inicio, fin]
-        List<PedidoSemanal> pedidos = pedidoSemanalRepository.findAll().stream()
-                .filter(p -> {
-                    LocalDateTime fechaPedido = LocalDateTime.of(
-                        p.getAnio(), p.getMes(), p.getDia(), p.getHora(), p.getMinuto()
-                    );
-                    // Usar <= para incluir pedidos exactamente en el límite
-                    boolean enRango = !fechaPedido.isBefore(inicio) && !fechaPedido.isAfter(fin);
-                    return enRango;
-                })
-                .toList();
+        // 🆕 QUERY OPTIMIZADA: Buscar directamente en BD con filtros
+        // Evita cargar millones de registros en memoria
+        List<PedidoSemanal> pedidos = pedidoSemanalRepository.findByRangoFechaExcluyendoDestinos(
+                inicio.getYear(),
+                inicio.getMonthValue(),
+                inicio.getDayOfMonth(),
+                inicio.getHour(),
+                inicio.getMinute(),
+                fin.getYear(),
+                fin.getMonthValue(),
+                fin.getDayOfMonth(),
+                fin.getHour(),
+                fin.getMinute(),
+                SEDES_HUBS
+        );
 
-        log.debug("Encontrados {} pedidos en ventana [{}, {})", 
+        log.debug("📦 Encontrados {} pedidos en ventana [{}, {}] (query BD optimizada, excluidos HUBS/SEDES)", 
                 pedidos.size(), inicio, fin);
 
         return pedidos;

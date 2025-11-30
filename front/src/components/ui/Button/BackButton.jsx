@@ -3,6 +3,11 @@ import Button from '@mui/material/Button';
 import { IoArrowBackOutline } from 'react-icons/io5';
 import { useNavigate } from 'react-router-dom';
 
+/*
+*   <BackButton to="/operaciones" label="Volver" width="150px" />
+
+*/
+
 const BackButton = ({ to, label = '', width = 'auto' }) => {
     const navigate = useNavigate();
 

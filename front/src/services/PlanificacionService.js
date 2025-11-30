@@ -194,70 +194,48 @@ class PlanificacionService {
       return [];
     }
 
-    console.log(`🗺️ Procesando ${rutas.length} vuelos con coordenadas...`);
+    console.log(`🗺️ Procesando ${rutas.length} rutas con coordenadas...`);
     
     const rutasProcesadas = [];
 
-    rutas.forEach((vuelo, index) => {
-      // CORREGIDO: Usar los campos correctos del backend
-      const codigoOrigen = vuelo.origenCodigoICAO;
-      const codigoDestino = vuelo.destinoCodigoICAO;
-      
-      const origen = this.aeropuertosMap[codigoOrigen];
-      const destino = this.aeropuertosMap[codigoDestino];
+    rutas.forEach((ruta, index) => {
+      const origen = this.aeropuertosMap[ruta.origen];
+      const destino = this.aeropuertosMap[ruta.destino];
 
       if (!origen) {
-        console.warn(`⚠️ Coordenadas no encontradas para origen: ${codigoOrigen}`);
+        console.warn(`⚠️ Coordenadas no encontradas para origen: ${ruta.origen}`);
         return;
       }
 
       if (!destino) {
-        console.warn(`⚠️ Coordenadas no encontradas para destino: ${codigoDestino}`);
+        console.warn(`⚠️ Coordenadas no encontradas para destino: ${ruta.destino}`);
         return;
       }
 
-      // Crear ruta enriquecida con coordenadas (usando campos correctos del backend)
+      // Crear ruta enriquecida con coordenadas
       const rutaProcesada = {
-        // Usar flightId del backend
-        vueloId: vuelo.flightId || `${codigoOrigen}-${codigoDestino}-${index}`,
-        flightId: vuelo.flightId,
-        
-        // Información de pedidos (array de pedidos asignados)
-        pedidos: vuelo.pedidos || [],
-        
-        // Coordenadas de origen
+        pedidoId: ruta.pedidoId,
+        vueloId: ruta.vueloId || `${ruta.origen}-${ruta.destino}-${index}`,
         origen: {
-          codigo: codigoOrigen,
+          codigo: ruta.origen,
           lat: origen.lat,
           lon: origen.lon,
           ciudad: origen.ciudad,
           pais: origen.pais,
           nombre: origen.nombre
         },
-        
-        // Coordenadas de destino
         destino: {
-          codigo: codigoDestino,
+          codigo: ruta.destino,
           lat: destino.lat,
           lon: destino.lon,
           ciudad: destino.ciudad,
           pais: destino.pais,
           nombre: destino.nombre
         },
-        
-        // Fechas (usar campos del backend)
-        salida: vuelo.departureUtc || vuelo.fechaInicial,
-        llegada: vuelo.arrivalUtc || vuelo.fechaFinal,
-        departureUtc: vuelo.departureUtc,
-        arrivalUtc: vuelo.arrivalUtc,
-        
-        // Cantidades
-        quantity: vuelo.quantity,
-        slackMinutes: vuelo.slackMinutes,
-        
-        // Campos adicionales si existen
-        duracionHoras: vuelo.duracionHoras,
-        distanciaKm: vuelo.distanciaKm
+        salida: ruta.salida,
+        llegada: ruta.llegada,
+        duracionHoras: ruta.duracionHoras,
+        distanciaKm: ruta.distanciaKm
       };
 
       rutasProcesadas.push(rutaProcesada);
@@ -479,11 +457,11 @@ class PlanificacionService {
             this.onProgresoCallback(data);
           }
 
-          // 🗺️ NUEVO: Procesar rutas si vienen en la solución (CORREGIDO: usar 'vuelos')
-          if (data.solucion && data.solucion.vuelos && data.solucion.vuelos.length > 0) {
-            console.log(`🗺️ Procesando ${data.solucion.vuelos.length} vuelos para el mapa...`);
+          // 🗺️ NUEVO: Procesar rutas si vienen en la solución
+          if (data.solucion && data.solucion.rutas && data.solucion.rutas.length > 0) {
+            console.log(`🗺️ Procesando ${data.solucion.rutas.length} rutas para el mapa...`);
             
-            const rutasProcesadas = this.procesarRutasConCoordenadas(data.solucion.vuelos);
+            const rutasProcesadas = this.procesarRutasConCoordenadas(data.solucion.rutas);
             
             // Llamar callback de rutas procesadas
             if (this.onRutasProcesamCallback && rutasProcesadas.length > 0) {

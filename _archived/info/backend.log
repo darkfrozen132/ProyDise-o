@@ -1,0 +1,185 @@
+[[1;34mINFO[m] Scanning for projects...
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m------------------------< [0;36mcom.proyecto:backend[0;1m >------------------------[m
+[[1;34mINFO[m] [1mBuilding backend 0.0.1-SNAPSHOT[m
+[[1;34mINFO[m] [1m--------------------------------[ jar ]---------------------------------[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m>>> [0;32mspring-boot-maven-plugin:3.2.0:run[m [1m(default-cli)[0;1m > [0;1mtest-compile[m @ [36mbackend[0;1m >>>[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-resources-plugin:3.3.1:resources[m [1m(default-resources)[m @ [36mbackend[0;1m ---[m
+[[1;34mINFO[m] Copying 1 resource from src/main/resources to target/classes
+[[1;34mINFO[m] Copying 34 resources from src/main/resources to target/classes
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-compiler-plugin:3.11.0:compile[m [1m(default-compile)[m @ [36mbackend[0;1m ---[m
+[[1;34mINFO[m] Changes detected - recompiling the module! :source
+[[1;34mINFO[m] Compiling 74 source files with javac [debug release 17] to target/classes
+[[1;34mINFO[m] Annotation processing is enabled because one or more processors were found
+  on the class path. A future release of javac may disable annotation processing
+  unless at least one processor is specified by name (-processor), or a search
+  path is specified (--processor-path, --processor-module-path), or annotation
+  processing is enabled explicitly (-proc:only, -proc:full).
+  Use -Xlint:-options to suppress this message.
+  Use -proc:none to disable annotation processing.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-resources-plugin:3.3.1:testResources[m [1m(default-testResources)[m @ [36mbackend[0;1m ---[m
+[[1;34mINFO[m] skip non existing resourceDirectory /home/leoncio/Documentos/GitHub/ProyDise-o/backend/src/test/resources
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-compiler-plugin:3.11.0:testCompile[m [1m(default-testCompile)[m @ [36mbackend[0;1m ---[m
+[[1;34mINFO[m] No sources to compile
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m<<< [0;32mspring-boot-maven-plugin:3.2.0:run[m [1m(default-cli)[0;1m < [0;1mtest-compile[m @ [36mbackend[0;1m <<<[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mspring-boot-maven-plugin:3.2.0:run[m [1m(default-cli)[m @ [36mbackend[0;1m ---[m
+[[1;34mINFO[m] Attaching agents: []
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+ :: Spring Boot ::                (v3.2.0)
+
+2025-11-19T14:47:48.108-05:00  INFO 685642 --- [backend] [  restartedMain] c.proyecto.backend.BackendApplication    : Starting BackendApplication using Java 21.0.8 with PID 685642 (/home/leoncio/Documentos/GitHub/ProyDise-o/backend/target/classes started by leoncio in /home/leoncio/Documentos/GitHub/ProyDise-o/backend)
+2025-11-19T14:47:48.109-05:00  INFO 685642 --- [backend] [  restartedMain] c.proyecto.backend.BackendApplication    : No active profile set, falling back to 1 default profile: "default"
+2025-11-19T14:47:48.151-05:00  INFO 685642 --- [backend] [  restartedMain] .e.DevToolsPropertyDefaultsPostProcessor : Devtools property defaults active! Set 'spring.devtools.add-properties' to 'false' to disable
+2025-11-19T14:47:48.151-05:00  INFO 685642 --- [backend] [  restartedMain] .e.DevToolsPropertyDefaultsPostProcessor : For additional web related logging consider setting the 'logging.level.web' property to 'DEBUG'
+2025-11-19T14:47:48.611-05:00  INFO 685642 --- [backend] [  restartedMain] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2025-11-19T14:47:48.645-05:00  INFO 685642 --- [backend] [  restartedMain] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 30 ms. Found 4 JPA repository interfaces.
+2025-11-19T14:47:48.976-05:00  INFO 685642 --- [backend] [  restartedMain] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 8000 (http)
+2025-11-19T14:47:48.982-05:00  INFO 685642 --- [backend] [  restartedMain] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2025-11-19T14:47:48.982-05:00  INFO 685642 --- [backend] [  restartedMain] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.16]
+2025-11-19T14:47:49.002-05:00  INFO 685642 --- [backend] [  restartedMain] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2025-11-19T14:47:49.002-05:00  INFO 685642 --- [backend] [  restartedMain] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 850 ms
+2025-11-19T14:47:49.062-05:00  WARN 685642 --- [backend] [  restartedMain] com.zaxxer.hikari.HikariConfig           : HikariPool-1 - idleTimeout is close to or more than maxLifetime, disabling it.
+2025-11-19T14:47:49.063-05:00  INFO 685642 --- [backend] [  restartedMain] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2025-11-19T14:47:50.732-05:00  INFO 685642 --- [backend] [  restartedMain] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@719949d1
+2025-11-19T14:47:50.733-05:00  INFO 685642 --- [backend] [  restartedMain] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2025-11-19T14:47:50.783-05:00  INFO 685642 --- [backend] [  restartedMain] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2025-11-19T14:47:50.812-05:00  INFO 685642 --- [backend] [  restartedMain] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.3.1.Final
+2025-11-19T14:47:50.832-05:00  INFO 685642 --- [backend] [  restartedMain] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2025-11-19T14:47:50.963-05:00  INFO 685642 --- [backend] [  restartedMain] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2025-11-19T14:47:51.213-05:00  WARN 685642 --- [backend] [  restartedMain] org.hibernate.orm.deprecation            : HHH90000025: MySQLDialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2025-11-19T14:47:51.896-05:00  INFO 685642 --- [backend] [  restartedMain] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2025-11-19T14:47:52.576-05:00  INFO 685642 --- [backend] [  restartedMain] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2025-11-19T14:47:52.794-05:00  INFO 685642 --- [backend] [  restartedMain] o.s.d.j.r.query.QueryEnhancerFactory     : Hibernate is in classpath; If applicable, HQL parser will be used.
+2025-11-19T14:47:53.031-05:00  INFO 685642 --- [backend] [  restartedMain] c.p.b.p.s.service.WorldCacheService      : Inicializando WorldCacheService...
+2025-11-19T14:47:54.361-05:00  INFO 685642 --- [backend] [  restartedMain] c.p.b.p.s.service.WorldCacheService      : Datos encontrados. Cargando World...
+2025-11-19T14:47:54.362-05:00  INFO 685642 --- [backend] [  restartedMain] c.p.b.p.s.service.WorldCacheService      : Cargando aeropuertos desde la base de datos...
+2025-11-19T14:47:55.021-05:00  INFO 685642 --- [backend] [  restartedMain] c.p.b.p.s.service.WorldCacheService      : Cargados 30 aeropuertos
+2025-11-19T14:47:55.022-05:00  INFO 685642 --- [backend] [  restartedMain] c.p.b.p.s.service.WorldCacheService      : Cargando planes de vuelo desde la base de datos...
+2025-11-19T14:47:56.047-05:00  INFO 685642 --- [backend] [  restartedMain] c.p.b.p.s.service.WorldCacheService      : Cargados 2866 planes de vuelo
+2025-11-19T14:47:56.057-05:00  INFO 685642 --- [backend] [  restartedMain] c.p.b.p.s.service.WorldCacheService      : World creado exitosamente: World: 30 aeropuertos, 2866 planes de vuelo, 3 hubs
+2025-11-19T14:47:56.057-05:00  INFO 685642 --- [backend] [  restartedMain] c.p.b.p.s.service.WorldCacheService      : Hubs disponibles: [EBCI, SPIM, UBBB]
+2025-11-19T14:47:56.345-05:00  WARN 685642 --- [backend] [  restartedMain] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2025-11-19T14:47:56.599-05:00  INFO 685642 --- [backend] [  restartedMain] o.s.b.d.a.OptionalLiveReloadServer       : LiveReload server is running on port 35729
+2025-11-19T14:47:56.625-05:00  INFO 685642 --- [backend] [  restartedMain] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 8000 (http) with context path ''
+2025-11-19T14:47:56.627-05:00  INFO 685642 --- [backend] [  restartedMain] o.s.m.s.b.SimpleBrokerMessageHandler     : Starting...
+2025-11-19T14:47:56.628-05:00  INFO 685642 --- [backend] [  restartedMain] o.s.m.s.b.SimpleBrokerMessageHandler     : BrokerAvailabilityEvent[available=true, SimpleBrokerMessageHandler [org.springframework.messaging.simp.broker.DefaultSubscriptionRegistry@28a0765f]]
+2025-11-19T14:47:56.628-05:00  INFO 685642 --- [backend] [  restartedMain] o.s.m.s.b.SimpleBrokerMessageHandler     : Started.
+2025-11-19T14:47:56.634-05:00  INFO 685642 --- [backend] [  restartedMain] c.proyecto.backend.BackendApplication    : Started BackendApplication in 8.783 seconds (process running for 9.019)
+2025-11-19T14:47:56.635-05:00  INFO 685642 --- [backend] [  restartedMain] c.p.backend.config.DataInitializer       : 🔄 Reseteando estados de pedidos a PENDIENTE...
+2025-11-19T14:47:57.390-05:00  INFO 685642 --- [backend] [  restartedMain] c.p.backend.config.DataInitializer       : ✅ Reseteados 0 pedidos a PENDIENTE
+2025-11-19T14:47:58.025-05:00  INFO 685642 --- [backend] [  restartedMain] c.p.backend.config.DataInitializer       : 📊 Total de pedidos PENDIENTE: 13
+2025-11-19T14:48:42.188-05:00  INFO 685642 --- [backend] [   File Watcher] rtingClassPathChangeChangedEventListener : Restarting due to 3 class path changes (0 additions, 0 deletions, 3 modifications)
+2025-11-19T14:48:42.190-05:00  INFO 685642 --- [backend] [       Thread-6] o.s.m.s.b.SimpleBrokerMessageHandler     : Stopping...
+2025-11-19T14:48:42.190-05:00  INFO 685642 --- [backend] [       Thread-6] o.s.m.s.b.SimpleBrokerMessageHandler     : BrokerAvailabilityEvent[available=false, SimpleBrokerMessageHandler [org.springframework.messaging.simp.broker.DefaultSubscriptionRegistry@28a0765f]]
+2025-11-19T14:48:42.190-05:00  INFO 685642 --- [backend] [       Thread-6] o.s.m.s.b.SimpleBrokerMessageHandler     : Stopped.
+2025-11-19T14:48:42.194-05:00  INFO 685642 --- [backend] [       Thread-6] j.LocalContainerEntityManagerFactoryBean : Closing JPA EntityManagerFactory for persistence unit 'default'
+2025-11-19T14:48:42.195-05:00  INFO 685642 --- [backend] [       Thread-6] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown initiated...
+2025-11-19T14:48:42.199-05:00  INFO 685642 --- [backend] [       Thread-6] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown completed.
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+ :: Spring Boot ::                (v3.2.0)
+
+2025-11-19T14:48:42.248-05:00  INFO 685642 --- [backend] [  restartedMain] c.proyecto.backend.BackendApplication    : Starting BackendApplication using Java 21.0.8 with PID 685642 (/home/leoncio/Documentos/GitHub/ProyDise-o/backend/target/classes started by leoncio in /home/leoncio/Documentos/GitHub/ProyDise-o/backend)
+2025-11-19T14:48:42.248-05:00  INFO 685642 --- [backend] [  restartedMain] c.proyecto.backend.BackendApplication    : No active profile set, falling back to 1 default profile: "default"
+2025-11-19T14:48:42.424-05:00  INFO 685642 --- [backend] [  restartedMain] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2025-11-19T14:48:42.439-05:00  INFO 685642 --- [backend] [  restartedMain] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 14 ms. Found 4 JPA repository interfaces.
+2025-11-19T14:48:42.597-05:00  INFO 685642 --- [backend] [  restartedMain] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 8000 (http)
+2025-11-19T14:48:42.598-05:00  INFO 685642 --- [backend] [  restartedMain] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2025-11-19T14:48:42.598-05:00  INFO 685642 --- [backend] [  restartedMain] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.16]
+2025-11-19T14:48:42.609-05:00  INFO 685642 --- [backend] [  restartedMain] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2025-11-19T14:48:42.609-05:00  INFO 685642 --- [backend] [  restartedMain] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 359 ms
+2025-11-19T14:48:42.635-05:00  WARN 685642 --- [backend] [  restartedMain] com.zaxxer.hikari.HikariConfig           : HikariPool-2 - idleTimeout is close to or more than maxLifetime, disabling it.
+2025-11-19T14:48:42.636-05:00  INFO 685642 --- [backend] [  restartedMain] com.zaxxer.hikari.HikariDataSource       : HikariPool-2 - Starting...
+2025-11-19T14:48:44.124-05:00  INFO 685642 --- [backend] [  restartedMain] com.zaxxer.hikari.pool.HikariPool        : HikariPool-2 - Added connection com.mysql.cj.jdbc.ConnectionImpl@6841e95f
+2025-11-19T14:48:44.125-05:00  INFO 685642 --- [backend] [  restartedMain] com.zaxxer.hikari.HikariDataSource       : HikariPool-2 - Start completed.
+2025-11-19T14:48:44.146-05:00  INFO 685642 --- [backend] [  restartedMain] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2025-11-19T14:48:44.148-05:00  INFO 685642 --- [backend] [  restartedMain] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2025-11-19T14:48:44.153-05:00  INFO 685642 --- [backend] [  restartedMain] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2025-11-19T14:48:44.261-05:00  WARN 685642 --- [backend] [  restartedMain] org.hibernate.orm.deprecation            : HHH90000025: MySQLDialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2025-11-19T14:48:44.354-05:00  INFO 685642 --- [backend] [  restartedMain] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2025-11-19T14:48:44.901-05:00  INFO 685642 --- [backend] [  restartedMain] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2025-11-19T14:48:45.015-05:00  INFO 685642 --- [backend] [  restartedMain] c.p.b.p.s.service.WorldCacheService      : Inicializando WorldCacheService...
+2025-11-19T14:48:46.286-05:00  INFO 685642 --- [backend] [  restartedMain] c.p.b.p.s.service.WorldCacheService      : Datos encontrados. Cargando World...
+2025-11-19T14:48:46.286-05:00  INFO 685642 --- [backend] [  restartedMain] c.p.b.p.s.service.WorldCacheService      : Cargando aeropuertos desde la base de datos...
+2025-11-19T14:48:46.920-05:00  INFO 685642 --- [backend] [  restartedMain] c.p.b.p.s.service.WorldCacheService      : Cargados 30 aeropuertos
+2025-11-19T14:48:46.920-05:00  INFO 685642 --- [backend] [  restartedMain] c.p.b.p.s.service.WorldCacheService      : Cargando planes de vuelo desde la base de datos...
+2025-11-19T14:48:47.889-05:00  INFO 685642 --- [backend] [  restartedMain] c.p.b.p.s.service.WorldCacheService      : Cargados 2866 planes de vuelo
+2025-11-19T14:48:47.893-05:00  INFO 685642 --- [backend] [  restartedMain] c.p.b.p.s.service.WorldCacheService      : World creado exitosamente: World: 30 aeropuertos, 2866 planes de vuelo, 3 hubs
+2025-11-19T14:48:47.893-05:00  INFO 685642 --- [backend] [  restartedMain] c.p.b.p.s.service.WorldCacheService      : Hubs disponibles: [EBCI, SPIM, UBBB]
+2025-11-19T14:48:48.022-05:00  WARN 685642 --- [backend] [  restartedMain] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2025-11-19T14:48:48.096-05:00  INFO 685642 --- [backend] [  restartedMain] o.s.b.d.a.OptionalLiveReloadServer       : LiveReload server is running on port 35729
+2025-11-19T14:48:48.102-05:00  INFO 685642 --- [backend] [  restartedMain] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 8000 (http) with context path ''
+2025-11-19T14:48:48.102-05:00  INFO 685642 --- [backend] [  restartedMain] o.s.m.s.b.SimpleBrokerMessageHandler     : Starting...
+2025-11-19T14:48:48.103-05:00  INFO 685642 --- [backend] [  restartedMain] o.s.m.s.b.SimpleBrokerMessageHandler     : BrokerAvailabilityEvent[available=true, SimpleBrokerMessageHandler [org.springframework.messaging.simp.broker.DefaultSubscriptionRegistry@1ecfc9ef]]
+2025-11-19T14:48:48.103-05:00  INFO 685642 --- [backend] [  restartedMain] o.s.m.s.b.SimpleBrokerMessageHandler     : Started.
+2025-11-19T14:48:48.104-05:00  INFO 685642 --- [backend] [  restartedMain] c.proyecto.backend.BackendApplication    : Started BackendApplication in 5.872 seconds (process running for 60.49)
+2025-11-19T14:48:48.105-05:00  INFO 685642 --- [backend] [  restartedMain] c.p.backend.config.DataInitializer       : 🔄 Reseteando estados de pedidos a PENDIENTE...
+2025-11-19T14:48:48.741-05:00  INFO 685642 --- [backend] [  restartedMain] c.p.backend.config.DataInitializer       : ✅ Reseteados 0 pedidos a PENDIENTE
+2025-11-19T14:48:49.377-05:00  INFO 685642 --- [backend] [  restartedMain] c.p.backend.config.DataInitializer       : 📊 Total de pedidos PENDIENTE: 13
+2025-11-19T14:48:49.381-05:00  INFO 685642 --- [backend] [  restartedMain] .ConditionEvaluationDeltaLoggingListener : Condition evaluation unchanged
+2025-11-19T14:48:49.511-05:00  INFO 685642 --- [backend] [   File Watcher] rtingClassPathChangeChangedEventListener : Restarting due to 6 class path changes (0 additions, 0 deletions, 6 modifications)
+2025-11-19T14:48:49.513-05:00  INFO 685642 --- [backend] [       Thread-8] o.s.m.s.b.SimpleBrokerMessageHandler     : Stopping...
+2025-11-19T14:48:49.513-05:00  INFO 685642 --- [backend] [       Thread-8] o.s.m.s.b.SimpleBrokerMessageHandler     : BrokerAvailabilityEvent[available=false, SimpleBrokerMessageHandler [org.springframework.messaging.simp.broker.DefaultSubscriptionRegistry@1ecfc9ef]]
+2025-11-19T14:48:49.513-05:00  INFO 685642 --- [backend] [       Thread-8] o.s.m.s.b.SimpleBrokerMessageHandler     : Stopped.
+2025-11-19T14:48:49.515-05:00  INFO 685642 --- [backend] [       Thread-8] j.LocalContainerEntityManagerFactoryBean : Closing JPA EntityManagerFactory for persistence unit 'default'
+2025-11-19T14:48:49.515-05:00  INFO 685642 --- [backend] [       Thread-8] com.zaxxer.hikari.HikariDataSource       : HikariPool-2 - Shutdown initiated...
+2025-11-19T14:48:49.548-05:00  INFO 685642 --- [backend] [       Thread-8] com.zaxxer.hikari.HikariDataSource       : HikariPool-2 - Shutdown completed.
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+ :: Spring Boot ::                (v3.2.0)
+
+2025-11-19T14:48:49.594-05:00  INFO 685642 --- [backend] [  restartedMain] c.proyecto.backend.BackendApplication    : Starting BackendApplication using Java 21.0.8 with PID 685642 (/home/leoncio/Documentos/GitHub/ProyDise-o/backend/target/classes started by leoncio in /home/leoncio/Documentos/GitHub/ProyDise-o/backend)
+2025-11-19T14:48:49.594-05:00  INFO 685642 --- [backend] [  restartedMain] c.proyecto.backend.BackendApplication    : No active profile set, falling back to 1 default profile: "default"
+2025-11-19T14:48:49.678-05:00  INFO 685642 --- [backend] [  restartedMain] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2025-11-19T14:48:49.686-05:00  INFO 685642 --- [backend] [  restartedMain] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 7 ms. Found 4 JPA repository interfaces.
+2025-11-19T14:48:49.744-05:00  INFO 685642 --- [backend] [  restartedMain] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 8000 (http)
+2025-11-19T14:48:49.745-05:00  INFO 685642 --- [backend] [  restartedMain] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2025-11-19T14:48:49.745-05:00  INFO 685642 --- [backend] [  restartedMain] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.16]
+2025-11-19T14:48:49.749-05:00  INFO 685642 --- [backend] [  restartedMain] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2025-11-19T14:48:49.750-05:00  INFO 685642 --- [backend] [  restartedMain] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 155 ms
+2025-11-19T14:48:49.767-05:00  WARN 685642 --- [backend] [  restartedMain] com.zaxxer.hikari.HikariConfig           : HikariPool-3 - idleTimeout is close to or more than maxLifetime, disabling it.
+2025-11-19T14:48:49.767-05:00  INFO 685642 --- [backend] [  restartedMain] com.zaxxer.hikari.HikariDataSource       : HikariPool-3 - Starting...
+2025-11-19T14:48:51.030-05:00  INFO 685642 --- [backend] [  restartedMain] com.zaxxer.hikari.pool.HikariPool        : HikariPool-3 - Added connection com.mysql.cj.jdbc.ConnectionImpl@20e47d15
+2025-11-19T14:48:51.030-05:00  INFO 685642 --- [backend] [  restartedMain] com.zaxxer.hikari.HikariDataSource       : HikariPool-3 - Start completed.
+2025-11-19T14:48:51.040-05:00  INFO 685642 --- [backend] [  restartedMain] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2025-11-19T14:48:51.041-05:00  INFO 685642 --- [backend] [  restartedMain] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2025-11-19T14:48:51.043-05:00  INFO 685642 --- [backend] [  restartedMain] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2025-11-19T14:48:51.148-05:00  WARN 685642 --- [backend] [  restartedMain] org.hibernate.orm.deprecation            : HHH90000025: MySQLDialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2025-11-19T14:48:51.202-05:00  INFO 685642 --- [backend] [  restartedMain] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2025-11-19T14:48:51.755-05:00  INFO 685642 --- [backend] [  restartedMain] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2025-11-19T14:48:51.823-05:00  INFO 685642 --- [backend] [  restartedMain] c.p.b.p.s.service.WorldCacheService      : Inicializando WorldCacheService...
+2025-11-19T14:48:53.094-05:00  INFO 685642 --- [backend] [  restartedMain] c.p.b.p.s.service.WorldCacheService      : Datos encontrados. Cargando World...
+2025-11-19T14:48:53.094-05:00  INFO 685642 --- [backend] [  restartedMain] c.p.b.p.s.service.WorldCacheService      : Cargando aeropuertos desde la base de datos...
+2025-11-19T14:48:53.730-05:00  INFO 685642 --- [backend] [  restartedMain] c.p.b.p.s.service.WorldCacheService      : Cargados 30 aeropuertos
+2025-11-19T14:48:53.730-05:00  INFO 685642 --- [backend] [  restartedMain] c.p.b.p.s.service.WorldCacheService      : Cargando planes de vuelo desde la base de datos...
+2025-11-19T14:48:54.699-05:00  INFO 685642 --- [backend] [  restartedMain] c.p.b.p.s.service.WorldCacheService      : Cargados 2866 planes de vuelo
+2025-11-19T14:48:54.702-05:00  INFO 685642 --- [backend] [  restartedMain] c.p.b.p.s.service.WorldCacheService      : World creado exitosamente: World: 30 aeropuertos, 2866 planes de vuelo, 3 hubs
+2025-11-19T14:48:54.702-05:00  INFO 685642 --- [backend] [  restartedMain] c.p.b.p.s.service.WorldCacheService      : Hubs disponibles: [EBCI, SPIM, UBBB]
+2025-11-19T14:48:54.847-05:00  WARN 685642 --- [backend] [  restartedMain] ConfigServletWebServerApplicationContext : Exception encountered during context initialization - cancelling refresh attempt: org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'simulacionController': Lookup method resolution failed
+2025-11-19T14:48:54.848-05:00  INFO 685642 --- [backend] [  restartedMain] j.LocalContainerEntityManagerFactoryBean : Closing JPA EntityManagerFactory for persistence unit 'default'
+2025-11-19T14:48:54.849-05:00  INFO 685642 --- [backend] [  restartedMain] com.zaxxer.hikari.HikariDataSource       : HikariPool-3 - Shutdown initiated...
+2025-11-19T14:48:55.379-05:00  INFO 685642 --- [backend] [  restartedMain] com.zaxxer.hikari.HikariDataSource       : HikariPool-3 - Shutdown completed.

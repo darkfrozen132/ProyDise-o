@@ -86,7 +86,7 @@ public class SimulationService {
         WorldSnapshot world = loadWorldSnapshot(request);
         
         // 3. Enviar confirmación inicial
-        sendInitialSnapshot(session, world.totalOrders());
+        sendInitialSnapshot(session, (int) world.totalOrders());
 
         // 4. Lanzar simulación en Virtual Thread
         session.start();
@@ -201,18 +201,18 @@ public class SimulationService {
             
             log.info("⏰ Tiempo inicial de simulación: {}", currentTime);
 
-            // 🆕 ESTADO EN RAM: Inicializar estado de pedidos para esta sesión
-            List<PedidoSemanal> todosPedidos = world.orders();
-            sessionStateManager.inicializarSesion(sessionId, todosPedidos);
+            // 🆕 OPTIMIZADO: NO cargar todos los pedidos en memoria
+            // El SessionStateManager ya no se usa para millones de pedidos
+            // Los pedidos se procesan bajo demanda por ventana de tiempo
+            long totalPedidos = world.totalOrders();
+            int pedidosProcesados = 0;
             
-            // Filtrar pedidos PENDIENTES usando SessionStateManager (RAM, no BD)
-            List<PedidoSemanal> remainingOrders = new ArrayList<>(
-                sessionStateManager.filtrarPedidosPendientes(sessionId, todosPedidos)
-            );
+            log.info("📊 Sesión {} iniciada. Total pedidos a procesar: {}", sessionId, totalPedidos);
             
-            log.info("📊 Sesión {} iniciada con {} pedidos PENDIENTES en RAM", sessionId, remainingOrders.size());
+            // 🆕 Definir fecha límite de simulación (7 días desde inicio)
+            LocalDateTime fechaLimite = currentTime.plusDays(7);
 
-            while (session.isRunning() && !remainingOrders.isEmpty()) {
+            while (session.isRunning() && currentTime.isBefore(fechaLimite)) {
                 // Verificar pausa
                 while (session.isPaused() && session.isRunning()) {
                     Thread.sleep(100); // Esperar mientras esté pausado
@@ -228,68 +228,49 @@ public class SimulationService {
                 log.debug("🔄 {} - Iteración {} iniciada en tiempo simulado {}", 
                         session.getSessionName(), iteration, currentTime);
 
-                // ============ LÓGICA DE SIMULACIÓN ============
+                // ============ LÓGICA DE SIMULACIÓN SIMPLIFICADA ============
                 
-                // 1. Buscar pedidos en ventana de tiempo
+                // 1. Calcular ventana de tiempo
                 LocalDateTime windowEnd = currentTime.plusMinutes(saltoConsumo);
-                List<PedidoSemanal> pendingOrders = findOrdersInWindow(remainingOrders, currentTime, windowEnd);
 
-                if (pendingOrders.isEmpty()) {
-                    // No hay pedidos en esta ventana, avanzar al siguiente grupo de pedidos
-                    log.debug("📭 {} - No hay pedidos en ventana actual. Avanzando tiempo...", 
-                            session.getSessionName());
-                    currentTime = currentTime.plusMinutes(saltoConsumo);
-                    continue; // Continuar con siguiente ventana
-                }
-
-                // 2. Ejecutar Algoritmo Genético REAL con progreso vía WebSocket
+                // 2. Ejecutar Algoritmo Genético (él carga los pedidos bajo demanda)
                 SimulationResult result = runGeneticAlgorithm(
-                        pendingOrders, 
+                        Collections.emptyList(), // No pasamos pedidos, el AG los carga 
                         world.flights(),
                         session.getConfiguration(),
                         session,
                         currentTime
                 );
 
-                // 3. 🆕 Marcar pedidos como PLANIFICADOS en RAM (SessionStateManager)
-                Set<Long> pedidosAsignados = pendingOrders.stream()
-                        .map(PedidoSemanal::getId)
-                        .collect(java.util.stream.Collectors.toSet());
-                sessionStateManager.marcarComoAsignados(sessionId, pedidosAsignados);
-                
-                // 4. Actualizar lista de pedidos restantes desde RAM
-                remainingOrders = sessionStateManager.filtrarPedidosPendientes(sessionId, todosPedidos);
-                
-                log.debug("✅ Procesados {} pedidos. Restantes: {}", 
-                        pendingOrders.size(), remainingOrders.size());
+                // 3. Actualizar contador de pedidos procesados
+                pedidosProcesados += result.processedOrders();
 
-                // 5. Actualizar métricas
-                int totalProcessed = world.totalOrders() - remainingOrders.size();
+                // 4. Actualizar métricas
                 session.updateMetrics(
                         iteration,
-                        totalProcessed,
-                        world.totalOrders(),
+                        pedidosProcesados,
+                        (int) totalPedidos,
                         result.fitness()
                 );
                 session.updateSimulationTime(currentTime);
 
-                // 6. Enviar actualización (con throttling)
+                // 5. Enviar actualización (con throttling)
                 if (session.shouldSendUpdate()) {
                     long duration = System.currentTimeMillis() - startTime;
                     sendProgressUpdate(session, currentTime, windowEnd, duration, result);
                 }
 
-                // 7. Avanzar tiempo simulado
+                // 6. Avanzar tiempo simulado
                 currentTime = currentTime.plusMinutes(saltoConsumo);
 
                 // Pequeña pausa para no saturar (ajustable)
                 Thread.sleep(100);
             }
             
-            log.info("🎉 {} - TODOS los pedidos procesados ({}/{})", 
+            log.info("🎉 {} - Simulación completada. {} pedidos procesados en {} iteraciones", 
                     session.getSessionName(), 
-                    world.totalOrders(), 
-                    world.totalOrders());
+                    pedidosProcesados,
+                    iteration);
 
             // Simulación completada
             session.complete();
@@ -304,9 +285,7 @@ public class SimulationService {
             session.error();
             sendErrorUpdate(session, e.getMessage());
         } finally {
-            // 🆕 Limpiar estado de sesión de RAM
-            sessionStateManager.limpiarSesion(sessionId);
-            log.info("🏁 {} finalizado. Estado de sesión limpiado de RAM.", session.getSessionName());
+            log.info("🏁 {} finalizado.", session.getSessionName());
         }
     }
 
@@ -367,26 +346,48 @@ public class SimulationService {
 
     // ============ CARGA DE DATOS ============
 
+    // 🆕 SEDES/HUBS que no deben ser destino (constante)
+    private static final List<String> SEDES_HUBS = List.of("SPIM", "EBCI", "UBBB");
+    
     /**
-     * Carga un snapshot inmutable de los datos de BD
-     * Se ejecuta UNA SOLA VEZ al inicio (sin bloqueo transaccional)
+     * 🆕 SIMULACIÓN SEMANAL: Carga pedidos de exactamente 7 días desde fecha inicio.
+     * EXCLUYE pedidos con destino a HUBS/SEDES (SPIM, EBCI, UBBB).
      * 
-     * 🆕 ESTADO EN RAM: Los pedidos se cargan sin filtrar por estado
-     * El estado se maneja completamente en SessionStateManager
+     * Ejemplo: Si inicio es 2025-01-02 10:30, carga pedidos del 2 al 8 de enero inclusive.
+     * 
+     * @param request Configuración con fecha/hora de inicio
+     * @return WorldSnapshot con los pedidos de esa semana
      */
     private WorldSnapshot loadWorldSnapshot(SimulationRequest request) {
-        log.info("📦 Cargando snapshot del mundo...");
+        log.info("📦 Cargando snapshot del mundo (SOLO 7 DÍAS)...");
 
-        // 🆕 Cargar TODOS los pedidos (sin filtro por estado - estado en RAM)
-        List<PedidoSemanal> allOrders = pedidoSemanalRepository.findAll();
+        // 🆕 Calcular rango de fecha: inicio → inicio + 7 días
+        LocalDateTime startDateTime = request.getStartDateTime();
+        LocalDateTime endDateTime = startDateTime.plusDays(7);
         
-        // Cargar TODOS los planes de vuelo disponibles
+        log.info("📅 Rango de carga: {} → {}", startDateTime, endDateTime);
+        
+        // 🆕 Cargar SOLO pedidos de la semana seleccionada (excluyendo hubs/sedes)
+        List<PedidoSemanal> pedidosSemana = pedidoSemanalRepository.findPedidosSemana(
+                startDateTime.getYear(),
+                startDateTime.getMonthValue(),
+                startDateTime.getDayOfMonth(),
+                endDateTime.getYear(),
+                endDateTime.getMonthValue(),
+                endDateTime.getDayOfMonth(),
+                SEDES_HUBS
+        );
+        
+        // Cargar planes de vuelo (estos sí son necesarios y no son millones)
         List<PlanDeVuelo> allFlights = planDeVueloRepository.findAll();
 
-        log.info("✅ Snapshot cargado: {} pedidos totales, {} vuelos", 
-                allOrders.size(), allFlights.size());
+        log.info("✅ Snapshot cargado: {} pedidos de la semana ({} → {}), {} vuelos", 
+                pedidosSemana.size(), 
+                startDateTime.toLocalDate(), 
+                endDateTime.toLocalDate(),
+                allFlights.size());
 
-        return new WorldSnapshot(allOrders, allFlights);
+        return new WorldSnapshot(pedidosSemana, allFlights, pedidosSemana.size());
     }
 
     /**
@@ -542,13 +543,21 @@ public class SimulationService {
 
     /**
      * Snapshot inmutable del mundo (pedidos + vuelos)
+     * 🆕 Ahora soporta cargar total de pedidos sin cargarlos todos en memoria
      */
     private record WorldSnapshot(
             List<PedidoSemanal> orders,
-            List<PlanDeVuelo> flights
+            List<PlanDeVuelo> flights,
+            long totalOrdersCount  // 🆕 Total de pedidos (puede ser diferente a orders.size())
     ) {
-        public int totalOrders() {
-            return orders.size();
+        // Constructor original para compatibilidad
+        public WorldSnapshot(List<PedidoSemanal> orders, List<PlanDeVuelo> flights) {
+            this(orders, flights, orders.size());
+        }
+        
+        public long totalOrders() {
+            // Si hay pedidos cargados, usar su tamaño; si no, usar el contador
+            return orders.isEmpty() ? totalOrdersCount : orders.size();
         }
     }
 

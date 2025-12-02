@@ -112,6 +112,7 @@ public class PlanificacionWebSocketHandler extends TextWebSocketHandler {
                 case "pausar" -> pausarPlanificacion(session);
                 case "reanudar" -> reanudarPlanificacion(session);
                 case "cancelar" -> cancelarPlanificacion(session);
+                case "ping" -> enviarPong(session, request);  // 🆕 Soporte para heartbeat
                 default -> enviarError(session, "Acción desconocida: " + request.getAccion());
             }
             
@@ -148,6 +149,24 @@ public class PlanificacionWebSocketHandler extends TextWebSocketHandler {
     }
     
     // ============ ACCIONES ============
+    
+    /**
+     * 🆕 Responde al ping del cliente con un pong (heartbeat)
+     */
+    private void enviarPong(WebSocketSession session, PlanificacionWSRequest request) {
+        Long timestamp = request.getTimestamp();
+        
+        var responseBuilder = PlanificacionWSResponse.builder()
+                .tipo("pong")
+                .mensaje("pong");
+        
+        if (timestamp != null) {
+            responseBuilder.datos(Map.of("timestamp", timestamp));
+        }
+        
+        enviarMensaje(session, responseBuilder.build());
+        log.trace("🏓 Pong enviado a sesión: {}", session.getId());
+    }
     
     /**
      * Inicia la planificación en un thread asíncrono

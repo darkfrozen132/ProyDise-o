@@ -46,4 +46,10 @@ public class PlanificacionWSRequest {
      * Valores más bajos = converge más rápido
      */
     private Integer limiteGeneracionesSinMejora;
+    
+    /**
+     * Timestamp del cliente para heartbeat/ping (opcional)
+     * Se usa para medir latencia de la conexión
+     */
+    private Long timestamp;
 }

@@ -1050,9 +1050,36 @@ const SimuladorSemanal = () => {
 			setFlightsInAir(0);
 			setProgresoAG(null);
 			contadorVuelosRef.current = 0;
-			// 🆕 Limpiar pedidos completados de simulaciones anteriores
+			// Limpiar pedidos completados de simulaciones anteriores
 			setPedidosCompletados([]);
 			vuelosCompletadosRef.current = new Set();
+			// Limpiar IDs de vuelos recibidos para evitar duplicados con simulaciones anteriores
+			vuelosRecibidosIdsRef.current = new Set();
+			// Limpiar buffer de vuelos
+			vuelosBufferRef.current = [];
+			
+			// Resetear métricas de vuelos
+			setMetricasVuelos({
+				totalRecibidosBackend: 0,
+				totalEnEstadoFlights: 0,
+				totalGraficados: 0,
+				totalPerdidosAntesDeTiempo: 0,
+				totalPerdidosDespuesDeTiempo: 0,
+				ultimaActualizacion: null
+			});
+			
+			// 🕐 INICIAR CRONÓMETRO DE TIEMPO REAL TRANSCURRIDO
+			tiempoInicioRef.current = Date.now();
+			setTiempoRealTranscurrido(0);
+			if (intervalTiempoRealRef.current) {
+				clearInterval(intervalTiempoRealRef.current);
+			}
+			intervalTiempoRealRef.current = setInterval(() => {
+				if (tiempoInicioRef.current) {
+					const transcurrido = Math.floor((Date.now() - tiempoInicioRef.current) / 1000);
+					setTiempoRealTranscurrido(transcurrido);
+				}
+			}, 1000);
 			
 			// Iniciar reloj local
 			const inicioUTC = new Date(`${fechaInicioSimulacion}T${horaInicioSimulacion}:00Z`);
@@ -1213,12 +1240,21 @@ const SimuladorSemanal = () => {
 		setFlights([]);
 		setFlightsInAir(0);
 		contadorVuelosRef.current = 0; // 🆔 Resetear contador de IDs únicos
-		
-		// 🆕 Limpiar pedidos completados
+		// Limpiar pedidos completados
 		setPedidosCompletados([]);
 		vuelosCompletadosRef.current = new Set();
+		// Limpiar buffer de vuelos
+		vuelosBufferRef.current = [];
 		
-		// 📊 RESETEAR MÉTRICAS DE VUELOS
+		// � DETENER Y RESETEAR CRONÓMETRO DE TIEMPO REAL
+		if (intervalTiempoRealRef.current) {
+			clearInterval(intervalTiempoRealRef.current);
+			intervalTiempoRealRef.current = null;
+		}
+		tiempoInicioRef.current = null;
+		setTiempoRealTranscurrido(0);
+		
+		// �📊 RESETEAR MÉTRICAS DE VUELOS
 		setMetricasVuelos({
 			totalRecibidosBackend: 0,
 			totalEnEstadoFlights: 0,
@@ -1228,9 +1264,6 @@ const SimuladorSemanal = () => {
 			ultimaActualizacion: null
 		});
 		vuelosRecibidosIdsRef.current = new Set();
-		
-		// Si deseas también resetear planificaciones recibidas:
-		// setPlanFixed([]);
 	};
 
 	const handleToggleLegend = (event) => {
@@ -2692,6 +2725,8 @@ console.log(`Vuelos activos anadidos: ${vuelosActivos}`);
 									<Box>
 										{(() => {
 											const list = [];
+											const pedidosVistos = new Set(); // 🆕 Para evitar duplicados por idPedido
+											
 											// 🆕 Extraer pedidos de TODOS los vuelos activos
 											(flights || []).forEach(f => {
 												// Determinar estado del pedido basado en el vuelo
@@ -2703,35 +2738,43 @@ console.log(`Vuelos activos anadidos: ${vuelosActivos}`);
 												}
 												
 												if (f.pedidos && Array.isArray(f.pedidos)) {
-													f.pedidos.forEach(p => list.push({ 
-														...(p), 
-														flightData: f,
-														origin: p.origen || f.origin?.code, 
-														destination: p.destino || f.destination?.code,
-														cantidad: p.cantidad || 1,
-														pedidoStatus: pedidoStatus
-													}));
-												} else if (f.pedidoId) {
-													list.push({ 
-														idPedido: f.pedidoId, 
-														flightData: f,
-														origin: f.origin?.code, 
-														destination: f.destination?.code,
-														cantidad: f.currentPackages || 1,
-														pedidoStatus: pedidoStatus
+													f.pedidos.forEach(p => {
+														const pedidoKey = p.idPedido || p.orderId || p.id;
+														// 🆕 Solo agregar si no hemos visto este pedido antes
+														if (pedidoKey && !pedidosVistos.has(pedidoKey)) {
+															pedidosVistos.add(pedidoKey);
+															list.push({ 
+																...(p), 
+																flightData: f,
+																origin: p.origen || f.origin?.code, 
+																destination: p.destino || f.destination?.code,
+																cantidad: p.cantidad || 1,
+																pedidoStatus: pedidoStatus
+															});
+														}
 													});
+												} else if (f.pedidoId) {
+													// 🆕 Solo agregar si no hemos visto este pedido antes
+													if (!pedidosVistos.has(f.pedidoId)) {
+														pedidosVistos.add(f.pedidoId);
+														list.push({ 
+															idPedido: f.pedidoId, 
+															flightData: f,
+															origin: f.origin?.code, 
+															destination: f.destination?.code,
+															cantidad: f.currentPackages || 1,
+															pedidoStatus: pedidoStatus
+														});
+													}
 												}
 											});
 											
 											// 🆕 Agregar pedidos completados (guardados en memoria)
 											(pedidosCompletados || []).forEach(p => {
-												// Evitar duplicados - verificar si ya existe en la lista
-												const yaExiste = list.some(existing => 
-													existing.origin === p.origen && 
-													existing.destination === p.destino &&
-													existing.pedidoStatus === 'entregado'
-												);
-												if (!yaExiste) {
+												const pedidoKey = p.idPedido || p.orderId || p.id;
+												// 🆕 Solo agregar si no hemos visto este pedido antes
+												if (pedidoKey && !pedidosVistos.has(pedidoKey)) {
+													pedidosVistos.add(pedidoKey);
 													list.push({
 														...p,
 														origin: p.origen,
@@ -2750,7 +2793,7 @@ console.log(`Vuelos activos anadidos: ${vuelosActivos}`);
 											});
 										})().map((order, index) => (
 											<Box 
-												key={`order-${index}-${order.origin}-${order.destination}`} 
+												key={`order-${order.idPedido || index}-${order.origin}-${order.destination}`} 
 												onClick={() => order.flightData && setSelectedFlight(order.flightData)}
 												sx={{ 
 													border: '1px solid #dee2e6', 
@@ -3123,15 +3166,16 @@ console.log(`Vuelos activos anadidos: ${vuelosActivos}`);
 												<span style={{ fontSize: '14px', color: '#6c757d', marginRight: '8px' }}>
 													Tiempo transcurrido:
 												</span>
-												<span style={{ fontSize: '14px', fontWeight: '600', color: '#212529' }}>
-													{tiempoRealTranscurrido > 0 ? (
-														<>
-															{Math.floor(tiempoRealTranscurrido / 60)}m {tiempoRealTranscurrido % 60}s
-														</>
-													) : '0s'}
+												<span style={{ fontSize: '14px', fontWeight: '600', color: '#212529', fontFamily: 'monospace' }}>
+													{(() => {
+														const horas = Math.floor(tiempoRealTranscurrido / 3600);
+														const minutos = Math.floor((tiempoRealTranscurrido % 3600) / 60);
+														const segundos = tiempoRealTranscurrido % 60;
+														return `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}:${String(segundos).padStart(2, '0')}`;
+													})()}
 												</span>
 												<span style={{ fontSize: '12px', color: '#6c757d', marginLeft: '8px' }}>
-													({estadoPlanificacion === 'running' || estadoPlanificacion === 'waiting' ? 'En ejecución' : 'Detenido'})
+													({simulacionActiva || estadoPlanificacion === 'running' || estadoPlanificacion === 'waiting' ? 'En ejecución' : 'Detenido'})
 												</span>
 											</div>
 										</div>

@@ -233,11 +233,15 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMov
 		
 		/* Actualizar o crear marcadores de vuelos con animación (SISTEMA REACTIVO) */
 		if (activeView === 'flights' || activeView === 'routes') {
-			console.log(`✈️ Actualizando ${vuelosEnMovimiento.length} vuelos en el mapa con sistema reactivo`);
+			// 🆕 FILTRAR: Solo mostrar vuelos ACTIVOS (en vuelo), no 'waiting' ni 'completed'
+			const vuelosActivos = vuelosEnMovimiento.filter(v => 
+				v.status === 'active' && v.progress > 0 && v.progress < 100
+			);
+			console.log(`✈️ Actualizando ${vuelosActivos.length}/${vuelosEnMovimiento.length} vuelos ACTIVOS en el mapa`);
 			
 			const currentFlightIds = new Set();
 			
-			vuelosEnMovimiento.forEach((flight, index) => {
+			vuelosActivos.forEach((flight, index) => {
 				// Verificar que las coordenadas sean válidas
 				if (!flight.currentLat || !flight.currentLng || 
 						isNaN(flight.currentLat) || isNaN(flight.currentLng)) {
@@ -1985,8 +1989,10 @@ const SimuladorSemanal = () => {
 			const brg = bearingDegrees(origen.lat, origen.lng, destino.lat, destino.lng);
 			const rotation = (brg - 90 + 360) % 360;
 
-			// 🆕 ID único: baseTimestamp + índice + micro-timestamp + random
-			const uniqueId = `WS-${vuelo.pedidos?.[0]?.idPedido || index}-${baseTimestamp}-${index}-${Math.random().toString(36).substr(2, 9)}`;
+			// 🆕 ID único ESTABLE: origen + destino + fechaInicial (sin timestamps aleatorios)
+			// Esto evita crear duplicados cuando el backend envía el mismo vuelo múltiples veces
+			const vueloKey = `${vuelo.origenCodigoICAO}-${vuelo.destinoCodigoICAO}-${vuelo.fechaInicial || index}`;
+			const uniqueId = `WS-${vueloKey}`;
 
 			// Crear objeto de vuelo (con timestamps para interpolación híbrida)
 			const nuevoVuelo = {
@@ -2080,10 +2086,24 @@ return;
 console.log(`🔄 Combinando ${vuelosUnicos.length} vuelos nuevos con existentes`);
 
 setFlights(prevFlights => {
-const existingIds = new Set(prevFlights.map(v => v.id));
+// 🆕 LIMPIAR vuelos que ya aterrizaron (fechaFinal < tiempoSimulado - 30min margen)
+const relojActual = relojLocalRef.current;
+const tiempoActualMs = relojActual instanceof Date ? relojActual.getTime() : (relojActual || Date.now());
+const margenMs = 30 * 60 * 1000; // 30 minutos de margen después de aterrizar
+const vuelosActivos = prevFlights.filter(v => {
+	if (!v.fechaFinal) return true; // Mantener si no tiene fecha
+	const fechaAterrizaje = new Date(v.fechaFinal).getTime();
+	return fechaAterrizaje > (tiempoActualMs - margenMs);
+});
+
+if (vuelosActivos.length < prevFlights.length) {
+	console.log(`🧹 Limpiados ${prevFlights.length - vuelosActivos.length} vuelos que ya aterrizaron`);
+}
+
+const existingIds = new Set(vuelosActivos.map(v => v.id));
 const nuevosNoRepetidos = vuelosUnicos.filter(v => !existingIds.has(v.id));
-const combinados = [...prevFlights, ...nuevosNoRepetidos];
-console.log(`📊 Total vuelos después de combinar: ${combinados.length}`);
+const combinados = [...vuelosActivos, ...nuevosNoRepetidos];
+console.log(`📊 Total vuelos después de combinar: ${combinados.length} (activos: ${vuelosActivos.length}, nuevos: ${nuevosNoRepetidos.length})`);
 return combinados;
 });
 

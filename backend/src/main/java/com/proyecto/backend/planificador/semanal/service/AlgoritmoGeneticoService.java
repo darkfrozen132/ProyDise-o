@@ -827,17 +827,15 @@
             // Iteraciones posteriores: ventana desde tiempo actual hasta tiempo + Sc
             inicio = tiempoActualSimulacion;
             fin = tiempoActualSimulacion.plusMinutes(saltoConsumoMinutos);
-            log.info("Ventana desde {}: [{}, {}] = {} minutos", 
-                     tiempoActualSimulacion, inicio, fin, saltoConsumoMinutos);
         } else {
             // Primera iteración: ventana desde medianoche hasta medianoche + Sc
             inicio = LocalDateTime.of(fecha, LocalTime.MIDNIGHT);
             fin = inicio.plusMinutes(saltoConsumoMinutos);
-            log.debug("Primera iteracion: [{}, {}) = {} minutos", inicio, fin, saltoConsumoMinutos);
         }
 
-        // 🆕 QUERY OPTIMIZADA: Buscar directamente en BD con filtros
-        // Evita cargar millones de registros en memoria
+        // ⏱️ TIMING: Medir query BD
+        long tQuery = System.currentTimeMillis();
+        
         List<PedidoSemanal> pedidos = pedidoSemanalRepository.findByRangoFechaExcluyendoDestinos(
                 inicio.getYear(),
                 inicio.getMonthValue(),
@@ -851,9 +849,10 @@
                 fin.getMinute(),
                 SEDES_HUBS
         );
-
-        log.debug("📦 Encontrados {} pedidos en ventana [{}, {}] (query BD optimizada, excluidos HUBS/SEDES)", 
-                pedidos.size(), inicio, fin);
+        
+        long queryMs = System.currentTimeMillis() - tQuery;
+        log.info("⏱️ [TIMING] Query BD: {} pedidos en {}ms | Ventana: [{} → {}]", 
+                pedidos.size(), queryMs, inicio.toLocalTime(), fin.toLocalTime());
 
         return pedidos;
     }
@@ -1420,6 +1419,12 @@
 
     // Control de sesiones WebSocket
     private final Map<String, EstadoEjecucion> sesionesActivas = new java.util.concurrent.ConcurrentHashMap<>();
+    
+    // Cache de WorldTemporal por sesión (para evitar recrear en cada iteración)
+    private final Map<String, WorldTemporal> worldTemporalCache = new java.util.concurrent.ConcurrentHashMap<>();
+    
+    // Cache de ControladorAlmacenes por sesión
+    private final Map<String, ControladorAlmacenes> controladorAlmacenesCache = new java.util.concurrent.ConcurrentHashMap<>();
 
     /**
      * Planifica con progreso en tiempo real vía WebSocket
@@ -1455,8 +1460,10 @@
         this.NO_MEJORA_LIMITE = (limiteGeneracionesSinMejora != null) ? limiteGeneracionesSinMejora : NO_MEJORA_LIMITE_DEFAULT;
 
         try {
-            log.debug("🚀 Iniciando planificación WS: sessionId={}, tiempoActual={}, K={}", sessionId, tiempoActualSimulacion, factorK);
-            log.debug("⚙️  Parámetros AG: población={}, maxGen={}, límiteSinMejora={}", 
+            long inicioIteracion = System.currentTimeMillis();
+            log.info("🚀 ═══════════════════════════════════════════════════════════════");
+            log.info("🚀 [ITERACIÓN START] sessionId={}, tiempoSim={}", sessionId, tiempoActualSimulacion);
+            log.info("⚙️  Parámetros AG: población={}, maxGen={}, límiteSinMejora={}", 
                      TAMANIO_POBLACION, MAX_GENERACIONES, NO_MEJORA_LIMITE);
 
             // 1. Cargar datos
@@ -1472,7 +1479,11 @@
                     .timestamp(LocalDateTime.now())
                     .build());
 
+            // ⏱️ TIMING: Obtener World
+            long t1 = System.currentTimeMillis();
             World world = worldCacheService.getWorld();
+            log.info("⏱️ [TIMING] Obtener World (cache): {}ms", System.currentTimeMillis() - t1);
+            
             LocalDate fecha = tiempoActualSimulacion.toLocalDate();
             
             // Crear request con la hora de la simulación
@@ -1481,36 +1492,77 @@
             tempRequest.setStartTime(tiempoActualSimulacion.toLocalTime());
             tempRequest.setFactorK(factorK);
             
+            // ⏱️ TIMING: Cargar pedidos (incluye query BD)
+            long t2 = System.currentTimeMillis();
             List<PedidoSemanal> pedidos = cargarPedidosEnRango(tempRequest, tiempoActualSimulacion);
+            log.info("⏱️ [TIMING] Cargar Pedidos Total: {}ms", System.currentTimeMillis() - t2);
+            
             int numeroDias = calcularHorizonteDias(tempRequest, pedidos);
 
-            // Usar hora de inicio de la simulación
+            // ⏱️ TIMING: Obtener WorldTemporal y ControladorAlmacenes (con cache por sesión)
+            long t3 = System.currentTimeMillis();
             LocalDateTime fechaBaseUTC = tiempoActualSimulacion;
-            WorldTemporal worldTemporal = new WorldTemporal(world, fechaBaseUTC, numeroDias);
-            ControladorAlmacenes controladorAlmacenes = new ControladorAlmacenes(numeroDias, fechaBaseUTC);
-
-            for (Aeropuerto aeropuerto : world.getAeropuertos().values()) {
-                int capacidad = aeropuerto.tieneStockIlimitado() ? 0 : aeropuerto.getCapacidadAlmacen();
-                controladorAlmacenes.registrarAeropuerto(aeropuerto.getCodigoICAO(), capacidad);
+            
+            // 🚀 OPTIMIZACIÓN: Cachear WorldTemporal por sesión
+            // Solo se crea en la primera iteración, luego se reutiliza
+            WorldTemporal worldTemporal = worldTemporalCache.get(sessionId);
+            ControladorAlmacenes controladorAlmacenes = controladorAlmacenesCache.get(sessionId);
+            
+            if (worldTemporal == null) {
+                // Primera iteración: crear WorldTemporal
+                worldTemporal = new WorldTemporal(world, fechaBaseUTC, numeroDias);
+                worldTemporalCache.put(sessionId, worldTemporal);
+                log.info("⏱️ [TIMING] Crear WorldTemporal (NUEVO): {}ms | {}", 
+                        System.currentTimeMillis() - t3, worldTemporal.getEstadisticas());
+            } else {
+                log.info("⏱️ [TIMING] WorldTemporal (CACHE HIT): 0ms | {}", worldTemporal.getEstadisticas());
+            }
+            
+            // ⏱️ TIMING: Crear ControladorAlmacenes
+            long t4 = System.currentTimeMillis();
+            if (controladorAlmacenes == null) {
+                // Primera iteración: crear ControladorAlmacenes
+                controladorAlmacenes = new ControladorAlmacenes(numeroDias, fechaBaseUTC);
+                for (Aeropuerto aeropuerto : world.getAeropuertos().values()) {
+                    int capacidad = aeropuerto.tieneStockIlimitado() ? 0 : aeropuerto.getCapacidadAlmacen();
+                    controladorAlmacenes.registrarAeropuerto(aeropuerto.getCodigoICAO(), capacidad);
+                }
+                controladorAlmacenesCache.put(sessionId, controladorAlmacenes);
+                log.info("⏱️ [TIMING] Crear ControladorAlmacenes (NUEVO): {}ms", System.currentTimeMillis() - t4);
+            } else {
+                log.info("⏱️ [TIMING] ControladorAlmacenes (CACHE HIT): 0ms");
             }
 
             // 2. Ejecutar AG con progreso
-            long inicioAG = System.currentTimeMillis();
             Solution solucion = ejecutarAlgoritmoGeneticoConProgreso(worldTemporal, controladorAlmacenes, pedidos, estado, callbackProgreso);
-            long duracionAG = System.currentTimeMillis() - inicioAG;
             
             int pedidosAsignados = (solucion != null && solucion.getRutas() != null) 
                 ? solucion.getRutas().size() 
                 : 0;
 
-            log.info("✅ Iteración completada: {} pedidos asignados en {}ms", pedidosAsignados, duracionAG);
+            long duracionTotal = System.currentTimeMillis() - inicioIteracion;
+            log.info("✅ [ITERACIÓN END] {} pedidos asignados | Duración TOTAL: {}ms", pedidosAsignados, duracionTotal);
+            log.info("🚀 ═══════════════════════════════════════════════════════════════");
 
         } catch (Exception e) {
             log.error("❌ Error en planificación WS", e);
             throw new RuntimeException("Error en planificación: " + e.getMessage(), e);
-        } finally {
-            sesionesActivas.remove(sessionId);
         }
+        // Nota: NO limpiar sesionesActivas aquí - se hace en limpiarCacheSesion() al final de la simulación
+    }
+    
+    /**
+     * Limpia los caches de una sesión de simulación
+     * DEBE llamarse desde SimulationService cuando la simulación termina (complete/cancel/error)
+     *
+     * @param sessionId ID de la sesión
+     */
+    public void limpiarCacheSesion(String sessionId) {
+        sesionesActivas.remove(sessionId);
+        WorldTemporal wt = worldTemporalCache.remove(sessionId);
+        ControladorAlmacenes ca = controladorAlmacenesCache.remove(sessionId);
+        log.info("🧹 Cache limpiado para sesión {} | WorldTemporal={}, ControladorAlmacenes={}", 
+                sessionId, wt != null, ca != null);
     }
 
     /**
@@ -1524,32 +1576,46 @@
             EstadoEjecucion estado,
             java.util.function.Consumer<ProgresoAGDTO> callbackProgreso) {
 
-        log.debug("Iniciando algoritmo genético con progreso en tiempo real");
-        long inicioMs = System.currentTimeMillis();
+        long inicioTotal = System.currentTimeMillis();
+        log.info("⏱️ ═══════════════════════════════════════════════════════════════");
+        log.info("⏱️ [AG START] Pedidos={}, Población={}, MaxGen={}", 
+                pedidos.size(), TAMANIO_POBLACION, MAX_GENERACIONES);
 
         Random random = new Random();
         int numeroPedidos = pedidos.size();
 
-        // Crear decodificador genético
+        // ⏱️ TIMING: Crear decodificador
+        long t1 = System.currentTimeMillis();
         DecodificadorGenetico decodificador = new DecodificadorGenetico(worldTemporal, controladorAlmacenes);
+        log.info("⏱️ [TIMING] Crear Decodificador: {}ms", System.currentTimeMillis() - t1);
 
-        // 1. Generar población inicial
+        // ⏱️ TIMING: Generar población inicial
+        long t2 = System.currentTimeMillis();
         List<Individuo> poblacion = generarPoblacionInicial(numeroPedidos, TAMANIO_POBLACION, random);
-        log.debug("Población inicial generada: {} individuos", poblacion.size());
+        log.info("⏱️ [TIMING] Generar Población Inicial: {}ms ({} individuos)", 
+                System.currentTimeMillis() - t2, poblacion.size());
 
-        // Evaluar población inicial
+        // ⏱️ TIMING: Evaluar población inicial
+        long t3 = System.currentTimeMillis();
         evaluarPoblacion(poblacion, decodificador, pedidos, worldTemporal, controladorAlmacenes);
         poblacion.sort(Comparator.comparingDouble((Individuo i) -> i.fitness).reversed());
+        long evalInicialMs = System.currentTimeMillis() - t3;
+        log.info("⏱️ [TIMING] Evaluar Población Inicial: {}ms", evalInicialMs);
 
         double mejorFitnessGlobal = poblacion.get(0).fitness;
         Solution mejorSolucionGlobal = poblacion.get(0).solucion;
 
+        log.info("⏱️ [GEN 0] Fitness={} | Total acumulado: {}ms", 
+                String.format("%.2f", mejorFitnessGlobal), System.currentTimeMillis() - inicioTotal);
+
         // Enviar progreso inicial (generación 0)
-        enviarProgresoConSolucion(0, mejorFitnessGlobal, mejorSolucionGlobal, inicioMs, 
+        enviarProgresoConSolucion(0, mejorFitnessGlobal, mejorSolucionGlobal, inicioTotal, 
                                   pedidos.size(), worldTemporal, callbackProgreso);
 
         // 2. Loop evolutivo
         for (int generacion = 1; generacion <= MAX_GENERACIONES; generacion++) {
+            long tGen = System.currentTimeMillis();
+            
             // ⚠️ Verificar estado (pausar/cancelar)
             verificarEstadoEjecucion(estado);
 
@@ -1577,9 +1643,11 @@
                 nuevaPoblacion.add(new Individuo(hijo));
             }
 
-            // Evaluar nueva población
+            // ⏱️ TIMING: Evaluar nueva población
+            long tEval = System.currentTimeMillis();
             evaluarPoblacion(nuevaPoblacion, decodificador, pedidos, worldTemporal, controladorAlmacenes);
             nuevaPoblacion.sort(Comparator.comparingDouble((Individuo i) -> i.fitness).reversed());
+            long evalMs = System.currentTimeMillis() - tEval;
 
             poblacion = nuevaPoblacion;
 
@@ -1590,16 +1658,22 @@
                 mejorSolucionGlobal = poblacion.get(0).solucion;
             }
 
+            long genMs = System.currentTimeMillis() - tGen;
+            log.info("⏱️ [GEN {}/{}] Fitness={} | Gen: {}ms (eval: {}ms) | Total: {}ms", 
+                    generacion, MAX_GENERACIONES,
+                    String.format("%.2f", mejorFitnessGlobal),
+                    genMs, evalMs,
+                    System.currentTimeMillis() - inicioTotal);
+
             // Enviar progreso con la mejor solución actual
-            enviarProgresoConSolucion(generacion, mejorFitnessGlobal, mejorSolucionGlobal, inicioMs,
+            enviarProgresoConSolucion(generacion, mejorFitnessGlobal, mejorSolucionGlobal, inicioTotal,
                                       pedidos.size(), worldTemporal, callbackProgreso);
         }
 
-        log.debug("Algoritmo genético completado: Fitness final = {}", mejorFitnessGlobal);
-        
-        // ❌ DESACTIVADO: Ya no guardamos estados en BD, solo en RAM
-        // El estado se mantiene en PedidoState (memoria) durante la simulación
-        // actualizarEstadoPedidosPlanificados(mejorSolucionGlobal);
+        long totalMs = System.currentTimeMillis() - inicioTotal;
+        log.info("⏱️ [AG END] Fitness Final={} | Duración Total: {}ms", 
+                String.format("%.2f", mejorFitnessGlobal), totalMs);
+        log.info("⏱️ ═══════════════════════════════════════════════════════════════");
         
         return mejorSolucionGlobal;
     }

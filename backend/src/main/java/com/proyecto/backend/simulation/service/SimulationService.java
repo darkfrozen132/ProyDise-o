@@ -285,6 +285,8 @@ public class SimulationService {
             session.error();
             sendErrorUpdate(session, e.getMessage());
         } finally {
+            // 🧹 Limpiar cache del AG para esta sesión
+            algoritmoGeneticoService.limpiarCacheSesion(sessionId);
             log.info("🏁 {} finalizado.", session.getSessionName());
         }
     }

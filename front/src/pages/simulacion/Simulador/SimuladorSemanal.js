@@ -26,7 +26,9 @@ import {
 } from '../../../config/api';
 import LegendDialog from '../../../components/ui/Dialog/LegendDialog';
 import LegendButton from '../../../components/ui/Button/LegendButton';
-import { conectarWebSocketPlanificacion } from '../../../config/websocket';
+// 🆕 COMPONENTE DE INDICADOR DE ESTADO WEBSOCKET
+// Nota: usePlanificacionWebSocket está deshabilitado - ver comentario en línea ~513
+import WebSocketStatusIndicator from '../../../components/ui/WebSocketStatusIndicator';
 
 /* Constantes de configuracion de tiempo de simulacion */
 const DESIRED_TIME_SCALE = 500; // Valor de K
@@ -199,10 +201,16 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMov
 	const map = (0, require('react-leaflet').useMap)();
 	const markersRef = React.useRef({}); // Guardar marcadores por ID para animarlos
 	const polylinesRef = React.useRef({});
+	const lastLogRef = React.useRef({ count: 0, time: 0, activeCount: 0 }); // 🚀 Throttle para logs
 	
 	/* Actualizar marcadores cuando cambian vuelos, aeropuertos, vista activa o rutas */
 	React.useEffect(() => {
-		console.log(`🗺️ DynamicMarkers - Recibidos ${flights.length} vuelos, activeView: ${activeView}`);
+		// 🚀 Log solo cada 5 segundos o si cambió cantidad de vuelos
+		const now = Date.now();
+		if (flights.length !== lastLogRef.current.count || now - lastLogRef.current.time > 5000) {
+			console.log(`🗺️ DynamicMarkers - Recibidos ${flights.length} vuelos, activeView: ${activeView}`);
+			lastLogRef.current = { count: flights.length, time: now };
+		}
 		
 		const airportMarkers = [];
 		
@@ -231,11 +239,19 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMov
 		
 		/* Actualizar o crear marcadores de vuelos con animación (SISTEMA REACTIVO) */
 		if (activeView === 'flights' || activeView === 'routes') {
-			console.log(`✈️ Actualizando ${vuelosEnMovimiento.length} vuelos en el mapa con sistema reactivo`);
+			// 🆕 FILTRAR: Solo mostrar vuelos ACTIVOS (en vuelo), no 'waiting' ni 'completed'
+			const vuelosActivos = vuelosEnMovimiento.filter(v => 
+				v.status === 'active' && v.progress > 0 && v.progress < 100
+			);
+			// 🚀 Log solo si cambió la cantidad (evitar spam)
+			if (vuelosActivos.length !== lastLogRef.current.activeCount) {
+				console.log(`✈️ Aviones en vuelo: ${vuelosActivos.length}/${vuelosEnMovimiento.length}`);
+				lastLogRef.current.activeCount = vuelosActivos.length;
+			}
 			
 			const currentFlightIds = new Set();
 			
-			vuelosEnMovimiento.forEach((flight, index) => {
+			vuelosActivos.forEach((flight, index) => {
 				// Verificar que las coordenadas sean válidas
 				if (!flight.currentLat || !flight.currentLng || 
 						isNaN(flight.currentLat) || isNaN(flight.currentLng)) {
@@ -274,7 +290,8 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMov
 					
 				} else {
 					// 🆕 CREAR: Nuevo marcador para este vuelo
-					console.log(`  ✈️ Vuelo nuevo ${index + 1}: ${flight.id} - Interpolación: ${!!flight.fechaInicial} - Pos: [${position.lat.toFixed(3)}, ${position.lng.toFixed(3)}]`);
+					// 🚀 Log deshabilitado para rendimiento
+					// console.log(`  ✈️ Vuelo nuevo: ${flight.id}`);
 					
 					const icon = createAirplaneIcon(flight, flight.rotation);
 					const popupContent = createFlightPopup(flight);
@@ -317,7 +334,8 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMov
 				polylinesRef.current = {};
 			}
 			
-			console.log(`✅ Total marcadores de vuelos activos: ${Object.keys(markersRef.current).length}`);
+			// 🚀 Log de marcadores deshabilitado para rendimiento
+			// console.log(`✅ Marcadores activos: ${Object.keys(markersRef.current).length}`);
 		} else {
 			// Si no estamos en vista de vuelos, limpiar todos los marcadores de vuelos
 			Object.values(markersRef.current).forEach(marker => map.removeLayer(marker));
@@ -368,18 +386,15 @@ function calculateInterpolatedPosition(vuelo, tiempoActualMs) {
 	const horaLlegada = new Date(fechaFinalStr).getTime();
 	const duracionVuelo = horaLlegada - horaSalida;
 	
-	// 🐛 DEBUG: Log solo cada 2 segundos para no saturar consola
-	if (Math.random() < 0.02) { // 2% de probabilidad (aprox cada 50 frames = 2.5 seg)
+	// 🐛 DEBUG: Log muy reducido para no saturar consola (🚀 Optimizado)
+	// Deshabilitado en producción - descomentar para debug
+	/*
+	if (Math.random() < 0.005) { // 0.5% de probabilidad
 		const tiempoActual = new Date(tiempoActualMs);
-		const salida = new Date(horaSalida);
-		const llegada = new Date(horaLlegada);
 		const enVuelo = tiempoActualMs >= horaSalida && tiempoActualMs < horaLlegada;
-		console.log(`🔍 Interpolando ${vuelo.id}:`);
-		console.log(`   Salida:  ${salida.toISOString()}`);
-		console.log(`   Llegada: ${llegada.toISOString()}`);
-		console.log(`   Actual:  ${tiempoActual.toISOString()} ${enVuelo ? '✈️ EN VUELO' : '⏸️'}`);
-		console.log(`   Duración: ${(duracionVuelo / 1000 / 60).toFixed(0)} minutos`);
+		console.log(`🔍 ${vuelo.id}: ${enVuelo ? '✈️' : '⏸️'} ${(duracionVuelo / 1000 / 60).toFixed(0)}min`);
 	}
+	*/
 
 	// Si el vuelo no ha empezado, está en origen
 	if (tiempoActualMs < horaSalida) {
@@ -410,10 +425,8 @@ function calculateInterpolatedPosition(vuelo, tiempoActualMs) {
 	const lat = vuelo.origin.lat + (vuelo.destination.lat - vuelo.origin.lat) * ratio;
 	const lng = vuelo.origin.lng + (vuelo.destination.lng - vuelo.origin.lng) * ratio;
 
-	// 🐛 DEBUG: Log de posición calculada (solo algunos frames)
-	if (Math.random() < 0.02) {
-		console.log(`   ✈️ Progreso: ${progreso.toFixed(1)}% | Pos: [${lat.toFixed(3)}, ${lng.toFixed(3)}]`);
-	}
+	// 🐛 DEBUG deshabilitado para rendimiento
+	// if (Math.random() < 0.02) { console.log(`   ✈️ Progreso: ${progreso.toFixed(1)}%`); }
 
 	return {
 		lat,
@@ -508,11 +521,22 @@ const SimuladorSemanal = () => {
 	const eventSourceRef = useRef(null); /* Referencia para el EventSource SSE */
 
 	// ==================== ESTADO WEBSOCKET PLANIFICACIÓN ====================
-	const [wsPlanificacion, setWsPlanificacion] = useState(null);
-	const [wsConectado, setWsConectado] = useState(false);
+	// ⚠️ NOTA: El hook usePlanificacionWebSocket está DESHABILITADO porque el backend
+	// no tiene el endpoint /ws/planificacion registrado. La simulación usa STOMP en /ws.
+	// Para habilitar, registrar PlanificacionWebSocketHandler en WebSocketConfig.java
+	
+	// Variables placeholder para compatibilidad (el hook no se usa)
+	const wsConnected = false;
+	const iniciarPlanificacion = async () => { console.warn('⚠️ WebSocket planificación no disponible'); };
+	const wsLimpiarIteraciones = () => {};
+	const wsDetenerPlanificacion = () => {};
+	const wsOnMessage = () => {};
+	
+	// Estados locales de planificación (para control local de UI)
 	const [iteracionesPlanificacion, setIteracionesPlanificacion] = useState([]);
-	const [estadoPlanificacion, setEstadoPlanificacion] = useState('idle'); // idle, running, completed, error, waiting
-	const wsPlanificacionRef = useRef(null);
+	const [estadoPlanificacion, setEstadoPlanificacion] = useState('idle');
+	
+	// Estados adicionales que no están en el hook
 	const [autoInicioIntentado, setAutoInicioIntentado] = useState(false);
 	const [intentosRealizados, setIntentosRealizados] = useState(0); // Contador de reintentos
 	const [tiempoRealTranscurrido, setTiempoRealTranscurrido] = useState(0); // Tiempo real en segundos
@@ -539,7 +563,7 @@ const SimuladorSemanal = () => {
 	const [simulacionLocalActiva, setSimulacionLocalActiva] = useState(false); // Si la animación local corre
 	const relojLocalRef = useRef(null);                          // Ref para el reloj local (evita closures)
 	const colaVuelosRef = useRef([]);                            // Ref para la cola (evita closures)
-	const TICK_REAL_MS = 100;                                    // Intervalo de actualización en ms
+	const TICK_REAL_MS = 250;                                    // Intervalo de actualización en ms (🚀 Optimizado: 4 FPS)
 	
 	// ========== BUFFER DE 15 SEGUNDOS PARA ACUMULACIÓN DE VUELOS ==========
 	const [bufferActivo, setBufferActivo] = useState(false);     // Si el buffer está activo (primeros 15 segundos)
@@ -750,11 +774,8 @@ const SimuladorSemanal = () => {
 			return [];
 		}
 
-		// Debug cada 2 segundos
-		if (Math.random() < 0.02) {
-			console.log(`✈️ Re-calculando posiciones de ${flights.length} vuelos`);
-			console.log(`   Tiempo simulado: ${new Date(tiempoSimulado).toISOString()}`);
-		}
+		// 🚀 Debug deshabilitado para rendimiento
+		// if (Math.random() < 0.02) { console.log(`✈️ Re-calculando ${flights.length} vuelos`); }
 
 		return flights.map(flight => {
 			// Calcular posición interpolada basada en tiempo simulado
@@ -780,7 +801,7 @@ const SimuladorSemanal = () => {
 		});
 	}, [flights, tiempoSimulado]); // 🎯 DEPENDENCIAS REACTIVAS
 
-	// Debug: Cantidad de vuelos en el aire
+	// Debug: Cantidad de vuelos en el aire (🚀 log reducido para rendimiento)
 	useEffect(() => {
 		const enAire = vuelosEnMovimiento.filter(v => 
 			v.status === 'active' && v.progress > 0 && v.progress < 100
@@ -788,7 +809,8 @@ const SimuladorSemanal = () => {
 		
 		if (enAire !== flightsInAir) {
 			setFlightsInAir(enAire);
-			console.log(`🛫 Aviones en el aire: ${enAire}/${vuelosEnMovimiento.length}`);
+			// Log deshabilitado - la información ya se muestra en el UI
+			// console.log(`🛫 Aviones: ${enAire}/${vuelosEnMovimiento.length}`);
 		}
 	}, [vuelosEnMovimiento, flightsInAir]);
 
@@ -887,10 +909,9 @@ const SimuladorSemanal = () => {
 			// 🆕 IMPORTANTE: Actualizar tiempoSimulado para la interpolación de vuelos
 			setTiempoSimulado(nuevoTiempo.getTime());
 			
-			// Debug cada ~2 segundos (5% de probabilidad)
-			if (Math.random() < 0.05) {
-				console.log(`⏰ ${estadoVelocidad} | K=${nuevoK} | Aviones=${avionesEnPantalla} | Cola=${colaActual}`);
-			}
+			// 🚀 Debug reducido: cada ~10 segundos (1% probabilidad @ 250ms tick = 40 ticks)
+			// Deshabilitado para rendimiento
+			// if (Math.random() < 0.01) { console.log(`⏰ K=${nuevoK} | Aviones=${avionesEnPantalla}`); }
 		}, TICK_REAL_MS);
 		
 		return () => clearInterval(interval);
@@ -1198,309 +1219,15 @@ const SimuladorSemanal = () => {
 		};
 	};
 
-	/**
-	 * Conectar al WebSocket de planificación
-	 */
-	const handleConectarWsPlanificacion = () => {
-		console.log('📡 handleConectarWsPlanificacion llamado');
-		console.log('📡 Estado actual wsRef:', wsPlanificacionRef.current ? 'existe' : 'null');
-		console.log('📡 Estado conectado:', wsPlanificacionRef.current?.estaConectado?.() ? 'SÍ' : 'NO');
-		
-		if (wsPlanificacionRef.current && wsPlanificacionRef.current.estaConectado()) {
-			console.log('⚠️ WebSocket ya está conectado');
-			return;
-		}
-
-		console.log('🚀 Llamando a conectarWebSocketPlanificacion...');
-		const ws = conectarWebSocketPlanificacion(
-			// onMessage: Procesar mensajes del servidor
-			(data) => {
-				console.log('📩 Mensaje de planificación:', data);
-				
-				switch(data.tipo) {
-					case 'conexion':
-						console.log('✅ Conexión establecida');
-						break;
-						
-				case 'progreso':
-					// Agregar iteración a la lista
-					setIteracionesPlanificacion(prev => [data, ...prev].slice(0, 20));
-					setEstadoPlanificacion('running');
-					
-					// 🕐 ACTUALIZAR TIEMPO SIMULADO DEL BACKEND (Planificación)
-					if (data.datos?.tiempoSimulacionActual) {
-						let timestampStr = data.datos.tiempoSimulacionActual;
-						// 🆕 FIX: Forzar interpretación como UTC si no tiene 'Z'
-						if (typeof timestampStr === 'string' && !timestampStr.endsWith('Z')) {
-							timestampStr = timestampStr + 'Z';
-						}
-						const timestampMs = typeof timestampStr === 'string' 
-							? new Date(timestampStr).getTime() 
-							: timestampStr;
-						setTiempoSimulacionActual(data.datos.tiempoSimulacionActual); // Mantener original para UI
-						setTiempoSimuladoBackend(timestampMs);
-						setTiempoSimulado(timestampMs); // 🆕 CRÍTICO: Sincronizar tiempoSimulado para interpolación
-						tiempoSimuladoBackendRef.current = timestampMs; // 🆕 Sincronizar ref
-						setUltimaActualizacionReal(Date.now());
-						setTiempoMovimiento(0); // Resetear movimiento
-						console.log(`⏰ Tiempo simulado actualizado (planificación): ${timestampStr} -> ${new Date(timestampMs).toISOString()}`);
-					}
-					
-					console.log(`📊 Progreso - Iteración #${data.datos?.ejecucionNumero || '?'}`);
-					console.log('📦 Datos de progreso:', {
-						tieneSolucion: !!data.solucion,
-						tieneVuelos: !!data.solucion?.vuelos,
-						cantidadVuelos: data.solucion?.vuelos?.length || 0
-					});
-					
-					// ✈️ GRAFICAR VUELOS EN EL MAPA (progreso no suele tener vuelos, solo info)
-					if (data.solucion?.vuelos && data.solucion.vuelos.length > 0) {
-						console.log(`✈️ Recibidos ${data.solucion.vuelos.length} vuelos en progreso #${data.datos?.ejecucionNumero}`);
-						
-						// Convertir vuelos al formato del mapa
-						const vuelosParaMapa = data.solucion.vuelos
-							.map(convertirVueloPlanificacionAMapa)
-							.filter(v => v !== null); // Filtrar vuelos con aeropuertos no encontrados
-						
-					console.log(`🔄 Convertidos ${vuelosParaMapa.length} de ${data.solucion.vuelos.length} vuelos`);
-					
-					// ACUMULAR vuelos en el mapa (sin duplicados)
-					setFlights(prevFlights => {
-						// Crear un mapa de vuelos existentes por ID
-						const flightsMap = new Map(prevFlights.map(f => [f.id, f]));
-						
-						// Agregar o actualizar vuelos nuevos
-						vuelosParaMapa.forEach(vuelo => {
-							flightsMap.set(vuelo.id, vuelo);
-						});
-						
-						const vuelosActualizados = Array.from(flightsMap.values());
-						console.log(`📊 Total vuelos en mapa: ${vuelosActualizados.length} (sin duplicados)`);
-						return vuelosActualizados;
-					});
-					setFlightsInAir(prev => prev + vuelosParaMapa.length);						console.log(`🗺️ Graficados ${vuelosParaMapa.length} vuelos en el mapa`);
-					}
-					break;				case 'completado':
-					console.log('🎉 Planificación completada - Intervalo recibido');
-					console.log('📦 Datos completos:', {
-						iteracion: data.datos?.ejecucionNumero,
-						tieneSolucion: !!data.solucion,
-						tieneVuelos: !!data.solucion?.vuelos,
-						cantidadVuelos: data.solucion?.vuelos?.length || 0
-					});
-					
-					// Agregar resultado final a la lista
-					setIteracionesPlanificacion(prev => [data, ...prev].slice(0, 50));
-					
-					// 🕐 ACTUALIZAR TIEMPO SIMULADO DEL BACKEND (Planificación completada)
-					if (data.datos?.tiempoSimulacionActual) {
-						let timestampStr = data.datos.tiempoSimulacionActual;
-						// 🆕 FIX: Forzar interpretación como UTC si no tiene 'Z'
-						if (typeof timestampStr === 'string' && !timestampStr.endsWith('Z')) {
-							timestampStr = timestampStr + 'Z';
-						}
-						const timestampMs = typeof timestampStr === 'string' 
-							? new Date(timestampStr).getTime() 
-							: timestampStr;
-						setTiempoSimulacionActual(data.datos.tiempoSimulacionActual); // Mantener original para UI
-						setTiempoSimuladoBackend(timestampMs);
-						setTiempoSimulado(timestampMs); // 🆕 CRÍTICO: Sincronizar tiempoSimulado para interpolación
-						tiempoSimuladoBackendRef.current = timestampMs; // 🆕 Sincronizar ref
-						setUltimaActualizacionReal(Date.now());
-						setTiempoMovimiento(0); // Resetear movimiento
-						console.log('⏰ Tiempo simulación actualizado (completado):', timestampStr, '->', new Date(timestampMs).toISOString());
-					}
-					
-					// ✈️ GRAFICAR SOLUCIÓN EN EL MAPA
-					if (data.solucion?.vuelos && data.solucion.vuelos.length > 0) {
-						console.log(`✈️ Procesando ${data.solucion.vuelos.length} vuelos de la iteración #${data.datos?.ejecucionNumero}`);
-						console.log('🔍 Ejemplo de vuelo recibido:', data.solucion.vuelos[0]);
-						
-						// Convertir vuelos al formato del mapa
-						const vuelosParaMapa = data.solucion.vuelos
-							.map(convertirVueloPlanificacionAMapa)
-							.filter(v => v !== null);
-						
-						console.log(`� Convertidos ${vuelosParaMapa.length} de ${data.solucion.vuelos.length} vuelos`);
-						
-						if (vuelosParaMapa.length > 0) {
-							console.log('🗺️ Ejemplo de vuelo convertido:', vuelosParaMapa[0]);
-							
-							// Actualizar el mapa ACUMULANDO vuelos (sin duplicados)
-							setFlights(prevFlights => {
-								// Crear un mapa de vuelos existentes por ID
-								const flightsMap = new Map(prevFlights.map(f => [f.id, f]));
-								
-								// Agregar o actualizar vuelos nuevos
-								vuelosParaMapa.forEach(vuelo => {
-									flightsMap.set(vuelo.id, vuelo);
-								});
-								
-								const vuelosActualizados = Array.from(flightsMap.values());
-								console.log(`📊 Total vuelos en mapa: ${vuelosActualizados.length} (sin duplicados)`);
-								return vuelosActualizados;
-							});
-							
-							setFlightsInAir(prev => {
-								const nuevoTotal = prev + vuelosParaMapa.length;
-								console.log(`✈️ Vuelos en aire actualizados: ${nuevoTotal}`);
-								return nuevoTotal;
-							});
-							
-							console.log(`✅ ${vuelosParaMapa.length} vuelos graficados exitosamente`);
-						} else {
-							console.warn('⚠️ No se pudieron convertir vuelos (aeropuertos no encontrados)');
-						}
-						
-						// 🔄 CONTINUAR con la siguiente iteración
-						const nuevoIntento = intentosRealizados + 1;
-						const maxIntentos = 1000;
-						
-						if (nuevoIntento < maxIntentos) {
-							console.log(`⏩ Solicitando siguiente intervalo... (Iteración ${nuevoIntento})`);
-							setIntentosRealizados(nuevoIntento);
-							
-							// Pequeño delay para visualizar mejor (opcional)
-							setTimeout(() => {
-								const enviado = enviarSolicitudPlanificacion();
-								if (!enviado) {
-									console.error('❌ No se pudo enviar la siguiente solicitud');
-									setEstadoPlanificacion('completed');
-								}
-							}, 100);
-						} else {
-							console.log(`🛑 Máximo de iteraciones alcanzado (${maxIntentos})`);
-							setEstadoPlanificacion('completed');
-							setAutoInicioIntentado(false);
-							
-							if (intervalTiempoRealRef.current) {
-								clearInterval(intervalTiempoRealRef.current);
-								intervalTiempoRealRef.current = null;
-							}
-						}
-					} else {
-						// No hay vuelos en este intervalo, continuar
-						const nuevoIntento = intentosRealizados + 1;
-						const maxIntentos = 1000;
-						
-						if (nuevoIntento < maxIntentos) {
-							console.warn(`⚠️ Sin vuelos en iteración ${data.datos?.ejecucionNumero}. Continuando...`);
-							setIntentosRealizados(nuevoIntento);
-							
-							setTimeout(() => {
-								enviarSolicitudPlanificacion();
-							}, 100);
-						} else {
-							console.log(`🛑 Máximo de iteraciones alcanzado sin vuelos`);
-							setEstadoPlanificacion('completed');
-							setAutoInicioIntentado(false);
-							
-							if (intervalTiempoRealRef.current) {
-								clearInterval(intervalTiempoRealRef.current);
-								intervalTiempoRealRef.current = null;
-							}
-						}
-					}
-					break;
-					
-				case 'error':
-					console.error('❌ Error en planificación:', data.mensaje);
-					
-					// Si el error es "Ya hay una planificación en curso", mantener estado running
-					if (data.mensaje?.includes('Ya hay una planificación en curso')) {
-						console.log('⚠️ Ya hay una planificación en curso, manteniendo estado...');
-						setEstadoPlanificacion('running'); // Mantener como running, no error
-						// NO resetear autoInicioIntentado para evitar múltiples intentos
-					} else {
-						// Para otros errores, marcar como error
-						setEstadoPlanificacion('error');
-						setAutoInicioIntentado(false); // Resetear para permitir nuevo intento
-						alert(`Error en planificación: ${data.mensaje}`);
-						
-						// Detener cronómetro de tiempo real
-						if (intervalTiempoRealRef.current) {
-							clearInterval(intervalTiempoRealRef.current);
-							intervalTiempoRealRef.current = null;
-						}
-					}
-					break;					default:
-						console.log('📨 Mensaje desconocido:', data);
-				}
-			},
-			// onError
-			(error) => {
-				console.error('❌ Error en WebSocket:', error);
-				setEstadoPlanificacion('error');
-			},
-			// onOpen
-			() => {
-				console.log('✅ WebSocket de planificación conectado');
-				setWsConectado(true);
-				setEstadoPlanificacion('idle');
-			},
-			// onClose
-			(event) => {
-				console.log('🔌 WebSocket desconectado. Código:', event.code);
-				setWsConectado(false);
-				setEstadoPlanificacion('idle');
-				wsPlanificacionRef.current = null;
-			}
-		);
-		
-		wsPlanificacionRef.current = ws;
-		setWsPlanificacion(ws);
-	};
-
-	/**
-	 * Desconectar WebSocket de planificación
-	 */
-	const handleDesconectarWsPlanificacion = () => {
-		if (wsPlanificacionRef.current) {
-			wsPlanificacionRef.current.cerrar();
-			setWsConectado(false);
-			setWsPlanificacion(null);
-		}
-	};
-
-	/**
-	 * Iniciar planificación con WebSocket
-	 */
-	// Función para enviar solicitud de planificación (sin validaciones de estado)
-	const enviarSolicitudPlanificacion = () => {
-		if (!wsPlanificacionRef.current?.estaConectado()) {
-			console.warn('⚠️ WebSocket no conectado');
-			return false;
-		}
-
-		if (!fechaInicioSimulacion) {
-			console.warn('⚠️ No hay fecha de inicio seleccionada');
-			return false;
-		}
-
-		// Enviar solicitud de planificación con fecha y hora
-		wsPlanificacionRef.current.iniciarPlanificacion(
-			fechaInicioSimulacion,
-			5, // Factor K para simulación semanal
-			{
-				tamanioPoblacion: 20,
-				maxGeneraciones: 20,
-				limiteGeneracionesSinMejora: 10,
-				hora: horaInicioSimulacion // Hora de inicio (formato HH:mm)
-			}
-		).then(sessionId => {
-			console.log('✅ Planificación iniciada con ID:', sessionId);
-		}).catch(error => {
-			console.error('❌ Error al iniciar planificación:', error);
-			setEstadoPlanificacion('error');
-		});
-		
-		console.log('📤 Solicitud de planificación enviada para fecha:', fechaInicioSimulacion);
-		return true;
-	};
+	// ==================== FUNCIONES DE PLANIFICACIÓN ====================
+	// Nota: handleConectarWsPlanificacion fue eliminada - ahora usamos el hook usePlanificacionWebSocket
+	// que maneja la conexión automáticamente con reconexión y heartbeat
 
 	const handleIniciarPlanificacion = () => {
-		if (!wsPlanificacionRef.current || !wsPlanificacionRef.current.estaConectado()) {
+		// ✨ Usar el nuevo hook para verificar conexión
+		if (!wsConnected) {
 			console.warn('⚠️ WebSocket no conectado, esperando...');
+			alert('WebSocket no conectado. Espera un momento...');
 			return;
 		}
 
@@ -1519,6 +1246,7 @@ const SimuladorSemanal = () => {
 		// 🧹 LIMPIAR TODO para nueva planificación
 		console.log('🧹 Limpiando estado para nueva planificación...');
 		setIteracionesPlanificacion([]);
+		wsLimpiarIteraciones(); // ✨ También limpiar en el hook
 		setFlights([]); // Limpiar vuelos del mapa
 		setFlightsInAir(0);
 		setIntentosRealizados(0);
@@ -1547,7 +1275,23 @@ const SimuladorSemanal = () => {
 		}, 1000);
 
 		console.log('🚀 Iniciando planificación para fecha:', fechaInicioSimulacion);
-		enviarSolicitudPlanificacion();
+		
+		// ✨ Usar la función del hook para iniciar planificación
+		iniciarPlanificacion(
+			fechaInicioSimulacion,
+			5, // Factor K para simulación semanal
+			{
+				tamanioPoblacion: 20,
+				maxGeneraciones: 20,
+				limiteGeneracionesSinMejora: 10,
+				hora: horaInicioSimulacion
+			}
+		).then(sessionId => {
+			console.log('✅ Planificación iniciada con ID:', sessionId);
+		}).catch(error => {
+			console.error('❌ Error al iniciar planificación:', error);
+			setEstadoPlanificacion('error');
+		});
 	};
 
 	/**
@@ -1557,6 +1301,7 @@ const SimuladorSemanal = () => {
 		setIteracionesPlanificacion([]);
 		setEstadoPlanificacion('idle');
 		setAutoInicioIntentado(false); // Permitir nuevo auto-inicio
+		wsLimpiarIteraciones(); // También limpiar en el hook
 	};
 
 	/**
@@ -1570,6 +1315,9 @@ const SimuladorSemanal = () => {
 			clearInterval(intervalTiempoRealRef.current);
 			intervalTiempoRealRef.current = null;
 		}
+		
+		// Detener planificación en el hook
+		wsDetenerPlanificacion();
 		
 		// Resetear estado
 		setEstadoPlanificacion('idle');
@@ -1605,27 +1353,66 @@ const SimuladorSemanal = () => {
 		console.log('✅ Mapa limpiado y simulación reseteada');
 	};
 
-	// Auto-conectar WebSocket al montar el componente
+	// 🆕 EFECTO: Registrar callback para procesar mensajes del WebSocket mejorado
 	useEffect(() => {
-		console.log('='.repeat(80));
-		console.log('🔌 AUTO-CONECTANDO WEBSOCKET DE PLANIFICACIÓN');
-		console.log('URL:', 'ws://localhost:8000/ws/planificacion');
-		console.log('='.repeat(80));
-		
-		// Delay para evitar problemas con React Strict Mode (doble ejecución en desarrollo)
-		const timer = setTimeout(() => {
-			console.log('⏰ Iniciando conexión WebSocket...');
-			handleConectarWsPlanificacion();
-		}, 100);
-		
-		// Cleanup al desmontar
-		return () => {
-			clearTimeout(timer);
-			if (wsPlanificacionRef.current) {
-				console.log('🧹 Limpiando WebSocket de planificación...');
-				wsPlanificacionRef.current.cerrar();
+		wsOnMessage((data) => {
+			console.log('📩 [Hook] Mensaje de planificación:', data);
+			
+			// Procesar tiempo simulado
+			if (data.datos?.tiempoSimulacionActual) {
+				let timestampStr = data.datos.tiempoSimulacionActual;
+				if (typeof timestampStr === 'string' && !timestampStr.endsWith('Z')) {
+					timestampStr = timestampStr + 'Z';
+				}
+				const timestampMs = typeof timestampStr === 'string' 
+					? new Date(timestampStr).getTime() 
+					: timestampStr;
+				setTiempoSimulacionActual(data.datos.tiempoSimulacionActual);
+				setTiempoSimuladoBackend(timestampMs);
+				setTiempoSimulado(timestampMs);
+				tiempoSimuladoBackendRef.current = timestampMs;
+				setUltimaActualizacionReal(Date.now());
+				setTiempoMovimiento(0);
 			}
-			// Limpiar intervalo de tiempo real
+			
+			// Procesar vuelos si vienen en la solución
+			if (data.solucion?.vuelos && data.solucion.vuelos.length > 0) {
+				console.log(`✈️ [Hook] Procesando ${data.solucion.vuelos.length} vuelos`);
+				
+				const vuelosParaMapa = data.solucion.vuelos
+					.map(convertirVueloPlanificacionAMapa)
+					.filter(v => v !== null);
+				
+				if (vuelosParaMapa.length > 0) {
+					setFlights(prevFlights => {
+						const flightsMap = new Map(prevFlights.map(f => [f.id, f]));
+						vuelosParaMapa.forEach(vuelo => flightsMap.set(vuelo.id, vuelo));
+						return Array.from(flightsMap.values());
+					});
+					setFlightsInAir(prev => prev + vuelosParaMapa.length);
+				}
+				
+				// Si es tipo completado, solicitar siguiente iteración
+				if (data.tipo === 'completado') {
+					const nuevoIntento = intentosRealizados + 1;
+					if (nuevoIntento < 1000) {
+						setIntentosRealizados(nuevoIntento);
+						setTimeout(() => {
+							iniciarPlanificacion(fechaInicioSimulacion, 5, {
+								tamanioPoblacion: 20,
+								maxGeneraciones: 20,
+								hora: horaInicioSimulacion
+							});
+						}, 100);
+					}
+				}
+			}
+		});
+	}, [wsOnMessage, fechaInicioSimulacion, horaInicioSimulacion, intentosRealizados, iniciarPlanificacion]);
+
+	// 🆕 Limpiar intervalo de tiempo real al desmontar
+	useEffect(() => {
+		return () => {
 			if (intervalTiempoRealRef.current) {
 				clearInterval(intervalTiempoRealRef.current);
 			}
@@ -1639,7 +1426,7 @@ const SimuladorSemanal = () => {
 		// 2. Hay fecha seleccionada
 		// 3. No se ha intentado auto-iniciar aún
 		// 4. No hay planificación en curso (estado idle)
-		if (wsConectado && fechaInicioSimulacion && !autoInicioIntentado && estadoPlanificacion === 'idle') {
+		if (wsConnected && fechaInicioSimulacion && !autoInicioIntentado && estadoPlanificacion === 'idle') {
 			console.log('🚀 Auto-iniciando planificación...');
 			setAutoInicioIntentado(true);
 			
@@ -1648,7 +1435,7 @@ const SimuladorSemanal = () => {
 				handleIniciarPlanificacion();
 			}, 500);
 		}
-	}, [wsConectado, fechaInicioSimulacion, autoInicioIntentado, estadoPlanificacion]);
+	}, [wsConnected, fechaInicioSimulacion, autoInicioIntentado, estadoPlanificacion]);
 
 	// Resetear flag cuando cambia la fecha
 	useEffect(() => {
@@ -2206,8 +1993,10 @@ const SimuladorSemanal = () => {
 			const brg = bearingDegrees(origen.lat, origen.lng, destino.lat, destino.lng);
 			const rotation = (brg - 90 + 360) % 360;
 
-			// 🆕 ID único: baseTimestamp + índice + micro-timestamp + random
-			const uniqueId = `WS-${vuelo.pedidos?.[0]?.idPedido || index}-${baseTimestamp}-${index}-${Math.random().toString(36).substr(2, 9)}`;
+			// 🆕 ID único ESTABLE: origen + destino + fechaInicial (sin timestamps aleatorios)
+			// Esto evita crear duplicados cuando el backend envía el mismo vuelo múltiples veces
+			const vueloKey = `${vuelo.origenCodigoICAO}-${vuelo.destinoCodigoICAO}-${vuelo.fechaInicial || index}`;
+			const uniqueId = `WS-${vueloKey}`;
 
 			// Crear objeto de vuelo (con timestamps para interpolación híbrida)
 			const nuevoVuelo = {
@@ -2301,10 +2090,24 @@ return;
 console.log(`🔄 Combinando ${vuelosUnicos.length} vuelos nuevos con existentes`);
 
 setFlights(prevFlights => {
-const existingIds = new Set(prevFlights.map(v => v.id));
+// 🆕 LIMPIAR vuelos que ya aterrizaron (fechaFinal < tiempoSimulado - 30min margen)
+const relojActual = relojLocalRef.current;
+const tiempoActualMs = relojActual instanceof Date ? relojActual.getTime() : (relojActual || Date.now());
+const margenMs = 30 * 60 * 1000; // 30 minutos de margen después de aterrizar
+const vuelosActivos = prevFlights.filter(v => {
+	if (!v.fechaFinal) return true; // Mantener si no tiene fecha
+	const fechaAterrizaje = new Date(v.fechaFinal).getTime();
+	return fechaAterrizaje > (tiempoActualMs - margenMs);
+});
+
+if (vuelosActivos.length < prevFlights.length) {
+	console.log(`🧹 Limpiados ${prevFlights.length - vuelosActivos.length} vuelos que ya aterrizaron`);
+}
+
+const existingIds = new Set(vuelosActivos.map(v => v.id));
 const nuevosNoRepetidos = vuelosUnicos.filter(v => !existingIds.has(v.id));
-const combinados = [...prevFlights, ...nuevosNoRepetidos];
-console.log(`📊 Total vuelos después de combinar: ${combinados.length}`);
+const combinados = [...vuelosActivos, ...nuevosNoRepetidos];
+console.log(`📊 Total vuelos después de combinar: ${combinados.length} (activos: ${vuelosActivos.length}, nuevos: ${nuevosNoRepetidos.length})`);
 return combinados;
 });
 
@@ -2610,44 +2413,15 @@ console.log(`Vuelos activos anadidos: ${vuelosActivos}`);
 									flexWrap: 'wrap',
 									gap: '15px'
 								}}>
-									{/* Indicador de WebSocket - OCULTO */}
-									<div style={{
-										padding: '10px 15px',
-										background: wsConectado ? '#d4edda' : '#f8d7da',
-										border: `2px solid ${wsConectado ? '#28a745' : '#dc3545'}`,
-										borderRadius: '8px',
-										display: 'none', // 🔥 OCULTO
-										alignItems: 'center',
-										gap: '10px'
-									}}>
-										<span style={{
-											width: '12px',
-											height: '12px',
-											borderRadius: '50%',
-											background: wsConectado ? '#28a745' : '#dc3545',
-											display: 'inline-block',
-											animation: wsConectado ? 'none' : 'pulse 1.5s infinite'
-										}}></span>
-										<span style={{ fontSize: '14px', fontWeight: '600', color: wsConectado ? '#155724' : '#721c24' }}>
-											WebSocket: {wsConectado ? 'Conectado ✅' : 'Desconectado ❌'}
-										</span>
-										{!wsConectado && (
-											<button
-												onClick={handleConectarWsPlanificacion}
-												style={{
-													padding: '4px 12px',
-													fontSize: '12px',
-													background: '#007bff',
-													color: 'white',
-													border: 'none',
-													borderRadius: '4px',
-													cursor: 'pointer'
-												}}
-											>
-												Reconectar
-											</button>
-										)}
-									</div>
+									{/* 🆕 INDICADOR DE WEBSOCKET - Muestra estado de STOMP (simulación real) */}
+									<WebSocketStatusIndicator
+										connectionState={wsStompConectado ? 'connected' : estadoSimulacionStomp === 'connecting' ? 'connecting' : 'disconnected'}
+										connectionQuality={wsStompConectado ? 'good' : 'unknown'}
+										latency={null}
+										reconnectAttempt={0}
+										maxReconnectAttempts={10}
+										showQuality={false}
+									/>
 
 									{/* Selector de fecha de inicio */}
 									<div className="form-group" style={{ margin: 0 }}>
@@ -2794,7 +2568,7 @@ console.log(`Vuelos activos anadidos: ${vuelosActivos}`);
 										</div>
 
 										{/* Controles de planificación WebSocket - OCULTOS */}
-										{false && wsConectado && (
+										{false && wsConnected && (
 											<div style={{ display: 'flex', gap: '10px', marginLeft: '20px', paddingLeft: '20px', borderLeft: '2px solid #dee2e6' }}>
 												<button
 													onClick={handleDetenerPlanificacion}

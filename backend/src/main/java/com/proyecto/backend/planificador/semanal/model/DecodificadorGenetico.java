@@ -125,6 +125,9 @@ public class DecodificadorGenetico {
 
     /**
      * Genera rutas para un pedido especifico
+     * 
+     * 🆕 MEJORA: Selecciona el hub más cercano al destino para optimizar rutas
+     * y distribuir carga entre las 3 sedes (SPIM, EBCI, UBBB)
      *
      * @param pedido Pedido a procesar
      * @return Lista de subrutas (normalmente 1)
@@ -144,17 +147,112 @@ public class DecodificadorGenetico {
             return subrutas;
         }
 
-        // Intentar generar ruta desde cada hub
-        for (String hub : worldTemporal.getHubs()) {
+        // 🆕 ORDENAR HUBS POR CERCANÍA AL DESTINO
+        // Esto asegura que los pedidos salgan del hub más cercano geográficamente
+        List<String> hubsOrdenados = ordenarHubsPorCercania(destino);
+        
+        log.trace("Pedido {} -> Destino: {} | Hubs ordenados por cercanía: {}", 
+                  pedido.getId(), destino, hubsOrdenados);
+
+        // Intentar generar ruta desde el hub más cercano primero
+        for (String hub : hubsOrdenados) {
             SubRuta subruta = buscadorRutas.buscarRuta(hub, destino, cantidad, diaRelativo);
 
             if (subruta != null) {
+                log.trace("Pedido {} asignado a hub {} (destino: {})", 
+                         pedido.getId(), hub, destino);
                 subrutas.add(subruta);
                 break; // Solo necesitamos una ruta
             }
         }
 
         return subrutas;
+    }
+    
+    /**
+     * 🆕 Ordena los hubs por cercanía geográfica al destino
+     * 
+     * Estrategia:
+     * 1. Calcular distancia de cada hub al destino
+     * 2. Ordenar de menor a mayor distancia
+     * 3. Si no se puede calcular distancia, mantener orden original
+     * 
+     * @param destino Código ICAO del aeropuerto destino
+     * @return Lista de hubs ordenados por cercanía (más cercano primero)
+     */
+    private List<String> ordenarHubsPorCercania(String destino) {
+        List<String> hubs = worldTemporal.getHubs();
+        
+        // Obtener aeropuerto destino para calcular distancias
+        var aeropuertoDestino = worldTemporal.getAeropuerto(destino);
+        
+        if (aeropuertoDestino == null) {
+            log.warn("Aeropuerto destino {} no encontrado, usando orden original de hubs", destino);
+            return new ArrayList<>(hubs);
+        }
+        
+        // Crear lista de hubs con distancias
+        List<HubConDistancia> hubsConDistancia = new ArrayList<>();
+        
+        for (String hubCodigo : hubs) {
+            var aeropuertoHub = worldTemporal.getAeropuerto(hubCodigo);
+            
+            if (aeropuertoHub != null) {
+                double distancia = calcularDistanciaHaversine(
+                    aeropuertoHub.getLatitud(), aeropuertoHub.getLongitud(),
+                    aeropuertoDestino.getLatitud(), aeropuertoDestino.getLongitud()
+                );
+                hubsConDistancia.add(new HubConDistancia(hubCodigo, distancia));
+            } else {
+                // Si no encontramos el hub, asignarle distancia máxima
+                hubsConDistancia.add(new HubConDistancia(hubCodigo, Double.MAX_VALUE));
+            }
+        }
+        
+        // Ordenar por distancia (menor primero)
+        hubsConDistancia.sort(Comparator.comparingDouble(h -> h.distancia));
+        
+        // Extraer solo los códigos
+        return hubsConDistancia.stream()
+                .map(h -> h.hubCodigo)
+                .collect(Collectors.toList());
+    }
+    
+    /**
+     * Calcula la distancia entre dos puntos usando la fórmula de Haversine
+     * 
+     * @param lat1 Latitud del primer punto
+     * @param lon1 Longitud del primer punto
+     * @param lat2 Latitud del segundo punto
+     * @param lon2 Longitud del segundo punto
+     * @return Distancia en kilómetros
+     */
+    private double calcularDistanciaHaversine(double lat1, double lon1, double lat2, double lon2) {
+        final double RADIO_TIERRA_KM = 6371.0;
+        
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLon = Math.toRadians(lon2 - lon1);
+        
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                   Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
+                   Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        
+        return RADIO_TIERRA_KM * c;
+    }
+    
+    /**
+     * Clase auxiliar para asociar hub con su distancia al destino
+     */
+    private static class HubConDistancia {
+        final String hubCodigo;
+        final double distancia;
+        
+        HubConDistancia(String hubCodigo, double distancia) {
+            this.hubCodigo = hubCodigo;
+            this.distancia = distancia;
+        }
     }
 
     /**

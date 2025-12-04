@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer } from 'react-leaflet';
-import { Drawer, Dialog, DialogTitle, DialogContent, IconButton } from '@mui/material';
+import { Drawer, Dialog, DialogTitle, DialogContent, IconButton, Tabs, Tab, Box } from '@mui/material';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import BackIconButton from '../../../components/ui/Button/BackIconButton';
 import { IoArrowBackCircleOutline } from "react-icons/io5";
 import { RiResetLeftFill } from "react-icons/ri";
 import { FaStop } from "react-icons/fa6";
@@ -26,6 +27,8 @@ import {
 } from '../../../config/api';
 import LegendDialog from '../../../components/ui/Dialog/LegendDialog';
 import LegendButton from '../../../components/ui/Button/LegendButton';
+import MetricsPopper from '../../../components/ui/Dialog/MetricsPopper';
+import MetricsButton from '../../../components/ui/Button/MetricsButton';
 // 🆕 COMPONENTE DE INDICADOR DE ESTADO WEBSOCKET
 // Nota: usePlanificacionWebSocket está deshabilitado - ver comentario en línea ~513
 import WebSocketStatusIndicator from '../../../components/ui/WebSocketStatusIndicator';
@@ -504,6 +507,13 @@ const SimuladorSemanal = () => {
 	const [activeView, setActiveView] = useState('flights');
 	const [showRoutes, setShowRoutes] = useState(false);
 	const [showLegend, setShowLegend] = useState(false);
+
+	// ===================== ESTADO BOTONES FLOTANTES ==================== 
+	const [legendAnchorEl, setLegendAnchorEl] = useState(null);
+	const [isMetricsPanelOpen, setIsMetricsPanelOpen] = useState(false);
+
+	const [isMetricsPopperOpen, setIsMetricsPopperOpen] = useState(false);
+	const [metricsAnchorEl, setMetricsAnchorEl] = useState(null);
 
 	/* Datos de aeropuertos - se cargarán desde la API */
 	const [airports, setAirports] = useState([]);
@@ -1158,6 +1168,17 @@ const SimuladorSemanal = () => {
 		
 		// Si deseas también resetear planificaciones recibidas:
 		// setPlanFixed([]);
+	};
+
+	const handleToggleLegend = (event) => {
+		// Si ya está abierto (anchorEl tiene valor), lo cierra
+		// Si está cerrado (anchorEl es null), lo abre
+		setLegendAnchorEl(legendAnchorEl ? null : event.currentTarget);
+	};
+
+	const handleMetricsButtonClick = (event) => {
+		setMetricsAnchorEl(event.currentTarget); // botón como anchor
+		setIsMetricsPopperOpen((prev) => !prev);
 	};
 
 	// ==================== FUNCIONES WEBSOCKET DE PLANIFICACIÓN ====================
@@ -2311,6 +2332,16 @@ console.log(`Vuelos activos anadidos: ${vuelosActivos}`);
 	const drawerWidth = 300; // ancho del drawer
 	const [open, setOpen] = useState(false);
 
+	// Estados para el sidebar: pestañas y buscadores
+	const [sidebarTab, setSidebarTab] = useState('flights'); // 'flights' | 'airports' | 'orders'
+	const [searchFlights, setSearchFlights] = useState('');
+	const [searchAirports, setSearchAirports] = useState('');
+	const [searchOrders, setSearchOrders] = useState('');
+	const [expandedFlightIds, setExpandedFlightIds] = useState({});
+	const [selectedAirport, setSelectedAirport] = useState(null); // Aeropuerto seleccionado para ver detalles
+	const [selectedFlight, setSelectedFlight] = useState(null); // Vuelo seleccionado para ver detalles
+	const tabsRef = useRef(null); // Referencia para scroll de tabs
+
 	/* Accion de boton de Regresar */
 	const goBack = () => {
 		window.history.back(); // retrocede una página
@@ -2391,157 +2422,298 @@ console.log(`Vuelos activos anadidos: ${vuelosActivos}`);
 							alignItems: 'flex-start',
 							width: '100%',
 							paddingTop: '2px',
-							paddingBottom: '20px',
+							paddingBottom: '10px',
 						}}>
 					</div>
 					<div className="sidebar-header">
-						<h3><i className="fas fa-info-circle"></i> Información del Sistema</h3>
+						<h2>Simulación Semanal</h2>
 					</div>
-					<div className="sidebar-content">
-						<div className="time-section">
-							<div className="current-time">
-								<label>Semana actual:</label>
-								<div className="time-display">Semana {elapsedTime.days}</div>
-							</div>
-						</div>
+					<div className="sidebar-content" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', gap: '4px' }}>
+						{/* Material-UI Tabs */}
+						<Box sx={{ borderBottom: 1, borderColor: '#dee2e6', marginBottom: 1 }}>
+							<Tabs
+								value={sidebarTab === 'flights' ? 0 : sidebarTab === 'airports' ? 1 : 2}
+								onChange={(e, newValue) => setSidebarTab(['flights', 'airports', 'orders'][newValue])}
+								sx={{
+									'& .MuiTabs-indicator': { background: '#2c4a6b', height: 3 },
+									'& .MuiTab-root': {
+										color: '#6c757d',
+										fontWeight: 500,
+										fontSize: '0.9rem',
+										textTransform: 'none',
+										minHeight: 44,
+										padding: '8px 16px',
+										'&.Mui-selected': { color: '#2c4a6b', fontWeight: 600 }
+									}
+								}}
+							>
+								<Tab label=" Vuelos" />
+								<Tab label=" Aeropuertos" />
+								<Tab label=" Pedidos" />
+							</Tabs>
+						</Box>
 
-						{/* Controles de simulación */}
-						<div className="stats-section">
-							<h4><i className="fas fa-chart-line"></i> Métricas de Saturación</h4>
-							<div className="metrics-grid">
-								<div className="metric-card">
-									<div className="metric-icon"><i className="fas fa-plane"></i></div>
-									<div className="metric-content">
-										<div className="metric-label">Vuelos en el aire</div>
-										<div className="metric-value">{flights.length}</div>
-										<div className="metric-sublabel">de 402 total</div>
-									</div>
-								</div>
-								<div className="metric-card">
-									<div className="metric-icon aircraft"><i className="fas fa-tachometer-alt"></i></div>
-									<div className="metric-content">
-										<div className="metric-label">Saturación de aviones</div>
-										<div className="metric-value">{((flights.length / 402) * 100).toFixed(1)}%</div>
-										<div className="metric-sublabel">capacidad aérea</div>
-									</div>
-								</div>
-								<div className="metric-card">
-									<div className="metric-icon airport"><i className="fas fa-warehouse"></i></div>
-									<div className="metric-content">
-										<div className="metric-label">Saturación aeropuertos</div>
-										<div className="metric-value">{getSaturation()}%</div>
-										<div className="metric-sublabel">almacenes regulares</div>
-									</div>
-								</div>
-								<div className="metric-card sede">
-									<div className="metric-icon"><i className="fas fa-building"></i></div>
-									<div className="metric-content">
-										<div className="metric-label">Sedes principales</div>
-										<div className="metric-value">3/3</div>
-										<div className="metric-sublabel">operativas</div>
-									</div>
-								</div>
-							</div>
-						</div>
-						{/* Aeropuerto más saturado */}
-						<div className="airport-section">
-							<h4>Aeropuertos más saturados</h4>
-							<div className="airport-info">
-								<div className="airport-name">{mostSaturatedAirport.name}</div>
-								<div className="airport-details">
-									<div>Capacidad: {mostSaturatedAirport.capacity.toLocaleString()}</div>
-									<div>Paquetes: {mostSaturatedAirport.packages.toLocaleString()}</div>
-									<div className="saturation-highlight">Saturación: {((mostSaturatedAirport.packages / mostSaturatedAirport.capacity) * 100).toFixed(2)}%</div>
-								</div>
-							</div>
-						</div>
-						
-						{/* 📊 PANEL DE MÉTRICAS DE DIAGNÓSTICO */}
-						<div className="stats-section" style={{ marginTop: '15px' }}>
-							<h4><i className="fas fa-chart-bar"></i> Diagnóstico de Vuelos</h4>
-							<div style={{ 
-								backgroundColor: '#1a1a2e', 
-								borderRadius: '8px', 
-								padding: '12px',
-								fontSize: '13px'
+						{/* Buscador */}
+						<Box sx={{ padding: '8px 12px', marginBottom: '8px' }}>
+							<input
+								placeholder={
+									sidebarTab === 'flights' ? 'Buscar vuelo, origen o destino...' :
+										sidebarTab === 'airports' ? 'Buscar aeropuerto...' :
+											'Buscar pedido...'
+								}
+								value={sidebarTab === 'flights' ? searchFlights : sidebarTab === 'airports' ? searchAirports : searchOrders}
+								onChange={(e) => {
+									if (sidebarTab === 'flights') setSearchFlights(e.target.value);
+									else if (sidebarTab === 'airports') setSearchAirports(e.target.value);
+									else setSearchOrders(e.target.value);
+								}}
+								style={{
+									width: '100%',
+									padding: '10px 12px',
+									borderRadius: '8px',
+									border: '1px solid #dee2e6',
+									fontFamily: 'inherit',
+									fontSize: '0.9rem',
+									boxSizing: 'border-box'
+								}}
+							/>
+						</Box>
+
+						{/* Contenido de cada pestaña - con espacio para detalles */}
+						{/* Contenido de cada pestaña - con espacio para detalles */}
+						<Box sx={{
+							display: 'flex',
+							flex: 1,
+							flexDirection: 'column',
+							overflowY: 'hidden', // Cambiar de 'auto' a 'hidden'
+							paddingX: '12px',
+							paddingY: '8px',
+							minHeight: 0 // Importante
+						}}>
+							{/* Listado principal - se ajusta cuando aparece el detalle */}
+							<Box sx={{
+								flex: selectedAirport || selectedFlight ? 0.6 : 1, // 60% si hay detalle, 100% si no
+								overflowY: 'auto',
+								marginBottom: '12px',
+								minHeight: 0, // Importante para el scroll
+								transition: 'flex 0.3s ease' // Transición suave
 							}}>
-								<div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-									<span style={{ color: '#9ca3af' }}>📨 Recibidos backend:</span>
-									<span style={{ color: '#3b82f6', fontWeight: 'bold' }}>{metricasVuelos.totalRecibidosBackend}</span>
-								</div>
-								<div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-									<span style={{ color: '#9ca3af' }}>📋 En estado flights[]:</span>
-									<span style={{ color: '#22c55e', fontWeight: 'bold' }}>{metricasVuelos.totalEnEstadoFlights}</span>
-								</div>
-								
-								{/* 🆕 DESGLOSE POR ESTADO */}
-								<div style={{ 
-									backgroundColor: '#0f172a', 
-									borderRadius: '6px', 
-									padding: '8px', 
-									marginBottom: '8px',
-									border: '1px solid #1e3a5f'
+								{sidebarTab === 'flights' && (
+									<Box>
+										{(flights || []).filter(f => (f.status === 'active' || (f.progress && f.progress > 0 && f.progress < 1))).filter(f => {
+											const q = searchFlights.trim().toLowerCase();
+											if (!q) return true;
+											return (String(f.id || '').toLowerCase().includes(q) || String(f.origin?.code || '').toLowerCase().includes(q) || String(f.destination?.code || '').toLowerCase().includes(q));
+										}).map(flight => (
+											<Box key={flight.id} onClick={() => setSelectedFlight(flight)} sx={{ border: '1px solid #dee2e6', padding: '10px', borderRadius: '8px', marginBottom: '10px', background: selectedFlight?.id === flight.id ? '#e8f4f8' : '#f8f9fa', cursor: 'pointer', transition: 'all 0.2s ease', '&:hover': { borderColor: '#2c4a6b', boxShadow: '0 2px 8px rgba(44, 74, 107, 0.15)' } }}>
+												<Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+													<Box sx={{ flex: 1 }}>
+														<Box sx={{ fontWeight: 700, fontSize: '0.95rem', color: '#2c4a6b' }}>{flight.id}</Box>
+														<Box sx={{ fontSize: '0.85rem', color: '#6c757d', marginTop: '2px' }}>{flight.origin?.code || 'N/A'} → {flight.destination?.code || 'N/A'}</Box>
+													</Box>
+													<Box sx={{ textAlign: 'right', minWidth: 'fit-content' }}>
+														<Box sx={{ fontSize: '0.85rem', color: '#6c757d', marginBottom: '6px' }}>{Math.round((flight.progress || 0) * 100)}%</Box>
+														<button onClick={() => setExpandedFlightIds(prev => ({ ...prev, [flight.id]: !prev[flight.id] }))} style={{ padding: '4px 8px', borderRadius: '6px', border: 'none', background: '#2c4a6b', color: '#fff', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 500 }}>{expandedFlightIds[flight.id] ? '▼' : '▶'}</button>
+													</Box>
+												</Box>
+												{expandedFlightIds[flight.id] && (
+													<Box sx={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #dee2e6' }}>
+														{flight.pedidos && flight.pedidos.length > 0 ? (
+															flight.pedidos.map(p => (
+																<Box key={p.idPedido || p.id} sx={{ padding: '6px 8px', borderRadius: '4px', border: '1px dashed #dee2e6', marginBottom: '6px', background: '#fff' }}>
+																	<Box sx={{ fontSize: '0.85rem', fontWeight: 600, color: '#2c4a6b' }}>{p.idPedido || p.id}</Box>
+																	<Box sx={{ fontSize: '0.8rem', color: '#6c757d', marginTop: '2px' }}>{p.descripcion || p.info || 'Sin descripción'}</Box>
+																</Box>
+															))
+														) : flight.pedidoId ? (
+															<Box sx={{ padding: '6px 8px', borderRadius: '4px', border: '1px dashed #dee2e6', background: '#fff', fontSize: '0.85rem', fontWeight: 600, color: '#2c4a6b' }}>{flight.pedidoId}</Box>
+														) : (
+															<Box sx={{ fontSize: '0.85rem', color: '#6c757d' }}>Sin pedidos en este vuelo</Box>
+														)}
+													</Box>
+												)}
+											</Box>
+										))}
+										{(flights || []).filter(f => (f.status === 'active' || (f.progress && f.progress > 0 && f.progress < 1))).length === 0 && (
+											<Box sx={{ color: '#6c757d', fontSize: '0.9rem', textAlign: 'center', padding: '20px 10px' }}>No hay vuelos en vuelo</Box>
+										)}
+									</Box>
+								)}
+
+								{sidebarTab === 'airports' && (
+									<Box>
+										{(airports || []).filter(a => {
+											const q = searchAirports.trim().toLowerCase();
+											if (!q) return true;
+											return (String(a.name || '').toLowerCase().includes(q) || String(a.code || '').toLowerCase().includes(q));
+										}).map(airport => (
+											<Box key={airport.code || airport.name} onClick={() => setSelectedAirport(airport)} sx={{ border: '1px solid #dee2e6', padding: '10px', borderRadius: '8px', marginBottom: '10px', background: selectedAirport?.code === airport.code ? '#e8f4f8' : (airport.isSede ? '#fff3cd' : '#f8f9fa'), cursor: 'pointer', transition: 'all 0.2s ease', '&:hover': { borderColor: '#2c4a6b', boxShadow: '0 2px 8px rgba(44, 74, 107, 0.15)' } }}>
+												<Box sx={{ fontWeight: 700, fontSize: '0.95rem', color: airport.isSede ? '#FF6B35' : '#2c4a6b' }}>
+													{airport.isSede && '🏢'} {airport.name} <span style={{ fontSize: '0.85rem', color: '#6c757d', fontWeight: 400 }}>({airport.code})</span>
+												</Box>
+												<Box sx={{ fontSize: '0.85rem', color: '#6c757d', marginTop: '4px' }}>{airport.operationType || airport.region || ''}</Box>
+												<Box sx={{ marginTop: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem' }}>
+													<Box sx={{ fontWeight: 600, color: '#2c4a6b' }}>{airport.packages || 0} 📦</Box>
+													<Box sx={{ color: '#6c757d' }}>{typeof airport.capacity === 'number' ? `${airport.capacity}` : airport.capacity}</Box>
+												</Box>
+												{airport.pedidos && airport.pedidos.length > 0 && (
+													<Box sx={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #dee2e6' }}>
+														<Box sx={{ fontSize: '0.8rem', fontWeight: 700, color: '#2c4a6b', marginBottom: '6px' }}>Pedidos en aeropuerto:</Box>
+														{airport.pedidos.map(p => (
+															<Box key={p.idPedido || p.id} sx={{ padding: '4px 6px', borderRadius: '4px', border: '1px dashed #dee2e6', marginBottom: '4px', fontSize: '0.8rem', background: '#fff' }}>
+																{p.idPedido || p.id}
+															</Box>
+														))}
+													</Box>
+												)}
+											</Box>
+										))}
+										{(airports || []).length === 0 && (
+											<Box sx={{ color: '#6c757d', fontSize: '0.9rem', textAlign: 'center', padding: '20px 10px' }}>No hay aeropuertos cargados</Box>
+										)}
+									</Box>
+								)}
+
+								{sidebarTab === 'orders' && (
+									<Box>
+										{(() => {
+											const list = [];
+											(flights || []).forEach(f => {
+												if (f.pedidos && Array.isArray(f.pedidos)) {
+													f.pedidos.forEach(p => list.push({ ...(p), flightId: f.id, origin: f.origin?.code, destination: f.destination?.code }));
+												} else if (f.pedidoId) {
+													list.push({ idPedido: f.pedidoId, flightId: f.id, origin: f.origin?.code, destination: f.destination?.code });
+												}
+											});
+											const q = searchOrders.trim().toLowerCase();
+											return list.filter(o => {
+												if (!q) return true;
+												return String(o.idPedido || o.id || o.flightId || '').toLowerCase().includes(q) || String(o.origin || '').toLowerCase().includes(q) || String(o.destination || '').toLowerCase().includes(q);
+											});
+										})().map(order => (
+											<Box key={order.idPedido || order.id || `${order.flightId}-${order.origin}-${order.destination}`} sx={{ border: '1px solid #dee2e6', padding: '10px', borderRadius: '8px', marginBottom: '10px', background: '#f8f9fa' }}>
+												<Box sx={{ fontWeight: 700, fontSize: '0.95rem', color: '#2c4a6b' }}>{order.idPedido || order.id}</Box>
+												<Box sx={{ fontSize: '0.85rem', color: '#6c757d', marginTop: '4px' }}>{order.origin || ''} → {order.destination || ''}</Box>
+												<Box sx={{ marginTop: '6px', fontSize: '0.85rem', color: '#495057', fontWeight: 500 }}>✈️ {order.flightId || 'N/A'}</Box>
+											</Box>
+										))}
+										{(() => {
+											const anyOrders = (flights || []).some(f => (f.pedidos && f.pedidos.length) || f.pedidoId);
+											if (!anyOrders) return <Box sx={{ color: '#6c757d', fontSize: '0.9rem', textAlign: 'center', padding: '20px 10px' }}>Sin pedidos disponibles</Box>;
+											return null;
+										})()}
+									</Box>
+								)}
+							</Box>
+
+							{/* Panel lateral de detalles del aeropuerto seleccionado */}
+							{selectedAirport && (
+								<Box sx={{
+									borderTop: '2px solid #dee2e6',
+									paddingY: '12px',
+									flex: 0.4, // Ocupa 40% del espacio
+									display: 'flex',
+									flexDirection: 'column',
+									overflow: 'hidden',
+									minHeight: 0
 								}}>
-									<div style={{ fontSize: '11px', color: '#64748b', marginBottom: '6px' }}>Desglose por estado:</div>
-									<div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-										<span style={{ color: '#f59e0b', fontSize: '12px' }}>⏳ Esperando (waiting):</span>
-										<span style={{ color: '#f59e0b', fontWeight: 'bold' }}>{metricasVuelos.vuelosWaiting || 0}</span>
-									</div>
-									<div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-										<span style={{ color: '#22c55e', fontSize: '12px' }}>🛫 En vuelo (active):</span>
-										<span style={{ color: '#22c55e', fontWeight: 'bold' }}>{metricasVuelos.vuelosActive || 0}</span>
-									</div>
-									<div style={{ display: 'flex', justifyContent: 'space-between' }}>
-										<span style={{ color: '#6366f1', fontSize: '12px' }}>✅ Aterrizados (completed):</span>
-										<span style={{ color: '#6366f1', fontWeight: 'bold' }}>{metricasVuelos.vuelosCompleted || 0}</span>
-									</div>
-								</div>
-								
-								<div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-									<span style={{ color: '#9ca3af' }}>✈️ Graficados en mapa:</span>
-									<span style={{ color: '#f59e0b', fontWeight: 'bold' }}>{metricasVuelos.totalGraficados}</span>
-								</div>
-								<div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', borderTop: '1px solid #374151', paddingTop: '8px' }}>
-									<span style={{ color: '#ef4444' }}>⚠️ Llegaron tarde:</span>
-									<span style={{ color: metricasVuelos.totalPerdidosAntesDeTiempo > 0 ? '#ef4444' : '#22c55e', fontWeight: 'bold' }}>
-										{metricasVuelos.totalPerdidosAntesDeTiempo}
-									</span>
-								</div>
-								{/* Barra de eficiencia */}
-								<div style={{ marginTop: '10px' }}>
-									<div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-										<span style={{ color: '#9ca3af', fontSize: '11px' }}>Eficiencia de graficación:</span>
-										<span style={{ 
-											color: metricasVuelos.totalRecibidosBackend > 0 
-												? ((metricasVuelos.totalGraficados / metricasVuelos.totalRecibidosBackend) * 100 >= 80 ? '#22c55e' : '#f59e0b')
-												: '#9ca3af',
-											fontSize: '11px'
-										}}>
-											{metricasVuelos.totalRecibidosBackend > 0 
-												? `${((metricasVuelos.totalGraficados / metricasVuelos.totalRecibidosBackend) * 100).toFixed(1)}%` 
-												: '-'}
-										</span>
-									</div>
-									<div style={{ 
-										backgroundColor: '#374151', 
-										borderRadius: '4px', 
-										height: '6px',
-										overflow: 'hidden'
+									<Box sx={{
+										display: 'flex',
+										justifyContent: 'space-between',
+										alignItems: 'center',
+										paddingX: '12px',
+										marginBottom: '12px',
+										flexShrink: 0
 									}}>
-										<div style={{ 
-											backgroundColor: metricasVuelos.totalRecibidosBackend > 0 
-												? ((metricasVuelos.totalGraficados / metricasVuelos.totalRecibidosBackend) * 100 >= 80 ? '#22c55e' : '#f59e0b')
-												: '#374151',
-											width: metricasVuelos.totalRecibidosBackend > 0 
-												? `${Math.min(100, (metricasVuelos.totalGraficados / metricasVuelos.totalRecibidosBackend) * 100)}%`
-												: '0%',
-											height: '100%',
-											transition: 'width 0.3s ease'
-										}}></div>
-									</div>
-								</div>
-							</div>
-						</div>
+										<Box sx={{ fontWeight: 700, fontSize: '0.95rem', color: '#2c4a6b' }}>{selectedAirport.name}</Box>
+										<button onClick={() => setSelectedAirport(null)} style={{ padding: '2px 6px', background: '#e8e8e8', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', fontWeight: 700 }}>×</button>
+									</Box>
+									<Box sx={{
+										paddingX: '12px',
+										overflowY: 'auto',
+										flex: 1,
+										minHeight: 0
+									}}>
+										{selectedAirport.pedidos && selectedAirport.pedidos.length > 0 ? (
+											selectedAirport.pedidos.map(p => (
+												<Box key={p.idPedido || p.id} sx={{ padding: '6px 8px', borderRadius: '4px', border: '1px solid #dee2e6', marginBottom: '6px', fontSize: '0.8rem', background: '#fff', color: '#495057' }}>
+													📦 {p.idPedido || p.id}
+												</Box>
+											))
+										) : (
+											<Box sx={{ fontSize: '0.8rem', color: '#6c757d', fontStyle: 'italic' }}>Sin pedidos</Box>
+										)}
+									</Box>
+								</Box>
+							)}
+
+							{/* Panel lateral de detalles del vuelo seleccionado */}
+							{selectedFlight && (
+								<Box sx={{
+									borderTop: '2px solid #dee2e6',
+									paddingY: '12px',
+									flex: 0.4, // Ocupa 40% del espacio
+									display: 'flex',
+									flexDirection: 'column',
+									overflow: 'hidden',
+									minHeight: 0
+								}}>
+									<Box sx={{
+										display: 'flex',
+										justifyContent: 'space-between',
+										alignItems: 'center',
+										paddingX: '12px',
+										marginBottom: '8px',
+										flexShrink: 0
+									}}>
+										<Box sx={{ fontWeight: 700, fontSize: '0.95rem', color: '#2c4a6b' }}>
+											Vuelo {selectedFlight.id} • {selectedFlight.origin?.code || 'N/A'} → {selectedFlight.destination?.code || 'N/A'}
+										</Box>
+										<button
+											onClick={() => setSelectedFlight(null)}
+											style={{
+												padding: '2px 6px',
+												background: '#e8e8e8',
+												border: 'none',
+												borderRadius: '4px',
+												cursor: 'pointer',
+												fontSize: '12px',
+												fontWeight: 700
+											}}>
+											×
+										</button>
+									</Box>
+									<Box sx={{
+										paddingX: '12px',
+										overflowY: 'auto',
+										flex: 1,
+										minHeight: 0
+									}}>
+										{selectedFlight.pedidos && selectedFlight.pedidos.length > 0 ? (
+											selectedFlight.pedidos.map(p => (
+												<Box
+													key={p.idPedido || p.id}
+													sx={{
+														padding: '6px 8px',
+														borderRadius: '4px',
+														border: '1px solid #dee2e6',
+														marginBottom: '6px',
+														fontSize: '0.8rem',
+														background: '#fff',
+														color: '#495057'
+													}}>
+													📦 {p.idPedido || p.id}
+												</Box>
+											))
+										) : (
+											<Box sx={{ fontSize: '0.8rem', color: '#6c757d', fontStyle: 'italic' }}>
+												Sin pedidos
+											</Box>
+										)}
+									</Box>
+								</Box>
+							)}
+						</Box>
 					</div>
 				</div>
 			</Drawer>
@@ -2562,37 +2734,13 @@ console.log(`Vuelos activos anadidos: ${vuelosActivos}`);
 					<div className="content-wrapper">
 						{/* Panel de control superior */}
 						<div className="control-panel">
-							<div className="header-control-panel" style={{ marginTop: '-15px' }}>
-								{/* Botón para regresar a operaciones */}
-								<button className="btn-back" onClick={goBack} title="Regresar">
-									<IoArrowBackCircleOutline size={32} />
-								</button>
-								<h2>Simulación Semanal</h2>
-							</div>
 
 							{/* ==================== PANEL SIMPLE DE TIEMPO SSE ==================== */}
 							<div>
-								<div style={{
-									borderRadius: '8px',
-									padding: '15px 20px',
-									marginTop: '-45px',
-									marginBottom: '-35px',
-									display: 'flex',
-									justifyContent: 'space-between',
-									alignItems: 'center',
-									flexWrap: 'wrap',
-									gap: '15px'
-								}}>
-									{/* 🆕 INDICADOR DE WEBSOCKET - Muestra estado de STOMP (simulación real) */}
-									<WebSocketStatusIndicator
-										connectionState={wsStompConectado ? 'connected' : estadoSimulacionStomp === 'connecting' ? 'connecting' : 'disconnected'}
-										connectionQuality={wsStompConectado ? 'good' : 'unknown'}
-										latency={null}
-										reconnectAttempt={0}
-										maxReconnectAttempts={10}
-										showQuality={false}
-									/>
-
+								<div className="row-fecha-inicio">
+									<div className="btn-back-wrapper">
+										<BackIconButton size={30} />
+									</div>
 									{/* Selector de fecha de inicio */}
 									<div className="form-group" style={{ margin: 0 }}>
 										<label className="form-label" htmlFor="fecha-inicio">
@@ -2687,6 +2835,13 @@ console.log(`Vuelos activos anadidos: ${vuelosActivos}`);
 
 									{/* Botones de control SIMPLIFICADOS */}
 									<div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+										<div className="status-container" style={{ marginBottom: 0 }}>
+												<span className="status-label">Estado:</span>
+												<div className="status-indicator">
+													<span className={`status-dot ${simulacionActiva ? "active" : "stopped"}`} />
+													<span className="status-text">{simulacionActiva ? 'Ejecutándose' : 'Detenida'}</span>
+												</div>
+											</div>
 										{/* Controles de simulación SIMPLIFICADOS */}
 										<div className="simulation-controls">
 											<div className="control-buttons" style={{ display: 'flex', gap: '10px' }}>
@@ -2694,13 +2849,13 @@ console.log(`Vuelos activos anadidos: ${vuelosActivos}`);
 													onClick={handleIniciarSimulacion}
 													disabled={simulacionActiva}
 													style={{
-														padding: '10px 20px',
+														padding: '8px 16px',
 														borderRadius: '6px',
-														border: 'none',
+														border: simulacionActiva ? '1px solid #e9ecef' : '1px solid #28a745',
 														background: simulacionActiva ? '#e9ecef' : '#28a745',
 														color: simulacionActiva ? '#6c757d' : 'white',
-														fontSize: '15px',
-														fontWeight: '600',
+														fontSize: '14px',
+														fontWeight: '500',
 														cursor: simulacionActiva ? 'not-allowed' : 'pointer',
 														display: 'flex',
 														alignItems: 'center',
@@ -2709,20 +2864,20 @@ console.log(`Vuelos activos anadidos: ${vuelosActivos}`);
 														boxShadow: simulacionActiva ? 'none' : '0 2px 8px rgba(40, 167, 69, 0.3)'
 													}}
 												>	
-													<FaPlay size={16} />
-													Comenzar Simulación
+													<FaPlay size={18} />
+													{startButtonLabel}
 												</button>
 												<button
 													onClick={handleDetenerSimulacion}
 													disabled={!simulacionActiva}
 													style={{
-														padding: '10px 20px',
+														padding: '8px 16px',
 														borderRadius: '6px',
-														border: 'none',
+														border: simulacionActiva ? '1px solid #dc3545' : '1px solid #e9ecef',
 														background: simulacionActiva ? '#dc3545' : '#e9ecef',
 														color: simulacionActiva ? 'white' : '#6c757d',
-														fontSize: '15px',
-														fontWeight: '600',
+														fontSize: '14px',
+														fontWeight: '500',
 														cursor: simulacionActiva ? 'pointer' : 'not-allowed',
 														display: 'flex',
 														alignItems: 'center',
@@ -2731,8 +2886,8 @@ console.log(`Vuelos activos anadidos: ${vuelosActivos}`);
 														boxShadow: simulacionActiva ? '0 2px 8px rgba(220, 53, 69, 0.3)' : 'none'
 													}}
 												>
-													<FaStop size={16} />
-													Detener Simulación
+													<FaStop size={18} />
+													Detener
 												</button>
 											</div>
 										</div>
@@ -2824,7 +2979,8 @@ console.log(`Vuelos activos anadidos: ${vuelosActivos}`);
 											height: '10px',
 											borderRadius: '50%',
 											background: 'white',
-											animation: wsStompConectado ? 'pulse 2s infinite' : 'none'
+											animation: wsStompConectado ? 'pulse 2s infinite' : 'none',
+											display: 'none'
 										}}></span>
 										{wsStompConectado ? 'CONECTADO' : 'DESCONECTADO'}
 									</div>
@@ -3125,16 +3281,25 @@ console.log(`Vuelos activos anadidos: ${vuelosActivos}`);
 									vuelosEnMovimiento={vuelosEnMovimiento}
 								/>
 							</MapContainer>
+							{/* Botón de Metricas */}
+							<MetricsButton onClick={handleMetricsButtonClick} selected={isMetricsPanelOpen} />
 							{/* Botón de leyenda flotante */}
-							<LegendButton onClick={() => setShowLegend(true)} />
+							<LegendButton onClick={handleToggleLegend} />
 						</div>
 					</div>
 				</div>
 			</div>
 			{/* Diálogo de Leyenda */}
 			<LegendDialog
-				open={showLegend}
-				onClose={() => setShowLegend(false)}
+				anchorEl={legendAnchorEl}
+				open={Boolean(legendAnchorEl)}
+				onClose={handleToggleLegend}
+			/>
+			<MetricsPopper
+				open={isMetricsPopperOpen}
+				anchorEl={metricsAnchorEl}
+				flights={flights}
+				getSaturation={getSaturation}
 			/>
 		</div>
 	);

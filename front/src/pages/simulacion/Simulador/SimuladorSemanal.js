@@ -565,13 +565,13 @@ const SimuladorSemanal = () => {
 	const colaVuelosRef = useRef([]);                            // Ref para la cola (evita closures)
 	const TICK_REAL_MS = 250;                                    // Intervalo de actualización en ms (🚀 Optimizado: 4 FPS)
 	
-	// ========== BUFFER DE 15 SEGUNDOS PARA ACUMULACIÓN DE VUELOS ==========
-	const [bufferActivo, setBufferActivo] = useState(false);     // Si el buffer está activo (primeros 15 segundos)
+	// ========== BUFFER DE 20 SEGUNDOS PARA DAR VENTAJA AL BACKEND ==========
+	const [bufferActivo, setBufferActivo] = useState(false);     // Si el buffer está activo (primeros 20 segundos)
 	const vuelosBufferRef = useRef([]);                          // Vuelos acumulados durante el buffer
 	const bufferTimeoutRef = useRef(null);                       // Timeout para finalizar buffer
-	const BUFFER_DELAY_MS = 15000;                               // 15 segundos de buffer inicial
-	const UMBRAL_COLA_BAJA = 3;                                  // Si cola < 3, ralentizar
-	const FACTOR_RALENTIZADO = 0.25;                             // K se reduce a 25% cuando cola baja
+	const BUFFER_DELAY_MS = 20000;                               // 🆕 20 segundos de buffer inicial
+	const UMBRAL_COLA_BAJA = 3;                                  // Si cola < 3, ralentizar (no usado en modo constante)
+	const FACTOR_RALENTIZADO = 0.25;                             // K se reduce a 25% cuando cola baja (no usado)
 
 	// ========== SISTEMA DE TIEMPO SIMULADO (REACTIVO) ==========
 	const [tiempoSimuladoBackend, setTiempoSimuladoBackend] = useState(null);
@@ -591,6 +591,18 @@ const SimuladorSemanal = () => {
 	const procesarSegmentsSnapshotRef = useRef(null); // 🆕 Para nueva estructura JSON
 	
 	// ✅ ELIMINADO: Refs de tiempo movidas a estado reactivo (ver línea ~215)
+	
+	// ==================== 📊 MÉTRICAS DE VUELOS ====================
+	// Para diagnosticar si el backend envía vuelos tarde o si hay problemas de graficación
+	const [metricasVuelos, setMetricasVuelos] = useState({
+		totalRecibidosBackend: 0,      // Total de vuelos únicos recibidos del backend
+		totalEnEstadoFlights: 0,       // Vuelos en el estado flights[] actual
+		totalGraficados: 0,            // Vuelos que se están mostrando en el mapa
+		totalPerdidosAntesDeTiempo: 0, // Vuelos que llegaron y ya terminaron antes de graficarse
+		totalPerdidosDespuesDeTiempo: 0, // Vuelos que no empezaron porque el tiempo simulado ya pasó
+		ultimaActualizacion: null      // Timestamp de última actualización
+	});
+	const vuelosRecibidosIdsRef = useRef(new Set()); // IDs únicos recibidos (para evitar contar duplicados)
 
 
 
@@ -807,12 +819,60 @@ const SimuladorSemanal = () => {
 			v.status === 'active' && v.progress > 0 && v.progress < 100
 		).length;
 		
+		// 📊 Contar por estado para diagnóstico
+		const waiting = vuelosEnMovimiento.filter(v => v.status === 'waiting').length;
+		const completed = vuelosEnMovimiento.filter(v => v.status === 'completed').length;
+		const active = vuelosEnMovimiento.filter(v => v.status === 'active').length;
+		
 		if (enAire !== flightsInAir) {
 			setFlightsInAir(enAire);
 			// Log deshabilitado - la información ya se muestra en el UI
 			// console.log(`🛫 Aviones: ${enAire}/${vuelosEnMovimiento.length}`);
 		}
-	}, [vuelosEnMovimiento, flightsInAir]);
+		
+		// 📊 ACTUALIZAR MÉTRICAS de vuelos graficados con desglose por estado
+		setMetricasVuelos(prev => ({
+			...prev,
+			totalEnEstadoFlights: flights.length,
+			totalGraficados: enAire,
+			// 🆕 Desglose por estado
+			vuelosWaiting: waiting,
+			vuelosCompleted: completed,
+			vuelosActive: active
+		}));
+	}, [vuelosEnMovimiento, flightsInAir, flights.length]);
+
+	// 📊 EFECTO: Mostrar métricas cada 10 segundos en consola
+	useEffect(() => {
+		if (!simulacionLocalActiva) return;
+		
+		const interval = setInterval(() => {
+			const m = metricasVuelos;
+			
+			console.log(`\n📊 ========== MÉTRICAS DE VUELOS ==========`);
+			console.log(`📨 Recibidos del backend:     ${m.totalRecibidosBackend}`);
+			console.log(`📋 En estado flights[]:       ${m.totalEnEstadoFlights}`);
+			console.log(`✈️  Graficados en mapa:        ${m.totalGraficados}`);
+			console.log(`─────────────────────────────────────────`);
+			console.log(`⏳ En espera (waiting):       ${m.vuelosWaiting || 0} ← no han despegado aún`);
+			console.log(`� En vuelo (active):         ${m.vuelosActive || 0}`);
+			console.log(`✅ Completados (completed):   ${m.vuelosCompleted || 0} ← ya aterrizaron`);
+			console.log(`⚠️  Llegaron tarde:            ${m.totalPerdidosAntesDeTiempo}`);
+			console.log(`📊 ==========================================\n`);
+			
+			// 🔴 DIAGNÓSTICO: Si hay vuelos pero ninguno graficado
+			if (m.totalEnEstadoFlights > 0 && m.totalGraficados === 0) {
+				if (m.vuelosWaiting > 0) {
+					console.warn(`🔴 DIAGNÓSTICO: ${m.vuelosWaiting} vuelos esperando despegar. El tiempo simulado está ANTES de que empiecen los vuelos.`);
+				}
+				if (m.vuelosCompleted > 0) {
+					console.warn(`🔴 DIAGNÓSTICO: ${m.vuelosCompleted} vuelos ya aterrizaron. El tiempo simulado está DESPUÉS de que terminaron.`);
+				}
+			}
+		}, 10000); // Cada 10 segundos
+		
+		return () => clearInterval(interval);
+	}, [simulacionLocalActiva, metricasVuelos]);
 
 	/* ==================== VUELOS LOCALES DESHABILITADOS - SOLO WEBSOCKET ==================== */
 	// ❌ COMENTADO: Ya no usamos vuelos locales basados en planFixed y simClock
@@ -834,9 +894,9 @@ const SimuladorSemanal = () => {
 	// 	return () => clearInterval(id);
 	// }, [simulacionActiva]);
 
-	// ==================== 🆕 RELOJ LOCAL ADAPTATIVO (Siempre aviones visibles) ====================
-	// Este useEffect hace avanzar el reloj ajustando velocidad según aviones en pantalla
-	// OBJETIVO: Siempre tener aviones moviéndose en el mapa
+	// ==================== 🆕 RELOJ LOCAL CON VELOCIDAD CONSTANTE ====================
+	// Sistema simplificado: Buffer inicial de 20 segundos, luego velocidad constante K=500
+	// SIN sistema adaptativo - avance uniforme del tiempo
 	const flightsInAirRef = useRef(0);
 	
 	// Actualizar ref cuando cambia flightsInAir
@@ -847,58 +907,16 @@ const SimuladorSemanal = () => {
 	useEffect(() => {
 		if (!simulacionLocalActiva || !relojLocalRef.current) return;
 		
+		// 🎯 VELOCIDAD CONSTANTE: Siempre usa K=500 (DESIRED_TIME_SCALE)
+		// Sin adaptación basada en aviones visibles
+		const K_CONSTANTE = DESIRED_TIME_SCALE; // 500x
+		
 		const interval = setInterval(() => {
-			const avionesEnPantalla = flightsInAirRef.current;
-			const colaActual = colaVuelosRef.current.length;
-			
-			// 🎯 LÓGICA ADAPTATIVA basada en aviones VISIBLES en el mapa
-			let nuevoKObjetivo;
-			let estadoVelocidad;
-			
-			if (avionesEnPantalla === 0 && colaActual === 0) {
-				// Sin aviones ni cola: MÁXIMA VELOCIDAD para llegar al siguiente vuelo
-				nuevoKObjetivo = kBase * 2; // 1000x - Muy rápido
-				estadoVelocidad = '⚡ TURBO (sin aviones)';
-			} else if (avionesEnPantalla === 0 && colaActual > 0) {
-				// Cola tiene vuelos pero aún no aparecen: velocidad alta
-				nuevoKObjetivo = kBase * 1.5; // 750x - Rápido
-				estadoVelocidad = '🚀 RÁPIDO (esperando vuelos)';
-			} else if (avionesEnPantalla >= 1 && avionesEnPantalla <= 3) {
-				// Pocos aviones: LENTO para disfrutar la animación
-				nuevoKObjetivo = Math.round(kBase * 0.15); // 75x - Muy lento
-				estadoVelocidad = '🐢 LENTO (pocos aviones)';
-			} else if (avionesEnPantalla >= 4 && avionesEnPantalla <= 8) {
-				// Cantidad ideal: velocidad moderada
-				nuevoKObjetivo = Math.round(kBase * 0.4); // 200x - Moderado
-				estadoVelocidad = '✈️ NORMAL (buenos aviones)';
-			} else {
-				// Muchos aviones: velocidad normal-alta
-				nuevoKObjetivo = kBase; // 500x - Normal
-				estadoVelocidad = '🛫 LLENO (muchos aviones)';
-			}
-			
-			// 🆕 TRANSICIÓN SUAVE: Cambiar K gradualmente para evitar teletransporte
-			// Limitar cambio máximo por tick a ±50 para evitar saltos bruscos
-			const diferencia = nuevoKObjetivo - kActual;
-			const cambioMaximo = 100; // Máximo cambio por tick
-			let nuevoK;
-			
-			if (Math.abs(diferencia) <= cambioMaximo) {
-				nuevoK = nuevoKObjetivo;
-			} else if (diferencia > 0) {
-				nuevoK = kActual + cambioMaximo; // Acelerar gradualmente
-			} else {
-				nuevoK = kActual - cambioMaximo; // Frenar gradualmente
-			}
-			
-			// Actualizar estados solo si cambió
-			if (nuevoK !== kActual) {
-				setKActual(nuevoK);
-				setModoRalentizado(nuevoK < kBase);
-			}
+			// Calcular milisegundos simulados por tick
+			// Fórmula: msSimulados = (TICK_REAL_MS / 1000) * K * 1000 = TICK_REAL_MS * K
+			const msSimulados = TICK_REAL_MS * K_CONSTANTE;
 			
 			// Avanzar el reloj local
-			const msSimulados = (TICK_REAL_MS / 1000) * nuevoK * 1000;
 			const nuevoTiempo = new Date(relojLocalRef.current.getTime() + msSimulados);
 			
 			relojLocalRef.current = nuevoTiempo;
@@ -909,13 +927,15 @@ const SimuladorSemanal = () => {
 			// 🆕 IMPORTANTE: Actualizar tiempoSimulado para la interpolación de vuelos
 			setTiempoSimulado(nuevoTiempo.getTime());
 			
-			// 🚀 Debug reducido: cada ~10 segundos (1% probabilidad @ 250ms tick = 40 ticks)
-			// Deshabilitado para rendimiento
-			// if (Math.random() < 0.01) { console.log(`⏰ K=${nuevoK} | Aviones=${avionesEnPantalla}`); }
+			// Debug cada 20 segundos aproximadamente (80 ticks @ 250ms)
+			if (Math.random() < 0.0125) {
+				const avionesEnPantalla = flightsInAirRef.current;
+				console.log(`⏰ Reloj: ${nuevoTiempo.toISOString().slice(11,19)} | K=${K_CONSTANTE} | Aviones=${avionesEnPantalla}`);
+			}
 		}, TICK_REAL_MS);
 		
 		return () => clearInterval(interval);
-	}, [simulacionLocalActiva, kActual, kBase, flightsInAir]);
+	}, [simulacionLocalActiva]);
 
 
 
@@ -1124,6 +1144,18 @@ const SimuladorSemanal = () => {
 		setFlights([]);
 		setFlightsInAir(0);
 		contadorVuelosRef.current = 0; // 🆔 Resetear contador de IDs únicos
+		
+		// 📊 RESETEAR MÉTRICAS DE VUELOS
+		setMetricasVuelos({
+			totalRecibidosBackend: 0,
+			totalEnEstadoFlights: 0,
+			totalGraficados: 0,
+			totalPerdidosAntesDeTiempo: 0,
+			totalPerdidosDespuesDeTiempo: 0,
+			ultimaActualizacion: null
+		});
+		vuelosRecibidosIdsRef.current = new Set();
+		
 		// Si deseas también resetear planificaciones recibidas:
 		// setPlanFixed([]);
 	};
@@ -1558,6 +1590,17 @@ const SimuladorSemanal = () => {
 			setProgresoAG(null);
 			setMensajesSimulacion([]);
 			contadorVuelosRef.current = 0; // 🆔 Resetear contador de IDs únicos
+			
+			// 📊 RESETEAR MÉTRICAS DE VUELOS
+			setMetricasVuelos({
+				totalRecibidosBackend: 0,
+				totalEnEstadoFlights: 0,
+				totalGraficados: 0,
+				totalPerdidosAntesDeTiempo: 0,
+				totalPerdidosDespuesDeTiempo: 0,
+				ultimaActualizacion: null
+			});
+			vuelosRecibidosIdsRef.current = new Set();
 			
 			setEstadoSimulacionStomp('running');
 			agregarMensaje(`🚀 Iniciando simulación para ${fechaInicioSimulacion} a las ${horaInicioSimulacion}`, 'info');
@@ -2062,6 +2105,46 @@ if (vuelosUnicos.length < nuevosVuelos.length) {
 console.warn(`⚠️ Se encontraron ${nuevosVuelos.length - vuelosUnicos.length} vuelos duplicados, eliminados`);
 }
 
+// 📊 ACTUALIZAR MÉTRICAS - Contar vuelos nuevos recibidos del backend
+const tiempoActualParaMetricas = relojLocalRef.current ? relojLocalRef.current.getTime() : Date.now();
+let perdidosAntes = 0;
+let perdidosDespues = 0;
+
+vuelosUnicos.forEach(vuelo => {
+	// Solo contar si es un ID nuevo (no duplicado de entregas anteriores)
+	if (!vuelosRecibidosIdsRef.current.has(vuelo.id)) {
+		vuelosRecibidosIdsRef.current.add(vuelo.id);
+		
+		// Verificar si el vuelo llegó "tarde" (ya terminó según el tiempo simulado)
+		if (vuelo.fechaFinal) {
+			const fechaFin = new Date(vuelo.fechaFinal).getTime();
+			if (fechaFin < tiempoActualParaMetricas) {
+				perdidosAntes++;
+			}
+		}
+		// Verificar si el vuelo llegó "muy tarde" (ni siquiera empezó)
+		if (vuelo.fechaInicial) {
+			const fechaInicio = new Date(vuelo.fechaInicial).getTime();
+			if (fechaInicio > tiempoActualParaMetricas + (60 * 60 * 1000)) { // 1 hora en el futuro, posible error
+				perdidosDespues++;
+			}
+		}
+	}
+});
+
+// Actualizar métricas
+setMetricasVuelos(prev => ({
+	...prev,
+	totalRecibidosBackend: vuelosRecibidosIdsRef.current.size,
+	totalPerdidosAntesDeTiempo: prev.totalPerdidosAntesDeTiempo + perdidosAntes,
+	totalPerdidosDespuesDeTiempo: prev.totalPerdidosDespuesDeTiempo + perdidosDespues,
+	ultimaActualizacion: new Date().toISOString()
+}));
+
+if (perdidosAntes > 0 || perdidosDespues > 0) {
+	console.warn(`📊 MÉTRICAS: ${perdidosAntes} vuelos llegaron tarde (ya aterrizaron), ${perdidosDespues} vuelos muy adelantados`);
+}
+
 // 🆕 LOG: Mostrar rango de fechas de los vuelos
 const vuelosConFecha = vuelosUnicos.filter(v => v.fechaInicial);
 if (vuelosConFecha.length > 0) {
@@ -2369,6 +2452,93 @@ console.log(`Vuelos activos anadidos: ${vuelosActivos}`);
 									<div>Capacidad: {mostSaturatedAirport.capacity.toLocaleString()}</div>
 									<div>Paquetes: {mostSaturatedAirport.packages.toLocaleString()}</div>
 									<div className="saturation-highlight">Saturación: {((mostSaturatedAirport.packages / mostSaturatedAirport.capacity) * 100).toFixed(2)}%</div>
+								</div>
+							</div>
+						</div>
+						
+						{/* 📊 PANEL DE MÉTRICAS DE DIAGNÓSTICO */}
+						<div className="stats-section" style={{ marginTop: '15px' }}>
+							<h4><i className="fas fa-chart-bar"></i> Diagnóstico de Vuelos</h4>
+							<div style={{ 
+								backgroundColor: '#1a1a2e', 
+								borderRadius: '8px', 
+								padding: '12px',
+								fontSize: '13px'
+							}}>
+								<div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+									<span style={{ color: '#9ca3af' }}>📨 Recibidos backend:</span>
+									<span style={{ color: '#3b82f6', fontWeight: 'bold' }}>{metricasVuelos.totalRecibidosBackend}</span>
+								</div>
+								<div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+									<span style={{ color: '#9ca3af' }}>📋 En estado flights[]:</span>
+									<span style={{ color: '#22c55e', fontWeight: 'bold' }}>{metricasVuelos.totalEnEstadoFlights}</span>
+								</div>
+								
+								{/* 🆕 DESGLOSE POR ESTADO */}
+								<div style={{ 
+									backgroundColor: '#0f172a', 
+									borderRadius: '6px', 
+									padding: '8px', 
+									marginBottom: '8px',
+									border: '1px solid #1e3a5f'
+								}}>
+									<div style={{ fontSize: '11px', color: '#64748b', marginBottom: '6px' }}>Desglose por estado:</div>
+									<div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+										<span style={{ color: '#f59e0b', fontSize: '12px' }}>⏳ Esperando (waiting):</span>
+										<span style={{ color: '#f59e0b', fontWeight: 'bold' }}>{metricasVuelos.vuelosWaiting || 0}</span>
+									</div>
+									<div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+										<span style={{ color: '#22c55e', fontSize: '12px' }}>🛫 En vuelo (active):</span>
+										<span style={{ color: '#22c55e', fontWeight: 'bold' }}>{metricasVuelos.vuelosActive || 0}</span>
+									</div>
+									<div style={{ display: 'flex', justifyContent: 'space-between' }}>
+										<span style={{ color: '#6366f1', fontSize: '12px' }}>✅ Aterrizados (completed):</span>
+										<span style={{ color: '#6366f1', fontWeight: 'bold' }}>{metricasVuelos.vuelosCompleted || 0}</span>
+									</div>
+								</div>
+								
+								<div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+									<span style={{ color: '#9ca3af' }}>✈️ Graficados en mapa:</span>
+									<span style={{ color: '#f59e0b', fontWeight: 'bold' }}>{metricasVuelos.totalGraficados}</span>
+								</div>
+								<div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', borderTop: '1px solid #374151', paddingTop: '8px' }}>
+									<span style={{ color: '#ef4444' }}>⚠️ Llegaron tarde:</span>
+									<span style={{ color: metricasVuelos.totalPerdidosAntesDeTiempo > 0 ? '#ef4444' : '#22c55e', fontWeight: 'bold' }}>
+										{metricasVuelos.totalPerdidosAntesDeTiempo}
+									</span>
+								</div>
+								{/* Barra de eficiencia */}
+								<div style={{ marginTop: '10px' }}>
+									<div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+										<span style={{ color: '#9ca3af', fontSize: '11px' }}>Eficiencia de graficación:</span>
+										<span style={{ 
+											color: metricasVuelos.totalRecibidosBackend > 0 
+												? ((metricasVuelos.totalGraficados / metricasVuelos.totalRecibidosBackend) * 100 >= 80 ? '#22c55e' : '#f59e0b')
+												: '#9ca3af',
+											fontSize: '11px'
+										}}>
+											{metricasVuelos.totalRecibidosBackend > 0 
+												? `${((metricasVuelos.totalGraficados / metricasVuelos.totalRecibidosBackend) * 100).toFixed(1)}%` 
+												: '-'}
+										</span>
+									</div>
+									<div style={{ 
+										backgroundColor: '#374151', 
+										borderRadius: '4px', 
+										height: '6px',
+										overflow: 'hidden'
+									}}>
+										<div style={{ 
+											backgroundColor: metricasVuelos.totalRecibidosBackend > 0 
+												? ((metricasVuelos.totalGraficados / metricasVuelos.totalRecibidosBackend) * 100 >= 80 ? '#22c55e' : '#f59e0b')
+												: '#374151',
+											width: metricasVuelos.totalRecibidosBackend > 0 
+												? `${Math.min(100, (metricasVuelos.totalGraficados / metricasVuelos.totalRecibidosBackend) * 100)}%`
+												: '0%',
+											height: '100%',
+											transition: 'width 0.3s ease'
+										}}></div>
+									</div>
 								</div>
 							</div>
 						</div>

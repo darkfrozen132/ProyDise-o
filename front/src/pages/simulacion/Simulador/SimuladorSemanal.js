@@ -566,7 +566,6 @@ const SimuladorSemanal = () => {
 	// ==================== SISTEMA DE COLA Y RELOJ LOCAL ====================
 	const [colaVuelos, setColaVuelos] = useState([]);           // Buffer de vuelos pendientes del WebSocket
 	const [vuelosEnAire, setVuelosEnAire] = useState([]);       // Vuelos activos (procesándose en animación)
-	const [pedidosCompletados, setPedidosCompletados] = useState([]); // 🆕 Pedidos que ya llegaron a destino
 	const [relojLocal, setRelojLocal] = useState(null);         // Reloj de simulación local (independiente)
 	const [kActual, setKActual] = useState(500);                // Factor K actual (adaptable)
 	const [kBase] = useState(500);                               // Factor K base (constante)
@@ -853,61 +852,6 @@ const SimuladorSemanal = () => {
 		}));
 	}, [vuelosEnMovimiento, flightsInAir, flights.length]);
 
-	// 🆕 EFECTO: Guardar pedidos de vuelos completados
-	const vuelosCompletadosRef = useRef(new Set()); // Para rastrear vuelos ya procesados
-	
-	useEffect(() => {
-		// Buscar vuelos que acaban de completarse (status = 'completed' o 'arrived')
-		const vuelosTerminados = vuelosEnMovimiento.filter(v => 
-			(v.status === 'completed' || v.status === 'arrived' || v.progress >= 1) &&
-			!vuelosCompletadosRef.current.has(v.id) // No procesados aún
-		);
-		
-		if (vuelosTerminados.length > 0) {
-			// Extraer pedidos de vuelos completados
-			const nuevosPedidosCompletados = [];
-			
-			vuelosTerminados.forEach(vuelo => {
-				// Marcar vuelo como procesado
-				vuelosCompletadosRef.current.add(vuelo.id);
-				
-				// Si tiene pedidos, agregarlos a la lista de completados
-				if (vuelo.pedidos && vuelo.pedidos.length > 0) {
-					vuelo.pedidos.forEach(pedido => {
-						nuevosPedidosCompletados.push({
-							...pedido,
-							vueloId: vuelo.id,
-							origen: pedido.origen || vuelo.origin?.code,
-							destino: pedido.destino || vuelo.destination?.code,
-							completadoEn: new Date().toISOString(),
-							status: 'completed'
-						});
-					});
-				} else if (vuelo.pedidoId) {
-					// Vuelo con pedidoId individual
-					nuevosPedidosCompletados.push({
-						idPedido: vuelo.pedidoId,
-						vueloId: vuelo.id,
-						origen: vuelo.origin?.code,
-						destino: vuelo.destination?.code,
-						cantidad: vuelo.currentPackages || 1,
-						completadoEn: new Date().toISOString(),
-						status: 'completed'
-					});
-				}
-			});
-			
-			// Agregar a la lista de pedidos completados (máximo 100 para no consumir memoria)
-			if (nuevosPedidosCompletados.length > 0) {
-				setPedidosCompletados(prev => {
-					const nuevos = [...nuevosPedidosCompletados, ...prev];
-					return nuevos.slice(0, 100); // Mantener solo los últimos 100
-				});
-				console.log(`📦 ${nuevosPedidosCompletados.length} pedido(s) completado(s) guardado(s)`);
-			}
-		}
-	}, [vuelosEnMovimiento]);
-
 	// 📊 EFECTO: Mostrar métricas cada 10 segundos en consola
 	useEffect(() => {
 		if (!simulacionLocalActiva) return;
@@ -1050,36 +994,6 @@ const SimuladorSemanal = () => {
 			setFlightsInAir(0);
 			setProgresoAG(null);
 			contadorVuelosRef.current = 0;
-			// Limpiar pedidos completados de simulaciones anteriores
-			setPedidosCompletados([]);
-			vuelosCompletadosRef.current = new Set();
-			// Limpiar IDs de vuelos recibidos para evitar duplicados con simulaciones anteriores
-			vuelosRecibidosIdsRef.current = new Set();
-			// Limpiar buffer de vuelos
-			vuelosBufferRef.current = [];
-			
-			// Resetear métricas de vuelos
-			setMetricasVuelos({
-				totalRecibidosBackend: 0,
-				totalEnEstadoFlights: 0,
-				totalGraficados: 0,
-				totalPerdidosAntesDeTiempo: 0,
-				totalPerdidosDespuesDeTiempo: 0,
-				ultimaActualizacion: null
-			});
-			
-			// 🕐 INICIAR CRONÓMETRO DE TIEMPO REAL TRANSCURRIDO
-			tiempoInicioRef.current = Date.now();
-			setTiempoRealTranscurrido(0);
-			if (intervalTiempoRealRef.current) {
-				clearInterval(intervalTiempoRealRef.current);
-			}
-			intervalTiempoRealRef.current = setInterval(() => {
-				if (tiempoInicioRef.current) {
-					const transcurrido = Math.floor((Date.now() - tiempoInicioRef.current) / 1000);
-					setTiempoRealTranscurrido(transcurrido);
-				}
-			}, 1000);
 			
 			// Iniciar reloj local
 			const inicioUTC = new Date(`${fechaInicioSimulacion}T${horaInicioSimulacion}:00Z`);
@@ -1185,6 +1099,23 @@ const SimuladorSemanal = () => {
 				}
 			}
 
+			// 🕐 INICIAR CRONÓMETRO DE TIEMPO REAL (para UI)
+			tiempoInicioRef.current = Date.now();
+			setTiempoRealTranscurrido(0);
+			
+			// Limpiar intervalo anterior si existe
+			if (intervalTiempoRealRef.current) {
+				clearInterval(intervalTiempoRealRef.current);
+			}
+			
+			// Actualizar tiempo real cada segundo
+			intervalTiempoRealRef.current = setInterval(() => {
+				if (tiempoInicioRef.current) {
+					const transcurrido = Math.floor((Date.now() - tiempoInicioRef.current) / 1000);
+					setTiempoRealTranscurrido(transcurrido);
+				}
+			}, 1000);
+
 			setSimulacionActiva(true);
 			console.log('✅ Simulación iniciada correctamente');
 
@@ -1197,6 +1128,12 @@ const SimuladorSemanal = () => {
 	const handleDetenerSimulacion = async () => {
 		console.log("🛑 Deteniendo simulación...");
 		setSimulacionActiva(false);
+		
+		// 🕐 DETENER CRONÓMETRO
+		if (intervalTiempoRealRef.current) {
+			clearInterval(intervalTiempoRealRef.current);
+			intervalTiempoRealRef.current = null;
+		}
 		
 		// Cancelar simulación en el backend si hay sessionId
 		if (sessionId) {
@@ -1240,13 +1177,8 @@ const SimuladorSemanal = () => {
 		setFlights([]);
 		setFlightsInAir(0);
 		contadorVuelosRef.current = 0; // 🆔 Resetear contador de IDs únicos
-		// Limpiar pedidos completados
-		setPedidosCompletados([]);
-		vuelosCompletadosRef.current = new Set();
-		// Limpiar buffer de vuelos
-		vuelosBufferRef.current = [];
 		
-		// � DETENER Y RESETEAR CRONÓMETRO DE TIEMPO REAL
+		// 🕐 RESETEAR Y DETENER CRONÓMETRO
 		if (intervalTiempoRealRef.current) {
 			clearInterval(intervalTiempoRealRef.current);
 			intervalTiempoRealRef.current = null;
@@ -1254,7 +1186,7 @@ const SimuladorSemanal = () => {
 		tiempoInicioRef.current = null;
 		setTiempoRealTranscurrido(0);
 		
-		// �📊 RESETEAR MÉTRICAS DE VUELOS
+		// 📊 RESETEAR MÉTRICAS DE VUELOS
 		setMetricasVuelos({
 			totalRecibidosBackend: 0,
 			totalEnEstadoFlights: 0,
@@ -1264,6 +1196,9 @@ const SimuladorSemanal = () => {
 			ultimaActualizacion: null
 		});
 		vuelosRecibidosIdsRef.current = new Set();
+		
+		// Si deseas también resetear planificaciones recibidas:
+		// setPlanFixed([]);
 	};
 
 	const handleToggleLegend = (event) => {
@@ -2169,22 +2104,12 @@ const SimuladorSemanal = () => {
 			const uniqueId = `WS-${vueloKey}`;
 
 			// 🆕 MAPEAR PEDIDOS: Normalizar estructura de pedidos del backend
-			// DEBUG: Ver qué envía el backend
-			console.log(`   📦 Pedidos del vuelo:`, vuelo.pedidos);
-			
-			const pedidosMapeados = (vuelo.pedidos || []).map((p, idx) => {
-				console.log(`      Pedido ${idx + 1}:`, p);
-				return {
-					idPedido: p.idPedido || p.orderId || p.id,
-					cantidad: p.cantidad ?? p.quantity ?? p.totalPaquetes ?? 0, // Usar 0 si no hay cantidad
-					destino: p.destino || p.destinoCodigoICAO || vuelo.destinoCodigoICAO,
-					origen: p.origen || p.origenCodigoICAO || vuelo.origenCodigoICAO
-				};
-			});
-			
-			// Calcular total de paquetes sumando cantidades de pedidos
-			const totalPaquetesCalculado = pedidosMapeados.reduce((sum, p) => sum + (p.cantidad || 0), 0) || vuelo.totalPaquetes || 0;
-			console.log(`   📊 Total paquetes calculado: ${totalPaquetesCalculado} (pedidos: ${pedidosMapeados.length})`);
+			const pedidosMapeados = (vuelo.pedidos || []).map(p => ({
+				idPedido: p.idPedido || p.orderId || p.id,
+				cantidad: p.cantidad || p.quantity || 1,
+				destino: p.destino || vuelo.destinoCodigoICAO,
+				origen: p.origen || vuelo.origenCodigoICAO
+			}));
 
 			// Crear objeto de vuelo (con timestamps para interpolación híbrida)
 			const nuevoVuelo = {
@@ -2209,8 +2134,8 @@ const SimuladorSemanal = () => {
 				currentLng,
 				aircraftColor: '#3b82f6', // 🔵 Azul para vuelos del WebSocket
 				rotation,
-				packageCapacity: totalPaquetesCalculado,
-				currentPackages: totalPaquetesCalculado,
+				packageCapacity: vuelo.totalPaquetes || 1,
+				currentPackages: vuelo.totalPaquetes || 1,
 				packageType: 'WS',
 				isSameContinentFlight: origen.region === destino.region,
 				vuelo: `WS-${vuelo.pedidos?.[0]?.idPedido || index}`,
@@ -2643,44 +2568,56 @@ console.log(`Vuelos activos anadidos: ${vuelosActivos}`);
 									{(vuelosEnMovimiento || []).filter(f => (f.status === 'active' || (f.progress && f.progress > 0 && f.progress < 1))).filter(f => {
 										const q = searchFlights.trim().toLowerCase();
 										if (!q) return true;
+										// 🆕 Buscar también por pedidoId
+										const matchId = String(f.id || '').toLowerCase().includes(q);
 										const matchOrigin = String(f.origin?.code || '').toLowerCase().includes(q);
 										const matchDest = String(f.destination?.code || '').toLowerCase().includes(q);
-										return matchOrigin || matchDest;
+										const matchPedido = String(f.pedidoId || '').toLowerCase().includes(q);
+										const matchPedidos = (f.pedidos || []).some(p => 
+											String(p.idPedido || p.id || '').toLowerCase().includes(q)
+										);
+										return matchId || matchOrigin || matchDest || matchPedido || matchPedidos;
 									}).map(flight => {
-										// 🆕 Calcular cantidad de PEDIDOS (órdenes)
+										// 🆕 Calcular cantidad de pedidos
 										const cantidadPedidos = (flight.pedidos?.length || 0) || (flight.pedidoId ? 1 : 0);
-										// 🆕 Calcular cantidad total de PAQUETES
-										const cantidadPaquetes = flight.pedidos?.reduce((sum, p) => sum + (p.cantidad || 0), 0) || flight.currentPackages || 0;
 										return (
 										<Box key={flight.id} onClick={() => setSelectedFlight(flight)} sx={{ border: '1px solid #dee2e6', padding: '10px', borderRadius: '8px', marginBottom: '10px', background: selectedFlight?.id === flight.id ? '#e8f4f8' : '#f8f9fa', cursor: 'pointer', transition: 'all 0.2s ease', '&:hover': { borderColor: '#2c4a6b', boxShadow: '0 2px 8px rgba(44, 74, 107, 0.15)' } }}>
 											<Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
 												<Box sx={{ flex: 1 }}>
-													<Box sx={{ fontWeight: 700, fontSize: '0.95rem', color: '#2c4a6b' }}>{flight.origin?.code || 'N/A'} → {flight.destination?.code || 'N/A'}</Box>
+													<Box sx={{ fontWeight: 700, fontSize: '0.95rem', color: '#2c4a6b' }}>{flight.id}</Box>
+													<Box sx={{ fontSize: '0.85rem', color: '#6c757d', marginTop: '2px' }}>{flight.origin?.code || 'N/A'} → {flight.destination?.code || 'N/A'}</Box>
 												</Box>
+												{/* 🆕 Badge de cantidad de pedidos */}
+												{cantidadPedidos > 0 && (
+													<Box sx={{ 
+														background: '#2c4a6b', 
+														color: '#fff', 
+														padding: '2px 8px', 
+														borderRadius: '12px', 
+														fontSize: '0.75rem', 
+														fontWeight: 600,
+														whiteSpace: 'nowrap'
+													}}>
+														📦 {cantidadPedidos}
+													</Box>
+												)}
 											</Box>
-											{/* 🆕 Badges separados: Pedidos y Paquetes */}
-											<Box sx={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-												<Box sx={{ 
-													background: cantidadPedidos > 0 ? '#2c4a6b' : '#9ca3af', 
-													color: '#fff', 
-													padding: '3px 10px', 
-													borderRadius: '12px', 
-													fontSize: '0.75rem', 
-													fontWeight: 600
-												}}>
-													🛒 {cantidadPedidos} pedido{cantidadPedidos !== 1 ? 's' : ''}
+											{expandedFlightIds[flight.id] && (
+												<Box sx={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #dee2e6' }}>
+													{flight.pedidos && flight.pedidos.length > 0 ? (
+														flight.pedidos.map(p => (
+															<Box key={p.idPedido || p.id} sx={{ padding: '6px 8px', borderRadius: '4px', border: '1px dashed #dee2e6', marginBottom: '6px', background: '#fff' }}>
+																<Box sx={{ fontSize: '0.85rem', fontWeight: 600, color: '#2c4a6b' }}>{p.idPedido || p.id}</Box>
+																<Box sx={{ fontSize: '0.8rem', color: '#6c757d', marginTop: '2px' }}>{p.descripcion || p.info || `Cantidad: ${p.cantidad || 1}`}</Box>
+															</Box>
+														))
+													) : flight.pedidoId ? (
+														<Box sx={{ padding: '6px 8px', borderRadius: '4px', border: '1px dashed #dee2e6', background: '#fff', fontSize: '0.85rem', fontWeight: 600, color: '#2c4a6b' }}>📦 {flight.pedidoId}</Box>
+													) : (
+														<Box sx={{ fontSize: '0.85rem', color: '#6c757d' }}>Sin pedidos en este vuelo</Box>
+													)}
 												</Box>
-												<Box sx={{ 
-													background: cantidadPaquetes > 0 ? '#28a745' : '#9ca3af', 
-													color: '#fff', 
-													padding: '3px 10px', 
-													borderRadius: '12px', 
-													fontSize: '0.75rem', 
-													fontWeight: 600
-												}}>
-													📦 {cantidadPaquetes} paquete{cantidadPaquetes !== 1 ? 's' : ''}
-												</Box>
-											</Box>
+											)}
 										</Box>
 									)})}
 									{(vuelosEnMovimiento || []).filter(f => (f.status === 'active' || (f.progress && f.progress > 0 && f.progress < 1))).length === 0 && (
@@ -2725,140 +2662,96 @@ console.log(`Vuelos activos anadidos: ${vuelosActivos}`);
 									<Box>
 										{(() => {
 											const list = [];
-											const pedidosVistos = new Set(); // 🆕 Para evitar duplicados por idPedido
-											
-											// 🆕 Extraer pedidos de TODOS los vuelos activos
+											// 🆕 Extraer pedidos de flights (vuelos activos)
 											(flights || []).forEach(f => {
-												// Determinar estado del pedido basado en el vuelo
-												let pedidoStatus = 'waiting';
-												if (f.status === 'active' && f.progress > 0 && f.progress < 100) {
-													pedidoStatus = 'en_vuelo';
-												} else if (f.status === 'completed' || f.progress >= 100) {
-													pedidoStatus = 'entregado';
-												}
-												
 												if (f.pedidos && Array.isArray(f.pedidos)) {
-													f.pedidos.forEach(p => {
-														const pedidoKey = p.idPedido || p.orderId || p.id;
-														// 🆕 Solo agregar si no hemos visto este pedido antes
-														if (pedidoKey && !pedidosVistos.has(pedidoKey)) {
-															pedidosVistos.add(pedidoKey);
-															list.push({ 
-																...(p), 
-																flightData: f,
-																origin: p.origen || f.origin?.code, 
-																destination: p.destino || f.destination?.code,
-																cantidad: p.cantidad || 1,
-																pedidoStatus: pedidoStatus
-															});
-														}
-													});
+													f.pedidos.forEach(p => list.push({ 
+														...(p), 
+														flightId: f.id, 
+														flightData: f, // 🆕 Referencia al vuelo completo
+														origin: p.origen || f.origin?.code, 
+														destination: p.destino || f.destination?.code,
+														cantidad: p.cantidad || 1,
+														status: f.status
+													}));
 												} else if (f.pedidoId) {
-													// 🆕 Solo agregar si no hemos visto este pedido antes
-													if (!pedidosVistos.has(f.pedidoId)) {
-														pedidosVistos.add(f.pedidoId);
-														list.push({ 
-															idPedido: f.pedidoId, 
-															flightData: f,
-															origin: f.origin?.code, 
-															destination: f.destination?.code,
-															cantidad: f.currentPackages || 1,
-															pedidoStatus: pedidoStatus
-														});
-													}
-												}
-											});
-											
-											// 🆕 Agregar pedidos completados (guardados en memoria)
-											(pedidosCompletados || []).forEach(p => {
-												const pedidoKey = p.idPedido || p.orderId || p.id;
-												// 🆕 Solo agregar si no hemos visto este pedido antes
-												if (pedidoKey && !pedidosVistos.has(pedidoKey)) {
-													pedidosVistos.add(pedidoKey);
-													list.push({
-														...p,
-														origin: p.origen,
-														destination: p.destino,
-														pedidoStatus: 'entregado',
-														flightData: null // Ya no tiene vuelo activo asociado
+													list.push({ 
+														idPedido: f.pedidoId, 
+														flightId: f.id, 
+														flightData: f, // 🆕 Referencia al vuelo completo
+														origin: f.origin?.code, 
+														destination: f.destination?.code,
+														cantidad: f.currentPackages || 1,
+														status: f.status
 													});
 												}
 											});
-											
 											const q = searchOrders.trim().toLowerCase();
 											return list.filter(o => {
 												if (!q) return true;
-												return String(o.origin || '').toLowerCase().includes(q) || 
-													String(o.destination || '').toLowerCase().includes(q);
+												return String(o.idPedido || o.id || o.flightId || '').toLowerCase().includes(q) || 
+													String(o.origin || '').toLowerCase().includes(q) || 
+													String(o.destination || '').toLowerCase().includes(q) ||
+													String(o.cliente || '').toLowerCase().includes(q);
 											});
-										})().map((order, index) => (
+										})().map(order => (
 											<Box 
-												key={`order-${order.idPedido || index}-${order.origin}-${order.destination}`} 
+												key={order.idPedido || order.id || `${order.flightId}-${order.origin}-${order.destination}-${Math.random()}`} 
 												onClick={() => order.flightData && setSelectedFlight(order.flightData)}
 												sx={{ 
 													border: '1px solid #dee2e6', 
 													padding: '10px', 
 													borderRadius: '8px', 
 													marginBottom: '10px', 
-													background: order.pedidoStatus === 'en_vuelo' ? '#e8f8e8' : 
-														order.pedidoStatus === 'entregado' ? '#f0f0f0' : '#f8f9fa',
-													cursor: order.flightData ? 'pointer' : 'default',
+													background: order.status === 'active' ? '#e8f8e8' : '#f8f9fa',
+													cursor: 'pointer',
 													transition: 'all 0.2s ease',
-													'&:hover': order.flightData ? { borderColor: '#2c4a6b', boxShadow: '0 2px 8px rgba(44, 74, 107, 0.15)' } : {}
+													'&:hover': { borderColor: '#2c4a6b', boxShadow: '0 2px 8px rgba(44, 74, 107, 0.15)' }
 												}}>
-												{/* Encabezado: Ruta del pedido */}
-												<Box sx={{ fontWeight: 700, fontSize: '0.95rem', color: '#2c4a6b', marginBottom: '8px' }}>
-													🛒 Pedido: {order.origin || '?'} → {order.destination || '?'}
-												</Box>
-												
-												{/* Info: Cantidad de paquetes */}
 												<Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-													<Box sx={{ fontSize: '0.85rem', color: '#495057' }}>
-														📦 <strong>{order.cantidad || 0}</strong> paquete{(order.cantidad || 0) !== 1 ? 's' : ''}
+													<Box sx={{ fontWeight: 700, fontSize: '0.95rem', color: '#2c4a6b' }}>📦 {order.idPedido || order.id}</Box>
+													{order.cantidad && (
+														<Box sx={{ 
+															background: '#e3f2fd', 
+															color: '#1976d2', 
+															padding: '2px 8px', 
+															borderRadius: '12px', 
+															fontSize: '0.75rem', 
+															fontWeight: 600 
+														}}>
+															{order.cantidad} uds
+														</Box>
+													)}
+												</Box>
+												<Box sx={{ fontSize: '0.85rem', color: '#6c757d', marginTop: '4px' }}>
+													{order.origin || '?'} → {order.destination || '?'}
+												</Box>
+												<Box sx={{ marginTop: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+													<Box sx={{ fontSize: '0.8rem', color: '#495057', fontWeight: 500 }}>
+														✈️ {order.flightId || 'N/A'}
 													</Box>
-													
-													{/* Estado del pedido */}
-													{order.pedidoStatus === 'en_vuelo' && (
+													{order.status === 'active' && (
 														<Box sx={{ 
 															background: '#28a745', 
 															color: '#fff', 
-															padding: '3px 10px', 
-															borderRadius: '10px', 
-															fontSize: '0.75rem',
+															padding: '1px 6px', 
+															borderRadius: '8px', 
+															fontSize: '0.7rem',
 															fontWeight: 600
 														}}>
-															✈️ En vuelo
-														</Box>
-													)}
-													{order.pedidoStatus === 'entregado' && (
-														<Box sx={{ 
-															background: '#6c757d', 
-															color: '#fff', 
-															padding: '3px 10px', 
-															borderRadius: '10px', 
-															fontSize: '0.75rem',
-															fontWeight: 600
-														}}>
-															✅ Entregado
-														</Box>
-													)}
-													{order.pedidoStatus === 'waiting' && (
-														<Box sx={{ 
-															background: '#ffc107', 
-															color: '#000', 
-															padding: '3px 10px', 
-															borderRadius: '10px', 
-															fontSize: '0.75rem',
-															fontWeight: 600
-														}}>
-															⏳ Esperando
+															En vuelo
 														</Box>
 													)}
 												</Box>
+												{order.cliente && (
+													<Box sx={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '4px' }}>
+														Cliente: {order.cliente}
+													</Box>
+												)}
 											</Box>
 										))}
 										{(() => {
-											const anyOrders = (flights || []).some(f => (f.pedidos && f.pedidos.length) || f.pedidoId) || (pedidosCompletados || []).length > 0;
+											const anyOrders = (flights || []).some(f => (f.pedidos && f.pedidos.length) || f.pedidoId);
 											if (!anyOrders) return <Box sx={{ color: '#6c757d', fontSize: '0.9rem', textAlign: 'center', padding: '20px 10px' }}>Sin pedidos disponibles</Box>;
 											return null;
 										})()}
@@ -2895,35 +2788,9 @@ console.log(`Vuelos activos anadidos: ${vuelosActivos}`);
 										minHeight: 0
 									}}>
 										{selectedAirport.pedidos && selectedAirport.pedidos.length > 0 ? (
-											selectedAirport.pedidos.map((p, index) => (
-												<Box key={p.idPedido || p.id || index} sx={{ 
-													padding: '6px 8px', 
-													borderRadius: '4px', 
-													border: '1px solid #dee2e6', 
-													marginBottom: '6px', 
-													fontSize: '0.8rem', 
-													background: '#fff', 
-													color: '#495057',
-													display: 'flex',
-													justifyContent: 'space-between',
-													alignItems: 'center'
-												}}>
-													<Box sx={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-														<span>📦</span>
-														<span>{p.origen || 'N/A'} → {p.destino || 'N/A'}</span>
-													</Box>
-													{p.cantidad && (
-														<Box sx={{ 
-															background: '#e3f2fd', 
-															color: '#1976d2', 
-															padding: '1px 6px', 
-															borderRadius: '8px', 
-															fontSize: '0.7rem',
-															fontWeight: 600
-														}}>
-															{p.cantidad}
-														</Box>
-													)}
+											selectedAirport.pedidos.map(p => (
+												<Box key={p.idPedido || p.id} sx={{ padding: '6px 8px', borderRadius: '4px', border: '1px solid #dee2e6', marginBottom: '6px', fontSize: '0.8rem', background: '#fff', color: '#495057' }}>
+													📦 {p.idPedido || p.id}
 												</Box>
 											))
 										) : (
@@ -2975,48 +2842,10 @@ console.log(`Vuelos activos anadidos: ${vuelosActivos}`);
 										flex: 1,
 										minHeight: 0
 									}}>
-										{/* 🆕 Resumen del vuelo */}
-										{(() => {
-											const cantPedidos = selectedFlight.pedidos?.length || (selectedFlight.pedidoId ? 1 : 0);
-											const cantPaquetes = selectedFlight.pedidos?.reduce((sum, p) => sum + (p.cantidad || 0), 0) || selectedFlight.currentPackages || 0;
-											return (
-												<Box sx={{ 
-													display: 'flex', 
-													gap: '10px', 
-													marginBottom: '12px',
-													padding: '8px',
-													background: '#f0f7ff',
-													borderRadius: '8px'
-												}}>
-													<Box sx={{ 
-														background: '#2c4a6b', 
-														color: '#fff', 
-														padding: '4px 10px', 
-														borderRadius: '10px', 
-														fontSize: '0.8rem',
-														fontWeight: 600
-													}}>
-														🛒 {cantPedidos} pedido{cantPedidos !== 1 ? 's' : ''}
-													</Box>
-													<Box sx={{ 
-														background: '#28a745', 
-														color: '#fff', 
-														padding: '4px 10px', 
-														borderRadius: '10px', 
-														fontSize: '0.8rem',
-														fontWeight: 600
-													}}>
-														📦 {cantPaquetes} paquete{cantPaquetes !== 1 ? 's' : ''}
-													</Box>
-												</Box>
-											);
-										})()}
-										
-										{/* Lista de pedidos */}
 										{selectedFlight.pedidos && selectedFlight.pedidos.length > 0 ? (
-											selectedFlight.pedidos.map((p, index) => (
+											selectedFlight.pedidos.map(p => (
 												<Box
-													key={p.idPedido || p.id || index}
+													key={p.idPedido || p.id}
 													sx={{
 														padding: '8px 10px',
 														borderRadius: '6px',
@@ -3027,11 +2856,17 @@ console.log(`Vuelos activos anadidos: ${vuelosActivos}`);
 														color: '#495057'
 													}}>
 													<Box sx={{ fontWeight: 600, color: '#2c4a6b', marginBottom: '4px' }}>
-														🛒 Pedido: {p.origen || selectedFlight.origin?.code || 'N/A'} → {p.destino || selectedFlight.destination?.code || 'N/A'}
+														📦 {p.idPedido || p.id}
 													</Box>
 													<Box sx={{ fontSize: '0.8rem', color: '#6c757d' }}>
-														📦 <strong>{p.cantidad || 0}</strong> paquete{(p.cantidad || 0) !== 1 ? 's' : ''}
+														{p.cantidad && <span>Cantidad: {p.cantidad} • </span>}
+														{p.origen && p.destino && <span>{p.origen} → {p.destino}</span>}
 													</Box>
+													{p.cliente && (
+														<Box sx={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '2px' }}>
+															Cliente: {p.cliente}
+														</Box>
+													)}
 												</Box>
 											))
 										) : selectedFlight.pedidoId ? (
@@ -3045,12 +2880,17 @@ console.log(`Vuelos activos anadidos: ${vuelosActivos}`);
 													background: '#fff',
 													color: '#495057'
 												}}>
-												<Box sx={{ fontWeight: 600, color: '#2c4a6b', marginBottom: '4px' }}>
-													🛒 Pedido: {selectedFlight.origin?.code || 'N/A'} → {selectedFlight.destination?.code || 'N/A'}
+												<Box sx={{ fontWeight: 600, color: '#2c4a6b' }}>
+													📦 {selectedFlight.pedidoId}
 												</Box>
-												<Box sx={{ fontSize: '0.8rem', color: '#6c757d' }}>
-													📦 <strong>{selectedFlight.currentPackages || 0}</strong> paquete{(selectedFlight.currentPackages || 0) !== 1 ? 's' : ''}
+												<Box sx={{ fontSize: '0.8rem', color: '#6c757d', marginTop: '4px' }}>
+													{selectedFlight.origin?.code} → {selectedFlight.destination?.code}
 												</Box>
+												{selectedFlight.currentPackages && (
+													<Box sx={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '2px' }}>
+														Paquetes: {selectedFlight.currentPackages}
+													</Box>
+												)}
 											</Box>
 										) : (
 											<Box sx={{ fontSize: '0.8rem', color: '#6c757d', fontStyle: 'italic' }}>

@@ -201,10 +201,16 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMov
 	const map = (0, require('react-leaflet').useMap)();
 	const markersRef = React.useRef({}); // Guardar marcadores por ID para animarlos
 	const polylinesRef = React.useRef({});
+	const lastLogRef = React.useRef({ count: 0, time: 0, activeCount: 0 }); // 🚀 Throttle para logs
 	
 	/* Actualizar marcadores cuando cambian vuelos, aeropuertos, vista activa o rutas */
 	React.useEffect(() => {
-		console.log(`🗺️ DynamicMarkers - Recibidos ${flights.length} vuelos, activeView: ${activeView}`);
+		// 🚀 Log solo cada 5 segundos o si cambió cantidad de vuelos
+		const now = Date.now();
+		if (flights.length !== lastLogRef.current.count || now - lastLogRef.current.time > 5000) {
+			console.log(`🗺️ DynamicMarkers - Recibidos ${flights.length} vuelos, activeView: ${activeView}`);
+			lastLogRef.current = { count: flights.length, time: now };
+		}
 		
 		const airportMarkers = [];
 		
@@ -237,7 +243,11 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMov
 			const vuelosActivos = vuelosEnMovimiento.filter(v => 
 				v.status === 'active' && v.progress > 0 && v.progress < 100
 			);
-			console.log(`✈️ Actualizando ${vuelosActivos.length}/${vuelosEnMovimiento.length} vuelos ACTIVOS en el mapa`);
+			// 🚀 Log solo si cambió la cantidad (evitar spam)
+			if (vuelosActivos.length !== lastLogRef.current.activeCount) {
+				console.log(`✈️ Aviones en vuelo: ${vuelosActivos.length}/${vuelosEnMovimiento.length}`);
+				lastLogRef.current.activeCount = vuelosActivos.length;
+			}
 			
 			const currentFlightIds = new Set();
 			
@@ -280,7 +290,8 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMov
 					
 				} else {
 					// 🆕 CREAR: Nuevo marcador para este vuelo
-					console.log(`  ✈️ Vuelo nuevo ${index + 1}: ${flight.id} - Interpolación: ${!!flight.fechaInicial} - Pos: [${position.lat.toFixed(3)}, ${position.lng.toFixed(3)}]`);
+					// 🚀 Log deshabilitado para rendimiento
+					// console.log(`  ✈️ Vuelo nuevo: ${flight.id}`);
 					
 					const icon = createAirplaneIcon(flight, flight.rotation);
 					const popupContent = createFlightPopup(flight);
@@ -323,7 +334,8 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMov
 				polylinesRef.current = {};
 			}
 			
-			console.log(`✅ Total marcadores de vuelos activos: ${Object.keys(markersRef.current).length}`);
+			// 🚀 Log de marcadores deshabilitado para rendimiento
+			// console.log(`✅ Marcadores activos: ${Object.keys(markersRef.current).length}`);
 		} else {
 			// Si no estamos en vista de vuelos, limpiar todos los marcadores de vuelos
 			Object.values(markersRef.current).forEach(marker => map.removeLayer(marker));
@@ -374,18 +386,15 @@ function calculateInterpolatedPosition(vuelo, tiempoActualMs) {
 	const horaLlegada = new Date(fechaFinalStr).getTime();
 	const duracionVuelo = horaLlegada - horaSalida;
 	
-	// 🐛 DEBUG: Log solo cada 2 segundos para no saturar consola
-	if (Math.random() < 0.02) { // 2% de probabilidad (aprox cada 50 frames = 2.5 seg)
+	// 🐛 DEBUG: Log muy reducido para no saturar consola (🚀 Optimizado)
+	// Deshabilitado en producción - descomentar para debug
+	/*
+	if (Math.random() < 0.005) { // 0.5% de probabilidad
 		const tiempoActual = new Date(tiempoActualMs);
-		const salida = new Date(horaSalida);
-		const llegada = new Date(horaLlegada);
 		const enVuelo = tiempoActualMs >= horaSalida && tiempoActualMs < horaLlegada;
-		console.log(`🔍 Interpolando ${vuelo.id}:`);
-		console.log(`   Salida:  ${salida.toISOString()}`);
-		console.log(`   Llegada: ${llegada.toISOString()}`);
-		console.log(`   Actual:  ${tiempoActual.toISOString()} ${enVuelo ? '✈️ EN VUELO' : '⏸️'}`);
-		console.log(`   Duración: ${(duracionVuelo / 1000 / 60).toFixed(0)} minutos`);
+		console.log(`🔍 ${vuelo.id}: ${enVuelo ? '✈️' : '⏸️'} ${(duracionVuelo / 1000 / 60).toFixed(0)}min`);
 	}
+	*/
 
 	// Si el vuelo no ha empezado, está en origen
 	if (tiempoActualMs < horaSalida) {
@@ -416,10 +425,8 @@ function calculateInterpolatedPosition(vuelo, tiempoActualMs) {
 	const lat = vuelo.origin.lat + (vuelo.destination.lat - vuelo.origin.lat) * ratio;
 	const lng = vuelo.origin.lng + (vuelo.destination.lng - vuelo.origin.lng) * ratio;
 
-	// 🐛 DEBUG: Log de posición calculada (solo algunos frames)
-	if (Math.random() < 0.02) {
-		console.log(`   ✈️ Progreso: ${progreso.toFixed(1)}% | Pos: [${lat.toFixed(3)}, ${lng.toFixed(3)}]`);
-	}
+	// 🐛 DEBUG deshabilitado para rendimiento
+	// if (Math.random() < 0.02) { console.log(`   ✈️ Progreso: ${progreso.toFixed(1)}%`); }
 
 	return {
 		lat,
@@ -556,7 +563,7 @@ const SimuladorSemanal = () => {
 	const [simulacionLocalActiva, setSimulacionLocalActiva] = useState(false); // Si la animación local corre
 	const relojLocalRef = useRef(null);                          // Ref para el reloj local (evita closures)
 	const colaVuelosRef = useRef([]);                            // Ref para la cola (evita closures)
-	const TICK_REAL_MS = 100;                                    // Intervalo de actualización en ms
+	const TICK_REAL_MS = 250;                                    // Intervalo de actualización en ms (🚀 Optimizado: 4 FPS)
 	
 	// ========== BUFFER DE 15 SEGUNDOS PARA ACUMULACIÓN DE VUELOS ==========
 	const [bufferActivo, setBufferActivo] = useState(false);     // Si el buffer está activo (primeros 15 segundos)
@@ -767,11 +774,8 @@ const SimuladorSemanal = () => {
 			return [];
 		}
 
-		// Debug cada 2 segundos
-		if (Math.random() < 0.02) {
-			console.log(`✈️ Re-calculando posiciones de ${flights.length} vuelos`);
-			console.log(`   Tiempo simulado: ${new Date(tiempoSimulado).toISOString()}`);
-		}
+		// 🚀 Debug deshabilitado para rendimiento
+		// if (Math.random() < 0.02) { console.log(`✈️ Re-calculando ${flights.length} vuelos`); }
 
 		return flights.map(flight => {
 			// Calcular posición interpolada basada en tiempo simulado
@@ -797,7 +801,7 @@ const SimuladorSemanal = () => {
 		});
 	}, [flights, tiempoSimulado]); // 🎯 DEPENDENCIAS REACTIVAS
 
-	// Debug: Cantidad de vuelos en el aire
+	// Debug: Cantidad de vuelos en el aire (🚀 log reducido para rendimiento)
 	useEffect(() => {
 		const enAire = vuelosEnMovimiento.filter(v => 
 			v.status === 'active' && v.progress > 0 && v.progress < 100
@@ -805,7 +809,8 @@ const SimuladorSemanal = () => {
 		
 		if (enAire !== flightsInAir) {
 			setFlightsInAir(enAire);
-			console.log(`🛫 Aviones en el aire: ${enAire}/${vuelosEnMovimiento.length}`);
+			// Log deshabilitado - la información ya se muestra en el UI
+			// console.log(`🛫 Aviones: ${enAire}/${vuelosEnMovimiento.length}`);
 		}
 	}, [vuelosEnMovimiento, flightsInAir]);
 
@@ -904,10 +909,9 @@ const SimuladorSemanal = () => {
 			// 🆕 IMPORTANTE: Actualizar tiempoSimulado para la interpolación de vuelos
 			setTiempoSimulado(nuevoTiempo.getTime());
 			
-			// Debug cada ~2 segundos (5% de probabilidad)
-			if (Math.random() < 0.05) {
-				console.log(`⏰ ${estadoVelocidad} | K=${nuevoK} | Aviones=${avionesEnPantalla} | Cola=${colaActual}`);
-			}
+			// 🚀 Debug reducido: cada ~10 segundos (1% probabilidad @ 250ms tick = 40 ticks)
+			// Deshabilitado para rendimiento
+			// if (Math.random() < 0.01) { console.log(`⏰ K=${nuevoK} | Aviones=${avionesEnPantalla}`); }
 		}, TICK_REAL_MS);
 		
 		return () => clearInterval(interval);

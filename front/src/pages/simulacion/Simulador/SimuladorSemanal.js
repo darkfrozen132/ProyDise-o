@@ -64,7 +64,7 @@ const getAircraftColorByStatus = (flight) => {
 	} else if (porcentajeCarga >= 40) {
 		return '#f59e0b'; // 🟡 Amarillo - Carga media (40-60%)
 	} else {
-		return '#3b82f6'; // 🔵 Azul - Poco cargado (< 40%)
+		return '#28a745'; // verde - Poco cargado (< 40%)
 	}
 };
 
@@ -180,20 +180,20 @@ const createFlightPopup = (flight) => {
 };
 
 /* Iconos de aeropuertos personalizados */
-const createAirportIcon = (isSede = false, saturation = 0) => {
+const createAirportIcon = (name, saturation = 0) => {
 	let size, color, borderColor, borderWidth, shadow;
 	/* Color y tamaño según tipo y saturación */
-	if (isSede) {
-		size = 32; color = '#dc3545'; borderColor = '#FFD700'; borderWidth = 4; shadow = '0 4px 16px rgba(220, 53, 69, 0.6)';
+	if (name == "Bruselas" || name == "Lima" || name == "Baku") {
+		size = 28; color = '#ff6b35'; borderColor = '#FFD700'; borderWidth = 2; shadow = '0 4px 16px rgba(220, 53, 69, 0.6)';
 	} else {
-		size = 22; borderColor = '#ffffff'; borderWidth = 3; shadow = '0 3px 10px rgba(0,0,0,0.4)';
+		size = 22; borderColor = '#ffffff'; borderWidth = 2; shadow = '0 3px 10px rgba(0,0,0,0.4)';
 		if (saturation >= 80) color = '#dc3545'; else if (saturation >= 50) color = '#ffc107'; else color = '#28a745';
 	}
 	/* Crear divIcon con estilos */
 	return new L.DivIcon({
 		className: 'airport-marker',
 		html: `<div style="background: ${color}; border: ${borderWidth}px solid ${borderColor}; border-radius: 50%; width: ${size}px; height: ${size}px; display:flex;align-items:center;justify-content:center; box-shadow:${shadow}; position:relative; cursor:pointer; transition: all .3s ease;">
-			<i class="fas fa-${isSede ? 'building' : 'plane'}" style="color:white; font-size:${size * 0.4}px; ${isSede ? '' : 'transform: rotate(45deg);'} text-shadow:0 1px 3px rgba(0,0,0,.5);"></i>
+			<i class="fas fa-${(name == "Bruselas" || name == "Lima" || name == "Baku") ? 'building' : 'plane'}" style="color:white; font-size:${size * 0.4}px; ${(name == "Bruselas" || name == "Lima" || name == "Baku") ? '' : 'transform: rotate(45deg);'} text-shadow:0 1px 3px rgba(0,0,0,.5);"></i>
 		</div>`,
 		iconSize: [size, size], iconAnchor: [size / 2, size / 2], popupAnchor: [0, -size / 2]
 	});
@@ -230,7 +230,7 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMov
 			airports.forEach(airport => {
 				const isUnlimited = airport.capacity === 'ILIMITADO';
 				const saturation = isUnlimited ? 0 : (airport.packages / airport.capacity) * 100;
-				const icon = createAirportIcon(airport.isSede, saturation);
+				const icon = createAirportIcon(airport.name, saturation);
 				const marker = L.marker([airport.lat, airport.lng], { 
 					icon,
 					isAirport: true // Flag para identificar
@@ -2328,6 +2328,21 @@ console.log(`Vuelos activos anadidos: ${vuelosActivos}`);
 	const mostSaturatedAirport = getMostSaturatedAirport();
 	const getFlightsByAltitude = () => flightsInAir;
 
+	/* 🆕 Filtrar vuelos en movimiento (progress > 0 y progress < 1) para métricas */
+	const flightsInMovement = useMemo(() => {
+		return flights.filter(f => f.progress && f.progress > 0 && f.progress < 1);
+	}, [flights]);
+
+	/* 🆕 Estado para actualizar métricas en tiempo real */
+	const [flightsInAirCount, setFlightsInAirCount] = useState(0);
+
+	/* 🆕 Efecto: Actualizar contador de vuelos en el aire con la MISMA LÓGICA que el sidebar */
+	useEffect(() => {
+		const enAire = (vuelosEnMovimiento || []).filter(f => (f.status === 'active' || (f.progress && f.progress > 0 && f.progress < 1))).length;
+		setFlightsInAirCount(enAire);
+		console.log(`📊 Vuelos en el aire (sidebar logic): ${enAire}`);
+	}, [vuelosEnMovimiento]);
+
 	/* Estado y lógica para el drawer lateral */
 	const drawerWidth = 300; // ancho del drawer
 	const [open, setOpen] = useState(false);
@@ -2498,49 +2513,44 @@ console.log(`Vuelos activos anadidos: ${vuelosActivos}`);
 								minHeight: 0, // Importante para el scroll
 								transition: 'flex 0.3s ease' // Transición suave
 							}}>
-								{sidebarTab === 'flights' && (
-									<Box>
-										{(flights || []).filter(f => (f.status === 'active' || (f.progress && f.progress > 0 && f.progress < 1))).filter(f => {
-											const q = searchFlights.trim().toLowerCase();
-											if (!q) return true;
-											return (String(f.id || '').toLowerCase().includes(q) || String(f.origin?.code || '').toLowerCase().includes(q) || String(f.destination?.code || '').toLowerCase().includes(q));
-										}).map(flight => (
-											<Box key={flight.id} onClick={() => setSelectedFlight(flight)} sx={{ border: '1px solid #dee2e6', padding: '10px', borderRadius: '8px', marginBottom: '10px', background: selectedFlight?.id === flight.id ? '#e8f4f8' : '#f8f9fa', cursor: 'pointer', transition: 'all 0.2s ease', '&:hover': { borderColor: '#2c4a6b', boxShadow: '0 2px 8px rgba(44, 74, 107, 0.15)' } }}>
-												<Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
-													<Box sx={{ flex: 1 }}>
-														<Box sx={{ fontWeight: 700, fontSize: '0.95rem', color: '#2c4a6b' }}>{flight.id}</Box>
-														<Box sx={{ fontSize: '0.85rem', color: '#6c757d', marginTop: '2px' }}>{flight.origin?.code || 'N/A'} → {flight.destination?.code || 'N/A'}</Box>
-													</Box>
-													<Box sx={{ textAlign: 'right', minWidth: 'fit-content' }}>
-														<Box sx={{ fontSize: '0.85rem', color: '#6c757d', marginBottom: '6px' }}>{Math.round((flight.progress || 0) * 100)}%</Box>
-														<button onClick={() => setExpandedFlightIds(prev => ({ ...prev, [flight.id]: !prev[flight.id] }))} style={{ padding: '4px 8px', borderRadius: '6px', border: 'none', background: '#2c4a6b', color: '#fff', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 500 }}>{expandedFlightIds[flight.id] ? '▼' : '▶'}</button>
-													</Box>
+							{sidebarTab === 'flights' && (
+								<Box>
+									{(vuelosEnMovimiento || []).filter(f => (f.status === 'active' || (f.progress && f.progress > 0 && f.progress < 1))).filter(f => {
+										const q = searchFlights.trim().toLowerCase();
+										if (!q) return true;
+										return (String(f.id || '').toLowerCase().includes(q) || String(f.origin?.code || '').toLowerCase().includes(q) || String(f.destination?.code || '').toLowerCase().includes(q));
+									}).map(flight => (
+										<Box key={flight.id} onClick={() => setSelectedFlight(flight)} sx={{ border: '1px solid #dee2e6', padding: '10px', borderRadius: '8px', marginBottom: '10px', background: selectedFlight?.id === flight.id ? '#e8f4f8' : '#f8f9fa', cursor: 'pointer', transition: 'all 0.2s ease', '&:hover': { borderColor: '#2c4a6b', boxShadow: '0 2px 8px rgba(44, 74, 107, 0.15)' } }}>
+											<Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+												<Box sx={{ flex: 1 }}>
+													<Box sx={{ fontWeight: 700, fontSize: '0.95rem', color: '#2c4a6b' }}>{flight.id}</Box>
+													<Box sx={{ fontSize: '0.85rem', color: '#6c757d', marginTop: '2px' }}>{flight.origin?.code || 'N/A'} → {flight.destination?.code || 'N/A'}</Box>
 												</Box>
-												{expandedFlightIds[flight.id] && (
-													<Box sx={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #dee2e6' }}>
-														{flight.pedidos && flight.pedidos.length > 0 ? (
-															flight.pedidos.map(p => (
-																<Box key={p.idPedido || p.id} sx={{ padding: '6px 8px', borderRadius: '4px', border: '1px dashed #dee2e6', marginBottom: '6px', background: '#fff' }}>
-																	<Box sx={{ fontSize: '0.85rem', fontWeight: 600, color: '#2c4a6b' }}>{p.idPedido || p.id}</Box>
-																	<Box sx={{ fontSize: '0.8rem', color: '#6c757d', marginTop: '2px' }}>{p.descripcion || p.info || 'Sin descripción'}</Box>
-																</Box>
-															))
-														) : flight.pedidoId ? (
-															<Box sx={{ padding: '6px 8px', borderRadius: '4px', border: '1px dashed #dee2e6', background: '#fff', fontSize: '0.85rem', fontWeight: 600, color: '#2c4a6b' }}>{flight.pedidoId}</Box>
-														) : (
-															<Box sx={{ fontSize: '0.85rem', color: '#6c757d' }}>Sin pedidos en este vuelo</Box>
-														)}
-													</Box>
-												)}
+												
 											</Box>
-										))}
-										{(flights || []).filter(f => (f.status === 'active' || (f.progress && f.progress > 0 && f.progress < 1))).length === 0 && (
-											<Box sx={{ color: '#6c757d', fontSize: '0.9rem', textAlign: 'center', padding: '20px 10px' }}>No hay vuelos en vuelo</Box>
-										)}
-									</Box>
-								)}
-
-								{sidebarTab === 'airports' && (
+											{expandedFlightIds[flight.id] && (
+												<Box sx={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #dee2e6' }}>
+													{flight.pedidos && flight.pedidos.length > 0 ? (
+														flight.pedidos.map(p => (
+															<Box key={p.idPedido || p.id} sx={{ padding: '6px 8px', borderRadius: '4px', border: '1px dashed #dee2e6', marginBottom: '6px', background: '#fff' }}>
+																<Box sx={{ fontSize: '0.85rem', fontWeight: 600, color: '#2c4a6b' }}>{p.idPedido || p.id}</Box>
+																<Box sx={{ fontSize: '0.8rem', color: '#6c757d', marginTop: '2px' }}>{p.descripcion || p.info || 'Sin descripción'}</Box>
+															</Box>
+														))
+													) : flight.pedidoId ? (
+														<Box sx={{ padding: '6px 8px', borderRadius: '4px', border: '1px dashed #dee2e6', background: '#fff', fontSize: '0.85rem', fontWeight: 600, color: '#2c4a6b' }}>{flight.pedidoId}</Box>
+													) : (
+														<Box sx={{ fontSize: '0.85rem', color: '#6c757d' }}>Sin pedidos en este vuelo</Box>
+													)}
+												</Box>
+											)}
+										</Box>
+									))}
+									{(vuelosEnMovimiento || []).filter(f => (f.status === 'active' || (f.progress && f.progress > 0 && f.progress < 1))).length === 0 && (
+										<Box sx={{ color: '#6c757d', fontSize: '0.9rem', textAlign: 'center', padding: '20px 10px' }}>No hay vuelos en vuelo</Box>
+									)}
+								</Box>
+							)}								{sidebarTab === 'airports' && (
 									<Box>
 										{(airports || []).filter(a => {
 											const q = searchAirports.trim().toLowerCase();
@@ -3298,7 +3308,8 @@ console.log(`Vuelos activos anadidos: ${vuelosActivos}`);
 			<MetricsPopper
 				open={isMetricsPopperOpen}
 				anchorEl={metricsAnchorEl}
-				flights={flights}
+				flightsInAirCount={flightsInAirCount}
+				flights={flightsInMovement}
 				getSaturation={getSaturation}
 			/>
 		</div>

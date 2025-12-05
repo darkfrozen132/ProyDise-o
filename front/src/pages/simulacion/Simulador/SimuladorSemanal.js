@@ -34,8 +34,9 @@ import MetricsButton from '../../../components/ui/Button/MetricsButton';
 import WebSocketStatusIndicator from '../../../components/ui/WebSocketStatusIndicator';
 
 /* Constantes de configuracion de tiempo de simulacion */
-const DESIRED_TIME_SCALE = 500; // Valor de K
+const DESIRED_TIME_SCALE = 300; // Valor de K
 const REAL_TICK_MS = 1000; // Intervalo del reloj (1s)
+const TIEMPO_RECOGIDA_MS = 2 * 60 * 60 * 1000; // 2 horas en milisegundos - tiempo para recoger paquetes del almacén
 
 /* Reparar iconos por defecto de Leaflet */
 delete L.Icon.Default.prototype._getIconUrl;
@@ -199,11 +200,103 @@ const createAirportIcon = (name, saturation = 0) => {
 	});
 };
 
+/* Crear popup detallado para un aeropuerto (HTML string) */
+const createAirportPopup = (airport) => {
+	const isUnlimited = airport.capacity === 'ILIMITADO';
+	const capacityValue = isUnlimited ? null : (typeof airport.capacity === 'number' ? airport.capacity : (Number(airport.capacity) || null));
+	const packages = airport.packages || 0;
+	const pedidosCount = airport.pedidosCount || 0; // 🆕 Número de pedidos (diferente a paquetes)
+	const tiempoRestante = airport.tiempoRestanteRecogida; // 🆕 Tiempo hasta próxima recogida (minutos)
+	const saturation = isUnlimited || !capacityValue ? 0 : ((packages / capacityValue) * 100);
+
+	// Formatear tiempo restante
+	const formatearTiempoRestante = (minutos) => {
+		if (!minutos || minutos === Infinity) return null;
+		if (minutos < 60) return `${Math.round(minutos)} min`;
+		const horas = Math.floor(minutos / 60);
+		const mins = Math.round(minutos % 60);
+		return `${horas}h ${mins}m`;
+	};
+
+	const tiempoRestanteStr = formatearTiempoRestante(tiempoRestante);
+
+	// 🆕 Sección de paquetes esperando recogida
+	const recogidaInfo = packages > 0 && tiempoRestanteStr ? `
+		<div style="margin-top:8px; padding:8px; background:#fef3c7; border-radius:6px; border-left:3px solid #f59e0b;">
+			<div style="font-size:11px; color:#92400e; font-weight:600;">⏰ Próxima recogida en ~${tiempoRestanteStr}</div>
+			<div style="font-size:10px; color:#a16207; margin-top:2px;">Los paquetes se recogen 2h después de aterrizar</div>
+		</div>
+	` : '';
+
+	// 🆕 Barra de progreso mejorada con más información
+	const progressBar = isUnlimited || !capacityValue ? '' : `
+		<div style="margin-top:12px; padding-top:12px; border-top: 1px solid #e5e7eb;">
+			<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+				<span style="font-size:12px; font-weight:600; color:#374151;">📦 Ocupación del almacén</span>
+				<span style="font-size:13px; font-weight:700; color:${saturation >= 80 ? '#dc3545' : saturation >= 50 ? '#f59e0b' : '#28a745'};">${saturation.toFixed(1)}%</span>
+			</div>
+			<div style="height:12px; background:#eef2f6; border-radius:8px; overflow:hidden; box-shadow: inset 0 1px 2px rgba(0,0,0,0.04);">
+				<div style="width:${Math.min(100, Math.round(saturation))}%; height:100%; background: linear-gradient(90deg, ${saturation >= 80 ? '#dc3545' : saturation >= 50 ? '#f59e0b' : '#28a745'}, ${saturation >= 80 ? '#ef4444' : saturation >= 50 ? '#fbbf24' : '#22c55e'}); transition:width .35s ease;"></div>
+			</div>
+			<div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-top:10px;">
+				<div style="background:#f8fafc; padding:8px; border-radius:6px; text-align:center;">
+					<div style="font-size:18px; font-weight:700; color:#1f2937;">${packages.toLocaleString()}</div>
+					<div style="font-size:11px; color:#6b7280;">Paquetes actuales</div>
+				</div>
+				<div style="background:#f8fafc; padding:8px; border-radius:6px; text-align:center;">
+					<div style="font-size:18px; font-weight:700; color:#6b7280;">${capacityValue.toLocaleString()}</div>
+					<div style="font-size:11px; color:#6b7280;">Capacidad total</div>
+				</div>
+			</div>
+			${pedidosCount > 0 ? `
+				<div style="margin-top:8px; font-size:12px; color:#6b7280; text-align:center;">
+					📋 ${pedidosCount} pedidos en almacén
+				</div>
+			` : ''}
+			${recogidaInfo}
+		</div>`;
+
+	// 🆕 Para sedes con capacidad ilimitada
+	const unlimitedSection = isUnlimited ? `
+		<div style="margin-top:12px; padding-top:12px; border-top: 1px solid #e5e7eb;">
+			<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+				<span style="font-size:12px; font-weight:600; color:#374151;">📦 Almacén</span>
+				<span style="font-size:13px; font-weight:700; color:#6b7280;">♾️ ILIMITADO</span>
+			</div>
+			<div style="background:#f8fafc; padding:10px; border-radius:6px; text-align:center; margin-top:8px;">
+				<div style="font-size:20px; font-weight:700; color:#1f2937;">${packages.toLocaleString()}</div>
+				<div style="font-size:11px; color:#6b7280;">Paquetes actuales</div>
+			</div>
+			${pedidosCount > 0 ? `
+				<div style="margin-top:8px; font-size:12px; color:#6b7280; text-align:center;">
+					📋 ${pedidosCount} pedidos en almacén
+				</div>
+			` : ''}
+			${recogidaInfo}
+		</div>
+	` : '';
+
+	return `
+		<div style="min-width:280px; padding:14px; border-radius:12px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: white; color: #111827; box-shadow: 0 6px 18px rgba(16,24,40,0.08);">
+			<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+				<div style="flex:1; padding-right:8px;">
+					<div style="font-size:15px; font-weight:800; color:#0f172a; line-height:1.1;">${airport.name}</div>
+					<div style="font-size:12px; color:#6b7280; margin-top:4px;">${airport.country || 'País desconocido'} • Código: ${airport.code || 'N/A'}</div>
+				</div>
+				<div style="text-align:right; font-size:12px; color:#6b7280; white-space:nowrap;">${airport.isSede ? '🏢 Sede' : '✈️ Aeropuerto'}</div>
+			</div>
+			<div style="margin-top:10px; font-size:13px; color:#374151;">${airport.region ? `Región: ${airport.region}` : ''}${airport.operationType ? ` • ${airport.operationType}` : ''}</div>
+			${isUnlimited ? unlimitedSection : progressBar}
+		</div>
+	`;
+};
+
 /* Componente para manejar marcadores dinámicos en el mapa */
 function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMovimiento }) {
 	const map = (0, require('react-leaflet').useMap)();
 	const markersRef = React.useRef({}); // Guardar marcadores por ID para animarlos
 	const polylinesRef = React.useRef({});
+	const airportMarkersRef = React.useRef({}); // 🆕 Ref para marcadores de aeropuertos (por código)
 	const lastLogRef = React.useRef({ count: 0, time: 0, activeCount: 0 }); // 🚀 Throttle para logs
 	
 	/* Actualizar marcadores cuando cambian vuelos, aeropuertos, vista activa o rutas */
@@ -215,30 +308,46 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMov
 			lastLogRef.current = { count: flights.length, time: now };
 		}
 		
-		const airportMarkers = [];
+		/* 🏢 AEROPUERTOS: Solo actualizar si cambiaron (NO recrear para mantener popups abiertos) */
+		const currentAirportCodes = new Set();
 		
-		// Limpiar marcadores de aeropuertos antiguos
-		map.eachLayer(layer => { 
-			if (layer instanceof L.Marker && layer.options.isAirport) {
-				map.removeLayer(layer); 
+		airports.forEach(airport => {
+			// Validar coordenadas
+			if (!airport.lat || !airport.lng || isNaN(airport.lat) || isNaN(airport.lng)) {
+				console.warn(`⚠️ Aeropuerto ${airport.code} sin coordenadas válidas`);
+				return;
 			}
-		});
-		
-		/* Añadir marcadores de aeropuertos si la vista es 'airports' o 'flights' */
-		if (activeView === 'airports' || activeView === 'flights') {
-			console.log(`🏢 Añadiendo ${airports.length} aeropuertos al mapa`);
-			airports.forEach(airport => {
+			
+			currentAirportCodes.add(airport.code);
+			const existingMarker = airportMarkersRef.current[airport.code];
+			
+			if (existingMarker) {
+				// 🆕 Actualizar popup content sin recrear el marcador (mantiene popup abierto)
+				existingMarker.setPopupContent(createAirportPopup(airport));
+			} else {
+				// 🆕 Crear nuevo marcador solo si no existe
 				const isUnlimited = airport.capacity === 'ILIMITADO';
 				const saturation = isUnlimited ? 0 : (airport.packages / airport.capacity) * 100;
 				const icon = createAirportIcon(airport.name, saturation);
 				const marker = L.marker([airport.lat, airport.lng], { 
 					icon,
 					isAirport: true // Flag para identificar
-				}).bindPopup(`<div class="popup-content"><div class="popup-header"><strong class="popup-title ${airport.isSede ? 'sede-title' : 'airport-title'}">${airport.name}</strong></div></div>`);
-				marker.addTo(map); 
-				airportMarkers.push(marker);
-			});
-		}
+				}).bindPopup(createAirportPopup(airport), {
+					closeOnClick: false,  // 🆕 No cerrar al hacer click en otro lugar
+					autoClose: false      // 🆕 No cerrar automáticamente
+				});
+				marker.addTo(map);
+				airportMarkersRef.current[airport.code] = marker;
+			}
+		});
+		
+		// Eliminar marcadores de aeropuertos que ya no existen
+		Object.keys(airportMarkersRef.current).forEach(code => {
+			if (!currentAirportCodes.has(code)) {
+				map.removeLayer(airportMarkersRef.current[code]);
+				delete airportMarkersRef.current[code];
+			}
+		});
 		
 		/* Actualizar o crear marcadores de vuelos con animación (SISTEMA REACTIVO) */
 		if (activeView === 'flights' || activeView === 'routes') {
@@ -348,9 +457,14 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMov
 			polylinesRef.current = {};
 		}
 		
-		/* Limpiar marcadores de aeropuertos al desmontar */
+		/* Limpiar marcadores al desmontar */
 		return () => { 
-			airportMarkers.forEach(m => map.removeLayer(m)); 
+			// Limpiar marcadores de aeropuertos
+			Object.values(airportMarkersRef.current).forEach(m => map.removeLayer(m));
+			airportMarkersRef.current = {};
+			// Limpiar marcadores de vuelos
+			Object.values(markersRef.current).forEach(m => map.removeLayer(m));
+			markersRef.current = {};
 		};
 	}, [vuelosEnMovimiento, airports, activeView, showRoutes, map]); // 🎯 USA vuelosEnMovimiento
 	
@@ -692,36 +806,37 @@ const SimuladorSemanal = () => {
 				console.error('Error al cargar aeropuertos desde API:', error);
 				console.log('Usando datos de fallback...');
 				/* Fallback a datos estáticos en caso de error */
+				/* 🆕 TODOS los aeropuertos empiezan VACÍOS (packages: 0) */
 				const fallbackData = [
-					{ name: 'Bruselas-Charleroi', code: 'EBCI', lat: 50.4592, lng: 4.4538, capacity: 'ILIMITADO', packages: 1200, isSede: true, region: 'Europa', country: 'Bélgica', operationType: 'Sede Principal - Hub Europeo' },
-					{ name: 'Lima-Jorge Chávez', code: 'SPIM', lat: -12.0219, lng: -77.1143, capacity: 'ILIMITADO', packages: 980, isSede: true, region: 'América del Sur', country: 'Perú', operationType: 'Sede Principal - Hub Sudamericano' },
-					{ name: 'Bogotá', code: 'SKBO', lat: 4.7016, lng: -74.1469, capacity: 900, packages: 720, isSede: false, region: 'América del Sur', country: 'Colombia', operationType: 'Aeropuerto Regional' },
-					{ name: 'Bruselas', code: 'BRU', lat: 50.9010, lng: 4.4844, capacity: 'ILIMITADO', packages: 850, isSede: true, region: 'Europa', country: 'Bélgica', operationType: 'Sede Principal - Hub Europeo' },
-					{ name: 'Amsterdam-Schiphol', code: 'AMS', lat: 52.3105, lng: 4.7683, capacity: 1200, packages: 960, isSede: false, region: 'Europa', country: 'Países Bajos', operationType: 'Aeropuerto Regional' },
+					{ name: 'Bruselas-Charleroi', code: 'EBCI', lat: 50.4592, lng: 4.4538, capacity: 'ILIMITADO', packages: 0, pedidosCount: 0, isSede: true, region: 'Europa', country: 'Bélgica', operationType: 'Sede Principal - Hub Europeo' },
+					{ name: 'Lima-Jorge Chávez', code: 'SPIM', lat: -12.0219, lng: -77.1143, capacity: 'ILIMITADO', packages: 0, pedidosCount: 0, isSede: true, region: 'América del Sur', country: 'Perú', operationType: 'Sede Principal - Hub Sudamericano' },
+					{ name: 'Bogotá', code: 'SKBO', lat: 4.7016, lng: -74.1469, capacity: 900, packages: 0, pedidosCount: 0, isSede: false, region: 'América del Sur', country: 'Colombia', operationType: 'Aeropuerto Regional' },
+					{ name: 'Bruselas', code: 'BRU', lat: 50.9010, lng: 4.4844, capacity: 'ILIMITADO', packages: 0, pedidosCount: 0, isSede: true, region: 'Europa', country: 'Bélgica', operationType: 'Sede Principal - Hub Europeo' },
+					{ name: 'Amsterdam-Schiphol', code: 'AMS', lat: 52.3105, lng: 4.7683, capacity: 1200, packages: 0, pedidosCount: 0, isSede: false, region: 'Europa', country: 'Países Bajos', operationType: 'Aeropuerto Regional' },
 					// Agregar todos los aeropuertos que el backend envía
-					{ name: 'Muscat', code: 'OOMS', lat: 23.5933, lng: 58.2844, capacity: 800, packages: 0, isSede: false, region: 'Asia', country: 'Omán', operationType: 'Aeropuerto Regional' },
-					{ name: 'Brasilia', code: 'SBBR', lat: -15.8697, lng: -47.9206, capacity: 950, packages: 0, isSede: false, region: 'América del Sur', country: 'Brasil', operationType: 'Aeropuerto Regional' },
-					{ name: 'Quito', code: 'SEQM', lat: -0.1277, lng: -78.3575, capacity: 750, packages: 0, isSede: false, region: 'América del Sur', country: 'Ecuador', operationType: 'Aeropuerto Regional' },
-					{ name: 'New Delhi', code: 'VIDP', lat: 28.5562, lng: 77.1000, capacity: 1100, packages: 0, isSede: false, region: 'Asia', country: 'India', operationType: 'Aeropuerto Regional' },
-					{ name: 'Amman', code: 'OJAI', lat: 31.7226, lng: 35.9932, capacity: 700, packages: 0, isSede: false, region: 'Asia', country: 'Jordania', operationType: 'Aeropuerto Regional' },
-					{ name: 'Amsterdam-Schiphol', code: 'EHAM', lat: 52.3105, lng: 4.7683, capacity: 1200, packages: 0, isSede: false, region: 'Europa', country: 'Países Bajos', operationType: 'Aeropuerto Regional' },
-					{ name: 'Prague', code: 'LKPR', lat: 50.1008, lng: 14.2600, capacity: 850, packages: 0, isSede: false, region: 'Europa', country: 'República Checa', operationType: 'Aeropuerto Regional' },
-					{ name: 'Sana\'a', code: 'OYSN', lat: 15.4762, lng: 44.2189, capacity: 600, packages: 0, isSede: false, region: 'Asia', country: 'Yemen', operationType: 'Aeropuerto Regional' },
-					{ name: 'Minsk', code: 'UMMS', lat: 53.8824, lng: 28.0307, capacity: 750, packages: 0, isSede: false, region: 'Europa', country: 'Bielorrusia', operationType: 'Aeropuerto Regional' },
-					{ name: 'Porto Alegre', code: 'SGAS', lat: -29.9944, lng: -51.1714, capacity: 800, packages: 0, isSede: false, region: 'América del Sur', country: 'Brasil', operationType: 'Aeropuerto Regional' },
-					{ name: 'Sofia', code: 'LBSF', lat: 42.6950, lng: 23.4114, capacity: 700, packages: 0, isSede: false, region: 'Europa', country: 'Bulgaria', operationType: 'Aeropuerto Regional' },
-					{ name: 'Berlin-Tempelhof', code: 'EDDI', lat: 52.4726, lng: 13.4040, capacity: 900, packages: 0, isSede: false, region: 'Europa', country: 'Alemania', operationType: 'Aeropuerto Regional' },
-					{ name: 'La Paz', code: 'SLLP', lat: -16.5133, lng: -68.1925, capacity: 650, packages: 0, isSede: false, region: 'América del Sur', country: 'Bolivia', operationType: 'Aeropuerto Regional' },
-					{ name: 'Dubai', code: 'OMDB', lat: 25.2528, lng: 55.3644, capacity: 1300, packages: 0, isSede: false, region: 'Asia', country: 'EAU', operationType: 'Aeropuerto Regional' },
-					{ name: 'Buenos Aires-Ezeiza', code: 'SABE', lat: -34.8222, lng: -58.5358, capacity: 1000, packages: 0, isSede: false, region: 'América del Sur', country: 'Argentina', operationType: 'Aeropuerto Regional' },
-					{ name: 'Riyadh', code: 'OERK', lat: 24.9578, lng: 46.6987, capacity: 950, packages: 0, isSede: false, region: 'Asia', country: 'Arabia Saudita', operationType: 'Aeropuerto Regional' },
-					{ name: 'Karachi', code: 'OPKC', lat: 24.9056, lng: 67.1608, capacity: 900, packages: 0, isSede: false, region: 'Asia', country: 'Pakistán', operationType: 'Aeropuerto Regional' },
-					{ name: 'Vienna', code: 'LOWW', lat: 48.1103, lng: 16.5697, capacity: 950, packages: 0, isSede: false, region: 'Europa', country: 'Austria', operationType: 'Aeropuerto Regional' },
-					{ name: 'Asunción', code: 'SUAA', lat: -25.2400, lng: -57.5194, capacity: 600, packages: 0, isSede: false, region: 'América del Sur', country: 'Paraguay', operationType: 'Aeropuerto Regional' },
-					{ name: 'Tirana', code: 'LATI', lat: 41.4147, lng: 19.7206, capacity: 550, packages: 0, isSede: false, region: 'Europa', country: 'Albania', operationType: 'Aeropuerto Regional' },
-					{ name: 'Zagreb', code: 'LDZA', lat: 45.7429, lng: 16.0688, capacity: 700, packages: 0, isSede: false, region: 'Europa', country: 'Croacia', operationType: 'Aeropuerto Regional' },
-					{ name: 'Damascus', code: 'OSDI', lat: 33.4114, lng: 36.5156, capacity: 650, packages: 0, isSede: false, region: 'Asia', country: 'Siria', operationType: 'Aeropuerto Regional' },
-					{ name: 'Baku', code: 'UBBB', lat: 40.4675, lng: 50.0467, capacity: 800, packages: 0, isSede: false, region: 'Asia', country: 'Azerbaiyán', operationType: 'Aeropuerto Regional' }
+					{ name: 'Muscat', code: 'OOMS', lat: 23.5933, lng: 58.2844, capacity: 800, packages: 0, pedidosCount: 0, isSede: false, region: 'Asia', country: 'Omán', operationType: 'Aeropuerto Regional' },
+					{ name: 'Brasilia', code: 'SBBR', lat: -15.8697, lng: -47.9206, capacity: 950, packages: 0, pedidosCount: 0, isSede: false, region: 'América del Sur', country: 'Brasil', operationType: 'Aeropuerto Regional' },
+					{ name: 'Quito', code: 'SEQM', lat: -0.1277, lng: -78.3575, capacity: 750, packages: 0, pedidosCount: 0, isSede: false, region: 'América del Sur', country: 'Ecuador', operationType: 'Aeropuerto Regional' },
+					{ name: 'New Delhi', code: 'VIDP', lat: 28.5562, lng: 77.1000, capacity: 1100, packages: 0, pedidosCount: 0, isSede: false, region: 'Asia', country: 'India', operationType: 'Aeropuerto Regional' },
+					{ name: 'Amman', code: 'OJAI', lat: 31.7226, lng: 35.9932, capacity: 700, packages: 0, pedidosCount: 0, isSede: false, region: 'Asia', country: 'Jordania', operationType: 'Aeropuerto Regional' },
+					{ name: 'Amsterdam-Schiphol', code: 'EHAM', lat: 52.3105, lng: 4.7683, capacity: 1200, packages: 0, pedidosCount: 0, isSede: false, region: 'Europa', country: 'Países Bajos', operationType: 'Aeropuerto Regional' },
+					{ name: 'Prague', code: 'LKPR', lat: 50.1008, lng: 14.2600, capacity: 850, packages: 0, pedidosCount: 0, isSede: false, region: 'Europa', country: 'República Checa', operationType: 'Aeropuerto Regional' },
+					{ name: 'Sana\'a', code: 'OYSN', lat: 15.4762, lng: 44.2189, capacity: 600, packages: 0, pedidosCount: 0, isSede: false, region: 'Asia', country: 'Yemen', operationType: 'Aeropuerto Regional' },
+					{ name: 'Minsk', code: 'UMMS', lat: 53.8824, lng: 28.0307, capacity: 750, packages: 0, pedidosCount: 0, isSede: false, region: 'Europa', country: 'Bielorrusia', operationType: 'Aeropuerto Regional' },
+					{ name: 'Porto Alegre', code: 'SGAS', lat: -29.9944, lng: -51.1714, capacity: 800, packages: 0, pedidosCount: 0, isSede: false, region: 'América del Sur', country: 'Brasil', operationType: 'Aeropuerto Regional' },
+					{ name: 'Sofia', code: 'LBSF', lat: 42.6950, lng: 23.4114, capacity: 700, packages: 0, pedidosCount: 0, isSede: false, region: 'Europa', country: 'Bulgaria', operationType: 'Aeropuerto Regional' },
+					{ name: 'Berlin-Tempelhof', code: 'EDDI', lat: 52.4726, lng: 13.4040, capacity: 900, packages: 0, pedidosCount: 0, isSede: false, region: 'Europa', country: 'Alemania', operationType: 'Aeropuerto Regional' },
+					{ name: 'La Paz', code: 'SLLP', lat: -16.5133, lng: -68.1925, capacity: 650, packages: 0, pedidosCount: 0, isSede: false, region: 'América del Sur', country: 'Bolivia', operationType: 'Aeropuerto Regional' },
+					{ name: 'Dubai', code: 'OMDB', lat: 25.2528, lng: 55.3644, capacity: 1300, packages: 0, pedidosCount: 0, isSede: false, region: 'Asia', country: 'EAU', operationType: 'Aeropuerto Regional' },
+					{ name: 'Buenos Aires-Ezeiza', code: 'SABE', lat: -34.8222, lng: -58.5358, capacity: 1000, packages: 0, pedidosCount: 0, isSede: false, region: 'América del Sur', country: 'Argentina', operationType: 'Aeropuerto Regional' },
+					{ name: 'Riyadh', code: 'OERK', lat: 24.9578, lng: 46.6987, capacity: 950, packages: 0, pedidosCount: 0, isSede: false, region: 'Asia', country: 'Arabia Saudita', operationType: 'Aeropuerto Regional' },
+					{ name: 'Karachi', code: 'OPKC', lat: 24.9056, lng: 67.1608, capacity: 900, packages: 0, pedidosCount: 0, isSede: false, region: 'Asia', country: 'Pakistán', operationType: 'Aeropuerto Regional' },
+					{ name: 'Vienna', code: 'LOWW', lat: 48.1103, lng: 16.5697, capacity: 950, packages: 0, pedidosCount: 0, isSede: false, region: 'Europa', country: 'Austria', operationType: 'Aeropuerto Regional' },
+					{ name: 'Asunción', code: 'SUAA', lat: -25.2400, lng: -57.5194, capacity: 600, packages: 0, pedidosCount: 0, isSede: false, region: 'América del Sur', country: 'Paraguay', operationType: 'Aeropuerto Regional' },
+					{ name: 'Tirana', code: 'LATI', lat: 41.4147, lng: 19.7206, capacity: 550, packages: 0, pedidosCount: 0, isSede: false, region: 'Europa', country: 'Albania', operationType: 'Aeropuerto Regional' },
+					{ name: 'Zagreb', code: 'LDZA', lat: 45.7429, lng: 16.0688, capacity: 700, packages: 0, pedidosCount: 0, isSede: false, region: 'Europa', country: 'Croacia', operationType: 'Aeropuerto Regional' },
+					{ name: 'Damascus', code: 'OSDI', lat: 33.4114, lng: 36.5156, capacity: 650, packages: 0, pedidosCount: 0, isSede: false, region: 'Asia', country: 'Siria', operationType: 'Aeropuerto Regional' },
+					{ name: 'Baku', code: 'UBBB', lat: 40.4675, lng: 50.0467, capacity: 800, packages: 0, pedidosCount: 0, isSede: false, region: 'Asia', country: 'Azerbaiyán', operationType: 'Aeropuerto Regional' }
 				];
 				setAirports(fallbackData);
 				airportsRef.current = fallbackData; // 🔥 Actualizar ref con fallback
@@ -883,6 +998,113 @@ const SimuladorSemanal = () => {
 		
 		return () => clearInterval(interval);
 	}, [simulacionLocalActiva, metricasVuelos]);
+
+	// ==================== 🆕 CÁLCULO DE PAQUETES EN ALMACÉN POR AEROPUERTO ====================
+	// Los paquetes en almacén = vuelos que aterrizaron hace menos de 2 horas
+	// Después de 2 horas, los paquetes se "recogen" y se eliminan del almacén
+	const paquetesEnAlmacen = useMemo(() => {
+		if (!tiempoSimulado || vuelosEnMovimiento.length === 0) {
+			return {}; // Objeto vacío: { codigoAeropuerto: { paquetes, pedidos } }
+		}
+
+		const almacenPorAeropuerto = {}; // { codigo: { paquetes: number, pedidos: Set<string> } }
+
+		vuelosEnMovimiento.forEach(vuelo => {
+			// Solo considerar vuelos que ya aterrizaron (completados)
+			if (vuelo.status !== 'completed' || vuelo.progress < 100) {
+				return;
+			}
+
+			// Obtener hora de llegada del vuelo
+			let horaLlegada = null;
+			if (vuelo.fechaFinal) {
+				let fechaStr = vuelo.fechaFinal;
+				if (typeof fechaStr === 'string' && !fechaStr.endsWith('Z')) {
+					fechaStr = fechaStr + 'Z';
+				}
+				horaLlegada = new Date(fechaStr).getTime();
+			}
+
+			if (!horaLlegada) return;
+
+			// Calcular tiempo transcurrido desde que aterrizó
+			const tiempoDesdeAterrizaje = tiempoSimulado - horaLlegada;
+
+			// Si han pasado más de 2 horas, los paquetes ya fueron recogidos
+			if (tiempoDesdeAterrizaje >= TIEMPO_RECOGIDA_MS) {
+				return; // Paquetes ya recogidos, no contar
+			}
+
+			// Paquetes aún en almacén (esperando recogida)
+			const codigoDestino = vuelo.destination?.code;
+			if (!codigoDestino) return;
+
+			// Inicializar si no existe
+			if (!almacenPorAeropuerto[codigoDestino]) {
+				almacenPorAeropuerto[codigoDestino] = { 
+					paquetes: 0, 
+					pedidos: new Set(),
+					tiempoRestanteMin: Infinity // Tiempo mínimo para la próxima recogida
+				};
+			}
+
+			// Sumar paquetes de este vuelo
+			const cantidadPaquetes = vuelo.currentPackages || vuelo.pedidos?.reduce((sum, p) => sum + (p.cantidad || 0), 0) || 0;
+			almacenPorAeropuerto[codigoDestino].paquetes += cantidadPaquetes;
+
+			// Agregar IDs de pedidos
+			if (vuelo.pedidoId) {
+				almacenPorAeropuerto[codigoDestino].pedidos.add(vuelo.pedidoId);
+			}
+			if (vuelo.pedidos) {
+				vuelo.pedidos.forEach(p => {
+					if (p.idPedido) almacenPorAeropuerto[codigoDestino].pedidos.add(p.idPedido);
+				});
+			}
+
+			// Calcular tiempo restante para recogida (en minutos)
+			const tiempoRestante = (TIEMPO_RECOGIDA_MS - tiempoDesdeAterrizaje) / 60000;
+			if (tiempoRestante < almacenPorAeropuerto[codigoDestino].tiempoRestanteMin) {
+				almacenPorAeropuerto[codigoDestino].tiempoRestanteMin = tiempoRestante;
+			}
+		});
+
+		// Convertir Sets a conteo
+		Object.keys(almacenPorAeropuerto).forEach(codigo => {
+			almacenPorAeropuerto[codigo].pedidosCount = almacenPorAeropuerto[codigo].pedidos.size;
+			delete almacenPorAeropuerto[codigo].pedidos; // Eliminar Set, solo mantener conteo
+		});
+
+		return almacenPorAeropuerto;
+	}, [vuelosEnMovimiento, tiempoSimulado]);
+
+	// 🆕 EFECTO: Actualizar estado de aeropuertos con paquetes calculados
+	useEffect(() => {
+		if (Object.keys(paquetesEnAlmacen).length === 0) return;
+
+		setAirports(prevAirports => {
+			let cambios = false;
+			const nuevosAirports = prevAirports.map(airport => {
+				const datosAlmacen = paquetesEnAlmacen[airport.code];
+				const nuevosPaquetes = datosAlmacen?.paquetes || 0;
+				const nuevosPedidos = datosAlmacen?.pedidosCount || 0;
+
+				// Solo actualizar si cambió
+				if (airport.packages !== nuevosPaquetes || airport.pedidosCount !== nuevosPedidos) {
+					cambios = true;
+					return {
+						...airport,
+						packages: nuevosPaquetes,
+						pedidosCount: nuevosPedidos,
+						tiempoRestanteRecogida: datosAlmacen?.tiempoRestanteMin
+					};
+				}
+				return airport;
+			});
+
+			return cambios ? nuevosAirports : prevAirports;
+		});
+	}, [paquetesEnAlmacen]);
 
 	/* ==================== VUELOS LOCALES DESHABILITADOS - SOLO WEBSOCKET ==================== */
 	// ❌ COMENTADO: Ya no usamos vuelos locales basados en planFixed y simClock
@@ -1776,6 +1998,28 @@ const SimuladorSemanal = () => {
 				}
 			}
 
+			// 🆕 ACTUALIZAR AEROPUERTOS con datos de ocupación del backend
+			if (datos.solucion?.aeropuertos && datos.solucion.aeropuertos.length > 0) {
+				console.log(`🏢 Actualizando ocupación de ${datos.solucion.aeropuertos.length} aeropuertos...`);
+				setAirports(prevAirports => {
+					return prevAirports.map(airport => {
+						// Buscar datos actualizados del backend por código
+						const backendData = datos.solucion.aeropuertos.find(
+							a => a.code === airport.code || a.codigo === airport.code
+						);
+						if (backendData) {
+							return {
+								...airport,
+								packages: backendData.packages || backendData.ocupacionActual || 0,
+								// Actualizar capacidad si viene (puede ser string "ILIMITADO" o número)
+								capacity: backendData.capacity !== undefined ? backendData.capacity : airport.capacity
+							};
+						}
+						return airport;
+					});
+				});
+			}
+
 		} else if (datos.type === 'PROGRESS' || datos.status === 'RUNNING') {
 			// 🆕 NUEVA ESTRUCTURA: SimulationMessage con snapshot
 			console.log(`🎮 Simulación corriendo - Snapshot recibido`);
@@ -1796,6 +2040,31 @@ const SimuladorSemanal = () => {
 					if (procesarSegmentsSnapshotRef.current) {
 						procesarSegmentsSnapshotRef.current(snapshot);
 					}
+				}
+				
+				// 🆕 ACTUALIZAR AEROPUERTOS con datos de ocupación del snapshot
+				if (snapshot.aeropuertos && snapshot.aeropuertos.length > 0) {
+					console.log(`🏢 [Snapshot] Actualizando ocupación de ${snapshot.aeropuertos.length} aeropuertos...`);
+					setAirports(prevAirports => {
+						return prevAirports.map(airport => {
+							// Buscar datos actualizados del snapshot por código
+							const backendData = snapshot.aeropuertos.find(
+								a => a.codigo === airport.code || a.code === airport.code
+							);
+							if (backendData) {
+								return {
+									...airport,
+									// ocupacionActual = paquetes actuales en el almacén
+									packages: backendData.ocupacionActual || backendData.packages || 0,
+									// pedidosAlmacenados = número de pedidos (diferente a cantidad de paquetes)
+									pedidosCount: backendData.pedidosAlmacenados || 0,
+									// capacidadAlmacen = capacidad total
+									capacity: backendData.capacidadAlmacen || airport.capacity
+								};
+							}
+							return airport;
+						});
+					});
 				}
 			}
 			// Fallback para estructura antigua
@@ -2911,67 +3180,67 @@ console.log(`Vuelos activos anadidos: ${vuelosActivos}`);
 					flexGrow: 1,
 					minWidth: 0,
 					transition: 'margin 0.2s ease', // transición suave al abrir/cerrar el drawer
-					marginLeft: 0,
-					paddingLeft: 0,
-					boxSizing: 'border-box',
-				}}
-			>
-				{/* Contenido principal con mapa*/}
-				<div className="simulation-main-content">
-					<div className="content-wrapper">
-						{/* Panel de control superior */}
-						<div className="control-panel">
+						marginLeft: 0,
+						paddingLeft: 0,
+						boxSizing: 'border-box',
+					}}
+				>
+					{/* Contenido principal con mapa*/}
+					<div className="simulation-main-content">
+						<div className="content-wrapper">
+							{/* Panel de control superior */}
+							<div className="control-panel">
 
-							{/* ==================== PANEL SIMPLE DE TIEMPO SSE ==================== */}
-							<div>
-								<div className="row-fecha-inicio">
-									<div className="btn-back-wrapper">
-										<BackIconButton size={30} />
-									</div>
-									{/* Selector de fecha de inicio */}
-									<div className="form-group" style={{ margin: 0 }}>
-										<label className="form-label" htmlFor="fecha-inicio">
-											Fecha de Inicio:
-										</label>
-										<input
-											type="date"
-											id="fecha-inicio"
-											className="date-input"
-											value={fechaInicioSimulacion}
-											onChange={(e) => setFechaInicioSimulacion(e.target.value)}
-										/>
-									</div>
+								{/* ==================== PANEL SIMPLE DE TIEMPO SSE ==================== */}
+								<div>
+									<div className="row-fecha-inicio">
+										<div className="btn-back-wrapper">
+											<BackIconButton size={30} />
+										</div>
+										{/* Selector de fecha de inicio */}
+										<div className="form-group" style={{ margin: 0 }}>
+											<label className="form-label" htmlFor="fecha-inicio">
+												Fecha de Inicio:
+											</label>
+											<input
+												type="date"
+												id="fecha-inicio"
+												className="date-input"
+												value={fechaInicioSimulacion}
+												onChange={(e) => setFechaInicioSimulacion(e.target.value)}
+											/>
+										</div>
 
-									{/* Selector de hora de inicio */}
-									<div className="form-group" style={{ margin: 0 }}>
-										<label className="form-label" htmlFor="hora-inicio">
-											Hora de Inicio:
-										</label>
-										<input
-											type="time"
-											id="hora-inicio"
-											className="date-input"
-											value={horaInicioSimulacion}
-											onChange={(e) => setHoraInicioSimulacion(e.target.value)}
-											style={{ width: '100px' }}
-										/>
-									</div>
+										{/* Selector de hora de inicio */}
+										<div className="form-group" style={{ margin: 0 }}>
+											<label className="form-label" htmlFor="hora-inicio">
+												Hora de Inicio:
+											</label>
+											<input
+												type="time"
+												id="hora-inicio"
+												className="date-input"
+												value={horaInicioSimulacion}
+												onChange={(e) => setHoraInicioSimulacion(e.target.value)}
+												style={{ width: '100px' }}
+											/>
+										</div>
 
-									{/* Panel de información de tiempo */}
-									<div style={{
-										background: '#f8f9fa',
-										borderRadius: '8px',
-										padding: '15px 20px',
-										border: '1px solid #dee2e6',
-										flex: 1,
-										minWidth: '400px'
-									}}>
+										{/* Panel de información de tiempo */}
 										<div style={{
-											display: 'flex',
-											gap: '30px',
-											flexWrap: 'wrap'
+											background: '#f8f9fa',
+											borderRadius: '8px',
+											padding: '15px 20px',
+											border: '1px solid #dee2e6',
+											flex: 1,
+											minWidth: '400px'
 										}}>
-											<div>
+											<div style={{
+												display: 'flex',
+												gap: '30px',
+												flexWrap: 'wrap'
+											}}>
+												<div>
 												<span style={{ fontSize: '14px', color: '#6c757d', marginRight: '8px' }}>
 													Fecha y hora de simulación:
 												</span>

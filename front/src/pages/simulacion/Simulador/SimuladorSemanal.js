@@ -297,6 +297,7 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMov
 	const markersRef = React.useRef({}); // Guardar marcadores por ID para animarlos
 	const polylinesRef = React.useRef({});
 	const airportMarkersRef = React.useRef({}); // 🆕 Ref para marcadores de aeropuertos (por código)
+	const flightLinesRef = React.useRef({});
 	const lastLogRef = React.useRef({ count: 0, time: 0, activeCount: 0 }); // 🚀 Throttle para logs
 	
 	/* Actualizar marcadores cuando cambian vuelos, aeropuertos, vista activa o rutas */
@@ -441,7 +442,7 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMov
 						if (existingLine) {
 							existingLine.setLatLngs(coords);
 						} else {
-							const flightLine = L.polyline(coords, { color: '#ff2c2c', weight: 2, opacity: 1.0, dashArray: '8, 4', lineCap: 'round', lineJoin: 'round', interactive: false });
+							const flightLine = L.polyline(coords, { color: '#9b9b9bff', weight: 1.5, opacity: 1.0, dashArray: '3, 8', lineCap: 'round', lineJoin: 'round', interactive: false });
 							flightLine.addTo(map);
 							flightLinesRef.current[lineKey] = flightLine;
 						}
@@ -716,6 +717,7 @@ const SimuladorSemanal = () => {
 	// ==================== SISTEMA DE COLA Y RELOJ LOCAL ====================
 	const [colaVuelos, setColaVuelos] = useState([]);           // Buffer de vuelos pendientes del WebSocket
 	const [vuelosEnAire, setVuelosEnAire] = useState([]);       // Vuelos activos (procesándose en animación)
+	const [pedidosCompletados, setPedidosCompletados] = useState([]);
 	const [relojLocal, setRelojLocal] = useState(null);         // Reloj de simulación local (independiente)
 	const [kActual, setKActual] = useState(500);                // Factor K actual (adaptable)
 	const [kBase] = useState(500);                               // Factor K base (constante)

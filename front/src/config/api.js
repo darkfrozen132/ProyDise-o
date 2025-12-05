@@ -64,7 +64,8 @@ export const transformAirportData = (backendAirport) => {
     lat: backendAirport.latitud,
     lng: backendAirport.longitud,
     capacity: backendAirport.capacidadAlmacen,
-    packages: backendAirport.capacidadAlmacen - backendAirport.capacidadDisponible,
+    packages: 0, // 🆕 Aeropuertos empiezan VACÍOS - se llenan conforme aterrizan vuelos
+    pedidosCount: 0, // 🆕 Sin pedidos al inicio
     isSede: false, // Ajustar según lógica de negocio
     region: backendAirport.continente,
     country: backendAirport.pais,

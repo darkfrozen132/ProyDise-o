@@ -199,11 +199,45 @@ const createAirportIcon = (name, saturation = 0) => {
 	});
 };
 
+/* Crear popup detallado para un aeropuerto (HTML string) */
+const createAirportPopup = (airport) => {
+	const isUnlimited = airport.capacity === 'ILIMITADO';
+	const capacityValue = isUnlimited ? null : (typeof airport.capacity === 'number' ? airport.capacity : (Number(airport.capacity) || null));
+	const packages = airport.packages || 0;
+	const saturation = isUnlimited || !capacityValue ? 0 : ((packages / capacityValue) * 100);
+
+	const progressBar = isUnlimited || !capacityValue ? '' : `
+		<div style="margin-top:10px;">
+			<div style="height:10px; background:#eef2f6; border-radius:8px; overflow:hidden; box-shadow: inset 0 1px 2px rgba(0,0,0,0.04);">
+				<div style="width:${Math.min(100, Math.round(saturation))}%; height:100%; background:${saturation >= 80 ? '#dc3545' : saturation >= 50 ? '#f59e0b' : '#28a745'}; transition:width .35s ease;"></div>
+			</div>
+			<div style="font-size:12px; color:#6b7280; margin-top:8px;">${packages} paquetes • ${capacityValue} capacidad • ${saturation.toFixed(1)}%</div>
+		</div>`;
+
+	return `
+		<div style="min-width:260px; padding:12px; border-radius:10px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: white; color: #111827; box-shadow: 0 6px 18px rgba(16,24,40,0.08);">
+			<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+				<div style="flex:1; padding-right:8px;">
+					<div style="font-size:15px; font-weight:800; color:#0f172a; line-height:1.1;">${airport.name}</div>
+					<div style="font-size:12px; color:#6b7280; margin-top:4px;">${airport.country || 'País desconocido'} • Código: ${airport.code || 'N/A'}</div>
+				</div>
+				<div style="text-align:right; font-size:12px; color:#6b7280; white-space:nowrap;">${airport.isSede ? 'Sede' : 'Aeropuerto'}</div>
+			</div>
+			<div style="margin-top:10px; font-size:13px; color:#374151;">${airport.region ? `Región: ${airport.region}` : ''}${airport.operationType ? ` • ${airport.operationType}` : ''}</div>
+			${isUnlimited ? `
+				<div style="margin-top:10px; font-size:13px; color:#6b7280;">Capacidad: ILIMITADO</div>
+			` : progressBar}
+		</div>
+	`;
+};
+
 /* Componente para manejar marcadores dinámicos en el mapa */
-function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMovimiento }) {
+function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMovimiento, showFlightLines }) {
 	const map = (0, require('react-leaflet').useMap)();
 	const markersRef = React.useRef({}); // Guardar marcadores por ID para animarlos
 	const polylinesRef = React.useRef({});
+	// Líneas dinámicas por vuelo (de origen -> posición actual)
+	const flightLinesRef = React.useRef({});
 	const lastLogRef = React.useRef({ count: 0, time: 0, activeCount: 0 }); // 🚀 Throttle para logs
 	
 	/* Actualizar marcadores cuando cambian vuelos, aeropuertos, vista activa o rutas */
@@ -234,7 +268,7 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMov
 				const marker = L.marker([airport.lat, airport.lng], { 
 					icon,
 					isAirport: true // Flag para identificar
-				}).bindPopup(`<div class="popup-content"><div class="popup-header"><strong class="popup-title ${airport.isSede ? 'sede-title' : 'airport-title'}">${airport.name}</strong></div></div>`);
+				}).bindPopup(createAirportPopup(airport));
 				marker.addTo(map); 
 				airportMarkers.push(marker);
 			});
@@ -244,7 +278,7 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMov
 		if (activeView === 'flights' || activeView === 'routes') {
 			// 🆕 FILTRAR: Solo mostrar vuelos ACTIVOS (en vuelo), no 'waiting' ni 'completed'
 			const vuelosActivos = vuelosEnMovimiento.filter(v => 
-				v.status === 'active' && v.progress > 0 && v.progress < 100
+				v.status === 'active' && v.progress > 0 && v.progress <= 100
 			);
 			// 🚀 Log solo si cambió la cantidad (evitar spam)
 			if (vuelosActivos.length !== lastLogRef.current.activeCount) {
@@ -308,7 +342,7 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMov
 					markersRef.current[flight.id] = marker;
 				}
 				
-				// Actualizar o crear polyline de ruta
+				// Actualizar o crear polyline de ruta (ruta completa)
 				if (showRoutes) {
 					const routeKey = `${flight.origin.lat},${flight.origin.lng}-${flight.destination.lat},${flight.destination.lng}`;
 					
@@ -321,6 +355,26 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMov
 						polylinesRef.current[routeKey] = polyline;
 					}
 				}
+
+				// 🌐 Línea dinámica por vuelo: desde origen hasta la posición actual (visible mientras está en movimiento)
+				// Solo mostrar si showFlightLines está habilitado
+				if (showFlightLines) {
+					try {
+						const lineKey = flight.id;
+						const coords = [[flight.origin.lat, flight.origin.lng], [position.lat, position.lng]];
+						const existingLine = flightLinesRef.current[lineKey];
+						if (existingLine) {
+							existingLine.setLatLngs(coords);
+						} else {
+							const flightLine = L.polyline(coords, { color: '#ff2c2c', weight: 2, opacity: 1.0, dashArray: '8, 4', lineCap: 'round', lineJoin: 'round', interactive: false });
+							flightLine.addTo(map);
+							flightLinesRef.current[lineKey] = flightLine;
+						}
+					} catch (err) {
+						// Protección contra datos incompletos
+						console.warn('❌ No se pudo dibujar línea de vuelo para', flight.id, err);
+					}
+				}
 			});
 			
 			// Remover marcadores de vuelos que ya no existen
@@ -328,6 +382,11 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMov
 				if (!currentFlightIds.has(flightId)) {
 					map.removeLayer(markersRef.current[flightId]);
 					delete markersRef.current[flightId];
+					// También eliminar la línea dinámica del vuelo si existe
+					if (flightLinesRef.current[flightId]) {
+						try { map.removeLayer(flightLinesRef.current[flightId]); } catch(e){}
+						delete flightLinesRef.current[flightId];
+					}
 				}
 			});
 			
@@ -336,18 +395,28 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMov
 				Object.values(polylinesRef.current).forEach(polyline => map.removeLayer(polyline));
 				polylinesRef.current = {};
 			}
+			// Limpiar líneas dinámicas si showFlightLines está desactivado
+			if (!showFlightLines) {
+				Object.values(flightLinesRef.current).forEach(line => {
+					try { map.removeLayer(line); } catch (e) {}
+				});
+				flightLinesRef.current = {};
+			}
 			
 			// 🚀 Log de marcadores deshabilitado para rendimiento
 			// console.log(`✅ Marcadores activos: ${Object.keys(markersRef.current).length}`);
-		} else {
+} else {
 			// Si no estamos en vista de vuelos, limpiar todos los marcadores de vuelos
 			Object.values(markersRef.current).forEach(marker => map.removeLayer(marker));
 			markersRef.current = {};
 			
 			Object.values(polylinesRef.current).forEach(polyline => map.removeLayer(polyline));
 			polylinesRef.current = {};
-		}
-		
+			
+			// Limpiar también líneas dinámicas por vuelo
+			Object.values(flightLinesRef.current).forEach(line => map.removeLayer(line));
+			flightLinesRef.current = {};
+			}
 		/* Limpiar marcadores de aeropuertos al desmontar */
 		return () => { 
 			airportMarkers.forEach(m => map.removeLayer(m)); 
@@ -507,6 +576,7 @@ const SimuladorSemanal = () => {
 	const [activeView, setActiveView] = useState('flights');
 	const [showRoutes, setShowRoutes] = useState(false);
 	const [showLegend, setShowLegend] = useState(false);
+	const [showFlightLines, setShowFlightLines] = useState(true); // 🆕 Toggle para líneas dinámicas de vuelos
 
 	// ===================== ESTADO BOTONES FLOTANTES ==================== 
 	const [legendAnchorEl, setLegendAnchorEl] = useState(null);
@@ -896,6 +966,31 @@ const SimuladorSemanal = () => {
 					});
 				}
 			});
+
+			// 🆕 ACTUALIZAR paquetes en aeropuertos destino al completar vuelos
+			// Sumamos los paquetes entregados al aeropuerto destino
+			try {
+				setAirports(prev => {
+					const updated = prev.map(a => ({ ...a }));
+					vuelosTerminados.forEach(v => {
+						const destCode = v.destination?.code;
+						if (!destCode) return;
+						const cantidadEntregada = (v.pedidos && v.pedidos.length > 0)
+							? v.pedidos.reduce((s, p) => s + (p.cantidad || 0), 0)
+							: (v.currentPackages || 0);
+						for (let i = 0; i < updated.length; i++) {
+							if (String(updated[i].code || '').toUpperCase() === String(destCode).toUpperCase()) {
+								updated[i].packages = (updated[i].packages || 0) + (cantidadEntregada || 0);
+								break;
+							}
+						}
+					});
+					airportsRef.current = updated; // mantener ref sincronizada
+					return updated;
+				});
+			} catch (err) {
+				console.error('Error actualizando paquetes en aeropuertos:', err);
+			}
 			
 			// Agregar a la lista de pedidos completados (máximo 100 para no consumir memoria)
 			if (nuevosPedidosCompletados.length > 0) {
@@ -3193,6 +3288,27 @@ console.log(`Vuelos activos anadidos: ${vuelosActivos}`);
 													<FaStop size={18} />
 													Detener
 												</button>
+												<button
+													onClick={() => setShowFlightLines(!showFlightLines)}
+													style={{
+														padding: '8px 16px',
+														borderRadius: '6px',
+														border: showFlightLines ? '1px solid #0d6efd' : '1px solid #e9ecef',
+														background: showFlightLines ? '#0d6efd' : '#e9ecef',
+														color: showFlightLines ? 'white' : '#6c757d',
+														fontSize: '14px',
+														fontWeight: '500',
+														cursor: 'pointer',
+														display: 'flex',
+														alignItems: 'center',
+														gap: '8px',
+														transition: 'all 0.2s',
+														boxShadow: showFlightLines ? '0 2px 8px rgba(13, 110, 253, 0.3)' : 'none'
+													}}
+													title={showFlightLines ? 'Ocultar líneas de rutas' : 'Mostrar líneas de rutas'}
+												>
+													{showFlightLines ? '👁️' : '👁️‍🗨️'} {showFlightLines ? 'Rutas' : 'Rutas'}
+												</button>
 											</div>
 										</div>
 
@@ -3583,6 +3699,7 @@ console.log(`Vuelos activos anadidos: ${vuelosActivos}`);
 									activeView={activeView} 
 									showRoutes={showRoutes} 
 									vuelosEnMovimiento={vuelosEnMovimiento}
+									showFlightLines={showFlightLines}
 								/>
 							</MapContainer>
 							{/* Botón de Metricas */}

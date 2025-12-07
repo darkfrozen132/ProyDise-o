@@ -6,7 +6,7 @@ import { BiSolidTachometer } from "react-icons/bi";
 import { FaWarehouse } from "react-icons/fa";
 import { FaBuilding } from "react-icons/fa";
 
-export default function MetricsPopper({ open, anchorEl, flightsInAirCount, flights, getSaturation }) {
+export default function MetricsPopper({ open, anchorEl, flightsInAirCount, orderCount, flights, getSaturation }) {
     return (
         <Popper
             open={open}
@@ -53,8 +53,9 @@ export default function MetricsPopper({ open, anchorEl, flightsInAirCount, fligh
                                 <FaPlane size={15}/>
                             </div>
                             <div className="metric-content">
-                                <div className="metric-label">Vuelos en el aire</div>
+                                <div className="metric-label">Número de aviones</div>
                                 <div className="metric-value">{flightsInAirCount}</div>
+                                <div className="metric-sublabel">en el aire</div>
                                 {/*<div className="metric-sublabel">de 402 total</div>*/}
                             </div>
                         </div>
@@ -64,11 +65,22 @@ export default function MetricsPopper({ open, anchorEl, flightsInAirCount, fligh
                                 <BiSolidTachometer size={20}/>
                             </div>
                             <div className="metric-content">
-                                <div className="metric-label">Saturación de aviones</div>
+                                <div className="metric-label">Porcentaje de aviones</div>
                                 <div className="metric-value">
-                                    {((flightsInAirCount / 402) * 100).toFixed(1)}%
+                                    {((flightsInAirCount / 2866) * 100).toFixed(1)}%
                                 </div>
-                                <div className="metric-sublabel">capacidad aérea</div>
+                                <div className="metric-sublabel">en vuelo</div>
+                            </div>
+                        </div>
+
+                        <div className="metric-card">
+                            <div className="metric-icon">
+                                <BiSolidTachometer size={20}/>
+                            </div>
+                            <div className="metric-content">
+                                <div className="metric-label">Número de pedidos</div>
+                                <div className="metric-value">{orderCount}</div>
+                                <div className="metric-sublabel">realizados</div>
                             </div>
                         </div>
 

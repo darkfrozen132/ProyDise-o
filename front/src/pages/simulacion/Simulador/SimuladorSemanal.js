@@ -4,6 +4,7 @@ import { MapContainer, TileLayer } from 'react-leaflet';
 import { Drawer, Dialog, DialogTitle, DialogContent, IconButton, Tabs, Tab, Box } from '@mui/material';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import { FaRoad } from "react-icons/fa";
 import BackIconButton from '../../../components/ui/Button/BackIconButton';
 import { IoArrowBackCircleOutline } from "react-icons/io5";
 import { RiResetLeftFill } from "react-icons/ri";
@@ -418,8 +419,8 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMov
 					markersRef.current[flight.id] = marker;
 				}
 				
-				// Actualizar o crear polyline de ruta (ruta completa)
-				if (showRoutes) {
+				// 🌐 Actualizar o crear polyline de ruta (solo si vuelo está activo: status='active' && progress < 100)
+				if (showRoutes && flight.status === 'active' && flight.progress > 0 && flight.progress < 100) {
 					const routeKey = `${flight.origin.lat},${flight.origin.lng}-${flight.destination.lat},${flight.destination.lng}`;
 					
 					if (!polylinesRef.current[routeKey]) {
@@ -466,6 +467,32 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMov
 				}
 			});
 			
+			// 🆕 Limpiar polylines de rutas cuando los vuelos ya no están activos
+			if (showRoutes) {
+				// Crear un set de rutas que deben existir (solo vuelos ACTIVOS con progress < 100)
+				const activeRouteKeys = new Set();
+				vuelosEnMovimiento.forEach(flight => {
+					// ⚠️ IMPORTANTE: Mostrar polyline solo si progress < 100 (aún en vuelo)
+					// Cuando progress === 100, la polyline se eliminará
+					if (flight.status === 'active' && flight.progress > 0 && flight.progress < 100) {
+						const routeKey = `${flight.origin.lat},${flight.origin.lng}-${flight.destination.lat},${flight.destination.lng}`;
+						activeRouteKeys.add(routeKey);
+					}
+				});
+				
+				// Remover polylines de rutas inactivas (cuando progress >= 100 o status !== active)
+				Object.keys(polylinesRef.current).forEach(routeKey => {
+					if (!activeRouteKeys.has(routeKey)) {
+						try {
+							map.removeLayer(polylinesRef.current[routeKey]);
+							delete polylinesRef.current[routeKey];
+						} catch (e) {
+							console.warn('Error al remover polyline:', e);
+						}
+					}
+				});
+			}
+			
 			// Limpiar polylines si showRoutes está desactivado
 			if (!showRoutes) {
 				Object.values(polylinesRef.current).forEach(polyline => map.removeLayer(polyline));
@@ -502,7 +529,7 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMov
 			Object.values(markersRef.current).forEach(m => map.removeLayer(m));
 			markersRef.current = {};
 		};
-	}, [vuelosEnMovimiento, airports, activeView, showRoutes, map]); // 🎯 USA vuelosEnMovimiento
+	}, [vuelosEnMovimiento, airports, activeView, showRoutes, showFlightLines, map]); // 🎯 USA vuelosEnMovimiento en lugar de flights
 	
 	return null;
 }
@@ -718,6 +745,7 @@ const SimuladorSemanal = () => {
 	const [colaVuelos, setColaVuelos] = useState([]);           // Buffer de vuelos pendientes del WebSocket
 	const [vuelosEnAire, setVuelosEnAire] = useState([]);       // Vuelos activos (procesándose en animación)
 	const [pedidosCompletados, setPedidosCompletados] = useState([]);
+	const [contadorPedidosTotal, setContadorPedidosTotal] = useState(0); // 🆕 Contador de todos los pedidos en pantalla
 	const [relojLocal, setRelojLocal] = useState(null);         // Reloj de simulación local (independiente)
 	const [kActual, setKActual] = useState(500);                // Factor K actual (adaptable)
 	const [kBase] = useState(500);                               // Factor K base (constante)
@@ -1084,6 +1112,22 @@ const SimuladorSemanal = () => {
 			}
 		}
 	}, [vuelosEnMovimiento]);
+
+	// 🆕 EFECTO: Actualizar el contador total de pedidos en pantalla
+	useEffect(() => {
+		let totalPedidos = 0;
+		
+		// Contar todos los pedidos de los vuelos que se están mostrando
+		(flights || []).forEach(f => {
+			if (f.pedidos && Array.isArray(f.pedidos)) {
+				totalPedidos += f.pedidos.length;
+			} else if (f.pedidoId) {
+				totalPedidos += 1;
+			}
+		});
+		
+		setContadorPedidosTotal(totalPedidos);
+	}, [flights]);
 
 	// 📊 EFECTO: Mostrar métricas cada 10 segundos en consola
 	useEffect(() => {
@@ -2780,6 +2824,25 @@ console.log(`Vuelos activos anadidos: ${vuelosActivos}`);
 		console.log(`📊 Vuelos en el aire (sidebar logic): ${enAire}`);
 	}, [vuelosEnMovimiento]);
 
+	/* Efecto: Actualizar la cantidad de pedidos */
+	const [ordersCount, setOrdersCount] = useState(0);
+
+	useEffect(() => {
+		const list = [];
+
+		(flights || []).forEach(f => {
+			if (Array.isArray(f.pedidos)) {
+				f.pedidos.forEach(p => list.push({ ...p, flightId: f.id }));
+			} else if (f.pedidoId) {
+				list.push({ idPedido: f.pedidoId, flightId: f.id });
+			}
+		});
+
+		// Actualizar el estado global de pedidos
+		setOrdersCount(list.length);
+		console.log(`📦 Total pedidos en simulación: ${list.length}`);
+	}, [flights]);
+
 	/* Estado y lógica para el drawer lateral */
 	const drawerWidth = 300; // ancho del drawer
 	const [open, setOpen] = useState(false);
@@ -2901,7 +2964,7 @@ console.log(`Vuelos activos anadidos: ${vuelosActivos}`);
 							>
 								<Tab label=" Vuelos" />
 								<Tab label=" Aeropuertos" />
-								<Tab label=" Pedidos" />
+								<Tab label={` Pedidos ${contadorPedidosTotal > 0 ? `(${contadorPedidosTotal})` : ''}`} />
 							</Tabs>
 						</Box>
 
@@ -3073,6 +3136,9 @@ console.log(`Vuelos activos anadidos: ${vuelosActivos}`);
 													});
 												}
 											});
+
+											const totalOrders = list.length;
+
 											const q = searchOrders.trim().toLowerCase();
 											return list.filter(o => {
 												if (!q) return true;
@@ -3483,7 +3549,7 @@ console.log(`Vuelos activos anadidos: ${vuelosActivos}`);
 													}}
 													title={showFlightLines ? 'Ocultar líneas de rutas' : 'Mostrar líneas de rutas'}
 												>
-													{showFlightLines ? '👁️' : '👁️‍🗨️'} {showFlightLines ? 'Rutas' : 'Rutas'}
+													<FaRoad size={18}/> Rutas
 												</button>
 											</div>
 										</div>
@@ -3896,6 +3962,7 @@ console.log(`Vuelos activos anadidos: ${vuelosActivos}`);
 				open={isMetricsPopperOpen}
 				anchorEl={metricsAnchorEl}
 				flightsInAirCount={flightsInAirCount}
+				orderCount={ordersCount}
 				flights={flightsInMovement}
 				getSaturation={getSaturation}
 			/>

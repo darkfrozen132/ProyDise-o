@@ -59,8 +59,9 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws")
-                .setAllowedOriginPatterns("*") // ⚠️ En producción: especificar dominios
-                .withSockJS(); // Habilitar SockJS fallback
+                .setAllowedOriginPatterns("*") // Permitir todos los orígenes
+                .withSockJS()
+                .setSessionCookieNeeded(false); // No requiere cookies de sesión
         
         log.info("✅ Endpoint STOMP registrado: ws://localhost:8000/ws (SockJS habilitado)");
     }

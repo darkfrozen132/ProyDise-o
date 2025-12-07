@@ -14,7 +14,7 @@ import 'leaflet/dist/leaflet.css';
 import SockJS from 'sockjs-client';
 import { Client } from '@stomp/stompjs';
 import vuelosSemana from '../../../assets/data/vuelosSemana.json';
-import { getPlanificacionSemanal } from '../../../config/api';
+import { getPlanificacionSemanal, API_BASE_URL, WS_URL } from '../../../config/api';
 import './SimuladorSemanal.css';
 import './WebSocketStomp.css';
 import {
@@ -1278,7 +1278,7 @@ const SimuladorSemanal = () => {
 
 			// 🔄 Llamar al endpoint REST para iniciar simulación
 			console.log('🚀 Llamando al backend para iniciar simulación...');
-			const response = await fetch('http://localhost:8000/api/simulations/start', {
+			const response = await fetch(`${API_BASE_URL}/api/simulations/start`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
@@ -1360,7 +1360,7 @@ const SimuladorSemanal = () => {
 		// Cancelar simulación en el backend si hay sessionId
 		if (sessionId) {
 			try {
-				const response = await fetch(`http://localhost:8000/api/simulations/${sessionId}/cancel`, {
+				const response = await fetch(`${API_BASE_URL}/api/simulations/${sessionId}/cancel`, {
 					method: 'POST'
 				});
 				if (response.ok) {
@@ -1762,7 +1762,7 @@ const SimuladorSemanal = () => {
 		console.log('📡 Conectando WebSocket STOMP...');
 		setEstadoSimulacionStomp('connecting');
 
-		const socket = new SockJS('http://localhost:8000/ws');
+		const socket = new SockJS(WS_URL);
 		
 		const stompClient = new Client({
 			webSocketFactory: () => socket,
@@ -1880,7 +1880,7 @@ const SimuladorSemanal = () => {
 			agregarMensaje(`🚀 Iniciando simulación para ${fechaInicioSimulacion} a las ${horaInicioSimulacion}`, 'info');
 
 			// 1. Llamar al endpoint REST para iniciar
-			const response = await fetch('http://localhost:8000/api/simulations/start', {
+			const response = await fetch(`${API_BASE_URL}/api/simulations/start`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
@@ -2579,7 +2579,7 @@ console.log(`Vuelos activos anadidos: ${vuelosActivos}`);
 		try {
 			console.log(`🛑 Cancelando simulación ${sessionId}...`);
 			
-			const response = await fetch(`http://localhost:8000/api/simulations/${sessionId}/cancel`, {
+			const response = await fetch(`${API_BASE_URL}/api/simulations/${sessionId}/cancel`, {
 				method: 'POST'
 			});
 

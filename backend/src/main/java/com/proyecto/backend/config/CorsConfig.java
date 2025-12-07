@@ -1,5 +1,6 @@
 package com.proyecto.backend.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.cors.CorsConfiguration;
@@ -7,25 +8,30 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
 
 import java.util.Arrays;
-import java.util.List;
 
 /**
  * Configuración global de CORS para toda la aplicación.
- * Permite peticiones desde cualquier origen para desarrollo.
+ * Los orígenes permitidos se configuran en application.properties:
+ * app.cors.allowed-origins=http://localhost:3000
  */
 @Configuration
 public class CorsConfig {
+
+    @Value("${app.cors.allowed-origins:*}")
+    private String allowedOrigins;
 
     @Bean
     public CorsFilter corsFilter() {
         CorsConfiguration config = new CorsConfiguration();
         
-        // Permitir credenciales (cookies, authorization headers)
-        config.setAllowCredentials(true);
-        
-        // Permitir todos los orígenes (para desarrollo)
-        // En producción, especifica los dominios: Arrays.asList("https://tudominio.com")
-        config.setAllowedOriginPatterns(List.of("*"));
+        // Usar orígenes desde application.properties
+        if ("*".equals(allowedOrigins)) {
+            config.setAllowCredentials(false);
+            config.addAllowedOriginPattern("*");
+        } else {
+            config.setAllowCredentials(true);
+            config.setAllowedOriginPatterns(Arrays.asList(allowedOrigins.split(",")));
+        }
         
         // Headers permitidos
         config.setAllowedHeaders(Arrays.asList(
@@ -46,12 +52,7 @@ public class CorsConfig {
         
         // Métodos HTTP permitidos
         config.setAllowedMethods(Arrays.asList(
-            "GET",
-            "POST",
-            "PUT",
-            "DELETE",
-            "OPTIONS",
-            "PATCH"
+            "GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"
         ));
         
         // Tiempo de caché para preflight requests (1 hora)

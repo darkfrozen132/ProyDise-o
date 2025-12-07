@@ -1,13 +1,15 @@
 // ==================== CONFIGURACIÓN WEBSOCKET ====================
 import { useState, useEffect } from 'react';
+import { API_BASE_URL } from './api';
 
-// URL base del WebSocket (simulación antigua)
-const WS_BASE_URL = process.env.REACT_APP_API_URL 
-  ? process.env.REACT_APP_API_URL.replace('http://', 'ws://').replace('https://', 'wss://')
-  : 'ws://127.0.0.1:8000';
+// Derivar URL de WebSocket desde la configuración centralizada
+const WS_BASE_URL = API_BASE_URL.replace('http://', 'ws://').replace('https://', 'wss://');
 
-// URL del WebSocket de planificación (NUEVA - según websocket.md)
-const WS_PLANIFICACION_URL = 'ws://localhost:8000/ws/planificacion';
+// URL del WebSocket de planificación
+const WS_PLANIFICACION_URL = `${WS_BASE_URL}/ws/planificacion`;
+
+// Exportar para uso en otros archivos
+export { WS_BASE_URL, WS_PLANIFICACION_URL };
 
 /**
  * Conectar al WebSocket de la simulación   

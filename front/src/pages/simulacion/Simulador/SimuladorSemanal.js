@@ -1136,12 +1136,15 @@ const SimuladorSemanal = () => {
 		flightsInAirRef.current = flightsInAir;
 	}, [flightsInAir]);
 	
+	// 🆕 CONSTANTE: Duración de la simulación semanal (7 días en milisegundos)
+	const DURACION_SIMULACION_MS = 7 * 24 * 60 * 60 * 1000; // 604,800,000 ms = 7 días
+	
 	useEffect(() => {
-		if (!simulacionLocalActiva || !relojLocalRef.current) return;
+		if (!simulacionLocalActiva || !relojLocalRef.current || !simStartRef.current) return;
 		
-		// 🎯 VELOCIDAD CONSTANTE: Siempre usa K=500 (DESIRED_TIME_SCALE)
+		// 🎯 VELOCIDAD CONSTANTE: Siempre usa K=300 (DESIRED_TIME_SCALE)
 		// Sin adaptación basada en aviones visibles
-		const K_CONSTANTE = DESIRED_TIME_SCALE; // 500x
+		const K_CONSTANTE = DESIRED_TIME_SCALE; // 300x
 		
 		const interval = setInterval(() => {
 			// Calcular milisegundos simulados por tick
@@ -1150,6 +1153,27 @@ const SimuladorSemanal = () => {
 			
 			// Avanzar el reloj local
 			const nuevoTiempo = new Date(relojLocalRef.current.getTime() + msSimulados);
+			
+			// 🆕 VERIFICAR LÍMITE DE 7 DÍAS
+			const tiempoTranscurridoSimulado = nuevoTiempo.getTime() - simStartRef.current.getTime();
+			if (tiempoTranscurridoSimulado >= DURACION_SIMULACION_MS) {
+				console.log('✅ SIMULACIÓN SEMANAL COMPLETADA - 7 días simulados');
+				console.log(`   Inicio: ${simStartRef.current.toISOString()}`);
+				console.log(`   Fin: ${nuevoTiempo.toISOString()}`);
+				
+				// Detener la simulación local
+				setSimulacionLocalActiva(false);
+				setSimulacionActiva(false);
+				
+				// Limpiar intervalo de tiempo real
+				if (intervalTiempoRealRef.current) {
+					clearInterval(intervalTiempoRealRef.current);
+					intervalTiempoRealRef.current = null;
+				}
+				
+				alert('✅ Simulación semanal completada (7 días)');
+				return;
+			}
 			
 			relojLocalRef.current = nuevoTiempo;
 			setRelojLocal(nuevoTiempo);
@@ -1162,7 +1186,8 @@ const SimuladorSemanal = () => {
 			// Debug cada 20 segundos aproximadamente (80 ticks @ 250ms)
 			if (Math.random() < 0.0125) {
 				const avionesEnPantalla = flightsInAirRef.current;
-				console.log(`⏰ Reloj: ${nuevoTiempo.toISOString().slice(11,19)} | K=${K_CONSTANTE} | Aviones=${avionesEnPantalla}`);
+				const diasTranscurridos = (tiempoTranscurridoSimulado / (24 * 60 * 60 * 1000)).toFixed(2);
+				console.log(`⏰ Reloj: ${nuevoTiempo.toISOString().slice(11,19)} | Día ${diasTranscurridos}/7 | K=${K_CONSTANTE} | Aviones=${avionesEnPantalla}`);
 			}
 		}, TICK_REAL_MS);
 		

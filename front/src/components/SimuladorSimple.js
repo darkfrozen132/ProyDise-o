@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { cargarAeropuertos } from '../services/api';
+import { API_BASE_URL } from '../config/api';
 import axios from 'axios';
 import 'leaflet/dist/leaflet.css';
 import './SimuladorSimple.css';
@@ -131,7 +132,7 @@ export default function SimuladorSimple() {
       
       // Llamar al endpoint REST
       const response = await axios.post(
-        'http://localhost:8000/api/planificacion/ejecutar-simple',
+        `${API_BASE_URL}/api/planificacion/ejecutar-simple`,
         null,
         {
           params: {

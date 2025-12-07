@@ -2,9 +2,15 @@
  * Constantes de configuración para el Simulador Semanal
  */
 
+// ==================== DURACIÓN DE LA SIMULACIÓN ====================
+// La simulación semanal abarca exactamente 7 días
+export const SIMULATION_DAYS = 7;
+export const SIMULATION_DURATION_MS = SIMULATION_DAYS * 24 * 60 * 60 * 1000; // 604,800,000 ms
+
 // ==================== CONFIGURACIÓN DE VELOCIDAD ====================
 // Factor K: Cuántos ms simulados pasan por cada ms real
-// Ejemplo: K=500 significa que 1 segundo real = 500 segundos simulados (8.33 min)
+// Ejemplo: K=300 significa que 1 segundo real = 300 segundos simulados (5 min)
+// Con K=300 y TICK=250ms: 7 días se simulan en ~34 minutos reales
 export const DESIRED_TIME_SCALE = 300; // Factor K de aceleración del tiempo
 
 // Intervalos de tiempo
@@ -18,7 +24,7 @@ export const USE_ADAPTIVE_SPEED = false; // false = velocidad CONSTANTE después
 
 // ==================== SISTEMA ADAPTATIVO (OPCIONAL) ====================
 // Solo se usa si USE_ADAPTIVE_SPEED = true
-export const K_BASE = 300; // Factor K base
+export const K_BASE = 300; // Factor K base (debe coincidir con DESIRED_TIME_SCALE)
 export const UMBRAL_COLA_BAJA = 3; // Si cola < 3, ralentizar
 export const FACTOR_RALENTIZADO = 0.25; // K se reduce a 25% cuando cola baja
 

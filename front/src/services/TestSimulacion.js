@@ -10,6 +10,7 @@
  */
 
 import { simulacionService } from './SimulacionLogisticaService';
+import { API_BASE_URL } from '../config/api';
 
 /**
  * 🧪 TEST COMPLETO DEL SERVICIO
@@ -138,7 +139,7 @@ export async function testConexion() {
 export async function testEndpoints() {
   console.log('🧪 Testing endpoints REST...');
   
-  const baseURL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
+  const baseURL = API_BASE_URL;
   
   try {
     // Test 1: POST /api/simulations/start

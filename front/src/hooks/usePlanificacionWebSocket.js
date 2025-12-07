@@ -13,9 +13,10 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { WS_PLANIFICACION_URL } from '../config/websocket';
 
 // ==================== CONFIGURACIÓN ====================
-const WS_URL = 'ws://localhost:8000/ws/planificacion';
+const WS_URL = WS_PLANIFICACION_URL;
 
 const DEFAULT_CONFIG = {
   reconnectDelay: 1000,        // Delay inicial de reconexión (1s)

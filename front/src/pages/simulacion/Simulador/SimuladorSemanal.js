@@ -295,242 +295,188 @@ const createAirportPopup = (airport) => {
 /* Componente para manejar marcadores dinámicos en el mapa */
 function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMovimiento, showFlightLines }) {
 	const map = (0, require('react-leaflet').useMap)();
-	const markersRef = React.useRef({}); // Guardar marcadores por ID para animarlos
-	const polylinesRef = React.useRef({});
-	const airportMarkersRef = React.useRef({}); // 🆕 Ref para marcadores de aeropuertos (por código)
+	const markersRef = React.useRef({});
+	const airportMarkersRef = React.useRef({});
 	const flightLinesRef = React.useRef({});
-	const lastLogRef = React.useRef({ count: 0, time: 0, activeCount: 0 }); // 🚀 Throttle para logs
-	
-	/* Actualizar marcadores cuando cambian vuelos, aeropuertos, vista activa o rutas */
+	const lastLogRef = React.useRef({ count: 0, time: 0, activeCount: 0 });
+
 	React.useEffect(() => {
-		// 🚀 Log solo cada 5 segundos o si cambió cantidad de vuelos
 		const now = Date.now();
 		if (flights.length !== lastLogRef.current.count || now - lastLogRef.current.time > 5000) {
 			console.log(`🗺️ DynamicMarkers - Recibidos ${flights.length} vuelos, activeView: ${activeView}`);
 			lastLogRef.current = { count: flights.length, time: now };
 		}
-		
-		/* 🏢 AEROPUERTOS: Solo actualizar si cambiaron (NO recrear para mantener popups abiertos) */
+
+		/* AEROPUERTOS */
 		const currentAirportCodes = new Set();
-		
+
 		airports.forEach(airport => {
-			// Validar coordenadas
 			if (!airport.lat || !airport.lng || isNaN(airport.lat) || isNaN(airport.lng)) {
 				console.warn(`⚠️ Aeropuerto ${airport.code} sin coordenadas válidas`);
 				return;
 			}
-			
+
 			currentAirportCodes.add(airport.code);
 			const existingMarker = airportMarkersRef.current[airport.code];
-			
+
 			if (existingMarker) {
-				// 🆕 Actualizar popup content sin recrear el marcador (mantiene popup abierto)
 				existingMarker.setPopupContent(createAirportPopup(airport));
 			} else {
-				// 🆕 Crear nuevo marcador solo si no existe
 				const isUnlimited = airport.capacity === 'ILIMITADO';
 				const saturation = isUnlimited ? 0 : (airport.packages / airport.capacity) * 100;
 				const icon = createAirportIcon(airport.name, saturation);
-				const marker = L.marker([airport.lat, airport.lng], { 
+				const marker = L.marker([airport.lat, airport.lng], {
 					icon,
-					isAirport: true // Flag para identificar
+					isAirport: true
 				}).bindPopup(createAirportPopup(airport), {
-					closeOnClick: false,  // 🆕 No cerrar al hacer click en otro lugar
-					autoClose: false      // 🆕 No cerrar automáticamente
+					closeOnClick: false,
+					autoClose: false
 				});
 				marker.addTo(map);
 				airportMarkersRef.current[airport.code] = marker;
 			}
 		});
-		
-		// Eliminar marcadores de aeropuertos que ya no existen
+
 		Object.keys(airportMarkersRef.current).forEach(code => {
 			if (!currentAirportCodes.has(code)) {
 				map.removeLayer(airportMarkersRef.current[code]);
 				delete airportMarkersRef.current[code];
 			}
 		});
-		
-		/* Actualizar o crear marcadores de vuelos con animación (SISTEMA REACTIVO) */
+
+		/* VUELOS */
 		if (activeView === 'flights' || activeView === 'routes') {
-			// 🆕 FILTRAR: Solo mostrar vuelos ACTIVOS (en vuelo), no 'waiting' ni 'completed'
-			const vuelosActivos = vuelosEnMovimiento.filter(v => 
-				v.status === 'active' && v.progress > 0 && v.progress <= 100
+			const currentFlightIds = new Set();
+
+			// ✅ CAMBIO CRÍTICO: < 100 en lugar de <= 100
+			const vuelosActivos = vuelosEnMovimiento.filter(v =>
+				v.status === 'active' && v.progress > 0 && v.progress < 100
 			);
-			// 🚀 Log solo si cambió la cantidad (evitar spam)
+
+			// 🔍 DEBUG: Ver vuelos excluidos
+			const vuelosNoActivos = vuelosEnMovimiento.filter(v =>
+				!(v.status === 'active' && v.progress > 0 && v.progress < 100)
+			);
+			if (vuelosNoActivos.length > 0 && vuelosNoActivos.length < 3) {
+				console.log(`🔍 Vuelos excluidos:`, vuelosNoActivos.map(v =>
+					`${v.id.substring(0, 8)}... (status=${v.status}, progress=${v.progress?.toFixed(1)}%)`
+				));
+			}
+
 			if (vuelosActivos.length !== lastLogRef.current.activeCount) {
 				console.log(`✈️ Aviones en vuelo: ${vuelosActivos.length}/${vuelosEnMovimiento.length}`);
 				lastLogRef.current.activeCount = vuelosActivos.length;
 			}
-			
-			const currentFlightIds = new Set();
-			
+
 			vuelosActivos.forEach((flight, index) => {
-				// Verificar que las coordenadas sean válidas
-				if (!flight.currentLat || !flight.currentLng || 
-						isNaN(flight.currentLat) || isNaN(flight.currentLng)) {
+				if (!flight.currentLat || !flight.currentLng ||
+					isNaN(flight.currentLat) || isNaN(flight.currentLng)) {
 					return;
 				}
-				
+
 				currentFlightIds.add(flight.id);
 				const existingMarker = markersRef.current[flight.id];
-				
-				// ✅ Usar posiciones pre-calculadas del useMemo
 				const position = { lat: flight.currentLat, lng: flight.currentLng };
-				const progress = flight.progress || 0;
-				const status = flight.status || 'active';
-				
+
 				if (existingMarker) {
-					// 🎬 ANIMAR: Mover marcador existente suavemente a nueva posición
 					const currentLatLng = existingMarker.getLatLng();
 					const newLatLng = L.latLng(position.lat, position.lng);
-					
-					// 🎬 Animar solo si el cambio es significativo (> 100m)
-					// Esto suaviza correcciones del backend o saltos temporales
 					const distance = currentLatLng.distanceTo(newLatLng);
+
 					if (distance > 100) {
-						animateMarker(existingMarker, currentLatLng, newLatLng, 1000); // 1 segundo de animación
+						animateMarker(existingMarker, currentLatLng, newLatLng, 1000);
 					} else {
-						existingMarker.setLatLng(newLatLng); // actualización instantánea
+						existingMarker.setLatLng(newLatLng);
 					}
-					
-					// Actualizar ícono (ahora con estado y color dinámicos)
-					const newIcon = createAirplaneIcon(flight, flight.rotation);
-					existingMarker.setIcon(newIcon);
-					
-					// Actualizar popup con información detallada y actualizada
-					const popupContent = createFlightPopup(flight);
-					existingMarker.setPopupContent(popupContent);
-					
+
+					existingMarker.setIcon(createAirplaneIcon(flight, flight.rotation));
+					existingMarker.setPopupContent(createFlightPopup(flight));
 				} else {
-					// 🆕 CREAR: Nuevo marcador para este vuelo
-					// 🚀 Log deshabilitado para rendimiento
-					// console.log(`  ✈️ Vuelo nuevo: ${flight.id}`);
-					
 					const icon = createAirplaneIcon(flight, flight.rotation);
 					const popupContent = createFlightPopup(flight);
-					
-					const marker = L.marker([position.lat, position.lng], { 
+					const marker = L.marker([position.lat, position.lng], {
 						icon,
-						isFlight: true // Flag para identificar
+						isFlight: true
 					}).bindPopup(popupContent);
-					
 					marker.addTo(map);
 					markersRef.current[flight.id] = marker;
 				}
-				
-				// 🌐 Actualizar o crear polyline de ruta (solo si vuelo está activo: status='active' && progress < 100)
-				if (showRoutes && flight.status === 'active' && flight.progress > 0 && flight.progress < 100) {
-					const routeKey = `${flight.origin.lat},${flight.origin.lng}-${flight.destination.lat},${flight.destination.lng}`;
-					
-					if (!polylinesRef.current[routeKey]) {
-						const polyline = L.polyline(
-							[[flight.origin.lat, flight.origin.lng], [flight.destination.lat, flight.destination.lng]], 
-							{ color: '#888', weight: 2, opacity: 0.6, dashArray: '5, 5' }
-						);
-						polyline.addTo(map);
-						polylinesRef.current[routeKey] = polyline;
-					}
-				}
 
-				// 🌐 Línea dinámica por vuelo: desde origen hasta la posición actual (visible mientras está en movimiento)
-				// Solo mostrar si showFlightLines está habilitado
+				// Líneas dinámicas - Solo crear si el botón está activado
 				if (showFlightLines) {
 					try {
 						const lineKey = flight.id;
 						const coords = [[flight.origin.lat, flight.origin.lng], [position.lat, position.lng]];
 						const existingLine = flightLinesRef.current[lineKey];
+
 						if (existingLine) {
 							existingLine.setLatLngs(coords);
 						} else {
-							const flightLine = L.polyline(coords, { color: '#9b9b9bff', weight: 1.5, opacity: 1.0, dashArray: '3, 8', lineCap: 'round', lineJoin: 'round', interactive: false });
+							const flightLine = L.polyline(coords, {
+								color: '#ec9119ff',
+								weight: 2,
+								opacity: 1.0,
+								dashArray: '3, 8',
+								lineCap: 'round',
+								lineJoin: 'round',
+								interactive: false
+							});
 							flightLine.addTo(map);
 							flightLinesRef.current[lineKey] = flightLine;
 						}
 					} catch (err) {
-						// Protección contra datos incompletos
 						console.warn('❌ No se pudo dibujar línea de vuelo para', flight.id, err);
 					}
 				}
 			});
-			
+
 			// Remover marcadores de vuelos que ya no existen
 			Object.keys(markersRef.current).forEach(flightId => {
 				if (!currentFlightIds.has(flightId)) {
 					map.removeLayer(markersRef.current[flightId]);
 					delete markersRef.current[flightId];
-					// También eliminar la línea dinámica del vuelo si existe
-					if (flightLinesRef.current[flightId]) {
-						try { map.removeLayer(flightLinesRef.current[flightId]); } catch(e){}
+				}
+			});
+
+			// Remover líneas de vuelos que ya no existen (SEPARADO)
+			Object.keys(flightLinesRef.current).forEach(flightId => {
+				if (!currentFlightIds.has(flightId)) {
+					try {
+						map.removeLayer(flightLinesRef.current[flightId]);
 						delete flightLinesRef.current[flightId];
+					} catch (e) {
+						console.warn(`Error eliminando línea: ${e.message}`);
 					}
 				}
 			});
-			
-			// 🆕 Limpiar polylines de rutas cuando los vuelos ya no están activos
-			if (showRoutes) {
-				// Crear un set de rutas que deben existir (solo vuelos ACTIVOS con progress < 100)
-				const activeRouteKeys = new Set();
-				vuelosEnMovimiento.forEach(flight => {
-					// ⚠️ IMPORTANTE: Mostrar polyline solo si progress < 100 (aún en vuelo)
-					// Cuando progress === 100, la polyline se eliminará
-					if (flight.status === 'active' && flight.progress > 0 && flight.progress < 100) {
-						const routeKey = `${flight.origin.lat},${flight.origin.lng}-${flight.destination.lat},${flight.destination.lng}`;
-						activeRouteKeys.add(routeKey);
-					}
-				});
-				
-				// Remover polylines de rutas inactivas (cuando progress >= 100 o status !== active)
-				Object.keys(polylinesRef.current).forEach(routeKey => {
-					if (!activeRouteKeys.has(routeKey)) {
-						try {
-							map.removeLayer(polylinesRef.current[routeKey]);
-							delete polylinesRef.current[routeKey];
-						} catch (e) {
-							console.warn('Error al remover polyline:', e);
-						}
-					}
-				});
-			}
-			
-			// Limpiar polylines si showRoutes está desactivado
-			if (!showRoutes) {
-				Object.values(polylinesRef.current).forEach(polyline => map.removeLayer(polyline));
-				polylinesRef.current = {};
-			}
-			// Limpiar líneas dinámicas si showFlightLines está desactivado
-			if (!showFlightLines) {
+
+			// 🆕 Limpiar TODAS las líneas si el botón está desactivado
+			if (!showFlightLines && Object.keys(flightLinesRef.current).length > 0) {
+				console.log('🧹 Limpiando todas las líneas (botón desactivado)');
 				Object.values(flightLinesRef.current).forEach(line => {
 					try { map.removeLayer(line); } catch (e) {}
 				});
 				flightLinesRef.current = {};
 			}
-			
-			// 🚀 Log de marcadores deshabilitado para rendimiento
-			// console.log(`✅ Marcadores activos: ${Object.keys(markersRef.current).length}`);
-} else {
-			// Si no estamos en vista de vuelos, limpiar todos los marcadores de vuelos
+
+			console.log(`📊 Marcadores: ${Object.keys(markersRef.current).length} | Líneas: ${Object.keys(flightLinesRef.current).length}`);
+		} else {
+			// Limpiar todo si no estamos en vista de vuelos
 			Object.values(markersRef.current).forEach(marker => map.removeLayer(marker));
 			markersRef.current = {};
-			
-			Object.values(polylinesRef.current).forEach(polyline => map.removeLayer(polyline));
-			polylinesRef.current = {};
-			
-			// Limpiar también líneas dinámicas por vuelo
+
 			Object.values(flightLinesRef.current).forEach(line => map.removeLayer(line));
 			flightLinesRef.current = {};
-			}
-		/* Limpiar marcadores de aeropuertos al desmontar */
-		return () => { 
-			// Limpiar marcadores de aeropuertos
+		}
+
+		return () => {
 			Object.values(airportMarkersRef.current).forEach(m => map.removeLayer(m));
 			airportMarkersRef.current = {};
-			// Limpiar marcadores de vuelos
 			Object.values(markersRef.current).forEach(m => map.removeLayer(m));
 			markersRef.current = {};
 		};
-	}, [vuelosEnMovimiento, airports, activeView, showRoutes, showFlightLines, map]); // 🎯 USA vuelosEnMovimiento en lugar de flights
-	
+	}, [vuelosEnMovimiento, airports, activeView, showRoutes, showFlightLines, map]);
+
 	return null;
 }
 
@@ -682,7 +628,7 @@ const SimuladorSemanal = () => {
 	const [speed, setSpeed] = useState(1);
 	const [simulationStatus, setSimulationStatus] = useState('Monitoreo semanal activo');
 	const [activeView, setActiveView] = useState('flights');
-	const [showRoutes, setShowRoutes] = useState(false);
+	const [showRoutes, setShowRoutes] = useState(true);
 	const [showLegend, setShowLegend] = useState(false);
 	const [showFlightLines, setShowFlightLines] = useState(true); // 🆕 Toggle para líneas dinámicas de vuelos
 

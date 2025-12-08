@@ -24,12 +24,16 @@ public class CorsConfig {
     public CorsFilter corsFilter() {
         CorsConfiguration config = new CorsConfiguration();
         
-        // Usar orígenes desde application.properties
+        // 🔧 CORS para desarrollo: permitir localhost:3000 con credenciales
+        // Esto es necesario para SockJS/WebSocket que envía cookies
+        config.setAllowCredentials(true);
+        
+        // Usar orígenes específicos para desarrollo
         if ("*".equals(allowedOrigins)) {
-            config.setAllowCredentials(false);
-            config.addAllowedOriginPattern("*");
+            // En desarrollo, permitir localhost:3000 explícitamente
+            config.addAllowedOriginPattern("http://localhost:*");
+            config.addAllowedOriginPattern("http://127.0.0.1:*");
         } else {
-            config.setAllowCredentials(true);
             config.setAllowedOriginPatterns(Arrays.asList(allowedOrigins.split(",")));
         }
         

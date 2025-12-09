@@ -1,6 +1,5 @@
 package com.proyecto.backend.config;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.cors.CorsConfiguration;
@@ -17,25 +16,14 @@ import java.util.Arrays;
 @Configuration
 public class CorsConfig {
 
-    @Value("${app.cors.allowed-origins:*}")
-    private String allowedOrigins;
-
     @Bean
     public CorsFilter corsFilter() {
         CorsConfiguration config = new CorsConfiguration();
         
-        // 🔧 CORS para desarrollo: permitir localhost:3000 con credenciales
-        // Esto es necesario para SockJS/WebSocket que envía cookies
-        config.setAllowCredentials(true);
-        
-        // Usar orígenes específicos para desarrollo
-        if ("*".equals(allowedOrigins)) {
-            // En desarrollo, permitir localhost:3000 explícitamente
-            config.addAllowedOriginPattern("http://localhost:*");
-            config.addAllowedOriginPattern("http://127.0.0.1:*");
-        } else {
-            config.setAllowedOriginPatterns(Arrays.asList(allowedOrigins.split(",")));
-        }
+        // 🔧 CORS ABIERTO: Permitir TODOS los orígenes (desarrollo y producción)
+        // ⚠️ NOTA: En producción real, esto debería ser más restrictivo
+        config.addAllowedOriginPattern("*"); // Permite cualquier origen
+        config.setAllowCredentials(true);    // Permite cookies/credenciales
         
         // Headers permitidos
         config.setAllowedHeaders(Arrays.asList(

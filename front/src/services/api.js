@@ -9,9 +9,10 @@
  */
 
 import axios from 'axios';
+import { API_BASE_URL } from '../config/api';
 
-// Configuración base
-const REST_BASE_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
+// Usar configuración centralizada
+const REST_BASE_URL = API_BASE_URL;
 
 /**
  * Cliente axios configurado

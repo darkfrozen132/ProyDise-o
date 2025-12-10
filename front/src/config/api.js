@@ -1,7 +1,9 @@
 import axios from 'axios';
 
 // ==================== CONFIGURACIÓN CENTRALIZADA ====================
-// 🔧 Base URL del Backend (ajustar según tu entorno)
+// 🔧 CAMBIAR AQUÍ LA URL DEL BACKEND
+// Para desarrollo local: http://localhost:8000
+// Para servidor remoto: http://200.16.7.181
 const API_BASE_URL = process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
 
 // URL para REST API
@@ -9,6 +11,9 @@ const REST_API_URL = `${API_BASE_URL}/api`;
 
 // URL para WebSocket (STOMP + SockJS)
 const WS_URL = `${API_BASE_URL}/ws`;
+
+// Exportar URLs para uso en otros archivos
+export { API_BASE_URL, REST_API_URL, WS_URL };
 
 const api = axios.create({
   baseURL: REST_API_URL,
@@ -58,17 +63,24 @@ api.interceptors.response.use(
 export const transformAirportData = (backendAirport) => {
   console.log('Transformando aeropuerto:', backendAirport);
   
+  // Determinar si es una sede/hub (capacidad ilimitada)
+  const HUBS = ['EBCI', 'SPIM', 'UBBB'];
+  const isHub = HUBS.includes(backendAirport.codigoICAO);
+  
   const transformed = {
     name: `${backendAirport.ciudad}`,
     code: backendAirport.codigoICAO,
     lat: backendAirport.latitud,
     lng: backendAirport.longitud,
-    capacity: backendAirport.capacidadAlmacen,
-    packages: backendAirport.capacidadAlmacen - backendAirport.capacidadDisponible,
-    isSede: false, // Ajustar según lógica de negocio
+    capacity: isHub ? 'ILIMITADO' : backendAirport.capacidadAlmacen,
+    // 🆕 Los aeropuertos SIEMPRE empiezan vacíos (0 paquetes)
+    // Se llenan conforme aterrizan los aviones durante la simulación
+    packages: 0,
+    pedidosCount: 0,
+    isSede: isHub,
     region: backendAirport.continente,
     country: backendAirport.pais,
-    operationType: 'Aeropuerto Regional', // Ajustar según lógica de negocio
+    operationType: isHub ? 'Sede Principal - Hub' : 'Aeropuerto Regional',
     timezone: backendAirport.husoHorario
   };
   
@@ -331,5 +343,3 @@ export const getPlanificacionSemanal = async (fecha, factorK) => {
 };
 
 export default api;
-export { API_BASE_URL, REST_API_URL, WS_URL };
-  

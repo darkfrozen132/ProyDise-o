@@ -93,6 +93,7 @@ public class VueloSimplificadoDTO {
 
     /**
      * Agrega un pedido a la lista de pedidos del vuelo
+     * Si el pedido ya existe, suma la cantidad al existente
      *
      * @param idPedido Identificador del pedido
      * @param cantidad Cantidad de productos
@@ -101,6 +102,18 @@ public class VueloSimplificadoDTO {
         if (pedidos == null) {
             pedidos = new ArrayList<>();
         }
+        
+        // Verificar si el pedido ya existe en la lista
+        for (PedidoEnVueloDTO pedido : pedidos) {
+            if (pedido.getIdPedido() != null && pedido.getIdPedido().equals(idPedido)) {
+                // Pedido ya existe - sumar la cantidad
+                Integer cantidadActual = pedido.getCantidad() != null ? pedido.getCantidad() : 0;
+                pedido.setCantidad(cantidadActual + (cantidad != null ? cantidad : 0));
+                return;
+            }
+        }
+        
+        // Pedido nuevo - agregar a la lista
         pedidos.add(new PedidoEnVueloDTO(idPedido, cantidad));
     }
 

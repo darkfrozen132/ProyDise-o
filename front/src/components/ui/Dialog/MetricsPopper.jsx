@@ -6,7 +6,7 @@ import { BiSolidTachometer } from "react-icons/bi";
 import { FaWarehouse } from "react-icons/fa";
 import { FaBuilding } from "react-icons/fa";
 
-export default function MetricsPopper({ open, anchorEl, flights, getSaturation }) {
+export default function MetricsPopper({ open, anchorEl, flightsInAirCount, orderCount, flights, getSaturation }) {
     return (
         <Popper
             open={open}
@@ -53,9 +53,10 @@ export default function MetricsPopper({ open, anchorEl, flights, getSaturation }
                                 <FaPlane size={15}/>
                             </div>
                             <div className="metric-content">
-                                <div className="metric-label">Vuelos en el aire</div>
-                                <div className="metric-value">{flights.length}</div>
-                                <div className="metric-sublabel">de 402 total</div>
+                                <div className="metric-label">Número de aviones</div>
+                                <div className="metric-value">{flightsInAirCount}</div>
+                                <div className="metric-sublabel">en el aire</div>
+                                {/*<div className="metric-sublabel">de 402 total</div>*/}
                             </div>
                         </div>
 
@@ -64,11 +65,22 @@ export default function MetricsPopper({ open, anchorEl, flights, getSaturation }
                                 <BiSolidTachometer size={20}/>
                             </div>
                             <div className="metric-content">
-                                <div className="metric-label">Saturación de aviones</div>
+                                <div className="metric-label">Porcentaje de aviones</div>
                                 <div className="metric-value">
-                                    {((flights.length / 402) * 100).toFixed(1)}%
+                                    {((flightsInAirCount / 2866) * 100).toFixed(1)}%
                                 </div>
-                                <div className="metric-sublabel">capacidad aérea</div>
+                                <div className="metric-sublabel">en vuelo</div>
+                            </div>
+                        </div>
+
+                        <div className="metric-card">
+                            <div className="metric-icon">
+                                <BiSolidTachometer size={20}/>
+                            </div>
+                            <div className="metric-content">
+                                <div className="metric-label">Número de pedidos</div>
+                                <div className="metric-value">{orderCount}</div>
+                                <div className="metric-sublabel">realizados</div>
                             </div>
                         </div>
 
@@ -80,17 +92,6 @@ export default function MetricsPopper({ open, anchorEl, flights, getSaturation }
                                 <div className="metric-label">Saturación aeropuertos</div>
                                 <div className="metric-value">{getSaturation()}%</div>
                                 <div className="metric-sublabel">almacenes regulares</div>
-                            </div>
-                        </div>
-
-                        <div className="metric-card sede">
-                            <div className="metric-icon">
-                                <FaBuilding size={15}/>
-                            </div>
-                            <div className="metric-content">
-                                <div className="metric-label">Sedes principales</div>
-                                <div className="metric-value">3/3</div>
-                                <div className="metric-sublabel">operativas</div>
                             </div>
                         </div>
                     </div>

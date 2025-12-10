@@ -2,18 +2,31 @@
  * Constantes de configuración para el Simulador Semanal
  */
 
-// Configuración de tiempo de simulación
-export const DESIRED_TIME_SCALE = 500; // Valor de K - Factor de aceleración del tiempo
-export const REAL_TICK_MS = 1000; // Intervalo del reloj real en ms (1 segundo)
-export const TICK_REAL_MS = 100; // Intervalo de actualización de animación en ms
+// ==================== DURACIÓN DE LA SIMULACIÓN ====================
+// La simulación semanal abarca exactamente 7 días
+export const SIMULATION_DAYS = 7;
+export const SIMULATION_DURATION_MS = SIMULATION_DAYS * 24 * 60 * 60 * 1000; // 604,800,000 ms
 
-// Sistema de cola adaptativo
+// ==================== CONFIGURACIÓN DE VELOCIDAD ====================
+// Factor K: Cuántos ms simulados pasan por cada ms real
+// Ejemplo: K=300 significa que 1 segundo real = 300 segundos simulados (5 min)
+// Con K=300 y TICK=250ms: 7 días se simulan en ~34 minutos reales
+export const DESIRED_TIME_SCALE = 300; // Factor K de aceleración del tiempo
+
+// Intervalos de tiempo
+export const REAL_TICK_MS = 1000; // Intervalo del reloj real en ms (1 segundo) - NO USADO
+export const TICK_REAL_MS = 250; // Intervalo de actualización del reloj local (4 FPS)
+
+// ==================== SISTEMA DE BUFFER INICIAL ====================
+// Dar ventaja al backend para generar rutas antes de empezar animación
+export const BUFFER_DELAY_MS = 20000; // 20 segundos de buffer inicial
+export const USE_ADAPTIVE_SPEED = false; // false = velocidad CONSTANTE después del buffer
+
+// ==================== SISTEMA ADAPTATIVO (OPCIONAL) ====================
+// Solo se usa si USE_ADAPTIVE_SPEED = true
+export const K_BASE = 300; // Factor K base (debe coincidir con DESIRED_TIME_SCALE)
 export const UMBRAL_COLA_BAJA = 3; // Si cola < 3, ralentizar
 export const FACTOR_RALENTIZADO = 0.25; // K se reduce a 25% cuando cola baja
-export const K_BASE = 500; // Factor K base (constante)
-
-// Buffer de inicialización
-export const BUFFER_DELAY_MS = 15000; // 15 segundos de buffer inicial para acumular vuelos
 
 // Configuración del mapa
 export const MAP_CENTER = [20, 0]; // Centro del mapa (lat, lng)

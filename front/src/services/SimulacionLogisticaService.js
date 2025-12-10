@@ -13,6 +13,7 @@
 
 import SockJS from 'sockjs-client';
 import { Client } from '@stomp/stompjs';
+import { API_BASE_URL } from '../config/api';
 
 class SimulacionLogisticaService {
   constructor() {
@@ -31,9 +32,9 @@ class SimulacionLogisticaService {
       onDisconnected: null,
     };
 
-    // Configuración
+    // Configuración (usa configuración centralizada)
     this.config = {
-      baseURL: process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000',
+      baseURL: API_BASE_URL,
       wsEndpoint: '/ws',
       reconnectDelay: 5000,
       heartbeatIncoming: 4000,

@@ -7,11 +7,11 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
 
 import java.util.Arrays;
-import java.util.List;
 
 /**
  * Configuración global de CORS para toda la aplicación.
- * Permite peticiones desde cualquier origen para desarrollo.
+ * Los orígenes permitidos se configuran en application.properties:
+ * app.cors.allowed-origins=http://localhost:3000
  */
 @Configuration
 public class CorsConfig {
@@ -20,12 +20,10 @@ public class CorsConfig {
     public CorsFilter corsFilter() {
         CorsConfiguration config = new CorsConfiguration();
         
-        // Permitir credenciales (cookies, authorization headers)
-        config.setAllowCredentials(true);
-        
-        // Permitir todos los orígenes (para desarrollo)
-        // En producción, especifica los dominios: Arrays.asList("https://tudominio.com")
-        config.setAllowedOriginPatterns(List.of("*"));
+        // 🔧 CORS ABIERTO: Permitir TODOS los orígenes (desarrollo y producción)
+        // ⚠️ NOTA: En producción real, esto debería ser más restrictivo
+        config.addAllowedOriginPattern("*"); // Permite cualquier origen
+        config.setAllowCredentials(true);    // Permite cookies/credenciales
         
         // Headers permitidos
         config.setAllowedHeaders(Arrays.asList(
@@ -46,12 +44,7 @@ public class CorsConfig {
         
         // Métodos HTTP permitidos
         config.setAllowedMethods(Arrays.asList(
-            "GET",
-            "POST",
-            "PUT",
-            "DELETE",
-            "OPTIONS",
-            "PATCH"
+            "GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"
         ));
         
         // Tiempo de caché para preflight requests (1 hora)

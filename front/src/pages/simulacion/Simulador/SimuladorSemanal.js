@@ -298,6 +298,28 @@ const calculateBearing = (from, to) => {
 	return brng;
 };
 
+/* ======= Aumentar luminosidad del marcador suavemente ======= */
+const lightenColor = (hex, percent) => {
+	// Remover # si existe
+	hex = hex.replace('#', '');
+
+	// Convertir a RGB
+	let r = parseInt(hex.substring(0, 2), 16);
+	let g = parseInt(hex.substring(2, 4), 16);
+	let b = parseInt(hex.substring(4, 6), 16);
+
+	// Aclarar según el porcentaje
+	r = Math.min(255, r + (255 - r) * percent);
+	g = Math.min(255, g + (255 - g) * percent);
+	b = Math.min(255, b + (255 - b) * percent);
+
+	// Convertir de vuelta a HEX
+	const toHex = (n) => n.toString(16).padStart(2, '0');
+
+	return `#${toHex(Math.round(r))}${toHex(Math.round(g))}${toHex(Math.round(b))}`;
+};
+
+
 /* ======= Componente para manejar marcadores y líneas dinámicas ======= */
 function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMovimiento, showFlightLines }) {
 	const map = (0, require('react-leaflet').useMap)();
@@ -431,17 +453,21 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMov
 					markersRef.current[flight.id] = marker;
 				}
 
-				// Líneas dinámicas - Solo crear si el botón está activado
+				// Dibujar líneas de vuelo si está habilitado
 				if (showFlightLines) {
 					try {
 						const lineKey = flight.id;
-						const coords = [[flight.origin.lat, flight.origin.lng], [flight.destination.lat, flight.destination.lng]];
+						const coords = [[position.lat, position.lng], [flight.destination.lat, flight.destination.lng]];
 						const existingLine = flightLinesRef.current[lineKey];
 
-						if (!existingLine) {
+						if (existingLine) {
+							// Actualizar la línea constantemente (se acorta a medida que avanza)
+							existingLine.setLatLngs(coords);
+						} else {
 							const colorAirplane = getAircraftColorByStatus(flight);
+							const lighterAirplane = lightenColor(colorAirplane, 0.30);
 							const flightLine = L.polyline(coords, {
-								color: colorAirplane,
+								color: lighterAirplane,
 								weight: 2,
 								opacity: 1.0,
 								dashArray: '3, 8',

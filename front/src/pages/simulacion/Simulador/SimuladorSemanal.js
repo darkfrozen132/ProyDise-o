@@ -692,6 +692,16 @@ const SimuladorSemanal = () => {
 	const [vuelosEnAire, setVuelosEnAire] = useState([]);       // Vuelos activos (procesándose en animación)
 	const [pedidosCompletados, setPedidosCompletados] = useState([]);
 	const [contadorPedidosTotal, setContadorPedidosTotal] = useState(0); // 🆕 Contador de todos los pedidos en pantalla
+	
+	// ==================== 📦 CONTADORES ACUMULATIVOS DE PEDIDOS ====================
+	const [pedidosAcumulados, setPedidosAcumulados] = useState({
+		totalProcesados: 0,       // Total de pedidos procesados en TODA la simulación
+		totalIteraciones: 0,      // Número de iteraciones del AG completadas
+		porDestino: {},           // Pedidos por aeropuerto destino { LOWW: 45, EDDI: 32, ... }
+		porHora: {},              // Pedidos por hora { '00': 80, '01': 103, ... }
+		ultimaIteracion: 0,       // Pedidos de la última iteración
+		historial: []             // Historial de iteraciones [{hora, pedidos, fitness}]
+	});
 	const [relojLocal, setRelojLocal] = useState(null);         // Reloj de simulación local (independiente)
 	const [kActual, setKActual] = useState(500);                // Factor K actual (adaptable)
 	const [kBase] = useState(500);                               // Factor K base (constante)
@@ -703,6 +713,7 @@ const SimuladorSemanal = () => {
 	
 	// ========== BUFFER DE 20 SEGUNDOS PARA DAR VENTAJA AL BACKEND ==========
 	const [bufferActivo, setBufferActivo] = useState(false);     // Si el buffer está activo (primeros 20 segundos)
+	const bufferActivoRef = useRef(false);                       // 🆕 REF para evitar closure stale en procesarVuelosDirectos
 	const vuelosBufferRef = useRef([]);                          // Vuelos acumulados durante el buffer
 	const bufferTimeoutRef = useRef(null);                       // Timeout para finalizar buffer
 	const BUFFER_DELAY_MS = 20000;                               // 🆕 20 segundos de buffer inicial
@@ -930,10 +941,11 @@ const SimuladorSemanal = () => {
 			// Calcular posición interpolada basada en tiempo simulado
 			const interpolated = calculateInterpolatedPosition(flight, tiempoSimulado);
 			
-			// Calcular rotación del avión
+			// 🔧 FIX: Calcular rotación desde el ORIGEN hacia el DESTINO (constante durante todo el vuelo)
+			// Esto evita problemas cuando el avión está cerca del destino
 			const bearing = bearingDegrees(
-				interpolated.lat,
-				interpolated.lng,
+				flight.origin.lat,
+				flight.origin.lng,
 				flight.destination.lat,
 				flight.destination.lng
 			);
@@ -1350,6 +1362,17 @@ const SimuladorSemanal = () => {
 			setProgresoAG(null);
 			contadorVuelosRef.current = 0;
 			
+			// 📦 Resetear contador acumulativo de pedidos
+			setPedidosAcumulados({
+				totalProcesados: 0,
+				totalIteraciones: 0,
+				porDestino: {},
+				porHora: {},
+				ultimaIteracion: 0,
+				historial: []
+			});
+			console.log('📦 Contador de pedidos acumulados reseteado');
+			
 			// Iniciar reloj local
 			const inicioUTC = new Date(`${fechaInicioSimulacion}T${horaInicioSimulacion}:00Z`);
 			setSimClock(inicioUTC);
@@ -1379,6 +1402,7 @@ const SimuladorSemanal = () => {
 			// 🆕 ACTIVAR BUFFER DE 15 SEGUNDOS para acumular vuelos iniciales
 			console.log(`⏳ ACTIVANDO BUFFER DE ${BUFFER_DELAY_MS/1000} SEGUNDOS para acumular vuelos iniciales...`);
 			setBufferActivo(true);
+			bufferActivoRef.current = true; // 🆕 Sincronizar ref
 			vuelosBufferRef.current = [];
 			
 			// Limpiar timeout anterior si existe
@@ -1390,6 +1414,7 @@ const SimuladorSemanal = () => {
 			bufferTimeoutRef.current = setTimeout(() => {
 				console.log(`✅ BUFFER COMPLETADO - ${vuelosBufferRef.current.length} vuelos acumulados`);
 				setBufferActivo(false);
+				bufferActivoRef.current = false; // 🆕 Sincronizar ref
 				
 				// Procesar todos los vuelos acumulados
 				if (vuelosBufferRef.current.length > 0) {
@@ -1397,6 +1422,10 @@ const SimuladorSemanal = () => {
 					// Combinar todos los vuelos en un solo array y setear flights
 					setFlights(vuelosBufferRef.current);
 					setFlightsInAir(vuelosBufferRef.current.filter(v => v.status === 'active').length);
+					
+					// 🆕 ACTUALIZAR CONTADOR DE VUELOS ACUMULADOS
+					contadorVuelosRef.current = vuelosBufferRef.current.length;
+					console.log(`📊 Contador de vuelos inicializado: ${contadorVuelosRef.current}`);
 					
 					// 🚀 ACTIVAR RELOJ LOCAL
 					setSimulacionLocalActiva(true);
@@ -2110,220 +2139,283 @@ const SimuladorSemanal = () => {
 				fechaSimulada: datos.fechaSimulada
 			});
 
-			agregarMensaje(
-				`🧬 Generación ${datos.generacion}/${datos.maxGeneraciones} - Fitness: ${datos.mejorFitness?.toFixed(2)} - Progreso: ${datos.progreso?.toFixed(1)}%`,
-				'info'
-			);
-
-			// 🔥 NUEVO: Procesar vuelos directos (no rutas con subRutas)
-			// Usar refs para llamar a las funciones más recientes (evita closure problem)
-			if (datos.solucion?.vuelos && datos.solucion.vuelos.length > 0) {
-				console.log(`✈️ Procesando ${datos.solucion.vuelos.length} vuelos directos...`);
-				if (procesarVuelosDirectosRef.current) {
-					procesarVuelosDirectosRef.current(datos.solucion.vuelos);
-				}
-			} 
-			// Fallback: Si viene en formato antiguo (rutas con subRutas)
-			else if (datos.solucion?.rutas) {
-				console.log(`✈️ Procesando ${datos.solucion.rutas.length} rutas...`);
-				if (procesarRutasSimulacionRef.current) {
-					procesarRutasSimulacionRef.current(datos.solucion.rutas);
-				}
-			}
-
-			// 🆕 ACTUALIZAR AEROPUERTOS con datos de ocupación del backend
-			if (datos.solucion?.aeropuertos && datos.solucion.aeropuertos.length > 0) {
-				console.log(`🏢 Actualizando ocupación de ${datos.solucion.aeropuertos.length} aeropuertos...`);
-				setAirports(prevAirports => {
-					return prevAirports.map(airport => {
-						// Buscar datos actualizados del backend por código
-						const backendData = datos.solucion.aeropuertos.find(
-							a => a.code === airport.code || a.codigo === airport.code
-						);
-						if (backendData) {
-							return {
-								...airport,
-								packages: backendData.packages || backendData.ocupacionActual || 0,
-								// Actualizar capacidad si viene (puede ser string "ILIMITADO" o número)
-								capacity: backendData.capacity !== undefined ? backendData.capacity : airport.capacity
-							};
-						}
-						return airport;
-					});
-				});
-			}
-
-		} else if (datos.type === 'PROGRESS' || datos.status === 'RUNNING') {
-			// 🆕 NUEVA ESTRUCTURA: SimulationMessage con snapshot
-			console.log(`🎮 Simulación corriendo - Snapshot recibido`);
-			
-			if (datos.snapshot) {
-				const snapshot = datos.snapshot;
-				console.log(`📊 Snapshot: ${snapshot.processedOrders}/${snapshot.totalOrders} pedidos procesados`);
-				console.log(`📈 Fitness: ${snapshot.fitness?.toFixed(4)}`);
+			// 📦 ACTUALIZAR CONTADOR ACUMULATIVO DE PEDIDOS
+			// Solo acumulamos cuando es la última generación de una iteración
+			if (datos.generacion === datos.maxGeneraciones && datos.pedidosProcesados > 0) {
+				const horaSimulada = datos.fechaSimulada ? new Date(datos.fechaSimulada).getHours().toString().padStart(2, '0') : 'N/A';
 				
-				agregarMensaje(
-					`🎮 Progreso: ${snapshot.processedOrders}/${snapshot.totalOrders} pedidos - Fitness: ${snapshot.fitness?.toFixed(4)}`,
-					'info'
-				);
-				
-				// 🆕 PROCESAR SEGMENTS del snapshot (nueva estructura)
-				if (snapshot.orderPlans && snapshot.orderPlans.length > 0) {
-					console.log(`✈️ Procesando segments del snapshot...`);
-					if (procesarSegmentsSnapshotRef.current) {
-						procesarSegmentsSnapshotRef.current(snapshot);
-					}
-				}
-				
-				// 🆕 ACTUALIZAR AEROPUERTOS con datos de ocupación del snapshot
-				if (snapshot.aeropuertos && snapshot.aeropuertos.length > 0) {
-					console.log(`🏢 [Snapshot] Actualizando ocupación de ${snapshot.aeropuertos.length} aeropuertos...`);
-					setAirports(prevAirports => {
-						return prevAirports.map(airport => {
-							// Buscar datos actualizados del snapshot por código
-							const backendData = snapshot.aeropuertos.find(
-								a => a.codigo === airport.code || a.code === airport.code
-							);
-							if (backendData) {
-								return {
-									...airport,
-									// ocupacionActual = paquetes actuales en el almacén
-									packages: backendData.ocupacionActual || backendData.packages || 0,
-									// pedidosAlmacenados = número de pedidos (diferente a cantidad de paquetes)
-									pedidosCount: backendData.pedidosAlmacenados || 0,
-									// capacidadAlmacen = capacidad total
-									capacity: backendData.capacidadAlmacen || airport.capacity
-								};
-							}
-							return airport;
+				setPedidosAcumulados(prev => {
+					// Calcular pedidos por destino si hay vuelos
+					const nuevosPorDestino = { ...prev.porDestino };
+					if (datos.solucion?.vuelos) {
+						datos.solucion.vuelos.forEach(vuelo => {
+							const destino = vuelo.destinoCodigoICAO || vuelo.destino;
+							const paquetes = vuelo.totalPaquetes || vuelo.paquetes || 1;
+							nuevosPorDestino[destino] = (nuevosPorDestino[destino] || 0) + paquetes;
 						});
-					});
+					}
+
+					// Actualizar por hora
+					const nuevosPorHora = { ...prev.porHora };
+					nuevosPorHora[horaSimulada] = (nuevosPorHora[horaSimulada] || 0) + datos.pedidosProcesados;
+
+					const nuevoHistorial = [
+								...prev.historial,
+								{
+									hora: datos.fechaSimulada,
+									pedidos: datos.pedidosProcesados,
+									fitness: datos.mejorFitness,
+									iteracion: prev.totalIteraciones + 1
+								}
+							];
+
+							console.log(`📦 ACUMULADO: +${datos.pedidosProcesados} pedidos | Total: ${prev.totalProcesados + datos.pedidosProcesados} | Iteración #${prev.totalIteraciones + 1}`);
+
+							return {
+								totalProcesados: prev.totalProcesados + datos.pedidosProcesados,
+								totalIteraciones: prev.totalIteraciones + 1,
+								porDestino: nuevosPorDestino,
+								porHora: nuevosPorHora,
+								ultimaIteracion: datos.pedidosProcesados,
+								historial: nuevoHistorial
+							};
+						});
+					}
+
+					agregarMensaje(
+						`🧬 Generación ${datos.generacion}/${datos.maxGeneraciones} - Fitness: ${datos.mejorFitness?.toFixed(2)} - Progreso: ${datos.progreso?.toFixed(1)}%`,
+						'info'
+					);
+
+					// 🔥 NUEVO: Procesar vuelos directos (no rutas con subRutas)
+					// Usar refs para llamar a las funciones más recientes (evita closure problem)
+					if (datos.solucion?.vuelos && datos.solucion.vuelos.length > 0) {
+						console.log(`✈️ Procesando ${datos.solucion.vuelos.length} vuelos directos...`);
+						if (procesarVuelosDirectosRef.current) {
+							procesarVuelosDirectosRef.current(datos.solucion.vuelos);
+						}
+					} 
+					// Fallback: Si viene en formato antiguo (rutas con subRutas)
+					else if (datos.solucion?.rutas) {
+						console.log(`✈️ Procesando ${datos.solucion.rutas.length} rutas...`);
+						if (procesarRutasSimulacionRef.current) {
+							procesarRutasSimulacionRef.current(datos.solucion.rutas);
+						}
+					}
+
+					// 🆕 ACTUALIZAR AEROPUERTOS con datos de ocupación del backend
+					if (datos.solucion?.aeropuertos && datos.solucion.aeropuertos.length > 0) {
+						console.log(`🏢 Actualizando ocupación de ${datos.solucion.aeropuertos.length} aeropuertos...`);
+						setAirports(prevAirports => {
+							return prevAirports.map(airport => {
+								// Buscar datos actualizados del backend por código
+								const backendData = datos.solucion.aeropuertos.find(
+									a => a.code === airport.code || a.codigo === airport.code
+								);
+								if (backendData) {
+									return {
+										...airport,
+										packages: backendData.packages || backendData.ocupacionActual || 0,
+										// Actualizar capacidad si viene (puede ser string "ILIMITADO" o número)
+										capacity: backendData.capacity !== undefined ? backendData.capacity : airport.capacity
+									};
+								}
+								return airport;
+							});
+						});
+					}
+
+				} else if (datos.type === 'PROGRESS' || datos.status === 'RUNNING') {
+					// 🆕 NUEVA ESTRUCTURA: SimulationMessage con snapshot
+					console.log(`🎮 Simulación corriendo - Snapshot recibido`);
+					
+					if (datos.snapshot) {
+						const snapshot = datos.snapshot;
+						console.log(`📊 Snapshot: ${snapshot.processedOrders}/${snapshot.totalOrders} pedidos procesados`);
+						console.log(`📈 Fitness: ${snapshot.fitness?.toFixed(4)}`);
+						
+						agregarMensaje(
+							`🎮 Progreso: ${snapshot.processedOrders}/${snapshot.totalOrders} pedidos - Fitness: ${snapshot.fitness?.toFixed(4)}`,
+							'info'
+						);
+						
+						// 🆕 PROCESAR SEGMENTS del snapshot (nueva estructura)
+						if (snapshot.orderPlans && snapshot.orderPlans.length > 0) {
+							console.log(`✈️ Procesando segments del snapshot...`);
+							if (procesarSegmentsSnapshotRef.current) {
+								procesarSegmentsSnapshotRef.current(snapshot);
+							}
+						}
+						
+						// 🆕 ACTUALIZAR AEROPUERTOS con datos de ocupación del snapshot
+						if (snapshot.aeropuertos && snapshot.aeropuertos.length > 0) {
+							console.log(`🏢 [Snapshot] Actualizando ocupación de ${snapshot.aeropuertos.length} aeropuertos...`);
+							setAirports(prevAirports => {
+								return prevAirports.map(airport => {
+									// Buscar datos actualizados del snapshot por código
+									const backendData = snapshot.aeropuertos.find(
+										a => a.codigo === airport.code || a.code === airport.code
+									);
+									if (backendData) {
+										return {
+											...airport,
+											// ocupacionActual = paquetes actuales en el almacén
+											packages: backendData.ocupacionActual || backendData.packages || 0,
+											// pedidosAlmacenados = número de pedidos (diferente a cantidad de paquetes)
+											pedidosCount: backendData.pedidosAlmacenados || 0,
+											// capacidadAlmacen = capacidad total
+											capacity: backendData.capacidadAlmacen || airport.capacity
+										};
+									}
+									return airport;
+								});
+							});
+						}
+					}
+					// Fallback para estructura antigua
+					else if (datos.solution?.routes) {
+						console.log(`✈️ [Formato antiguo] Procesando ${datos.solution.routes.length} rutas...`);
+						if (procesarRutasSnapshotRef.current) {
+							procesarRutasSnapshotRef.current(datos.solution.routes);
+						}
+					}
+
+				} else if (datos.type === 'COMPLETED' || datos.status === 'COMPLETED') {
+					// Simulación completada
+					console.log('🎉 Simulación completada exitosamente');
+					setEstadoSimulacionStomp('completed');
+					agregarMensaje('🎉 Simulación completada exitosamente', 'success');
+
+					// 🆕 Procesar snapshot final si existe
+					if (datos.snapshot?.orderPlans) {
+						console.log(`✈️ Procesando snapshot final...`);
+						if (procesarSegmentsSnapshotRef.current) {
+							procesarSegmentsSnapshotRef.current(datos.snapshot);
+						}
+					}
+					// Fallback para formato antiguo
+					else if (datos.solution?.routes) {
+						if (procesarRutasSnapshotRef.current) {
+							procesarRutasSnapshotRef.current(datos.solution.routes);
+						}
+					}
+
+					// Desuscribirse del topic
+					if (subscriptionRef.current) {
+						subscriptionRef.current.unsubscribe();
+						subscriptionRef.current = null;
+					}
+
+				} else if (datos.tipo === 'ERROR') {
+					// Error en la simulación
+					console.error('❌ Error en simulación:', datos.mensaje);
+					setEstadoSimulacionStomp('error');
+					agregarMensaje(`❌ Error: ${datos.mensaje}`, 'error');
 				}
-			}
-			// Fallback para estructura antigua
-			else if (datos.solution?.routes) {
-				console.log(`✈️ [Formato antiguo] Procesando ${datos.solution.routes.length} rutas...`);
-				if (procesarRutasSnapshotRef.current) {
-					procesarRutasSnapshotRef.current(datos.solution.routes);
-				}
-			}
+			}, [agregarMensaje]); // 🔥 No incluir funciones de procesamiento (causa circular reference)
 
-		} else if (datos.type === 'COMPLETED' || datos.status === 'COMPLETED') {
-			// Simulación completada
-			console.log('🎉 Simulación completada exitosamente');
-			setEstadoSimulacionStomp('completed');
-			agregarMensaje('🎉 Simulación completada exitosamente', 'success');
-
-			// 🆕 Procesar snapshot final si existe
-			if (datos.snapshot?.orderPlans) {
-				console.log(`✈️ Procesando snapshot final...`);
-				if (procesarSegmentsSnapshotRef.current) {
-					procesarSegmentsSnapshotRef.current(datos.snapshot);
-				}
-			}
-			// Fallback para formato antiguo
-			else if (datos.solution?.routes) {
-				if (procesarRutasSnapshotRef.current) {
-					procesarRutasSnapshotRef.current(datos.solution.routes);
-				}
-			}
-
-			// Desuscribirse del topic
-			if (subscriptionRef.current) {
-				subscriptionRef.current.unsubscribe();
-				subscriptionRef.current = null;
-			}
-
-		} else if (datos.tipo === 'ERROR') {
-			// Error en la simulación
-			console.error('❌ Error en simulación:', datos.mensaje);
-			setEstadoSimulacionStomp('error');
-			agregarMensaje(`❌ Error: ${datos.mensaje}`, 'error');
-		}
-	}, [agregarMensaje]); // 🔥 No incluir funciones de procesamiento (causa circular reference)
-
-	/**
-	 * 🆕 Procesar vuelos DIRECTOS (formato nuevo del backend)
-	 * Formato: {origenCodigoICAO, destinoCodigoICAO, fechaInicial, fechaFinal, pedidos, totalPaquetes}
-	 */
-	/**
-	 * 🆕 Procesar segments del snapshot (nueva estructura JSON)
-	 * Extrae todos los segments de orderPlans → routes → segments
-	 */
-	const procesarSegmentsSnapshot = useCallback((snapshot) => {
-		const currentAirports = airportsRef.current;
-		console.log(`\n🔍 procesarSegmentsSnapshot - Snapshot recibido`);
-		console.log(`📍 Aeropuertos disponibles: ${currentAirports.length}`);
-		console.log(`⏰ Tiempo simulado: ${snapshot.generatedAt}`);
-		
-		if (!snapshot.orderPlans || snapshot.orderPlans.length === 0) {
-			console.warn('⚠️ No hay orderPlans en el snapshot');
-			return;
-		}
-		
-		const nuevosVuelos = [];
-		let segmentIndex = 0;
-		
-		// Iterar por cada orderPlan
-		snapshot.orderPlans.forEach((orderPlan, orderIndex) => {
-			const orderId = orderPlan.orderId;
-			const orderSlackMinutes = orderPlan.slackMinutes;
-			
-			console.log(`\n📦 Pedido ${orderIndex + 1}/${snapshot.orderPlans.length}: ${orderId}`);
-			console.log(`   Holgura: ${orderSlackMinutes} minutos ${orderSlackMinutes > 0 ? '✅' : '⚠️'}`);
-			
-			// Iterar por cada ruta del pedido
-			orderPlan.routes.forEach((route, routeIndex) => {
-				console.log(`   📍 Ruta ${routeIndex + 1}: ${route.segments.length} segmentos`);
+			/**
+			 * 🆕 Procesar vuelos DIRECTOS (formato nuevo del backend)
+			 * Formato: {origenCodigoICAO, destinoCodigoICAO, fechaInicial, fechaFinal, pedidos, totalPaquetes}
+			 */
+			/**
+			 * 🆕 Procesar segments del snapshot (nueva estructura JSON)
+			 * Extrae todos los segments de orderPlans → routes → segments
+			 */
+			const procesarSegmentsSnapshot = useCallback((snapshot) => {
+				const currentAirports = airportsRef.current;
+				console.log(`\n🔍 procesarSegmentsSnapshot - Snapshot recibido`);
+				console.log(`📍 Aeropuertos disponibles: ${currentAirports.length}`);
+				console.log(`⏰ Tiempo simulado: ${snapshot.generatedAt}`);
 				
-				// Iterar por cada segment (VUELO) de la ruta
-				route.segments.forEach((segment, segIndex) => {
-					segmentIndex++;
+				if (!snapshot.orderPlans || snapshot.orderPlans.length === 0) {
+					console.warn('⚠️ No hay orderPlans en el snapshot');
+					return;
+				}
+				
+				const nuevosVuelos = [];
+				let segmentIndex = 0;
+				
+				// Iterar por cada orderPlan
+				snapshot.orderPlans.forEach((orderPlan, orderIndex) => {
+					const orderId = orderPlan.orderId;
+					const orderSlackMinutes = orderPlan.slackMinutes;
 					
-					console.log(`\n   ✈️ Segment ${segmentIndex}: ${segment.flightId}`);
-					console.log(`      ${segment.origin} → ${segment.destination}`);
-					console.log(`      Despegue: ${segment.departureUtc}`);
-					console.log(`      Llegada:  ${segment.arrivalUtc}`);
-					console.log(`      Cantidad: ${segment.quantity} paquetes`);
+					console.log(`\n📦 Pedido ${orderIndex + 1}/${snapshot.orderPlans.length}: ${orderId}`);
+					console.log(`   Holgura: ${orderSlackMinutes} minutos ${orderSlackMinutes > 0 ? '✅' : '⚠️'}`);
 					
-					// Buscar aeropuertos de origen y destino
-					const origen = currentAirports.find(a => 
-						a.code.toUpperCase() === segment.origin.toUpperCase()
-					);
-					const destino = currentAirports.find(a => 
-						a.code.toUpperCase() === segment.destination.toUpperCase()
-					);
-					
-					if (!origen) {
-						console.error(`      ❌ Aeropuerto ORIGEN no encontrado: "${segment.origin}"`);
-						return;
-					}
-					
-					if (!destino) {
-						console.error(`      ❌ Aeropuerto DESTINO no encontrado: "${segment.destination}"`);
-						return;
-					}
-					
-					console.log(`      ✅ Origen: ${origen.code} [${origen.lat.toFixed(2)}, ${origen.lng.toFixed(2)}]`);
-					console.log(`      ✅ Destino: ${destino.code} [${destino.lat.toFixed(2)}, ${destino.lng.toFixed(2)}]`);
-					
-					// Calcular rotación del avión
-					const brg = bearingDegrees(origen.lat, origen.lng, destino.lat, destino.lng);
-					const rotation = (brg - 90 + 360) % 360;
-					
-					// Determinar estado basado en holgura
-					let status = 'active';
+					// Iterar por cada ruta del pedido
+					orderPlan.routes.forEach((route, routeIndex) => {
+						console.log(`   📍 Ruta ${routeIndex + 1}: ${route.segments.length} segmentos`);
+						
+						// Iterar por cada segment (VUELO) de la ruta
+						route.segments.forEach((segment, segIndex) => {
+							segmentIndex++;
+							
+							console.log(`\n   ✈️ Segment ${segmentIndex}: ${segment.flightId}`);
+							console.log(`      ${segment.origin} → ${segment.destination}`);
+							console.log(`      Despegue: ${segment.departureUtc}`);
+							console.log(`      Llegada:  ${segment.arrivalUtc}`);
+							console.log(`      Cantidad: ${segment.quantity} paquetes`);
+							
+							// Buscar aeropuertos de origen y destino
+							const origen = currentAirports.find(a => 
+								a.code.toUpperCase() === segment.origin.toUpperCase()
+							);
+							const destino = currentAirports.find(a => 
+								a.code.toUpperCase() === segment.destination.toUpperCase()
+							);
+							
+							if (!origen) {
+								console.error(`      ❌ Aeropuerto ORIGEN no encontrado: "${segment.origin}"`);
+								return;
+							}
+							
+							if (!destino) {
+								console.error(`      ❌ Aeropuerto DESTINO no encontrado: "${segment.destination}"`);
+								return;
+							}
+							
+							console.log(`      ✅ Origen: ${origen.code} [${origen.lat.toFixed(2)}, ${origen.lng.toFixed(2)}]`);
+							console.log(`      ✅ Destino: ${destino.code} [${destino.lat.toFixed(2)}, ${destino.lng.toFixed(2)}]`);
+							
+							// Calcular rotación del avión
+							const brg = bearingDegrees(origen.lat, origen.lng, destino.lat, destino.lng);
+							const rotation = (brg - 90 + 360) % 360;
+							
+							// Determinar estado basado en holgura
+							let status = 'active';
 					if (orderSlackMinutes <= 0) {
 						status = 'retrasado';
 					}
 					
 					// Posición inicial (será calculada por interpolación)
 					const progress = 0;
-					const currentLat = origen.lat;
-					const currentLng = origen.lng;
+					let currentLat = origen.lat;
+					let currentLng = origen.lng;
 					
-					// 🆕 Crear ID único combinando múltiples factores para evitar duplicados
-					const uniqueId = `SNAP-${segment.flightId}-${orderId}-${routeIndex}-${segIndex}-${segmentIndex}-${Math.random().toString(36).substr(2, 6)}`;
+					// 🔧 FIX: Offset reducido para evitar superposición visual sin afectar la precisión
+					// Ahora usa un offset de 0.02 grados (~2.2 km) en lugar de 0.8 grados (~89 km)
+					const offsetLat = (Math.sin(segmentIndex * 2.39996) * 0.02);
+					const offsetLng = (Math.cos(segmentIndex * 2.39996) * 0.02);
+					currentLat += offsetLat;
+					currentLng += offsetLng;
+					
+					// 🆕 USAR vueloId del backend si existe (formato: ORIGEN-DESTINO-YYYYMMDD-HHMM)
+					// Si no existe, construirlo desde departureUtc
+					let uniqueId;
+					if (segment.vueloId) {
+						// El backend envía el ID único completo
+						uniqueId = segment.vueloId;
+					} else if (segment.departureUtc) {
+						// Fallback: construir desde la fecha de salida
+						const fechaVuelo = segment.departureUtc.split('T')[0].replace(/-/g, '');
+						const horaVuelo = segment.departureUtc.split('T')[1]?.substring(0, 5).replace(':', '') || '0000';
+						uniqueId = `${segment.origin}-${segment.destination}-${fechaVuelo}-${horaVuelo}`;
+					} else {
+						// Último fallback: usar flightId + índices
+						uniqueId = `SNAP-${segment.flightId}-${orderId}-${routeIndex}-${segIndex}-${segmentIndex}`;
+					}
 					
 					// 🆕 Crear objeto de pedido para este segment
 					const pedidoSegment = {
@@ -2337,6 +2429,7 @@ const SimuladorSemanal = () => {
 					// 🆕 Crear objeto de vuelo con timestamps del segment
 					const nuevoVuelo = {
 						id: uniqueId,
+						vueloId: segment.vueloId || uniqueId, // Guardar también como vueloId
 						flightId: segment.flightId,
 						origin: {
 							code: segment.origin,
@@ -2408,9 +2501,25 @@ const SimuladorSemanal = () => {
 				console.warn(`⚠️ Se encontraron ${nuevosVuelos.length - vuelosUnicos.length} vuelos duplicados, eliminados`);
 			}
 			
-			// 🔥 REEMPLAZAR todos los vuelos (sin duplicados)
-			console.log(`🔄 Reemplazando flights array con ${vuelosUnicos.length} vuelos únicos`);
-			setFlights(vuelosUnicos);
+			// 🔥 ACUMULAR vuelos nuevos con existentes (sin duplicados)
+			console.log(`🔄 Acumulando ${vuelosUnicos.length} vuelos nuevos con existentes`);
+			setFlights(prevFlights => {
+				// � SIMPLIFICACIÓN: NO FILTRAR por tiempo - mantener TODOS los vuelos
+				// Solo eliminamos duplicados por ID
+				const vuelosActivos = prevFlights;
+				
+				// Combinar con nuevos (evitar duplicados por ID)
+				const existingIds = new Set(vuelosActivos.map(v => v.id));
+				const nuevosNoRepetidos = vuelosUnicos.filter(v => !existingIds.has(v.id));
+				const combinados = [...vuelosActivos, ...nuevosNoRepetidos];
+				
+				console.log(`📊 Vuelos: previos=${prevFlights.length}, nuevos=${nuevosNoRepetidos.length}, total=${combinados.length}`);
+				
+				// 🆕 Actualizar contador de vuelos acumulados
+				contadorVuelosRef.current += nuevosNoRepetidos.length;
+				
+				return combinados;
+			});
 			
 			// 🆕 AUTO-INICIALIZAR TIEMPO SIMULADO basado en los vuelos
 			// Si el backend no envía tiempoSimulacionActual, usar la fecha más temprana de los vuelos
@@ -2447,7 +2556,8 @@ const SimuladorSemanal = () => {
 		}
 		
 		const nuevosVuelos = [];
-		const baseTimestamp = Date.now(); // 🆕 Timestamp base para todo el lote
+		const baseTimestamp = Date.now(); // 🆕 Timestamp base ÚNICO para este lote
+		const loteId = `${baseTimestamp}-${Math.random().toString(36).substr(2, 5)}`; // 🆕 ID único del lote
 
 		vuelos.forEach((vuelo, index) => {
 			console.log(`\n✈️ Vuelo ${index + 1}/${vuelos.length}`);
@@ -2493,17 +2603,39 @@ const SimuladorSemanal = () => {
 			const progress = 0.5; // Mitad del recorrido
 
 			// Interpolación de posición inicial
-			const currentLat = origen.lat + (destino.lat - origen.lat) * progress;
-			const currentLng = origen.lng + (destino.lng - origen.lng) * progress;
+			let currentLat = origen.lat + (destino.lat - origen.lat) * progress;
+			let currentLng = origen.lng + (destino.lng - origen.lng) * progress;
+
+			// 🔧 FIX: Offset reducido para evitar superposición visual sin afectar la precisión
+			// Ahora usa un offset de 0.02 grados (~2.2 km) en lugar de 0.8 grados (~89 km)
+			const offsetLat = (Math.sin(index * 2.39996) * 0.02);
+			const offsetLng = (Math.cos(index * 2.39996) * 0.02);
+			currentLat += offsetLat;
+			currentLng += offsetLng;
 
 			// Calcular rotación
 			const brg = bearingDegrees(origen.lat, origen.lng, destino.lat, destino.lng);
 			const rotation = (brg - 90 + 360) % 360;
 
-			// 🆕 ID único ESTABLE: origen + destino + fechaInicial (sin timestamps aleatorios)
-			// Esto evita crear duplicados cuando el backend envía el mismo vuelo múltiples veces
-			const vueloKey = `${vuelo.origenCodigoICAO}-${vuelo.destinoCodigoICAO}-${vuelo.fechaInicial || index}`;
-			const uniqueId = `WS-${vueloKey}`;
+			// 🆕 USAR vueloId del backend si existe (formato: ORIGEN-DESTINO-YYYYMMDD-HHMM)
+			// Si no existe, construirlo desde departureUtc o fechaInicial
+			let uniqueId;
+			if (vuelo.vueloId) {
+				// El backend envía el ID único completo
+				uniqueId = vuelo.vueloId;
+			} else if (vuelo.departureUtc || vuelo.fechaInicial) {
+				// Fallback: construir desde la fecha de salida
+				const fechaStr = vuelo.departureUtc || vuelo.fechaInicial;
+				const fechaParts = fechaStr.includes('T') 
+					? fechaStr.split('T') 
+					: [fechaStr.split(' ')[0], fechaStr.split(' ')[1] || '00:00'];
+				const fechaVuelo = fechaParts[0].replace(/-/g, '');
+				const horaVuelo = (fechaParts[1] || '00:00').substring(0, 5).replace(':', '');
+				uniqueId = `${vuelo.origenCodigoICAO}-${vuelo.destinoCodigoICAO}-${fechaVuelo}-${horaVuelo}`;
+			} else {
+				// Último fallback: usar loteId + índice
+				uniqueId = `WS-${loteId}-${index}`;
+			}
 
 			// 🆕 MAPEAR PEDIDOS: Normalizar estructura de pedidos del backend
 			const pedidosMapeados = (vuelo.pedidos || []).map(p => ({
@@ -2516,6 +2648,8 @@ const SimuladorSemanal = () => {
 			// Crear objeto de vuelo (con timestamps para interpolación híbrida)
 			const nuevoVuelo = {
 				id: uniqueId,
+				vueloId: vuelo.vueloId || uniqueId, // Guardar también como vueloId
+				flightId: vuelo.flightId, // Versión corta (puede repetirse entre días)
 				origin: {
 					code: vuelo.origenCodigoICAO,
 					lat: origen.lat,
@@ -2536,15 +2670,15 @@ const SimuladorSemanal = () => {
 				currentLng,
 				aircraftColor: '#3b82f6', // 🔵 Azul para vuelos del WebSocket
 				rotation,
-				packageCapacity: vuelo.totalPaquetes || 1,
-				currentPackages: vuelo.totalPaquetes || 1,
+				packageCapacity: vuelo.totalPaquetes || vuelo.quantity || 1,
+				currentPackages: vuelo.totalPaquetes || vuelo.quantity || 1,
 				packageType: 'WS',
 				isSameContinentFlight: origen.region === destino.region,
-				vuelo: `WS-${vuelo.pedidos?.[0]?.idPedido || index}`,
 				pedidoId: vuelo.pedidos?.[0]?.idPedido,
 				pedidos: pedidosMapeados, // 🆕 INCLUIR TODOS LOS PEDIDOS
-				fechaInicial: vuelo.fechaInicial,
-				fechaFinal: vuelo.fechaFinal
+				fechaInicial: vuelo.departureUtc || vuelo.fechaInicial,
+				fechaFinal: vuelo.arrivalUtc || vuelo.fechaFinal,
+				slackMinutes: vuelo.slackMinutes
 			};
 			
 			console.log(`   ✅ Vuelo creado en posición: [${currentLat.toFixed(2)}, ${currentLng.toFixed(2)}]`);
@@ -2629,7 +2763,8 @@ console.log(`⏰ Tiempo simulado actual: ${new Date(relojLocalRef.current).toISO
 
 // 🆕 SISTEMA DE BUFFER DE 15 SEGUNDOS
 // Si el buffer está activo, acumular vuelos en lugar de activar animación
-if (bufferActivo) {
+// 🔧 FIX: Usar bufferActivoRef.current para evitar closure stale
+if (bufferActivoRef.current) {
 console.log(`⏳ BUFFER ACTIVO - Acumulando ${vuelosUnicos.length} vuelos (total: ${vuelosBufferRef.current.length + vuelosUnicos.length})`);
 
 // Agregar vuelos únicos al buffer (evitar duplicados)
@@ -2646,24 +2781,60 @@ return;
 console.log(`🔄 Combinando ${vuelosUnicos.length} vuelos nuevos con existentes`);
 
 setFlights(prevFlights => {
-// 🆕 LIMPIAR vuelos que ya aterrizaron (fechaFinal < tiempoSimulado - 30min margen)
-const relojActual = relojLocalRef.current;
-const tiempoActualMs = relojActual instanceof Date ? relojActual.getTime() : (relojActual || Date.now());
-const margenMs = 30 * 60 * 1000; // 30 minutos de margen después de aterrizar
-const vuelosActivos = prevFlights.filter(v => {
-	if (!v.fechaFinal) return true; // Mantener si no tiene fecha
-	const fechaAterrizaje = new Date(v.fechaFinal).getTime();
-	return fechaAterrizaje > (tiempoActualMs - margenMs);
+// 🔧 FIX: Usar tiempo SIMULADO del backend, no relojLocal (puede ser null)
+// tiempoSimuladoBackendRef es más confiable porque viene del backend
+const tiempoActualMs = tiempoSimuladoBackendRef.current || 
+                       (relojLocalRef.current instanceof Date ? relojLocalRef.current.getTime() : null) || 
+                       Date.now();
+
+// 🔧 DEBUG: Log detallado para diagnosticar filtrado
+console.log(`🔍 DEBUG FILTRADO:`);
+console.log(`   - Tiempo simulado: ${new Date(tiempoActualMs).toISOString()}`);
+console.log(`   - Vuelos previos: ${prevFlights.length}`);
+console.log(`   - Vuelos nuevos (lote): ${vuelosUnicos.length}`);
+
+// 🆕 ACTUALIZAR O INSERTAR: Si el vuelo ya existe, ACTUALIZAR sus datos (paquetes, pedidos)
+// Esto permite que el backend envíe actualizaciones del mismo vuelo
+const vuelosMap = new Map(prevFlights.map(v => [v.id, v]));
+
+vuelosUnicos.forEach(nuevoVuelo => {
+	const existente = vuelosMap.get(nuevoVuelo.id);
+	if (existente) {
+		// 🔄 ACTUALIZAR vuelo existente: combinar pedidos y actualizar paquetes
+		const pedidosCombinados = [...(existente.pedidos || [])];
+		(nuevoVuelo.pedidos || []).forEach(nuevoPedido => {
+			const idx = pedidosCombinados.findIndex(p => p.idPedido === nuevoPedido.idPedido);
+			if (idx >= 0) {
+				// Actualizar cantidad del pedido existente
+				pedidosCombinados[idx].cantidad = (pedidosCombinados[idx].cantidad || 0) + (nuevoPedido.cantidad || 0);
+			} else {
+				// Agregar nuevo pedido
+				pedidosCombinados.push(nuevoPedido);
+			}
+		});
+		
+		// Actualizar el vuelo en el mapa
+		vuelosMap.set(nuevoVuelo.id, {
+			...existente,
+			pedidos: pedidosCombinados,
+			currentPackages: pedidosCombinados.reduce((sum, p) => sum + (p.cantidad || 0), 0),
+			packageCapacity: Math.max(existente.packageCapacity || 0, nuevoVuelo.packageCapacity || 0),
+			slackMinutes: nuevoVuelo.slackMinutes ?? existente.slackMinutes
+		});
+		console.log(`🔄 Vuelo ${nuevoVuelo.id} ACTUALIZADO - Ahora tiene ${pedidosCombinados.length} pedidos`);
+	} else {
+		// Nuevo vuelo - insertar
+		vuelosMap.set(nuevoVuelo.id, nuevoVuelo);
+	}
 });
 
-if (vuelosActivos.length < prevFlights.length) {
-	console.log(`🧹 Limpiados ${prevFlights.length - vuelosActivos.length} vuelos que ya aterrizaron`);
-}
+const combinados = Array.from(vuelosMap.values());
 
-const existingIds = new Set(vuelosActivos.map(v => v.id));
-const nuevosNoRepetidos = vuelosUnicos.filter(v => !existingIds.has(v.id));
-const combinados = [...vuelosActivos, ...nuevosNoRepetidos];
-console.log(`📊 Total vuelos después de combinar: ${combinados.length} (activos: ${vuelosActivos.length}, nuevos: ${nuevosNoRepetidos.length})`);
+// 🆕 CONTAR vuelos nuevos (no actualizaciones)
+const nuevosInsertados = vuelosUnicos.filter(v => !prevFlights.some(pv => pv.id === v.id)).length;
+contadorVuelosRef.current += nuevosInsertados;
+
+console.log(`📊 Total vuelos después de combinar: ${combinados.length} (previos: ${prevFlights.length}, nuevos: ${nuevosInsertados}, actualizados: ${vuelosUnicos.length - nuevosInsertados})`);
 return combinados;
 });
 
@@ -3849,6 +4020,127 @@ console.log(`Vuelos activos anadidos: ${vuelosActivos}`);
 									</div>
 								)}
 
+								{/* 📦 PANEL DE CONTADOR ACUMULATIVO DE PEDIDOS */}
+								{pedidosAcumulados.totalProcesados > 0 && (
+									<div style={{
+										background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
+										borderRadius: '12px',
+										padding: '20px',
+										marginBottom: '15px',
+										boxShadow: '0 4px 20px rgba(5, 150, 105, 0.3)'
+									}}>
+										<h4 style={{ 
+											margin: '0 0 15px 0', 
+											color: 'white', 
+											fontSize: '16px', 
+											fontWeight: '700',
+											display: 'flex',
+											alignItems: 'center',
+											gap: '8px'
+										}}>
+											📦 Total Pedidos Procesados en Simulación
+										</h4>
+
+										{/* Número grande principal */}
+										<div style={{
+											textAlign: 'center',
+											marginBottom: '15px',
+											padding: '15px',
+											background: 'rgba(255,255,255,0.15)',
+											borderRadius: '10px'
+										}}>
+											<div style={{ 
+												fontSize: '48px', 
+												fontWeight: '800', 
+												color: 'white',
+												textShadow: '2px 2px 4px rgba(0,0,0,0.2)'
+											}}>
+												{pedidosAcumulados.totalProcesados.toLocaleString()}
+											</div>
+											<div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginTop: '5px' }}>
+												pedidos procesados
+											</div>
+										</div>
+
+										{/* Grid de métricas secundarias */}
+										<div style={{
+											display: 'grid',
+											gridTemplateColumns: 'repeat(3, 1fr)',
+											gap: '10px'
+										}}>
+											<div style={{ 
+												background: 'rgba(255,255,255,0.2)', 
+												padding: '12px', 
+												borderRadius: '8px',
+												textAlign: 'center'
+											}}>
+												<div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.8)', marginBottom: '4px' }}>
+													Iteraciones AG
+												</div>
+												<div style={{ fontSize: '22px', fontWeight: '700', color: 'white' }}>
+													{pedidosAcumulados.totalIteraciones}
+												</div>
+											</div>
+
+											<div style={{ 
+												background: 'rgba(255,255,255,0.2)', 
+												padding: '12px', 
+												borderRadius: '8px',
+												textAlign: 'center'
+											}}>
+												<div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.8)', marginBottom: '4px' }}>
+													Última Iteración
+												</div>
+												<div style={{ fontSize: '22px', fontWeight: '700', color: 'white' }}>
+													+{pedidosAcumulados.ultimaIteracion}
+												</div>
+											</div>
+
+											<div style={{ 
+												background: 'rgba(255,255,255,0.2)', 
+												padding: '12px', 
+												borderRadius: '8px',
+												textAlign: 'center'
+											}}>
+												<div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.8)', marginBottom: '4px' }}>
+													Promedio/Iter
+												</div>
+												<div style={{ fontSize: '22px', fontWeight: '700', color: 'white' }}>
+													{pedidosAcumulados.totalIteraciones > 0 
+														? Math.round(pedidosAcumulados.totalProcesados / pedidosAcumulados.totalIteraciones)
+														: 0}
+												</div>
+											</div>
+										</div>
+
+										{/* Top 5 destinos con más pedidos */}
+										{Object.keys(pedidosAcumulados.porDestino).length > 0 && (
+											<div style={{ marginTop: '15px' }}>
+												<div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.8)', marginBottom: '8px' }}>
+													🏆 Top Destinos (por paquetes)
+												</div>
+												<div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+													{Object.entries(pedidosAcumulados.porDestino)
+														.sort((a, b) => b[1] - a[1])
+														.slice(0, 5)
+														.map(([destino, cantidad]) => (
+															<span key={destino} style={{
+																background: 'rgba(255,255,255,0.25)',
+																padding: '4px 10px',
+																borderRadius: '12px',
+																fontSize: '12px',
+																color: 'white',
+																fontWeight: '600'
+															}}>
+																{destino}: {cantidad}
+															</span>
+														))}
+												</div>
+											</div>
+										)}
+									</div>
+								)}
+
 								{/* Log de mensajes */}
 								<div style={{
 									background: 'rgba(255, 255, 255, 0.95)',
@@ -3915,6 +4207,143 @@ console.log(`Vuelos activos anadidos: ${vuelosActivos}`);
 									showFlightLines={showFlightLines}
 								/>
 							</MapContainer>
+							
+							{/* 📦 PANEL FLOTANTE DE ESTADÍSTICAS DE PEDIDOS */}
+							<div style={{
+								position: 'absolute',
+								top: '10px',
+								right: '10px',
+								zIndex: 1000,
+								background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
+								borderRadius: '12px',
+								padding: '12px 16px',
+								boxShadow: '0 4px 20px rgba(5, 150, 105, 0.4)',
+								minWidth: '200px',
+								color: 'white'
+							}}>
+								<div style={{ 
+									fontSize: '11px', 
+									fontWeight: '600', 
+									marginBottom: '8px',
+									opacity: 0.9,
+									display: 'flex',
+									alignItems: 'center',
+									gap: '6px'
+								}}>
+									📦 PEDIDOS PROCESADOS
+								</div>
+								<div style={{ 
+									fontSize: '36px', 
+									fontWeight: '800', 
+									textAlign: 'center',
+									textShadow: '2px 2px 4px rgba(0,0,0,0.2)',
+									lineHeight: 1
+								}}>
+									{pedidosAcumulados.totalProcesados.toLocaleString()}
+								</div>
+								
+								{/* 🆕 CONTADOR DE VUELOS - FILA 1: Totales */}
+								<div style={{
+									display: 'flex',
+									justifyContent: 'space-around',
+									marginTop: '10px',
+									fontSize: '11px',
+									borderTop: '1px solid rgba(255,255,255,0.3)',
+									paddingTop: '8px',
+									gap: '6px'
+								}}>
+									<div style={{ 
+										textAlign: 'center',
+										background: 'rgba(76, 175, 80, 0.3)',
+										padding: '6px 8px',
+										borderRadius: '8px',
+										flex: 1,
+										border: '1px solid rgba(76, 175, 80, 0.5)'
+									}}>
+										<div style={{ opacity: 0.9, fontSize: '9px' }}>✈️ VUELOS ÚNICOS</div>
+										<div style={{ fontWeight: '800', fontSize: '18px', color: '#4caf50' }}>{metricasVuelos.totalRecibidosBackend}</div>
+									</div>
+									<div style={{ 
+										textAlign: 'center',
+										background: 'rgba(33, 150, 243, 0.3)',
+										padding: '6px 8px',
+										borderRadius: '8px',
+										flex: 1,
+										border: '1px solid rgba(33, 150, 243, 0.5)'
+									}}>
+										<div style={{ opacity: 0.9, fontSize: '9px' }}>🛫 EN EL AIRE</div>
+										<div style={{ fontWeight: '800', fontSize: '18px', color: '#2196f3' }}>{flightsInAir}</div>
+									</div>
+								</div>
+								
+								{/* 🆕 CONTADOR DE VUELOS - FILA 2: Estados */}
+								<div style={{
+									display: 'flex',
+									justifyContent: 'space-around',
+									marginTop: '6px',
+									fontSize: '10px',
+									gap: '4px'
+								}}>
+									<div style={{ 
+										textAlign: 'center',
+										background: 'rgba(255, 193, 7, 0.25)',
+										padding: '4px 6px',
+										borderRadius: '6px',
+										flex: 1
+									}}>
+										<div style={{ opacity: 0.8, fontSize: '8px' }}>⏳ Esperando</div>
+										<div style={{ fontWeight: '700', fontSize: '14px', color: '#ffc107' }}>{metricasVuelos.vuelosWaiting || 0}</div>
+									</div>
+									<div style={{ 
+										textAlign: 'center',
+										background: 'rgba(76, 175, 80, 0.25)',
+										padding: '4px 6px',
+										borderRadius: '6px',
+										flex: 1
+									}}>
+										<div style={{ opacity: 0.8, fontSize: '8px' }}>✅ Completados</div>
+										<div style={{ fontWeight: '700', fontSize: '14px', color: '#4caf50' }}>{metricasVuelos.vuelosCompleted || 0}</div>
+									</div>
+									<div style={{ 
+										textAlign: 'center',
+										background: 'rgba(244, 67, 54, 0.25)',
+										padding: '4px 6px',
+										borderRadius: '6px',
+										flex: 1
+									}}>
+										<div style={{ opacity: 0.8, fontSize: '8px' }}>⚠️ Tardíos</div>
+										<div style={{ fontWeight: '700', fontSize: '14px', color: '#f44336' }}>{metricasVuelos.totalPerdidosAntesDeTiempo || 0}</div>
+									</div>
+								</div>
+
+								{/* Fila de iteraciones */}
+								<div style={{
+									display: 'flex',
+									justifyContent: 'space-between',
+									marginTop: '8px',
+									fontSize: '10px',
+									borderTop: '1px solid rgba(255,255,255,0.2)',
+									paddingTop: '6px'
+								}}>
+									<div style={{ textAlign: 'center' }}>
+										<div style={{ opacity: 0.7 }}>Iter</div>
+										<div style={{ fontWeight: '700', fontSize: '12px' }}>{pedidosAcumulados.totalIteraciones}</div>
+									</div>
+									<div style={{ textAlign: 'center' }}>
+										<div style={{ opacity: 0.7 }}>Última</div>
+										<div style={{ fontWeight: '700', fontSize: '12px' }}>+{pedidosAcumulados.ultimaIteracion}</div>
+									</div>
+									<div style={{ textAlign: 'center' }}>
+										<div style={{ opacity: 0.7 }}>Prom</div>
+										<div style={{ fontWeight: '700', fontSize: '12px' }}>
+											{pedidosAcumulados.totalIteraciones > 0 
+												? Math.round(pedidosAcumulados.totalProcesados / pedidosAcumulados.totalIteraciones)
+												: 0}
+										</div>
+									</div>
+								</div>
+							</div>
+
 							{/* Botón de Metricas */}
 							<MetricsButton onClick={handleMetricsButtonClick} selected={isMetricsPanelOpen} />
 							{/* Botón de leyenda flotante */}

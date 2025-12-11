@@ -1278,8 +1278,11 @@
                             dto.setFechaInicial(formatearFecha(salidaUTC));
                             dto.setFechaFinal(formatearFecha(llegadaUTC));
                             
-                            // 🆕 NUEVOS CAMPOS PARA FRONTEND:
-                            // 1. FlightId: {ORIGEN}-{DESTINO}-{HORA}
+                            // 🆕 CAMPOS PARA FRONTEND:
+                            // 1. VueloId: ID único completo (incluye fecha) - USAR ESTE PARA IDENTIFICAR VUELOS
+                            dto.setVueloId(vueloId);
+                            
+                            // 2. FlightId: {ORIGEN}-{DESTINO}-{HORA} (versión corta, puede repetirse entre días)
                             String hora = String.format("%02d%02d", salidaUTC.getHour(), salidaUTC.getMinute());
                             dto.setFlightId(vueloUso.getOrigen() + "-" + vueloUso.getDestino() + "-" + hora);
                             
@@ -1300,6 +1303,7 @@
                             LocalDateTime ahora = LocalDateTime.now();
                             dto.setFechaInicial(formatearFecha(ahora));
                             dto.setFechaFinal(formatearFecha(ahora.plusHours(2)));
+                            dto.setVueloId(vueloId); // Usar el ID que ya tenemos
                             dto.setDepartureUtc(formatearFechaUTC(ahora));
                             dto.setArrivalUtc(formatearFechaUTC(ahora.plusHours(2)));
                             dto.setFlightId(vueloUso.getOrigen() + "-" + vueloUso.getDestino() + "-0000");

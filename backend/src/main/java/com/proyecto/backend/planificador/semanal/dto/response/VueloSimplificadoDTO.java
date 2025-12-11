@@ -56,9 +56,22 @@ public class VueloSimplificadoDTO {
     // ========== NUEVOS CAMPOS PARA FRONTEND ==========
     
     /**
-     * Identificador único del vuelo
+     * Identificador único COMPLETO del vuelo (incluye fecha)
+     * Formato: {ORIGEN}-{DESTINO}-{YYYYMMDD}-{HHMM}
+     * Ejemplo: "SPIM-SEQM-20250117-0334"
+     * 
+     * Este ID es ÚNICO y DETERMINÍSTICO - el mismo vuelo siempre tiene el mismo ID
+     * Usar este campo para identificar vuelos en el frontend
+     */
+    @JsonProperty("vueloId")
+    private String vueloId;
+    
+    /**
+     * Identificador corto del vuelo (sin fecha)
      * Formato: {ORIGEN}-{DESTINO}-{HORA}
      * Ejemplo: "LIM-MIA-0800"
+     * 
+     * NOTA: Este ID puede repetirse en diferentes días. Usar vueloId para unicidad.
      */
     @JsonProperty("flightId")
     private String flightId;

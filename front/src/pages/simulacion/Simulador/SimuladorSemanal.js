@@ -3392,8 +3392,21 @@ const SimuladorSemanal = () => {
 				getSaturation={getSaturation}
 			/>
 			<ControlPopper
-				open={isControlPanelOpen}
+				open={isControlPopperOpen}
 				anchorEl={controlAnchorEl}
+				fechaInicioSimulacion={fechaInicioSimulacion}
+				setFechaInicioSimulacion={setFechaInicioSimulacion}
+				horaInicioSimulacion={horaInicioSimulacion}
+				setHoraInicioSimulacion={setHoraInicioSimulacion}
+				tiempoSimulacionActual={tiempoSimulacionActual}
+				tiempoRealTranscurrido={tiempoRealTranscurrido}
+				simulacionActiva={simulacionActiva}
+				estadoPlanificacion={estadoPlanificacion}
+				handleIniciarSimulacion={handleIniciarSimulacion}
+				handleDetenerSimulacion={handleDetenerSimulacion}
+				startButtonLabel={startButtonLabel}
+				showFlightLines={showFlightLines}
+				setShowFlightLines={setShowFlightLines}
 			/>
 		</div>
 	);

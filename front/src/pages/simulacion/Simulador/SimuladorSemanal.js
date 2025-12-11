@@ -403,26 +403,80 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMov
 				}
 
 				// Líneas dinámicas - Solo crear si el botón está activado
+				// 🔧 FIX: Mostrar RUTA COMPLETA (origen → destino) en lugar de solo lo recorrido
 				if (showFlightLines) {
 					try {
 						const lineKey = flight.id;
-						const coords = [[flight.origin.lat, flight.origin.lng], [position.lat, position.lng]];
-						const existingLine = flightLinesRef.current[lineKey];
-
-						if (existingLine) {
-							existingLine.setLatLngs(coords);
+						// Ruta COMPLETA desde origen hasta destino
+						const fullRouteCoords = [
+							[flight.origin.lat, flight.origin.lng],
+							[flight.destination.lat, flight.destination.lng]
+						];
+						// Segmento YA RECORRIDO (origen → posición actual)
+						const traveledCoords = [
+							[flight.origin.lat, flight.origin.lng],
+							[position.lat, position.lng]
+						];
+						// Segmento POR RECORRER (posición actual → destino)
+						const remainingCoords = [
+							[position.lat, position.lng],
+							[flight.destination.lat, flight.destination.lng]
+						];
+						
+						// Línea de ruta completa (tenue, como fondo)
+						const fullLineKey = `${flight.id}_full`;
+						const existingFullLine = flightLinesRef.current[fullLineKey];
+						if (existingFullLine) {
+							existingFullLine.setLatLngs(fullRouteCoords);
 						} else {
-							const flightLine = L.polyline(coords, {
-								color: '#ec9119ff',
-								weight: 2,
-								opacity: 1.0,
-								dashArray: '3, 8',
+							const fullLine = L.polyline(fullRouteCoords, {
+								color: '#6c757d',
+								weight: 1.5,
+								opacity: 0.4,
+								dashArray: '5, 10',
 								lineCap: 'round',
 								lineJoin: 'round',
 								interactive: false
 							});
-							flightLine.addTo(map);
-							flightLinesRef.current[lineKey] = flightLine;
+							fullLine.addTo(map);
+							flightLinesRef.current[fullLineKey] = fullLine;
+						}
+						
+						// Línea de lo recorrido (color vivo)
+						const traveledLineKey = `${flight.id}_traveled`;
+						const existingTraveledLine = flightLinesRef.current[traveledLineKey];
+						if (existingTraveledLine) {
+							existingTraveledLine.setLatLngs(traveledCoords);
+						} else {
+							const traveledLine = L.polyline(traveledCoords, {
+								color: '#28a745',
+								weight: 2.5,
+								opacity: 0.9,
+								lineCap: 'round',
+								lineJoin: 'round',
+								interactive: false
+							});
+							traveledLine.addTo(map);
+							flightLinesRef.current[traveledLineKey] = traveledLine;
+						}
+						
+						// Línea de lo que falta por recorrer (naranja punteada)
+						const remainingLineKey = `${flight.id}_remaining`;
+						const existingRemainingLine = flightLinesRef.current[remainingLineKey];
+						if (existingRemainingLine) {
+							existingRemainingLine.setLatLngs(remainingCoords);
+						} else {
+							const remainingLine = L.polyline(remainingCoords, {
+								color: '#ec9119',
+								weight: 2,
+								opacity: 0.8,
+								dashArray: '4, 6',
+								lineCap: 'round',
+								lineJoin: 'round',
+								interactive: false
+							});
+							remainingLine.addTo(map);
+							flightLinesRef.current[remainingLineKey] = remainingLine;
 						}
 					} catch (err) {
 						console.warn('❌ No se pudo dibujar línea de vuelo para', flight.id, err);
@@ -438,12 +492,14 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMov
 				}
 			});
 
-			// Remover líneas de vuelos que ya no existen (SEPARADO)
-			Object.keys(flightLinesRef.current).forEach(flightId => {
-				if (!currentFlightIds.has(flightId)) {
+			// Remover líneas de vuelos que ya no existen (ahora con 3 tipos de línea por vuelo)
+			Object.keys(flightLinesRef.current).forEach(lineKey => {
+				// Extraer el ID base del vuelo (puede terminar en _full, _traveled, _remaining)
+				const baseFlightId = lineKey.replace(/_full$|_traveled$|_remaining$/, '');
+				if (!currentFlightIds.has(baseFlightId)) {
 					try {
-						map.removeLayer(flightLinesRef.current[flightId]);
-						delete flightLinesRef.current[flightId];
+						map.removeLayer(flightLinesRef.current[lineKey]);
+						delete flightLinesRef.current[lineKey];
 					} catch (e) {
 						console.warn(`Error eliminando línea: ${e.message}`);
 					}
@@ -674,9 +730,11 @@ const SimuladorSemanal = () => {
 	const [autoInicioIntentado, setAutoInicioIntentado] = useState(false);
 	const [intentosRealizados, setIntentosRealizados] = useState(0); // Contador de reintentos
 	const [tiempoRealTranscurrido, setTiempoRealTranscurrido] = useState(0); // Tiempo real en segundos
+	const [horaActualSistema, setHoraActualSistema] = useState(new Date()); // 🆕 Hora actual del sistema (tiempo real)
 	const tiempoInicioRef = useRef(null); // Momento en que se inició la planificación
 	const intervalTiempoRealRef = useRef(null); // Intervalo para actualizar tiempo real
 	const [tiempoSimulacionActual, setTiempoSimulacionActual] = useState(null); // Hora de simulación del backend
+	const [tiempoInicioSimulacion, setTiempoInicioSimulacion] = useState(null); // 🆕 Momento de inicio de simulación (para calcular transcurrido simulado)
 
 	// ==================== NUEVO: ESTADO WEBSOCKET STOMP (SIMULACIÓN SEMANAL) ====================
 	const [wsStompConectado, setWsStompConectado] = useState(false);
@@ -942,14 +1000,15 @@ const SimuladorSemanal = () => {
 			const interpolated = calculateInterpolatedPosition(flight, tiempoSimulado);
 			
 			// 🔧 FIX: Calcular rotación desde el ORIGEN hacia el DESTINO (constante durante todo el vuelo)
-			// Esto evita problemas cuando el avión está cerca del destino
+			// El SVG apunta hacia ARRIBA (norte=0°), bearingDegrees devuelve 0°=N, 90°=E
+			// Por lo tanto, rotation = bearing directamente (sin restar 90)
 			const bearing = bearingDegrees(
 				flight.origin.lat,
 				flight.origin.lng,
 				flight.destination.lat,
 				flight.destination.lng
 			);
-			const rotation = (bearing - 90 + 360) % 360;
+			const rotation = bearing; // El SVG apunta al norte, bearing=0°=N
 
 			return {
 				...flight,
@@ -1641,8 +1700,9 @@ const SimuladorSemanal = () => {
 		const currentLng = origen.lng + (destino.lng - origen.lng) * progress;
 		
 		// Calcular rotación usando bearingDegrees
+		// SVG apunta al norte (0°), bearing devuelve 0°=N, 90°=E, así que usamos bearing directo
 		const brg = bearingDegrees(origen.lat, origen.lng, destino.lat, destino.lng);
-		const rotation = (brg - 90 + 360) % 360;
+		const rotation = brg; // Sin restar 90 porque el SVG ya apunta al norte
 		
 		// Determinar estado del vuelo
 		const status = progress >= 1 ? 'arrived' : (progress <= 0 ? 'scheduled' : 'active');
@@ -2380,8 +2440,9 @@ const SimuladorSemanal = () => {
 							console.log(`      ✅ Destino: ${destino.code} [${destino.lat.toFixed(2)}, ${destino.lng.toFixed(2)}]`);
 							
 							// Calcular rotación del avión
+							// SVG apunta al norte (0°), bearing devuelve 0°=N, 90°=E
 							const brg = bearingDegrees(origen.lat, origen.lng, destino.lat, destino.lng);
-							const rotation = (brg - 90 + 360) % 360;
+							const rotation = brg; // Sin restar 90 porque el SVG ya apunta al norte
 							
 							// Determinar estado basado en holgura
 							let status = 'active';

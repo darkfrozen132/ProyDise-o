@@ -33,6 +33,8 @@ import MetricsButton from '../../../components/ui/Button/MetricsButton';
 // 🆕 COMPONENTE DE INDICADOR DE ESTADO WEBSOCKET
 // Nota: usePlanificacionWebSocket está deshabilitado - ver comentario en línea ~513
 import WebSocketStatusIndicator from '../../../components/ui/WebSocketStatusIndicator';
+import ControlButton from '../../../components/ui/Button/ControlButton';
+import ControlPopper from '../../../components/ui/Dialog/ControlPopper';
 
 /* Constantes de configuracion de tiempo de simulacion */
 const DESIRED_TIME_SCALE = 300; // Valor de K
@@ -59,7 +61,7 @@ const getAircraftColorByStatus = (flight) => {
 	const capacidad = flight.packageCapacity || 1; // Evitar división por 0
 	const cargaActual = flight.currentPackages || 0;
 	const porcentajeCarga = (cargaActual / capacidad) * 100;
-	
+
 	// Colores según porcentaje de carga
 	if (porcentajeCarga > 60) {
 		return '#ef4444'; // 🔴 Rojo - Muy cargado (> 60%)
@@ -73,7 +75,7 @@ const getAircraftColorByStatus = (flight) => {
 const createAirplaneIcon = (flight, rotation = 0) => {
 	// Determinar color basado en el estado del vuelo
 	const color = getAircraftColorByStatus(flight);
-	
+
 	const iconSvg = `<svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
 			<ellipse cx="11" cy="11" rx="2" ry="10" fill="${color}" stroke="#ffffff" stroke-width="0.5"/>
 			<ellipse cx="11" cy="8" rx="9" ry="1.8" fill="${color}" stroke="#ffffff" stroke-width="0.5"/>
@@ -95,16 +97,16 @@ const createAirplaneIcon = (flight, rotation = 0) => {
  * Crear popup detallado para un vuelo
  */
 const createFlightPopup = (flight) => {
-	const statusIcon = 
+	const statusIcon =
 		flight.status === 'completed' || flight.progress >= 100 ? '✅' :
-		flight.status === 'delayed' || flight.retrasado ? '🔴' : '🔵';
-	
-	const statusText = 
+			flight.status === 'delayed' || flight.retrasado ? '🔴' : '🔵';
+
+	const statusText =
 		flight.status === 'completed' || flight.progress >= 100 ? 'Completado' :
-		flight.status === 'delayed' || flight.retrasado ? 'Retrasado' : 'En curso';
-	
+			flight.status === 'delayed' || flight.retrasado ? 'Retrasado' : 'En curso';
+
 	const color = getAircraftColorByStatus(flight);
-	
+
 	return `
 		<div style="min-width: 200px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
 			<div style="background: linear-gradient(135deg, ${color}dd 0%, ${color}aa 100%); color: white; padding: 8px 12px; margin: -10px -10px 10px -10px; border-radius: 4px 4px 0 0;">
@@ -119,11 +121,11 @@ const createFlightPopup = (flight) => {
 					<div style="font-size: 14px; font-weight: 600; color: #1f2937;">
 						${flight.origin?.code || 'N/A'} → ${flight.destination?.code || 'N/A'}
 					</div>
-					${flight.origin?.region && flight.destination?.region ? 
-						`<div style="font-size: 11px; color: #9ca3af; margin-top: 2px;">
+					${flight.origin?.region && flight.destination?.region ?
+			`<div style="font-size: 11px; color: #9ca3af; margin-top: 2px;">
 							${flight.isSameContinentFlight ? '🌍 Mismo continente' : '🌏 Intercontinental'}
 						</div>` : ''
-					}
+		}
 				</div>
 				
 				<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
@@ -141,41 +143,41 @@ const createFlightPopup = (flight) => {
 					</div>
 				</div>
 				
-				${flight.speed ? 
-					`<div style="margin-bottom: 6px;">
+				${flight.speed ?
+			`<div style="margin-bottom: 6px;">
 						<div style="font-size: 11px; color: #6b7280;">Velocidad</div>
 						<div style="font-size: 13px; color: #1f2937;">${flight.speed} km/h</div>
 					</div>` : ''
-				}
+		}
 				
-				${flight.altitude ? 
-					`<div style="margin-bottom: 6px;">
+				${flight.altitude ?
+			`<div style="margin-bottom: 6px;">
 						<div style="font-size: 11px; color: #6b7280;">Altitud</div>
 						<div style="font-size: 13px; color: #1f2937;">${flight.altitude.toLocaleString()} ft</div>
 					</div>` : ''
-				}
+		}
 				
-				${flight.packageType ? 
-					`<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #e5e7eb;">
+				${flight.packageType ?
+			`<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #e5e7eb;">
 						<div style="font-size: 11px; color: #6b7280;">Tipo de paquete</div>
 						<div style="font-size: 13px; color: #1f2937; font-weight: 500;">
-							${flight.packageType === 'AG' ? '📦 Algoritmo Genético' : 
-							  flight.packageType === 'Inicial' ? '🎯 Planificación Inicial' : 
-							  flight.packageType}
+							${flight.packageType === 'AG' ? '📦 Algoritmo Genético' :
+				flight.packageType === 'Inicial' ? '🎯 Planificación Inicial' :
+					flight.packageType}
 						</div>
 						${flight.currentPackages !== undefined && flight.packageCapacity !== undefined ?
-							`<div style="font-size: 12px; color: #6b7280; margin-top: 2px;">
+				`<div style="font-size: 12px; color: #6b7280; margin-top: 2px;">
 								Capacidad: ${flight.currentPackages}/${flight.packageCapacity} paquetes
 							</div>` : ''
-						}
+			}
 					</div>` : ''
-				}
+		}
 				
-				${flight.pedidoId ? 
-					`<div style="margin-top: 6px; font-size: 11px; color: #6b7280;">
+				${flight.pedidoId ?
+			`<div style="margin-top: 6px; font-size: 11px; color: #6b7280;">
 						Pedido: <span style="font-family: monospace; color: #1f2937;">${flight.pedidoId}</span>
 					</div>` : ''
-				}
+		}
 			</div>
 		</div>
 	`;
@@ -403,80 +405,26 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMov
 				}
 
 				// Líneas dinámicas - Solo crear si el botón está activado
-				// 🔧 FIX: Mostrar RUTA COMPLETA (origen → destino) en lugar de solo lo recorrido
 				if (showFlightLines) {
 					try {
 						const lineKey = flight.id;
-						// Ruta COMPLETA desde origen hasta destino
-						const fullRouteCoords = [
-							[flight.origin.lat, flight.origin.lng],
-							[flight.destination.lat, flight.destination.lng]
-						];
-						// Segmento YA RECORRIDO (origen → posición actual)
-						const traveledCoords = [
-							[flight.origin.lat, flight.origin.lng],
-							[position.lat, position.lng]
-						];
-						// Segmento POR RECORRER (posición actual → destino)
-						const remainingCoords = [
-							[position.lat, position.lng],
-							[flight.destination.lat, flight.destination.lng]
-						];
-						
-						// Línea de ruta completa (tenue, como fondo)
-						const fullLineKey = `${flight.id}_full`;
-						const existingFullLine = flightLinesRef.current[fullLineKey];
-						if (existingFullLine) {
-							existingFullLine.setLatLngs(fullRouteCoords);
+						const coords = [[flight.origin.lat, flight.origin.lng], [position.lat, position.lng]];
+						const existingLine = flightLinesRef.current[lineKey];
+
+						if (existingLine) {
+							existingLine.setLatLngs(coords);
 						} else {
-							const fullLine = L.polyline(fullRouteCoords, {
-								color: '#6c757d',
-								weight: 1.5,
-								opacity: 0.4,
-								dashArray: '5, 10',
-								lineCap: 'round',
-								lineJoin: 'round',
-								interactive: false
-							});
-							fullLine.addTo(map);
-							flightLinesRef.current[fullLineKey] = fullLine;
-						}
-						
-						// Línea de lo recorrido (color vivo)
-						const traveledLineKey = `${flight.id}_traveled`;
-						const existingTraveledLine = flightLinesRef.current[traveledLineKey];
-						if (existingTraveledLine) {
-							existingTraveledLine.setLatLngs(traveledCoords);
-						} else {
-							const traveledLine = L.polyline(traveledCoords, {
-								color: '#28a745',
-								weight: 2.5,
-								opacity: 0.9,
-								lineCap: 'round',
-								lineJoin: 'round',
-								interactive: false
-							});
-							traveledLine.addTo(map);
-							flightLinesRef.current[traveledLineKey] = traveledLine;
-						}
-						
-						// Línea de lo que falta por recorrer (naranja punteada)
-						const remainingLineKey = `${flight.id}_remaining`;
-						const existingRemainingLine = flightLinesRef.current[remainingLineKey];
-						if (existingRemainingLine) {
-							existingRemainingLine.setLatLngs(remainingCoords);
-						} else {
-							const remainingLine = L.polyline(remainingCoords, {
-								color: '#ec9119',
+							const flightLine = L.polyline(coords, {
+								color: '#ec9119ff',
 								weight: 2,
-								opacity: 0.8,
-								dashArray: '4, 6',
+								opacity: 1.0,
+								dashArray: '3, 8',
 								lineCap: 'round',
 								lineJoin: 'round',
 								interactive: false
 							});
-							remainingLine.addTo(map);
-							flightLinesRef.current[remainingLineKey] = remainingLine;
+							flightLine.addTo(map);
+							flightLinesRef.current[lineKey] = flightLine;
 						}
 					} catch (err) {
 						console.warn('❌ No se pudo dibujar línea de vuelo para', flight.id, err);
@@ -492,14 +440,12 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMov
 				}
 			});
 
-			// Remover líneas de vuelos que ya no existen (ahora con 3 tipos de línea por vuelo)
-			Object.keys(flightLinesRef.current).forEach(lineKey => {
-				// Extraer el ID base del vuelo (puede terminar en _full, _traveled, _remaining)
-				const baseFlightId = lineKey.replace(/_full$|_traveled$|_remaining$/, '');
-				if (!currentFlightIds.has(baseFlightId)) {
+			// Remover líneas de vuelos que ya no existen (SEPARADO)
+			Object.keys(flightLinesRef.current).forEach(flightId => {
+				if (!currentFlightIds.has(flightId)) {
 					try {
-						map.removeLayer(flightLinesRef.current[lineKey]);
-						delete flightLinesRef.current[lineKey];
+						map.removeLayer(flightLinesRef.current[flightId]);
+						delete flightLinesRef.current[flightId];
 					} catch (e) {
 						console.warn(`Error eliminando línea: ${e.message}`);
 					}
@@ -510,7 +456,7 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMov
 			if (!showFlightLines && Object.keys(flightLinesRef.current).length > 0) {
 				console.log('🧹 Limpiando todas las líneas (botón desactivado)');
 				Object.values(flightLinesRef.current).forEach(line => {
-					try { map.removeLayer(line); } catch (e) {}
+					try { map.removeLayer(line); } catch (e) { }
 				});
 				flightLinesRef.current = {};
 			}
@@ -567,7 +513,7 @@ function calculateInterpolatedPosition(vuelo, tiempoActualMs) {
 	const horaSalida = new Date(fechaInicialStr).getTime();
 	const horaLlegada = new Date(fechaFinalStr).getTime();
 	const duracionVuelo = horaLlegada - horaSalida;
-	
+
 	// 🐛 DEBUG: Log muy reducido para no saturar consola (🚀 Optimizado)
 	// Deshabilitado en producción - descomentar para debug
 	/*
@@ -628,27 +574,27 @@ function animateMarker(marker, startLatLng, endLatLng, duration = 1000) {
 	const startLng = startLatLng.lng;
 	const endLat = endLatLng.lat;
 	const endLng = endLatLng.lng;
-	
+
 	// Calcular el ángulo de rotación basado en la dirección del movimiento
 	const rotation = bearingDegrees(startLat, startLng, endLat, endLng);
-	
+
 	function frame() {
 		const elapsed = Date.now() - startTime;
 		const progress = Math.min(elapsed / duration, 1);
-		
+
 		// Easing suave (ease-out cúbico) - más realista para movimiento de aviones
 		const eased = 1 - Math.pow(1 - progress, 3);
-		
+
 		const currentLat = startLat + (endLat - startLat) * eased;
 		const currentLng = startLng + (endLng - startLng) * eased;
-		
+
 		marker.setLatLng([currentLat, currentLng]);
-		
+
 		if (progress < 1) {
 			requestAnimationFrame(frame);
 		}
 	}
-	
+
 	requestAnimationFrame(frame);
 }
 
@@ -691,10 +637,13 @@ const SimuladorSemanal = () => {
 	// ===================== ESTADO BOTONES FLOTANTES ==================== 
 	const [legendAnchorEl, setLegendAnchorEl] = useState(null);
 	const [isMetricsPanelOpen, setIsMetricsPanelOpen] = useState(false);
+	const [isControlPanelOpen, setIsControlPanelOpen] = useState(false);
 
 	const [isMetricsPopperOpen, setIsMetricsPopperOpen] = useState(false);
+	const [isControlPopperOpen, setIsControlPopperOpen] = useState(false);
 	const [metricsAnchorEl, setMetricsAnchorEl] = useState(null);
-
+	const [controlAnchorEl, setControlAnchorEl] = useState(null);
+	
 	/* Datos de aeropuertos - se cargarán desde la API */
 	const [airports, setAirports] = useState([]);
 	const [loadingAirports, setLoadingAirports] = useState(true);
@@ -714,27 +663,25 @@ const SimuladorSemanal = () => {
 	// ⚠️ NOTA: El hook usePlanificacionWebSocket está DESHABILITADO porque el backend
 	// no tiene el endpoint /ws/planificacion registrado. La simulación usa STOMP en /ws.
 	// Para habilitar, registrar PlanificacionWebSocketHandler en WebSocketConfig.java
-	
+
 	// Variables placeholder para compatibilidad (el hook no se usa)
 	const wsConnected = false;
 	const iniciarPlanificacion = async () => { console.warn('⚠️ WebSocket planificación no disponible'); };
-	const wsLimpiarIteraciones = () => {};
-	const wsDetenerPlanificacion = () => {};
-	const wsOnMessage = () => {};
-	
+	const wsLimpiarIteraciones = () => { };
+	const wsDetenerPlanificacion = () => { };
+	const wsOnMessage = () => { };
+
 	// Estados locales de planificación (para control local de UI)
 	const [iteracionesPlanificacion, setIteracionesPlanificacion] = useState([]);
 	const [estadoPlanificacion, setEstadoPlanificacion] = useState('idle');
-	
+
 	// Estados adicionales que no están en el hook
 	const [autoInicioIntentado, setAutoInicioIntentado] = useState(false);
 	const [intentosRealizados, setIntentosRealizados] = useState(0); // Contador de reintentos
 	const [tiempoRealTranscurrido, setTiempoRealTranscurrido] = useState(0); // Tiempo real en segundos
-	const [horaActualSistema, setHoraActualSistema] = useState(new Date()); // 🆕 Hora actual del sistema (tiempo real)
 	const tiempoInicioRef = useRef(null); // Momento en que se inició la planificación
 	const intervalTiempoRealRef = useRef(null); // Intervalo para actualizar tiempo real
 	const [tiempoSimulacionActual, setTiempoSimulacionActual] = useState(null); // Hora de simulación del backend
-	const [tiempoInicioSimulacion, setTiempoInicioSimulacion] = useState(null); // 🆕 Momento de inicio de simulación (para calcular transcurrido simulado)
 
 	// ==================== NUEVO: ESTADO WEBSOCKET STOMP (SIMULACIÓN SEMANAL) ====================
 	const [wsStompConectado, setWsStompConectado] = useState(false);
@@ -750,16 +697,6 @@ const SimuladorSemanal = () => {
 	const [vuelosEnAire, setVuelosEnAire] = useState([]);       // Vuelos activos (procesándose en animación)
 	const [pedidosCompletados, setPedidosCompletados] = useState([]);
 	const [contadorPedidosTotal, setContadorPedidosTotal] = useState(0); // 🆕 Contador de todos los pedidos en pantalla
-	
-	// ==================== 📦 CONTADORES ACUMULATIVOS DE PEDIDOS ====================
-	const [pedidosAcumulados, setPedidosAcumulados] = useState({
-		totalProcesados: 0,       // Total de pedidos procesados en TODA la simulación
-		totalIteraciones: 0,      // Número de iteraciones del AG completadas
-		porDestino: {},           // Pedidos por aeropuerto destino { LOWW: 45, EDDI: 32, ... }
-		porHora: {},              // Pedidos por hora { '00': 80, '01': 103, ... }
-		ultimaIteracion: 0,       // Pedidos de la última iteración
-		historial: []             // Historial de iteraciones [{hora, pedidos, fitness}]
-	});
 	const [relojLocal, setRelojLocal] = useState(null);         // Reloj de simulación local (independiente)
 	const [kActual, setKActual] = useState(500);                // Factor K actual (adaptable)
 	const [kBase] = useState(500);                               // Factor K base (constante)
@@ -768,10 +705,9 @@ const SimuladorSemanal = () => {
 	const relojLocalRef = useRef(null);                          // Ref para el reloj local (evita closures)
 	const colaVuelosRef = useRef([]);                            // Ref para la cola (evita closures)
 	const TICK_REAL_MS = 250;                                    // Intervalo de actualización en ms (🚀 Optimizado: 4 FPS)
-	
+
 	// ========== BUFFER DE 20 SEGUNDOS PARA DAR VENTAJA AL BACKEND ==========
 	const [bufferActivo, setBufferActivo] = useState(false);     // Si el buffer está activo (primeros 20 segundos)
-	const bufferActivoRef = useRef(false);                       // 🆕 REF para evitar closure stale en procesarVuelosDirectos
 	const vuelosBufferRef = useRef([]);                          // Vuelos acumulados durante el buffer
 	const bufferTimeoutRef = useRef(null);                       // Timeout para finalizar buffer
 	const BUFFER_DELAY_MS = 20000;                               // 🆕 20 segundos de buffer inicial
@@ -789,14 +725,14 @@ const SimuladorSemanal = () => {
 	// 🔥 Refs para las funciones de procesamiento (evitan circular dependencies)
 	const procesarVuelosDirectosRef = useRef(null);
 	const procesarRutasSimulacionRef = useRef(null);
-	
+
 	// 🆔 Contador único para generar IDs de vuelos (evita duplicados)
 	const contadorVuelosRef = useRef(0);
 	const procesarRutasSnapshotRef = useRef(null);
 	const procesarSegmentsSnapshotRef = useRef(null); // 🆕 Para nueva estructura JSON
-	
+
 	// ✅ ELIMINADO: Refs de tiempo movidas a estado reactivo (ver línea ~215)
-	
+
 	// ==================== 📊 MÉTRICAS DE VUELOS ====================
 	// Para diagnosticar si el backend envía vuelos tarde o si hay problemas de graficación
 	const [metricasVuelos, setMetricasVuelos] = useState({
@@ -998,17 +934,15 @@ const SimuladorSemanal = () => {
 		return flights.map(flight => {
 			// Calcular posición interpolada basada en tiempo simulado
 			const interpolated = calculateInterpolatedPosition(flight, tiempoSimulado);
-			
-			// 🔧 FIX: Calcular rotación desde el ORIGEN hacia el DESTINO (constante durante todo el vuelo)
-			// El SVG apunta hacia ARRIBA (norte=0°), bearingDegrees devuelve 0°=N, 90°=E
-			// Por lo tanto, rotation = bearing directamente (sin restar 90)
+
+			// Calcular rotación del avión
 			const bearing = bearingDegrees(
-				flight.origin.lat,
-				flight.origin.lng,
+				interpolated.lat,
+				interpolated.lng,
 				flight.destination.lat,
 				flight.destination.lng
 			);
-			const rotation = bearing; // El SVG apunta al norte, bearing=0°=N
+			const rotation = (bearing - 90 + 360) % 360;
 
 			return {
 				...flight,
@@ -1023,21 +957,21 @@ const SimuladorSemanal = () => {
 
 	// Debug: Cantidad de vuelos en el aire (🚀 log reducido para rendimiento)
 	useEffect(() => {
-		const enAire = vuelosEnMovimiento.filter(v => 
+		const enAire = vuelosEnMovimiento.filter(v =>
 			v.status === 'active' && v.progress > 0 && v.progress < 100
 		).length;
-		
+
 		// 📊 Contar por estado para diagnóstico
 		const waiting = vuelosEnMovimiento.filter(v => v.status === 'waiting').length;
 		const completed = vuelosEnMovimiento.filter(v => v.status === 'completed').length;
 		const active = vuelosEnMovimiento.filter(v => v.status === 'active').length;
-		
+
 		if (enAire !== flightsInAir) {
 			setFlightsInAir(enAire);
 			// Log deshabilitado - la información ya se muestra en el UI
 			// console.log(`🛫 Aviones: ${enAire}/${vuelosEnMovimiento.length}`);
 		}
-		
+
 		// 📊 ACTUALIZAR MÉTRICAS de vuelos graficados con desglose por estado
 		setMetricasVuelos(prev => ({
 			...prev,
@@ -1052,22 +986,22 @@ const SimuladorSemanal = () => {
 
 	// 🆕 EFECTO: Guardar pedidos de vuelos completados
 	const vuelosCompletadosRef = useRef(new Set()); // Para rastrear vuelos ya procesados
-	
+
 	useEffect(() => {
 		// Buscar vuelos que acaban de completarse (status = 'completed' o 'arrived')
-		const vuelosTerminados = vuelosEnMovimiento.filter(v => 
+		const vuelosTerminados = vuelosEnMovimiento.filter(v =>
 			(v.status === 'completed' || v.status === 'arrived' || v.progress >= 1) &&
 			!vuelosCompletadosRef.current.has(v.id) // No procesados aún
 		);
-		
+
 		if (vuelosTerminados.length > 0) {
 			// Extraer pedidos de vuelos completados
 			const nuevosPedidosCompletados = [];
-			
+
 			vuelosTerminados.forEach(vuelo => {
 				// Marcar vuelo como procesado
 				vuelosCompletadosRef.current.add(vuelo.id);
-				
+
 				// Si tiene pedidos, agregarlos a la lista de completados
 				if (vuelo.pedidos && vuelo.pedidos.length > 0) {
 					vuelo.pedidos.forEach(pedido => {
@@ -1118,7 +1052,7 @@ const SimuladorSemanal = () => {
 			} catch (err) {
 				console.error('Error actualizando paquetes en aeropuertos:', err);
 			}
-			
+
 			// Agregar a la lista de pedidos completados (máximo 100 para no consumir memoria)
 			if (nuevosPedidosCompletados.length > 0) {
 				setPedidosCompletados(prev => {
@@ -1133,7 +1067,7 @@ const SimuladorSemanal = () => {
 	// 🆕 EFECTO: Actualizar el contador total de pedidos en pantalla
 	useEffect(() => {
 		let totalPedidos = 0;
-		
+
 		// Contar todos los pedidos de los vuelos que se están mostrando
 		(flights || []).forEach(f => {
 			if (f.pedidos && Array.isArray(f.pedidos)) {
@@ -1142,17 +1076,17 @@ const SimuladorSemanal = () => {
 				totalPedidos += 1;
 			}
 		});
-		
+
 		setContadorPedidosTotal(totalPedidos);
 	}, [flights]);
 
 	// 📊 EFECTO: Mostrar métricas cada 10 segundos en consola
 	useEffect(() => {
 		if (!simulacionLocalActiva) return;
-		
+
 		const interval = setInterval(() => {
 			const m = metricasVuelos;
-			
+
 			console.log(`\n📊 ========== MÉTRICAS DE VUELOS ==========`);
 			console.log(`📨 Recibidos del backend:     ${m.totalRecibidosBackend}`);
 			console.log(`📋 En estado flights[]:       ${m.totalEnEstadoFlights}`);
@@ -1163,7 +1097,7 @@ const SimuladorSemanal = () => {
 			console.log(`✅ Completados (completed):   ${m.vuelosCompleted || 0} ← ya aterrizaron`);
 			console.log(`⚠️  Llegaron tarde:            ${m.totalPerdidosAntesDeTiempo}`);
 			console.log(`📊 ==========================================\n`);
-			
+
 			// 🔴 DIAGNÓSTICO: Si hay vuelos pero ninguno graficado
 			if (m.totalEnEstadoFlights > 0 && m.totalGraficados === 0) {
 				if (m.vuelosWaiting > 0) {
@@ -1174,7 +1108,7 @@ const SimuladorSemanal = () => {
 				}
 			}
 		}, 10000); // Cada 10 segundos
-		
+
 		return () => clearInterval(interval);
 	}, [simulacionLocalActiva, metricasVuelos]);
 
@@ -1220,8 +1154,8 @@ const SimuladorSemanal = () => {
 
 			// Inicializar si no existe
 			if (!almacenPorAeropuerto[codigoDestino]) {
-				almacenPorAeropuerto[codigoDestino] = { 
-					paquetes: 0, 
+				almacenPorAeropuerto[codigoDestino] = {
+					paquetes: 0,
 					pedidos: new Set(),
 					tiempoRestanteMin: Infinity // Tiempo mínimo para la próxima recogida
 				};
@@ -1288,7 +1222,7 @@ const SimuladorSemanal = () => {
 	/* ==================== VUELOS LOCALES DESHABILITADOS - SOLO WEBSOCKET ==================== */
 	// ❌ COMENTADO: Ya no usamos vuelos locales basados en planFixed y simClock
 	// ✅ AHORA: Todos los vuelos vienen del WebSocket mediante procesarRutasSimulacion()
-	
+
 	// useEffect(() => {
 	// 	if (!simClock || planFixed.length === 0 || airports.length === 0) return;
 	// 	... código comentado ...
@@ -1297,7 +1231,7 @@ const SimuladorSemanal = () => {
 	/* ==================== RELOJ LOCAL DESHABILITADO - SOLO WEBSOCKET ==================== */
 	// ❌ COMENTADO: Ya no avanzamos el reloj localmente
 	// ✅ AHORA: El tiempo viene del backend en los mensajes WebSocket
-	
+
 	// useEffect(() => {
 	// 	if (!simulacionActiva) return;
 	// 	const advanceMs = DESIRED_TIME_SCALE * REAL_TICK_MS;
@@ -1309,67 +1243,67 @@ const SimuladorSemanal = () => {
 	// Sistema simplificado: Buffer inicial de 20 segundos, luego velocidad constante K=500
 	// SIN sistema adaptativo - avance uniforme del tiempo
 	const flightsInAirRef = useRef(0);
-	
+
 	// Actualizar ref cuando cambia flightsInAir
 	useEffect(() => {
 		flightsInAirRef.current = flightsInAir;
 	}, [flightsInAir]);
-	
+
 	// 🆕 CONSTANTE: Duración de la simulación semanal (7 días en milisegundos)
 	const DURACION_SIMULACION_MS = 7 * 24 * 60 * 60 * 1000; // 604,800,000 ms = 7 días
-	
+
 	useEffect(() => {
 		if (!simulacionLocalActiva || !relojLocalRef.current || !simStartRef.current) return;
-		
+
 		// 🎯 VELOCIDAD CONSTANTE: Siempre usa K=300 (DESIRED_TIME_SCALE)
 		// Sin adaptación basada en aviones visibles
 		const K_CONSTANTE = DESIRED_TIME_SCALE; // 300x
-		
+
 		const interval = setInterval(() => {
 			// Calcular milisegundos simulados por tick
 			// Fórmula: msSimulados = (TICK_REAL_MS / 1000) * K * 1000 = TICK_REAL_MS * K
 			const msSimulados = TICK_REAL_MS * K_CONSTANTE;
-			
+
 			// Avanzar el reloj local
 			const nuevoTiempo = new Date(relojLocalRef.current.getTime() + msSimulados);
-			
+
 			// 🆕 VERIFICAR LÍMITE DE 7 DÍAS
 			const tiempoTranscurridoSimulado = nuevoTiempo.getTime() - simStartRef.current.getTime();
 			if (tiempoTranscurridoSimulado >= DURACION_SIMULACION_MS) {
 				console.log('✅ SIMULACIÓN SEMANAL COMPLETADA - 7 días simulados');
 				console.log(`   Inicio: ${simStartRef.current.toISOString()}`);
 				console.log(`   Fin: ${nuevoTiempo.toISOString()}`);
-				
+
 				// Detener la simulación local
 				setSimulacionLocalActiva(false);
 				setSimulacionActiva(false);
-				
+
 				// Limpiar intervalo de tiempo real
 				if (intervalTiempoRealRef.current) {
 					clearInterval(intervalTiempoRealRef.current);
 					intervalTiempoRealRef.current = null;
 				}
-				
+
 				alert('✅ Simulación semanal completada (7 días)');
 				return;
 			}
-			
+
 			relojLocalRef.current = nuevoTiempo;
 			setRelojLocal(nuevoTiempo);
 			setSimClock(nuevoTiempo);
 			setTiempoSimulacionActual(nuevoTiempo.toISOString());
-			
+
 			// 🆕 IMPORTANTE: Actualizar tiempoSimulado para la interpolación de vuelos
 			setTiempoSimulado(nuevoTiempo.getTime());
-			
+
 			// Debug cada 20 segundos aproximadamente (80 ticks @ 250ms)
 			if (Math.random() < 0.0125) {
 				const avionesEnPantalla = flightsInAirRef.current;
 				const diasTranscurridos = (tiempoTranscurridoSimulado / (24 * 60 * 60 * 1000)).toFixed(2);
-				console.log(`⏰ Reloj: ${nuevoTiempo.toISOString().slice(11,19)} | Día ${diasTranscurridos}/7 | K=${K_CONSTANTE} | Aviones=${avionesEnPantalla}`);
+				console.log(`⏰ Reloj: ${nuevoTiempo.toISOString().slice(11, 19)} | Día ${diasTranscurridos}/7 | K=${K_CONSTANTE} | Aviones=${avionesEnPantalla}`);
 			}
 		}, TICK_REAL_MS);
-		
+
 		return () => clearInterval(interval);
 	}, [simulacionLocalActiva]);
 
@@ -1378,7 +1312,7 @@ const SimuladorSemanal = () => {
 	// ==================== FUNCIONES PARA CONTROLAR SIMULACIÓN ====================
 	const handleIniciarSimulacion = async () => {
 		console.log("Iniciando simulación desde:", fechaInicioSimulacion, "a las", horaInicioSimulacion);
-		
+
 		// Validar fecha
 		if (!fechaInicioSimulacion) {
 			alert("Por favor, selecciona una fecha de inicio.");
@@ -1420,18 +1354,7 @@ const SimuladorSemanal = () => {
 			setFlightsInAir(0);
 			setProgresoAG(null);
 			contadorVuelosRef.current = 0;
-			
-			// 📦 Resetear contador acumulativo de pedidos
-			setPedidosAcumulados({
-				totalProcesados: 0,
-				totalIteraciones: 0,
-				porDestino: {},
-				porHora: {},
-				ultimaIteracion: 0,
-				historial: []
-			});
-			console.log('📦 Contador de pedidos acumulados reseteado');
-			
+
 			// Iniciar reloj local
 			const inicioUTC = new Date(`${fechaInicioSimulacion}T${horaInicioSimulacion}:00Z`);
 			setSimClock(inicioUTC);
@@ -1451,48 +1374,42 @@ const SimuladorSemanal = () => {
 			// ⏸️ NO ACTIVAR RELOJ AÚN - Se activa después del buffer de 15 segundos
 			setSimulacionLocalActiva(false);
 			setTiempoSimulacionActual(inicioUTC.toISOString()); // Mostrar en UI
-			
+
 			// 🆕 INICIALIZAR tiempoSimulado con la fecha de inicio (para interpolación)
 			setTiempoSimulado(inicioUTC.getTime());
 			// Reiniciar refs de tiempo del backend
 			tiempoSimuladoBackendRef.current = null;
 			setTiempoSimuladoBackend(null);
-			
+
 			// 🆕 ACTIVAR BUFFER DE 15 SEGUNDOS para acumular vuelos iniciales
-			console.log(`⏳ ACTIVANDO BUFFER DE ${BUFFER_DELAY_MS/1000} SEGUNDOS para acumular vuelos iniciales...`);
+			console.log(`⏳ ACTIVANDO BUFFER DE ${BUFFER_DELAY_MS / 1000} SEGUNDOS para acumular vuelos iniciales...`);
 			setBufferActivo(true);
-			bufferActivoRef.current = true; // 🆕 Sincronizar ref
 			vuelosBufferRef.current = [];
-			
+
 			// Limpiar timeout anterior si existe
 			if (bufferTimeoutRef.current) {
 				clearTimeout(bufferTimeoutRef.current);
 			}
-			
+
 			// Después de 15 segundos, finalizar buffer y activar animación
 			bufferTimeoutRef.current = setTimeout(() => {
 				console.log(`✅ BUFFER COMPLETADO - ${vuelosBufferRef.current.length} vuelos acumulados`);
 				setBufferActivo(false);
-				bufferActivoRef.current = false; // 🆕 Sincronizar ref
-				
+
 				// Procesar todos los vuelos acumulados
 				if (vuelosBufferRef.current.length > 0) {
 					console.log(`🚀 Procesando ${vuelosBufferRef.current.length} vuelos del buffer...`);
 					// Combinar todos los vuelos en un solo array y setear flights
 					setFlights(vuelosBufferRef.current);
 					setFlightsInAir(vuelosBufferRef.current.filter(v => v.status === 'active').length);
-					
-					// 🆕 ACTUALIZAR CONTADOR DE VUELOS ACUMULADOS
-					contadorVuelosRef.current = vuelosBufferRef.current.length;
-					console.log(`📊 Contador de vuelos inicializado: ${contadorVuelosRef.current}`);
-					
+
 					// 🚀 ACTIVAR RELOJ LOCAL
 					setSimulacionLocalActiva(true);
 					console.log(`🚀 Reloj local ACTIVADO - ${vuelosBufferRef.current.length} vuelos listos para animar`);
 				} else {
 					console.warn(`⚠️ Buffer vacío - no hay vuelos para animar, esperando más datos...`);
 				}
-				
+
 				// Limpiar buffer
 				vuelosBufferRef.current = [];
 			}, BUFFER_DELAY_MS);
@@ -1520,7 +1437,7 @@ const SimuladorSemanal = () => {
 
 			if (data.sessionId) {
 				setSessionId(data.sessionId);
-				
+
 				// Suscribirse al topic si hay conexión STOMP
 				if (stompClientRef.current?.connected) {
 					const topicUrl = `/topic/simulations/${data.sessionId}`;
@@ -1545,12 +1462,12 @@ const SimuladorSemanal = () => {
 			// 🕐 INICIAR CRONÓMETRO DE TIEMPO REAL (para UI)
 			tiempoInicioRef.current = Date.now();
 			setTiempoRealTranscurrido(0);
-			
+
 			// Limpiar intervalo anterior si existe
 			if (intervalTiempoRealRef.current) {
 				clearInterval(intervalTiempoRealRef.current);
 			}
-			
+
 			// Actualizar tiempo real cada segundo
 			intervalTiempoRealRef.current = setInterval(() => {
 				if (tiempoInicioRef.current) {
@@ -1571,13 +1488,13 @@ const SimuladorSemanal = () => {
 	const handleDetenerSimulacion = async () => {
 		console.log("🛑 Deteniendo simulación...");
 		setSimulacionActiva(false);
-		
+
 		// 🕐 DETENER CRONÓMETRO
 		if (intervalTiempoRealRef.current) {
 			clearInterval(intervalTiempoRealRef.current);
 			intervalTiempoRealRef.current = null;
 		}
-		
+
 		// Cancelar simulación en el backend si hay sessionId
 		if (sessionId) {
 			try {
@@ -1620,7 +1537,7 @@ const SimuladorSemanal = () => {
 		setFlights([]);
 		setFlightsInAir(0);
 		contadorVuelosRef.current = 0; // 🆔 Resetear contador de IDs únicos
-		
+
 		// 🕐 RESETEAR Y DETENER CRONÓMETRO
 		if (intervalTiempoRealRef.current) {
 			clearInterval(intervalTiempoRealRef.current);
@@ -1628,7 +1545,7 @@ const SimuladorSemanal = () => {
 		}
 		tiempoInicioRef.current = null;
 		setTiempoRealTranscurrido(0);
-		
+
 		// 📊 RESETEAR MÉTRICAS DE VUELOS
 		setMetricasVuelos({
 			totalRecibidosBackend: 0,
@@ -1639,7 +1556,7 @@ const SimuladorSemanal = () => {
 			ultimaActualizacion: null
 		});
 		vuelosRecibidosIdsRef.current = new Set();
-		
+
 		// Si deseas también resetear planificaciones recibidas:
 		// setPlanFixed([]);
 	};
@@ -1655,20 +1572,25 @@ const SimuladorSemanal = () => {
 		setIsMetricsPopperOpen((prev) => !prev);
 	};
 
+	const handleControlButtonClick = (event) => {
+		setControlAnchorEl(event.currentTarget); // botón como anchor
+		setIsControlPopperOpen((prev) => !prev);
+	};
+
 	// ==================== FUNCIONES WEBSOCKET DE PLANIFICACIÓN ====================
-	
+
 	/**
 	 * Convertir vuelo de planificación al formato del mapa
 	 */
 	const convertirVueloPlanificacionAMapa = (vuelo) => {
 		// Buscar coordenadas de aeropuertos (comparación case-insensitive)
-		const origen = airports.find(a => 
+		const origen = airports.find(a =>
 			String(a.code).toUpperCase() === String(vuelo.origenCodigoICAO).toUpperCase()
 		);
-		const destino = airports.find(a => 
+		const destino = airports.find(a =>
 			String(a.code).toUpperCase() === String(vuelo.destinoCodigoICAO).toUpperCase()
 		);
-		
+
 		if (!origen || !destino) {
 			console.warn(`⚠️ Aeropuertos no encontrados: ${vuelo.origenCodigoICAO} o ${vuelo.destinoCodigoICAO}`);
 			console.log('📍 Aeropuertos disponibles:', airports.map(a => a.code));
@@ -1681,10 +1603,10 @@ const SimuladorSemanal = () => {
 			const fechaInicio = new Date(vuelo.fechaInicial);
 			const fechaFin = new Date(vuelo.fechaFinal);
 			const ahora = new Date();
-			
+
 			const totalDuracion = fechaFin - fechaInicio;
 			const transcurrido = ahora - fechaInicio;
-			
+
 			if (totalDuracion > 0 && transcurrido > 0) {
 				progress = Math.max(0, Math.min(1, transcurrido / totalDuracion));
 			} else {
@@ -1694,26 +1616,25 @@ const SimuladorSemanal = () => {
 			console.warn('⚠️ Error calculando progreso:', e);
 			progress = 0.1;
 		}
-		
+
 		// Interpolación de posición
 		const currentLat = origen.lat + (destino.lat - origen.lat) * progress;
 		const currentLng = origen.lng + (destino.lng - origen.lng) * progress;
-		
+
 		// Calcular rotación usando bearingDegrees
-		// SVG apunta al norte (0°), bearing devuelve 0°=N, 90°=E, así que usamos bearing directo
 		const brg = bearingDegrees(origen.lat, origen.lng, destino.lat, destino.lng);
-		const rotation = brg; // Sin restar 90 porque el SVG ya apunta al norte
-		
+		const rotation = (brg - 90 + 360) % 360;
+
 		// Determinar estado del vuelo
 		const status = progress >= 1 ? 'arrived' : (progress <= 0 ? 'scheduled' : 'active');
-		
+
 		// Calcular total de paquetes
 		const totalPaquetes = vuelo.pedidos?.reduce((sum, p) => sum + (p.cantidad || 0), 0) || 0;
-		
+
 		// Generar ID único con contador incremental (SIN Date.now() para evitar duplicados)
 		contadorVuelosRef.current += 1;
 		const idUnico = `PL-${vuelo.origenCodigoICAO}-${vuelo.destinoCodigoICAO}-${contadorVuelosRef.current}`;
-		
+
 		return {
 			id: idUnico,
 			origin: {
@@ -1780,17 +1701,17 @@ const SimuladorSemanal = () => {
 		setIntentosRealizados(0);
 		setEstadoPlanificacion('running');
 		contadorVuelosRef.current = 0; // 🆔 Resetear contador de IDs únicos
-		
+
 		// 🕐 INICIAR TIEMPO DE SIMULACIÓN (basado en fecha y hora elegida por usuario)
 		const fechaSimulacion = new Date(`${fechaInicioSimulacion}T${horaInicioSimulacion}:00Z`);
 		simStartRef.current = fechaSimulacion;
 		setSimClock(fechaSimulacion);
 		console.log('🕐 Tiempo de simulación iniciado en:', fechaSimulacion.toISOString());
-		
+
 		// 🕐 INICIAR CRONÓMETRO DE TIEMPO REAL (para UI)
 		tiempoInicioRef.current = Date.now();
 		setTiempoRealTranscurrido(0);
-		
+
 		// Actualizar tiempo real cada segundo
 		if (intervalTiempoRealRef.current) {
 			clearInterval(intervalTiempoRealRef.current);
@@ -1803,7 +1724,7 @@ const SimuladorSemanal = () => {
 		}, 1000);
 
 		console.log('🚀 Iniciando planificación para fecha:', fechaInicioSimulacion);
-		
+
 		// ✨ Usar la función del hook para iniciar planificación
 		iniciarPlanificacion(
 			fechaInicioSimulacion,
@@ -1837,20 +1758,20 @@ const SimuladorSemanal = () => {
 	 */
 	const handleDetenerPlanificacion = () => {
 		console.log('🛑 Deteniendo planificación continua...');
-		
+
 		// Detener cronómetro
 		if (intervalTiempoRealRef.current) {
 			clearInterval(intervalTiempoRealRef.current);
 			intervalTiempoRealRef.current = null;
 		}
-		
+
 		// Detener planificación en el hook
 		wsDetenerPlanificacion();
-		
+
 		// Resetear estado
 		setEstadoPlanificacion('idle');
 		setAutoInicioIntentado(false);
-		
+
 		console.log('✅ Planificación detenida. Vuelos permanecen en el mapa.');
 	};
 
@@ -1859,25 +1780,25 @@ const SimuladorSemanal = () => {
 	 */
 	const handleLimpiarMapa = () => {
 		console.log('🧹 Limpiando mapa y reseteando simulación...');
-		
+
 		// Limpiar vuelos
 		setFlights([]);
 		setFlightsInAir(0);
 		setIteracionesPlanificacion([]);
 		setIntentosRealizados(0);
 		contadorVuelosRef.current = 0;
-		
+
 		// ✅ RESETEAR TIEMPO SIMULADO
 		setTiempoSimuladoBackend(null);
 		tiempoSimuladoBackendRef.current = null; // 🆕 También resetear la ref
 		setUltimaActualizacionReal(null);
 		setTiempoMovimiento(0);
 		setTiempoSimulado(Date.now());
-		
+
 		// Limpiar progreso
 		setProgresoAG(null);
 		setMensajesSimulacion([]);
-		
+
 		console.log('✅ Mapa limpiado y simulación reseteada');
 	};
 
@@ -1885,15 +1806,15 @@ const SimuladorSemanal = () => {
 	useEffect(() => {
 		wsOnMessage((data) => {
 			console.log('📩 [Hook] Mensaje de planificación:', data);
-			
+
 			// Procesar tiempo simulado
 			if (data.datos?.tiempoSimulacionActual) {
 				let timestampStr = data.datos.tiempoSimulacionActual;
 				if (typeof timestampStr === 'string' && !timestampStr.endsWith('Z')) {
 					timestampStr = timestampStr + 'Z';
 				}
-				const timestampMs = typeof timestampStr === 'string' 
-					? new Date(timestampStr).getTime() 
+				const timestampMs = typeof timestampStr === 'string'
+					? new Date(timestampStr).getTime()
 					: timestampStr;
 				setTiempoSimulacionActual(data.datos.tiempoSimulacionActual);
 				setTiempoSimuladoBackend(timestampMs);
@@ -1902,15 +1823,15 @@ const SimuladorSemanal = () => {
 				setUltimaActualizacionReal(Date.now());
 				setTiempoMovimiento(0);
 			}
-			
+
 			// Procesar vuelos si vienen en la solución
 			if (data.solucion?.vuelos && data.solucion.vuelos.length > 0) {
 				console.log(`✈️ [Hook] Procesando ${data.solucion.vuelos.length} vuelos`);
-				
+
 				const vuelosParaMapa = data.solucion.vuelos
 					.map(convertirVueloPlanificacionAMapa)
 					.filter(v => v !== null);
-				
+
 				if (vuelosParaMapa.length > 0) {
 					setFlights(prevFlights => {
 						const flightsMap = new Map(prevFlights.map(f => [f.id, f]));
@@ -1919,7 +1840,7 @@ const SimuladorSemanal = () => {
 					});
 					setFlightsInAir(prev => prev + vuelosParaMapa.length);
 				}
-				
+
 				// Si es tipo completado, solicitar siguiente iteración
 				if (data.tipo === 'completado') {
 					const nuevoIntento = intentosRealizados + 1;
@@ -1957,7 +1878,7 @@ const SimuladorSemanal = () => {
 		if (wsConnected && fechaInicioSimulacion && !autoInicioIntentado && estadoPlanificacion === 'idle') {
 			console.log('🚀 Auto-iniciando planificación...');
 			setAutoInicioIntentado(true);
-			
+
 			// Pequeño delay para asegurar que la conexión esté estable
 			setTimeout(() => {
 				handleIniciarPlanificacion();
@@ -1971,7 +1892,7 @@ const SimuladorSemanal = () => {
 	}, [fechaInicioSimulacion]);
 
 	// ==================== FUNCIONES WEBSOCKET STOMP (SIMULACIÓN SEMANAL) ====================
-	
+
 	/**
 	 * Conectar WebSocket STOMP
 	 */
@@ -1985,34 +1906,34 @@ const SimuladorSemanal = () => {
 		setEstadoSimulacionStomp('connecting');
 
 		const socket = new SockJS(WS_URL);
-		
+
 		const stompClient = new Client({
 			webSocketFactory: () => socket,
 			reconnectDelay: 5000,
 			heartbeatIncoming: 4000,
 			heartbeatOutgoing: 4000,
-			
+
 			onConnect: () => {
 				console.log('✅ WebSocket STOMP conectado');
 				setWsStompConectado(true);
 				setEstadoSimulacionStomp('connected');
 				agregarMensaje('✅ Conexión WebSocket establecida', 'success');
 			},
-			
+
 			onStompError: (frame) => {
 				console.error('❌ Error STOMP:', frame.headers['message']);
 				console.error('Detalles:', frame.body);
 				setEstadoSimulacionStomp('error');
 				agregarMensaje(`❌ Error STOMP: ${frame.headers['message']}`, 'error');
 			},
-			
+
 			onWebSocketError: (error) => {
 				console.error('❌ Error WebSocket:', error);
 				setWsStompConectado(false);
 				setEstadoSimulacionStomp('error');
 				agregarMensaje('❌ Error de conexión WebSocket', 'error');
 			},
-			
+
 			onDisconnect: () => {
 				console.log('🔌 WebSocket STOMP desconectado');
 				setWsStompConectado(false);
@@ -2046,7 +1967,7 @@ const SimuladorSemanal = () => {
 
 	// 🆔 Contador para IDs únicos de mensajes
 	const contadorMensajesRef = useRef(0);
-	
+
 	/**
 	 * Agregar mensaje al log
 	 */
@@ -2078,7 +1999,7 @@ const SimuladorSemanal = () => {
 
 		try {
 			console.log('🚀 Iniciando simulación semanal con WebSocket STOMP...');
-			
+
 			// 🧹 LIMPIAR VUELOS ANTERIORES antes de iniciar nueva simulación
 			console.log('🧹 Limpiando vuelos anteriores...');
 			setFlights([]);
@@ -2086,7 +2007,7 @@ const SimuladorSemanal = () => {
 			setProgresoAG(null);
 			setMensajesSimulacion([]);
 			contadorVuelosRef.current = 0; // 🆔 Resetear contador de IDs únicos
-			
+
 			// 📊 RESETEAR MÉTRICAS DE VUELOS
 			setMetricasVuelos({
 				totalRecibidosBackend: 0,
@@ -2097,7 +2018,7 @@ const SimuladorSemanal = () => {
 				ultimaActualizacion: null
 			});
 			vuelosRecibidosIdsRef.current = new Set();
-			
+
 			setEstadoSimulacionStomp('running');
 			agregarMensaje(`🚀 Iniciando simulación para ${fechaInicioSimulacion} a las ${horaInicioSimulacion}`, 'info');
 
@@ -2165,7 +2086,7 @@ const SimuladorSemanal = () => {
 		if (datos.tipo === 'PROGRESO_AG') {
 			// Mensaje de progreso del Algoritmo Genético
 			console.log(`🧬 Progreso AG - Generación ${datos.generacion}/${datos.maxGeneraciones}`);
-			
+
 			// 🕐 ACTUALIZAR TIEMPO SIMULADO DEL BACKEND (convertir a timestamp)
 			if (datos.fechaSimulada) {
 				// 🆕 FIX: Forzar interpretación como UTC si no tiene 'Z'
@@ -2174,20 +2095,20 @@ const SimuladorSemanal = () => {
 					fechaStr = fechaStr + 'Z';
 				}
 				const timestampSimulado = new Date(fechaStr).getTime();
-				
+
 				// ✅ ACTUALIZAR ESTADO Y REF
 				setTiempoSimuladoBackend(timestampSimulado);
 				setTiempoSimulado(timestampSimulado); // 🆕 CRÍTICO: Sincronizar tiempoSimulado para interpolación
 				tiempoSimuladoBackendRef.current = timestampSimulado; // 🆕 Sincronizar ref
 				setUltimaActualizacionReal(Date.now());
 				setTiempoMovimiento(0); // Resetear movimiento
-				
+
 				// 🆕 ACTUALIZAR tiempoSimulacionActual para mostrar en UI
 				setTiempoSimulacionActual(datos.fechaSimulada);
-				
+
 				console.log(`⏰ Backend - Tiempo simulado actualizado: ${fechaStr} -> ${new Date(timestampSimulado).toISOString()}`);
 			}
-			
+
 			setProgresoAG({
 				generacion: datos.generacion,
 				maxGeneraciones: datos.maxGeneraciones,
@@ -2199,285 +2120,221 @@ const SimuladorSemanal = () => {
 				fechaSimulada: datos.fechaSimulada
 			});
 
-			// 📦 ACTUALIZAR CONTADOR ACUMULATIVO DE PEDIDOS
-			// Solo acumulamos cuando es la última generación de una iteración
-			if (datos.generacion === datos.maxGeneraciones && datos.pedidosProcesados > 0) {
-				const horaSimulada = datos.fechaSimulada ? new Date(datos.fechaSimulada).getHours().toString().padStart(2, '0') : 'N/A';
-				
-				setPedidosAcumulados(prev => {
-					// Calcular pedidos por destino si hay vuelos
-					const nuevosPorDestino = { ...prev.porDestino };
-					if (datos.solucion?.vuelos) {
-						datos.solucion.vuelos.forEach(vuelo => {
-							const destino = vuelo.destinoCodigoICAO || vuelo.destino;
-							const paquetes = vuelo.totalPaquetes || vuelo.paquetes || 1;
-							nuevosPorDestino[destino] = (nuevosPorDestino[destino] || 0) + paquetes;
-						});
-					}
+			agregarMensaje(
+				`🧬 Generación ${datos.generacion}/${datos.maxGeneraciones} - Fitness: ${datos.mejorFitness?.toFixed(2)} - Progreso: ${datos.progreso?.toFixed(1)}%`,
+				'info'
+			);
 
-					// Actualizar por hora
-					const nuevosPorHora = { ...prev.porHora };
-					nuevosPorHora[horaSimulada] = (nuevosPorHora[horaSimulada] || 0) + datos.pedidosProcesados;
+			// 🔥 NUEVO: Procesar vuelos directos (no rutas con subRutas)
+			// Usar refs para llamar a las funciones más recientes (evita closure problem)
+			if (datos.solucion?.vuelos && datos.solucion.vuelos.length > 0) {
+				console.log(`✈️ Procesando ${datos.solucion.vuelos.length} vuelos directos...`);
+				if (procesarVuelosDirectosRef.current) {
+					procesarVuelosDirectosRef.current(datos.solucion.vuelos);
+				}
+			}
+			// Fallback: Si viene en formato antiguo (rutas con subRutas)
+			else if (datos.solucion?.rutas) {
+				console.log(`✈️ Procesando ${datos.solucion.rutas.length} rutas...`);
+				if (procesarRutasSimulacionRef.current) {
+					procesarRutasSimulacionRef.current(datos.solucion.rutas);
+				}
+			}
 
-					const nuevoHistorial = [
-								...prev.historial,
-								{
-									hora: datos.fechaSimulada,
-									pedidos: datos.pedidosProcesados,
-									fitness: datos.mejorFitness,
-									iteracion: prev.totalIteraciones + 1
-								}
-							];
-
-							console.log(`📦 ACUMULADO: +${datos.pedidosProcesados} pedidos | Total: ${prev.totalProcesados + datos.pedidosProcesados} | Iteración #${prev.totalIteraciones + 1}`);
-
+			// 🆕 ACTUALIZAR AEROPUERTOS con datos de ocupación del backend
+			if (datos.solucion?.aeropuertos && datos.solucion.aeropuertos.length > 0) {
+				console.log(`🏢 Actualizando ocupación de ${datos.solucion.aeropuertos.length} aeropuertos...`);
+				setAirports(prevAirports => {
+					return prevAirports.map(airport => {
+						// Buscar datos actualizados del backend por código
+						const backendData = datos.solucion.aeropuertos.find(
+							a => a.code === airport.code || a.codigo === airport.code
+						);
+						if (backendData) {
 							return {
-								totalProcesados: prev.totalProcesados + datos.pedidosProcesados,
-								totalIteraciones: prev.totalIteraciones + 1,
-								porDestino: nuevosPorDestino,
-								porHora: nuevosPorHora,
-								ultimaIteracion: datos.pedidosProcesados,
-								historial: nuevoHistorial
+								...airport,
+								packages: backendData.packages || backendData.ocupacionActual || 0,
+								// Actualizar capacidad si viene (puede ser string "ILIMITADO" o número)
+								capacity: backendData.capacity !== undefined ? backendData.capacity : airport.capacity
 							};
-						});
-					}
+						}
+						return airport;
+					});
+				});
+			}
 
-					agregarMensaje(
-						`🧬 Generación ${datos.generacion}/${datos.maxGeneraciones} - Fitness: ${datos.mejorFitness?.toFixed(2)} - Progreso: ${datos.progreso?.toFixed(1)}%`,
-						'info'
+		} else if (datos.type === 'PROGRESS' || datos.status === 'RUNNING') {
+			// 🆕 NUEVA ESTRUCTURA: SimulationMessage con snapshot
+			console.log(`🎮 Simulación corriendo - Snapshot recibido`);
+
+			if (datos.snapshot) {
+				const snapshot = datos.snapshot;
+				console.log(`📊 Snapshot: ${snapshot.processedOrders}/${snapshot.totalOrders} pedidos procesados`);
+				console.log(`📈 Fitness: ${snapshot.fitness?.toFixed(4)}`);
+
+				agregarMensaje(
+					`🎮 Progreso: ${snapshot.processedOrders}/${snapshot.totalOrders} pedidos - Fitness: ${snapshot.fitness?.toFixed(4)}`,
+					'info'
+				);
+
+				// 🆕 PROCESAR SEGMENTS del snapshot (nueva estructura)
+				if (snapshot.orderPlans && snapshot.orderPlans.length > 0) {
+					console.log(`✈️ Procesando segments del snapshot...`);
+					if (procesarSegmentsSnapshotRef.current) {
+						procesarSegmentsSnapshotRef.current(snapshot);
+					}
+				}
+
+				// 🆕 ACTUALIZAR AEROPUERTOS con datos de ocupación del snapshot
+				if (snapshot.aeropuertos && snapshot.aeropuertos.length > 0) {
+					console.log(`🏢 [Snapshot] Actualizando ocupación de ${snapshot.aeropuertos.length} aeropuertos...`);
+					setAirports(prevAirports => {
+						return prevAirports.map(airport => {
+							// Buscar datos actualizados del snapshot por código
+							const backendData = snapshot.aeropuertos.find(
+								a => a.codigo === airport.code || a.code === airport.code
+							);
+							if (backendData) {
+								return {
+									...airport,
+									// ocupacionActual = paquetes actuales en el almacén
+									packages: backendData.ocupacionActual || backendData.packages || 0,
+									// pedidosAlmacenados = número de pedidos (diferente a cantidad de paquetes)
+									pedidosCount: backendData.pedidosAlmacenados || 0,
+									// capacidadAlmacen = capacidad total
+									capacity: backendData.capacidadAlmacen || airport.capacity
+								};
+							}
+							return airport;
+						});
+					});
+				}
+			}
+			// Fallback para estructura antigua
+			else if (datos.solution?.routes) {
+				console.log(`✈️ [Formato antiguo] Procesando ${datos.solution.routes.length} rutas...`);
+				if (procesarRutasSnapshotRef.current) {
+					procesarRutasSnapshotRef.current(datos.solution.routes);
+				}
+			}
+
+		} else if (datos.type === 'COMPLETED' || datos.status === 'COMPLETED') {
+			// Simulación completada
+			console.log('🎉 Simulación completada exitosamente');
+			setEstadoSimulacionStomp('completed');
+			agregarMensaje('🎉 Simulación completada exitosamente', 'success');
+
+			// 🆕 Procesar snapshot final si existe
+			if (datos.snapshot?.orderPlans) {
+				console.log(`✈️ Procesando snapshot final...`);
+				if (procesarSegmentsSnapshotRef.current) {
+					procesarSegmentsSnapshotRef.current(datos.snapshot);
+				}
+			}
+			// Fallback para formato antiguo
+			else if (datos.solution?.routes) {
+				if (procesarRutasSnapshotRef.current) {
+					procesarRutasSnapshotRef.current(datos.solution.routes);
+				}
+			}
+
+			// Desuscribirse del topic
+			if (subscriptionRef.current) {
+				subscriptionRef.current.unsubscribe();
+				subscriptionRef.current = null;
+			}
+
+		} else if (datos.tipo === 'ERROR') {
+			// Error en la simulación
+			console.error('❌ Error en simulación:', datos.mensaje);
+			setEstadoSimulacionStomp('error');
+			agregarMensaje(`❌ Error: ${datos.mensaje}`, 'error');
+		}
+	}, [agregarMensaje]); // 🔥 No incluir funciones de procesamiento (causa circular reference)
+
+	/**
+	 * 🆕 Procesar vuelos DIRECTOS (formato nuevo del backend)
+	 * Formato: {origenCodigoICAO, destinoCodigoICAO, fechaInicial, fechaFinal, pedidos, totalPaquetes}
+	 */
+	/**
+	 * 🆕 Procesar segments del snapshot (nueva estructura JSON)
+	 * Extrae todos los segments de orderPlans → routes → segments
+	 */
+	const procesarSegmentsSnapshot = useCallback((snapshot) => {
+		const currentAirports = airportsRef.current;
+		console.log(`\n🔍 procesarSegmentsSnapshot - Snapshot recibido`);
+		console.log(`📍 Aeropuertos disponibles: ${currentAirports.length}`);
+		console.log(`⏰ Tiempo simulado: ${snapshot.generatedAt}`);
+
+		if (!snapshot.orderPlans || snapshot.orderPlans.length === 0) {
+			console.warn('⚠️ No hay orderPlans en el snapshot');
+			return;
+		}
+
+		const nuevosVuelos = [];
+		let segmentIndex = 0;
+
+		// Iterar por cada orderPlan
+		snapshot.orderPlans.forEach((orderPlan, orderIndex) => {
+			const orderId = orderPlan.orderId;
+			const orderSlackMinutes = orderPlan.slackMinutes;
+
+			console.log(`\n📦 Pedido ${orderIndex + 1}/${snapshot.orderPlans.length}: ${orderId}`);
+			console.log(`   Holgura: ${orderSlackMinutes} minutos ${orderSlackMinutes > 0 ? '✅' : '⚠️'}`);
+
+			// Iterar por cada ruta del pedido
+			orderPlan.routes.forEach((route, routeIndex) => {
+				console.log(`   📍 Ruta ${routeIndex + 1}: ${route.segments.length} segmentos`);
+
+				// Iterar por cada segment (VUELO) de la ruta
+				route.segments.forEach((segment, segIndex) => {
+					segmentIndex++;
+
+					console.log(`\n   ✈️ Segment ${segmentIndex}: ${segment.flightId}`);
+					console.log(`      ${segment.origin} → ${segment.destination}`);
+					console.log(`      Despegue: ${segment.departureUtc}`);
+					console.log(`      Llegada:  ${segment.arrivalUtc}`);
+					console.log(`      Cantidad: ${segment.quantity} paquetes`);
+
+					// Buscar aeropuertos de origen y destino
+					const origen = currentAirports.find(a =>
+						a.code.toUpperCase() === segment.origin.toUpperCase()
+					);
+					const destino = currentAirports.find(a =>
+						a.code.toUpperCase() === segment.destination.toUpperCase()
 					);
 
-					// 🔥 NUEVO: Procesar vuelos directos (no rutas con subRutas)
-					// Usar refs para llamar a las funciones más recientes (evita closure problem)
-					if (datos.solucion?.vuelos && datos.solucion.vuelos.length > 0) {
-						console.log(`✈️ Procesando ${datos.solucion.vuelos.length} vuelos directos...`);
-						if (procesarVuelosDirectosRef.current) {
-							procesarVuelosDirectosRef.current(datos.solucion.vuelos);
-						}
-					} 
-					// Fallback: Si viene en formato antiguo (rutas con subRutas)
-					else if (datos.solucion?.rutas) {
-						console.log(`✈️ Procesando ${datos.solucion.rutas.length} rutas...`);
-						if (procesarRutasSimulacionRef.current) {
-							procesarRutasSimulacionRef.current(datos.solucion.rutas);
-						}
+					if (!origen) {
+						console.error(`      ❌ Aeropuerto ORIGEN no encontrado: "${segment.origin}"`);
+						return;
 					}
 
-					// 🆕 ACTUALIZAR AEROPUERTOS con datos de ocupación del backend
-					if (datos.solucion?.aeropuertos && datos.solucion.aeropuertos.length > 0) {
-						console.log(`🏢 Actualizando ocupación de ${datos.solucion.aeropuertos.length} aeropuertos...`);
-						setAirports(prevAirports => {
-							return prevAirports.map(airport => {
-								// Buscar datos actualizados del backend por código
-								const backendData = datos.solucion.aeropuertos.find(
-									a => a.code === airport.code || a.codigo === airport.code
-								);
-								if (backendData) {
-									return {
-										...airport,
-										packages: backendData.packages || backendData.ocupacionActual || 0,
-										// Actualizar capacidad si viene (puede ser string "ILIMITADO" o número)
-										capacity: backendData.capacity !== undefined ? backendData.capacity : airport.capacity
-									};
-								}
-								return airport;
-							});
-						});
+					if (!destino) {
+						console.error(`      ❌ Aeropuerto DESTINO no encontrado: "${segment.destination}"`);
+						return;
 					}
 
-				} else if (datos.type === 'PROGRESS' || datos.status === 'RUNNING') {
-					// 🆕 NUEVA ESTRUCTURA: SimulationMessage con snapshot
-					console.log(`🎮 Simulación corriendo - Snapshot recibido`);
-					
-					if (datos.snapshot) {
-						const snapshot = datos.snapshot;
-						console.log(`📊 Snapshot: ${snapshot.processedOrders}/${snapshot.totalOrders} pedidos procesados`);
-						console.log(`📈 Fitness: ${snapshot.fitness?.toFixed(4)}`);
-						
-						agregarMensaje(
-							`🎮 Progreso: ${snapshot.processedOrders}/${snapshot.totalOrders} pedidos - Fitness: ${snapshot.fitness?.toFixed(4)}`,
-							'info'
-						);
-						
-						// 🆕 PROCESAR SEGMENTS del snapshot (nueva estructura)
-						if (snapshot.orderPlans && snapshot.orderPlans.length > 0) {
-							console.log(`✈️ Procesando segments del snapshot...`);
-							if (procesarSegmentsSnapshotRef.current) {
-								procesarSegmentsSnapshotRef.current(snapshot);
-							}
-						}
-						
-						// 🆕 ACTUALIZAR AEROPUERTOS con datos de ocupación del snapshot
-						if (snapshot.aeropuertos && snapshot.aeropuertos.length > 0) {
-							console.log(`🏢 [Snapshot] Actualizando ocupación de ${snapshot.aeropuertos.length} aeropuertos...`);
-							setAirports(prevAirports => {
-								return prevAirports.map(airport => {
-									// Buscar datos actualizados del snapshot por código
-									const backendData = snapshot.aeropuertos.find(
-										a => a.codigo === airport.code || a.code === airport.code
-									);
-									if (backendData) {
-										return {
-											...airport,
-											// ocupacionActual = paquetes actuales en el almacén
-											packages: backendData.ocupacionActual || backendData.packages || 0,
-											// pedidosAlmacenados = número de pedidos (diferente a cantidad de paquetes)
-											pedidosCount: backendData.pedidosAlmacenados || 0,
-											// capacidadAlmacen = capacidad total
-											capacity: backendData.capacidadAlmacen || airport.capacity
-										};
-									}
-									return airport;
-								});
-							});
-						}
-					}
-					// Fallback para estructura antigua
-					else if (datos.solution?.routes) {
-						console.log(`✈️ [Formato antiguo] Procesando ${datos.solution.routes.length} rutas...`);
-						if (procesarRutasSnapshotRef.current) {
-							procesarRutasSnapshotRef.current(datos.solution.routes);
-						}
-					}
+					console.log(`      ✅ Origen: ${origen.code} [${origen.lat.toFixed(2)}, ${origen.lng.toFixed(2)}]`);
+					console.log(`      ✅ Destino: ${destino.code} [${destino.lat.toFixed(2)}, ${destino.lng.toFixed(2)}]`);
 
-				} else if (datos.type === 'COMPLETED' || datos.status === 'COMPLETED') {
-					// Simulación completada
-					console.log('🎉 Simulación completada exitosamente');
-					setEstadoSimulacionStomp('completed');
-					agregarMensaje('🎉 Simulación completada exitosamente', 'success');
+					// Calcular rotación del avión
+					const brg = bearingDegrees(origen.lat, origen.lng, destino.lat, destino.lng);
+					const rotation = (brg - 90 + 360) % 360;
 
-					// 🆕 Procesar snapshot final si existe
-					if (datos.snapshot?.orderPlans) {
-						console.log(`✈️ Procesando snapshot final...`);
-						if (procesarSegmentsSnapshotRef.current) {
-							procesarSegmentsSnapshotRef.current(datos.snapshot);
-						}
-					}
-					// Fallback para formato antiguo
-					else if (datos.solution?.routes) {
-						if (procesarRutasSnapshotRef.current) {
-							procesarRutasSnapshotRef.current(datos.solution.routes);
-						}
-					}
-
-					// Desuscribirse del topic
-					if (subscriptionRef.current) {
-						subscriptionRef.current.unsubscribe();
-						subscriptionRef.current = null;
-					}
-
-				} else if (datos.tipo === 'ERROR') {
-					// Error en la simulación
-					console.error('❌ Error en simulación:', datos.mensaje);
-					setEstadoSimulacionStomp('error');
-					agregarMensaje(`❌ Error: ${datos.mensaje}`, 'error');
-				}
-			}, [agregarMensaje]); // 🔥 No incluir funciones de procesamiento (causa circular reference)
-
-			/**
-			 * 🆕 Procesar vuelos DIRECTOS (formato nuevo del backend)
-			 * Formato: {origenCodigoICAO, destinoCodigoICAO, fechaInicial, fechaFinal, pedidos, totalPaquetes}
-			 */
-			/**
-			 * 🆕 Procesar segments del snapshot (nueva estructura JSON)
-			 * Extrae todos los segments de orderPlans → routes → segments
-			 */
-			const procesarSegmentsSnapshot = useCallback((snapshot) => {
-				const currentAirports = airportsRef.current;
-				console.log(`\n🔍 procesarSegmentsSnapshot - Snapshot recibido`);
-				console.log(`📍 Aeropuertos disponibles: ${currentAirports.length}`);
-				console.log(`⏰ Tiempo simulado: ${snapshot.generatedAt}`);
-				
-				if (!snapshot.orderPlans || snapshot.orderPlans.length === 0) {
-					console.warn('⚠️ No hay orderPlans en el snapshot');
-					return;
-				}
-				
-				const nuevosVuelos = [];
-				let segmentIndex = 0;
-				
-				// Iterar por cada orderPlan
-				snapshot.orderPlans.forEach((orderPlan, orderIndex) => {
-					const orderId = orderPlan.orderId;
-					const orderSlackMinutes = orderPlan.slackMinutes;
-					
-					console.log(`\n📦 Pedido ${orderIndex + 1}/${snapshot.orderPlans.length}: ${orderId}`);
-					console.log(`   Holgura: ${orderSlackMinutes} minutos ${orderSlackMinutes > 0 ? '✅' : '⚠️'}`);
-					
-					// Iterar por cada ruta del pedido
-					orderPlan.routes.forEach((route, routeIndex) => {
-						console.log(`   📍 Ruta ${routeIndex + 1}: ${route.segments.length} segmentos`);
-						
-						// Iterar por cada segment (VUELO) de la ruta
-						route.segments.forEach((segment, segIndex) => {
-							segmentIndex++;
-							
-							console.log(`\n   ✈️ Segment ${segmentIndex}: ${segment.flightId}`);
-							console.log(`      ${segment.origin} → ${segment.destination}`);
-							console.log(`      Despegue: ${segment.departureUtc}`);
-							console.log(`      Llegada:  ${segment.arrivalUtc}`);
-							console.log(`      Cantidad: ${segment.quantity} paquetes`);
-							
-							// Buscar aeropuertos de origen y destino
-							const origen = currentAirports.find(a => 
-								a.code.toUpperCase() === segment.origin.toUpperCase()
-							);
-							const destino = currentAirports.find(a => 
-								a.code.toUpperCase() === segment.destination.toUpperCase()
-							);
-							
-							if (!origen) {
-								console.error(`      ❌ Aeropuerto ORIGEN no encontrado: "${segment.origin}"`);
-								return;
-							}
-							
-							if (!destino) {
-								console.error(`      ❌ Aeropuerto DESTINO no encontrado: "${segment.destination}"`);
-								return;
-							}
-							
-							console.log(`      ✅ Origen: ${origen.code} [${origen.lat.toFixed(2)}, ${origen.lng.toFixed(2)}]`);
-							console.log(`      ✅ Destino: ${destino.code} [${destino.lat.toFixed(2)}, ${destino.lng.toFixed(2)}]`);
-							
-							// Calcular rotación del avión
-							// SVG apunta al norte (0°), bearing devuelve 0°=N, 90°=E
-							const brg = bearingDegrees(origen.lat, origen.lng, destino.lat, destino.lng);
-							const rotation = brg; // Sin restar 90 porque el SVG ya apunta al norte
-							
-							// Determinar estado basado en holgura
-							let status = 'active';
+					// Determinar estado basado en holgura
+					let status = 'active';
 					if (orderSlackMinutes <= 0) {
 						status = 'retrasado';
 					}
-					
+
 					// Posición inicial (será calculada por interpolación)
 					const progress = 0;
-					let currentLat = origen.lat;
-					let currentLng = origen.lng;
-					
-					// 🔧 FIX: Offset reducido para evitar superposición visual sin afectar la precisión
-					// Ahora usa un offset de 0.02 grados (~2.2 km) en lugar de 0.8 grados (~89 km)
-					const offsetLat = (Math.sin(segmentIndex * 2.39996) * 0.02);
-					const offsetLng = (Math.cos(segmentIndex * 2.39996) * 0.02);
-					currentLat += offsetLat;
-					currentLng += offsetLng;
-					
-					// 🆕 USAR vueloId del backend si existe (formato: ORIGEN-DESTINO-YYYYMMDD-HHMM)
-					// Si no existe, construirlo desde departureUtc
-					let uniqueId;
-					if (segment.vueloId) {
-						// El backend envía el ID único completo
-						uniqueId = segment.vueloId;
-					} else if (segment.departureUtc) {
-						// Fallback: construir desde la fecha de salida
-						const fechaVuelo = segment.departureUtc.split('T')[0].replace(/-/g, '');
-						const horaVuelo = segment.departureUtc.split('T')[1]?.substring(0, 5).replace(':', '') || '0000';
-						uniqueId = `${segment.origin}-${segment.destination}-${fechaVuelo}-${horaVuelo}`;
-					} else {
-						// Último fallback: usar flightId + índices
-						uniqueId = `SNAP-${segment.flightId}-${orderId}-${routeIndex}-${segIndex}-${segmentIndex}`;
-					}
-					
+					const currentLat = origen.lat;
+					const currentLng = origen.lng;
+
+					// 🆕 Crear ID único combinando múltiples factores para evitar duplicados
+					const uniqueId = `SNAP-${segment.flightId}-${orderId}-${routeIndex}-${segIndex}-${segmentIndex}-${Math.random().toString(36).substr(2, 6)}`;
+
 					// 🆕 Crear objeto de pedido para este segment
 					const pedidoSegment = {
 						idPedido: orderId,
@@ -2486,11 +2343,10 @@ const SimuladorSemanal = () => {
 						origen: segment.origin,
 						destino: segment.destination
 					};
-					
+
 					// 🆕 Crear objeto de vuelo con timestamps del segment
 					const nuevoVuelo = {
 						id: uniqueId,
-						vueloId: segment.vueloId || uniqueId, // Guardar también como vueloId
 						flightId: segment.flightId,
 						origin: {
 							code: segment.origin,
@@ -2526,22 +2382,22 @@ const SimuladorSemanal = () => {
 						isSameContinentFlight: origen.region === destino.region,
 						aircraftColor: orderSlackMinutes <= 0 ? '#ef4444' : '#3b82f6', // Rojo si retrasado
 					};
-					
+
 					console.log(`      ✅ Vuelo creado con interpolación temporal`);
 					console.log(`      🎬 Sistema híbrido ACTIVADO`);
-					
+
 					nuevosVuelos.push(nuevoVuelo);
 				});
 			});
 		});
-		
+
 		console.log(`\n📊 ============================================`);
 		console.log(`📊 Total de segments procesados: ${segmentIndex}`);
 		console.log(`📊 Total de vuelos creados: ${nuevosVuelos.length}`);
 		const vuelosConInterpolacion = nuevosVuelos.filter(v => v.fechaInicial && v.fechaFinal).length;
 		console.log(`🎬 Vuelos con interpolación temporal: ${vuelosConInterpolacion}/${nuevosVuelos.length}`);
 		console.log(`📊 ============================================\n`);
-		
+
 		if (nuevosVuelos.length > 0) {
 			console.log(`🗺️ Primer vuelo (ejemplo):`, {
 				id: nuevosVuelos[0].id,
@@ -2553,35 +2409,19 @@ const SimuladorSemanal = () => {
 				orderId: nuevosVuelos[0].pedidoId,
 				status: nuevosVuelos[0].status
 			});
-			
+
 			// 🔥 ELIMINAR DUPLICADOS usando Map
 			const flightsMap = new Map(nuevosVuelos.map(v => [v.id, v]));
 			const vuelosUnicos = Array.from(flightsMap.values());
-			
+
 			if (vuelosUnicos.length < nuevosVuelos.length) {
 				console.warn(`⚠️ Se encontraron ${nuevosVuelos.length - vuelosUnicos.length} vuelos duplicados, eliminados`);
 			}
-			
-			// 🔥 ACUMULAR vuelos nuevos con existentes (sin duplicados)
-			console.log(`🔄 Acumulando ${vuelosUnicos.length} vuelos nuevos con existentes`);
-			setFlights(prevFlights => {
-				// � SIMPLIFICACIÓN: NO FILTRAR por tiempo - mantener TODOS los vuelos
-				// Solo eliminamos duplicados por ID
-				const vuelosActivos = prevFlights;
-				
-				// Combinar con nuevos (evitar duplicados por ID)
-				const existingIds = new Set(vuelosActivos.map(v => v.id));
-				const nuevosNoRepetidos = vuelosUnicos.filter(v => !existingIds.has(v.id));
-				const combinados = [...vuelosActivos, ...nuevosNoRepetidos];
-				
-				console.log(`📊 Vuelos: previos=${prevFlights.length}, nuevos=${nuevosNoRepetidos.length}, total=${combinados.length}`);
-				
-				// 🆕 Actualizar contador de vuelos acumulados
-				contadorVuelosRef.current += nuevosNoRepetidos.length;
-				
-				return combinados;
-			});
-			
+
+			// 🔥 REEMPLAZAR todos los vuelos (sin duplicados)
+			console.log(`🔄 Reemplazando flights array con ${vuelosUnicos.length} vuelos únicos`);
+			setFlights(vuelosUnicos);
+
 			// 🆕 AUTO-INICIALIZAR TIEMPO SIMULADO basado en los vuelos
 			// Si el backend no envía tiempoSimulacionActual, usar la fecha más temprana de los vuelos
 			const vuelosConFecha = vuelosUnicos.filter(v => v.fechaInicial);
@@ -2589,7 +2429,7 @@ const SimuladorSemanal = () => {
 				const fechaMasTemprana = Math.min(
 					...vuelosConFecha.map(v => new Date(v.fechaInicial).getTime())
 				);
-				
+
 				// Verificar si tiempoSimuladoBackend aún no está establecido usando ref
 				if (tiempoSimuladoBackendRef.current === null) {
 					console.log(`🕐 AUTO-INICIALIZANDO tiempo simulado a: ${new Date(fechaMasTemprana).toISOString()}`);
@@ -2603,33 +2443,32 @@ const SimuladorSemanal = () => {
 			}
 		}
 	}, []);
-	
+
 	procesarSegmentsSnapshotRef.current = procesarSegmentsSnapshot;
 
 	const procesarVuelosDirectos = useCallback((vuelos) => {
 		const currentAirports = airportsRef.current; // 🔥 Usar ref para tener valor actual
 		console.log(`\n🔍 procesarVuelosDirectos - Recibidos ${vuelos?.length || 0} vuelos`);
 		console.log(`📍 Aeropuertos disponibles: ${currentAirports.length}`);
-		
+
 		if (!vuelos || vuelos.length === 0) {
 			console.warn('⚠️ No hay vuelos para procesar');
 			return;
 		}
-		
+
 		const nuevosVuelos = [];
-		const baseTimestamp = Date.now(); // 🆕 Timestamp base ÚNICO para este lote
-		const loteId = `${baseTimestamp}-${Math.random().toString(36).substr(2, 5)}`; // 🆕 ID único del lote
+		const baseTimestamp = Date.now(); // 🆕 Timestamp base para todo el lote
 
 		vuelos.forEach((vuelo, index) => {
 			console.log(`\n✈️ Vuelo ${index + 1}/${vuelos.length}`);
 			console.log(`   Origen: ${vuelo.origenCodigoICAO} → Destino: ${vuelo.destinoCodigoICAO}`);
 			console.log(`   Paquetes: ${vuelo.totalPaquetes}`);
-			
+
 			// Buscar aeropuertos de origen y destino (case-insensitive)
-			const origen = currentAirports.find(a => 
+			const origen = currentAirports.find(a =>
 				a.code.toUpperCase() === vuelo.origenCodigoICAO.toUpperCase()
 			);
-			const destino = currentAirports.find(a => 
+			const destino = currentAirports.find(a =>
 				a.code.toUpperCase() === vuelo.destinoCodigoICAO.toUpperCase()
 			);
 
@@ -2638,7 +2477,7 @@ const SimuladorSemanal = () => {
 				console.log(`   📋 Aeropuertos disponibles (primeros 5):`, currentAirports.slice(0, 5).map(a => a.code));
 				return;
 			}
-			
+
 			if (!destino) {
 				console.error(`   ❌ Aeropuerto DESTINO no encontrado: "${vuelo.destinoCodigoICAO}"`);
 				console.log(`   📋 Aeropuertos disponibles (primeros 5):`, currentAirports.slice(0, 5).map(a => a.code));
@@ -2647,13 +2486,13 @@ const SimuladorSemanal = () => {
 
 			console.log(`   ✅ Origen: ${origen.code} [${origen.lat}, ${origen.lng}]`);
 			console.log(`   ✅ Destino: ${destino.code} [${destino.lat}, ${destino.lng}]`);
-			
+
 			// 🆕 USAR FECHA DE SIMULACIÓN (no fecha actual del sistema)
 			const tieneFechas = vuelo.fechaInicial && vuelo.fechaFinal;
 			if (tieneFechas) {
 				const salida = new Date(vuelo.fechaInicial).getTime();
 				const llegada = new Date(vuelo.fechaFinal).getTime();
-				
+
 				console.log(`   ⏰ Fechas: ${vuelo.fechaInicial} → ${vuelo.fechaFinal}`);
 				console.log(`   ✈️ Vuelo configurado correctamente para animación`);
 			} else {
@@ -2664,39 +2503,17 @@ const SimuladorSemanal = () => {
 			const progress = 0.5; // Mitad del recorrido
 
 			// Interpolación de posición inicial
-			let currentLat = origen.lat + (destino.lat - origen.lat) * progress;
-			let currentLng = origen.lng + (destino.lng - origen.lng) * progress;
-
-			// 🔧 FIX: Offset reducido para evitar superposición visual sin afectar la precisión
-			// Ahora usa un offset de 0.02 grados (~2.2 km) en lugar de 0.8 grados (~89 km)
-			const offsetLat = (Math.sin(index * 2.39996) * 0.02);
-			const offsetLng = (Math.cos(index * 2.39996) * 0.02);
-			currentLat += offsetLat;
-			currentLng += offsetLng;
+			const currentLat = origen.lat + (destino.lat - origen.lat) * progress;
+			const currentLng = origen.lng + (destino.lng - origen.lng) * progress;
 
 			// Calcular rotación
 			const brg = bearingDegrees(origen.lat, origen.lng, destino.lat, destino.lng);
 			const rotation = (brg - 90 + 360) % 360;
 
-			// 🆕 USAR vueloId del backend si existe (formato: ORIGEN-DESTINO-YYYYMMDD-HHMM)
-			// Si no existe, construirlo desde departureUtc o fechaInicial
-			let uniqueId;
-			if (vuelo.vueloId) {
-				// El backend envía el ID único completo
-				uniqueId = vuelo.vueloId;
-			} else if (vuelo.departureUtc || vuelo.fechaInicial) {
-				// Fallback: construir desde la fecha de salida
-				const fechaStr = vuelo.departureUtc || vuelo.fechaInicial;
-				const fechaParts = fechaStr.includes('T') 
-					? fechaStr.split('T') 
-					: [fechaStr.split(' ')[0], fechaStr.split(' ')[1] || '00:00'];
-				const fechaVuelo = fechaParts[0].replace(/-/g, '');
-				const horaVuelo = (fechaParts[1] || '00:00').substring(0, 5).replace(':', '');
-				uniqueId = `${vuelo.origenCodigoICAO}-${vuelo.destinoCodigoICAO}-${fechaVuelo}-${horaVuelo}`;
-			} else {
-				// Último fallback: usar loteId + índice
-				uniqueId = `WS-${loteId}-${index}`;
-			}
+			// 🆕 ID único ESTABLE: origen + destino + fechaInicial (sin timestamps aleatorios)
+			// Esto evita crear duplicados cuando el backend envía el mismo vuelo múltiples veces
+			const vueloKey = `${vuelo.origenCodigoICAO}-${vuelo.destinoCodigoICAO}-${vuelo.fechaInicial || index}`;
+			const uniqueId = `WS-${vueloKey}`;
 
 			// 🆕 MAPEAR PEDIDOS: Normalizar estructura de pedidos del backend
 			const pedidosMapeados = (vuelo.pedidos || []).map(p => ({
@@ -2709,8 +2526,6 @@ const SimuladorSemanal = () => {
 			// Crear objeto de vuelo (con timestamps para interpolación híbrida)
 			const nuevoVuelo = {
 				id: uniqueId,
-				vueloId: vuelo.vueloId || uniqueId, // Guardar también como vueloId
-				flightId: vuelo.flightId, // Versión corta (puede repetirse entre días)
 				origin: {
 					code: vuelo.origenCodigoICAO,
 					lat: origen.lat,
@@ -2731,17 +2546,17 @@ const SimuladorSemanal = () => {
 				currentLng,
 				aircraftColor: '#3b82f6', // 🔵 Azul para vuelos del WebSocket
 				rotation,
-				packageCapacity: vuelo.totalPaquetes || vuelo.quantity || 1,
-				currentPackages: vuelo.totalPaquetes || vuelo.quantity || 1,
+				packageCapacity: vuelo.totalPaquetes || 1,
+				currentPackages: vuelo.totalPaquetes || 1,
 				packageType: 'WS',
 				isSameContinentFlight: origen.region === destino.region,
+				vuelo: `WS-${vuelo.pedidos?.[0]?.idPedido || index}`,
 				pedidoId: vuelo.pedidos?.[0]?.idPedido,
 				pedidos: pedidosMapeados, // 🆕 INCLUIR TODOS LOS PEDIDOS
-				fechaInicial: vuelo.departureUtc || vuelo.fechaInicial,
-				fechaFinal: vuelo.arrivalUtc || vuelo.fechaFinal,
-				slackMinutes: vuelo.slackMinutes
+				fechaInicial: vuelo.fechaInicial,
+				fechaFinal: vuelo.fechaFinal
 			};
-			
+
 			console.log(`   ✅ Vuelo creado en posición: [${currentLat.toFixed(2)}, ${currentLng.toFixed(2)}]`);
 			if (nuevoVuelo.fechaInicial && nuevoVuelo.fechaFinal) {
 				console.log(`   🎬 Sistema híbrido ACTIVADO para este vuelo`);
@@ -2754,7 +2569,7 @@ const SimuladorSemanal = () => {
 		const vuelosConInterpolacion = nuevosVuelos.filter(v => v.fechaInicial && v.fechaFinal).length;
 		console.log(`🎬 Vuelos con interpolación temporal: ${vuelosConInterpolacion}/${nuevosVuelos.length}`);
 		console.log(`📊 ============================================\n`);
-		
+
 		if (nuevosVuelos.length > 0) {
 			console.log(`🗺️ Primer vuelo (ejemplo):`, {
 				id: nuevosVuelos[0].id,
@@ -2764,155 +2579,118 @@ const SimuladorSemanal = () => {
 				color: nuevosVuelos[0].aircraftColor,
 				packages: nuevosVuelos[0].packageCapacity
 			});
-			
+
 			// 🔥 ELIMINAR DUPLICADOS usando Map
-const flightsMap = new Map(nuevosVuelos.map(v => [v.id, v]));
-const vuelosUnicos = Array.from(flightsMap.values());
+			const flightsMap = new Map(nuevosVuelos.map(v => [v.id, v]));
+			const vuelosUnicos = Array.from(flightsMap.values());
 
-if (vuelosUnicos.length < nuevosVuelos.length) {
-console.warn(`⚠️ Se encontraron ${nuevosVuelos.length - vuelosUnicos.length} vuelos duplicados, eliminados`);
-}
-
-// 📊 ACTUALIZAR MÉTRICAS - Contar vuelos nuevos recibidos del backend
-const tiempoActualParaMetricas = relojLocalRef.current ? relojLocalRef.current.getTime() : Date.now();
-let perdidosAntes = 0;
-let perdidosDespues = 0;
-
-vuelosUnicos.forEach(vuelo => {
-	// Solo contar si es un ID nuevo (no duplicado de entregas anteriores)
-	if (!vuelosRecibidosIdsRef.current.has(vuelo.id)) {
-		vuelosRecibidosIdsRef.current.add(vuelo.id);
-		
-		// Verificar si el vuelo llegó "tarde" (ya terminó según el tiempo simulado)
-		if (vuelo.fechaFinal) {
-			const fechaFin = new Date(vuelo.fechaFinal).getTime();
-			if (fechaFin < tiempoActualParaMetricas) {
-				perdidosAntes++;
+			if (vuelosUnicos.length < nuevosVuelos.length) {
+				console.warn(`⚠️ Se encontraron ${nuevosVuelos.length - vuelosUnicos.length} vuelos duplicados, eliminados`);
 			}
-		}
-		// Verificar si el vuelo llegó "muy tarde" (ni siquiera empezó)
-		if (vuelo.fechaInicial) {
-			const fechaInicio = new Date(vuelo.fechaInicial).getTime();
-			if (fechaInicio > tiempoActualParaMetricas + (60 * 60 * 1000)) { // 1 hora en el futuro, posible error
-				perdidosDespues++;
+
+			// 📊 ACTUALIZAR MÉTRICAS - Contar vuelos nuevos recibidos del backend
+			const tiempoActualParaMetricas = relojLocalRef.current ? relojLocalRef.current.getTime() : Date.now();
+			let perdidosAntes = 0;
+			let perdidosDespues = 0;
+
+			vuelosUnicos.forEach(vuelo => {
+				// Solo contar si es un ID nuevo (no duplicado de entregas anteriores)
+				if (!vuelosRecibidosIdsRef.current.has(vuelo.id)) {
+					vuelosRecibidosIdsRef.current.add(vuelo.id);
+
+					// Verificar si el vuelo llegó "tarde" (ya terminó según el tiempo simulado)
+					if (vuelo.fechaFinal) {
+						const fechaFin = new Date(vuelo.fechaFinal).getTime();
+						if (fechaFin < tiempoActualParaMetricas) {
+							perdidosAntes++;
+						}
+					}
+					// Verificar si el vuelo llegó "muy tarde" (ni siquiera empezó)
+					if (vuelo.fechaInicial) {
+						const fechaInicio = new Date(vuelo.fechaInicial).getTime();
+						if (fechaInicio > tiempoActualParaMetricas + (60 * 60 * 1000)) { // 1 hora en el futuro, posible error
+							perdidosDespues++;
+						}
+					}
+				}
+			});
+
+			// Actualizar métricas
+			setMetricasVuelos(prev => ({
+				...prev,
+				totalRecibidosBackend: vuelosRecibidosIdsRef.current.size,
+				totalPerdidosAntesDeTiempo: prev.totalPerdidosAntesDeTiempo + perdidosAntes,
+				totalPerdidosDespuesDeTiempo: prev.totalPerdidosDespuesDeTiempo + perdidosDespues,
+				ultimaActualizacion: new Date().toISOString()
+			}));
+
+			if (perdidosAntes > 0 || perdidosDespues > 0) {
+				console.warn(`📊 MÉTRICAS: ${perdidosAntes} vuelos llegaron tarde (ya aterrizaron), ${perdidosDespues} vuelos muy adelantados`);
 			}
-		}
-	}
-});
 
-// Actualizar métricas
-setMetricasVuelos(prev => ({
-	...prev,
-	totalRecibidosBackend: vuelosRecibidosIdsRef.current.size,
-	totalPerdidosAntesDeTiempo: prev.totalPerdidosAntesDeTiempo + perdidosAntes,
-	totalPerdidosDespuesDeTiempo: prev.totalPerdidosDespuesDeTiempo + perdidosDespues,
-	ultimaActualizacion: new Date().toISOString()
-}));
-
-if (perdidosAntes > 0 || perdidosDespues > 0) {
-	console.warn(`📊 MÉTRICAS: ${perdidosAntes} vuelos llegaron tarde (ya aterrizaron), ${perdidosDespues} vuelos muy adelantados`);
-}
-
-// 🆕 LOG: Mostrar rango de fechas de los vuelos
-const vuelosConFecha = vuelosUnicos.filter(v => v.fechaInicial);
-if (vuelosConFecha.length > 0) {
-const fechaMasTemprana = Math.min(...vuelosConFecha.map(v => new Date(v.fechaInicial).getTime()));
-const fechaMasTardia = Math.max(...vuelosConFecha.map(v => new Date(v.fechaFinal).getTime()));
-console.log(`�� Rango de vuelos: ${new Date(fechaMasTemprana).toISOString()} → ${new Date(fechaMasTardia).toISOString()}`);
-console.log(`⏰ Tiempo simulado actual: ${new Date(relojLocalRef.current).toISOString()}`);
-}
-
-// 🆕 SISTEMA DE BUFFER DE 15 SEGUNDOS
-// Si el buffer está activo, acumular vuelos en lugar de activar animación
-// 🔧 FIX: Usar bufferActivoRef.current para evitar closure stale
-if (bufferActivoRef.current) {
-console.log(`⏳ BUFFER ACTIVO - Acumulando ${vuelosUnicos.length} vuelos (total: ${vuelosBufferRef.current.length + vuelosUnicos.length})`);
-
-// Agregar vuelos únicos al buffer (evitar duplicados)
-const idsExistentes = new Set(vuelosBufferRef.current.map(v => v.id));
-const nuevosParaBuffer = vuelosUnicos.filter(v => !idsExistentes.has(v.id));
-vuelosBufferRef.current = [...vuelosBufferRef.current, ...nuevosParaBuffer];
-
-console.log(`📦 Buffer ahora tiene ${vuelosBufferRef.current.length} vuelos`);
-// NO activar reloj durante el buffer - se activa cuando termina el timeout
-return;
-}
-
-// 🔥 COMBINAR con vuelos existentes (sin duplicados) - Solo si buffer NO está activo
-console.log(`🔄 Combinando ${vuelosUnicos.length} vuelos nuevos con existentes`);
-
-setFlights(prevFlights => {
-// 🔧 FIX: Usar tiempo SIMULADO del backend, no relojLocal (puede ser null)
-// tiempoSimuladoBackendRef es más confiable porque viene del backend
-const tiempoActualMs = tiempoSimuladoBackendRef.current || 
-                       (relojLocalRef.current instanceof Date ? relojLocalRef.current.getTime() : null) || 
-                       Date.now();
-
-// 🔧 DEBUG: Log detallado para diagnosticar filtrado
-console.log(`🔍 DEBUG FILTRADO:`);
-console.log(`   - Tiempo simulado: ${new Date(tiempoActualMs).toISOString()}`);
-console.log(`   - Vuelos previos: ${prevFlights.length}`);
-console.log(`   - Vuelos nuevos (lote): ${vuelosUnicos.length}`);
-
-// 🆕 ACTUALIZAR O INSERTAR: Si el vuelo ya existe, ACTUALIZAR sus datos (paquetes, pedidos)
-// Esto permite que el backend envíe actualizaciones del mismo vuelo
-const vuelosMap = new Map(prevFlights.map(v => [v.id, v]));
-
-vuelosUnicos.forEach(nuevoVuelo => {
-	const existente = vuelosMap.get(nuevoVuelo.id);
-	if (existente) {
-		// 🔄 ACTUALIZAR vuelo existente: combinar pedidos y actualizar paquetes
-		const pedidosCombinados = [...(existente.pedidos || [])];
-		(nuevoVuelo.pedidos || []).forEach(nuevoPedido => {
-			const idx = pedidosCombinados.findIndex(p => p.idPedido === nuevoPedido.idPedido);
-			if (idx >= 0) {
-				// Actualizar cantidad del pedido existente
-				pedidosCombinados[idx].cantidad = (pedidosCombinados[idx].cantidad || 0) + (nuevoPedido.cantidad || 0);
-			} else {
-				// Agregar nuevo pedido
-				pedidosCombinados.push(nuevoPedido);
+			// 🆕 LOG: Mostrar rango de fechas de los vuelos
+			const vuelosConFecha = vuelosUnicos.filter(v => v.fechaInicial);
+			if (vuelosConFecha.length > 0) {
+				const fechaMasTemprana = Math.min(...vuelosConFecha.map(v => new Date(v.fechaInicial).getTime()));
+				const fechaMasTardia = Math.max(...vuelosConFecha.map(v => new Date(v.fechaFinal).getTime()));
+				console.log(`�� Rango de vuelos: ${new Date(fechaMasTemprana).toISOString()} → ${new Date(fechaMasTardia).toISOString()}`);
+				console.log(`⏰ Tiempo simulado actual: ${new Date(relojLocalRef.current).toISOString()}`);
 			}
-		});
-		
-		// Actualizar el vuelo en el mapa
-		vuelosMap.set(nuevoVuelo.id, {
-			...existente,
-			pedidos: pedidosCombinados,
-			currentPackages: pedidosCombinados.reduce((sum, p) => sum + (p.cantidad || 0), 0),
-			packageCapacity: Math.max(existente.packageCapacity || 0, nuevoVuelo.packageCapacity || 0),
-			slackMinutes: nuevoVuelo.slackMinutes ?? existente.slackMinutes
-		});
-		console.log(`🔄 Vuelo ${nuevoVuelo.id} ACTUALIZADO - Ahora tiene ${pedidosCombinados.length} pedidos`);
-	} else {
-		// Nuevo vuelo - insertar
-		vuelosMap.set(nuevoVuelo.id, nuevoVuelo);
-	}
-});
 
-const combinados = Array.from(vuelosMap.values());
+			// 🆕 SISTEMA DE BUFFER DE 15 SEGUNDOS
+			// Si el buffer está activo, acumular vuelos en lugar de activar animación
+			if (bufferActivo) {
+				console.log(`⏳ BUFFER ACTIVO - Acumulando ${vuelosUnicos.length} vuelos (total: ${vuelosBufferRef.current.length + vuelosUnicos.length})`);
 
-// 🆕 CONTAR vuelos nuevos (no actualizaciones)
-const nuevosInsertados = vuelosUnicos.filter(v => !prevFlights.some(pv => pv.id === v.id)).length;
-contadorVuelosRef.current += nuevosInsertados;
+				// Agregar vuelos únicos al buffer (evitar duplicados)
+				const idsExistentes = new Set(vuelosBufferRef.current.map(v => v.id));
+				const nuevosParaBuffer = vuelosUnicos.filter(v => !idsExistentes.has(v.id));
+				vuelosBufferRef.current = [...vuelosBufferRef.current, ...nuevosParaBuffer];
 
-console.log(`📊 Total vuelos después de combinar: ${combinados.length} (previos: ${prevFlights.length}, nuevos: ${nuevosInsertados}, actualizados: ${vuelosUnicos.length - nuevosInsertados})`);
-return combinados;
-});
+				console.log(`📦 Buffer ahora tiene ${vuelosBufferRef.current.length} vuelos`);
+				// NO activar reloj durante el buffer - se activa cuando termina el timeout
+				return;
+			}
 
-// 🚀 ACTIVAR RELOJ LOCAL (solo si no está ya activo)
-if (!simulacionLocalActiva) {
-setSimulacionLocalActiva(true);
-console.log(`🚀 Reloj local ACTIVADO - ${vuelosUnicos.length} vuelos listos para animar`);
-}
+			// 🔥 COMBINAR con vuelos existentes (sin duplicados) - Solo si buffer NO está activo
+			console.log(`🔄 Combinando ${vuelosUnicos.length} vuelos nuevos con existentes`);
 
-// ✅ Verificar que el estado se actualizó
-setTimeout(() => {
-console.log(`✅ Verificación: nuevos vuelos procesados = ${vuelosUnicos.length}`);
-}, 100);
+			setFlights(prevFlights => {
+				// 🆕 LIMPIAR vuelos que ya aterrizaron (fechaFinal < tiempoSimulado - 30min margen)
+				const relojActual = relojLocalRef.current;
+				const tiempoActualMs = relojActual instanceof Date ? relojActual.getTime() : (relojActual || Date.now());
+				const margenMs = 30 * 60 * 1000; // 30 minutos de margen después de aterrizar
+				const vuelosActivos = prevFlights.filter(v => {
+					if (!v.fechaFinal) return true; // Mantener si no tiene fecha
+					const fechaAterrizaje = new Date(v.fechaFinal).getTime();
+					return fechaAterrizaje > (tiempoActualMs - margenMs);
+				});
 
-const vuelosActivos = vuelosUnicos.filter(v => v.status === 'active').length;
-setFlightsInAir(prev => prev + vuelosActivos);
-console.log(`Vuelos activos anadidos: ${vuelosActivos}`);
+				if (vuelosActivos.length < prevFlights.length) {
+					console.log(`🧹 Limpiados ${prevFlights.length - vuelosActivos.length} vuelos que ya aterrizaron`);
+				}
+
+				const existingIds = new Set(vuelosActivos.map(v => v.id));
+				const nuevosNoRepetidos = vuelosUnicos.filter(v => !existingIds.has(v.id));
+				const combinados = [...vuelosActivos, ...nuevosNoRepetidos];
+				console.log(`📊 Total vuelos después de combinar: ${combinados.length} (activos: ${vuelosActivos.length}, nuevos: ${nuevosNoRepetidos.length})`);
+				return combinados;
+			});
+
+			// 🚀 ACTIVAR RELOJ LOCAL (solo si no está ya activo)
+			if (!simulacionLocalActiva) {
+				setSimulacionLocalActiva(true);
+				console.log(`🚀 Reloj local ACTIVADO - ${vuelosUnicos.length} vuelos listos para animar`);
+			}
+
+			// ✅ Verificar que el estado se actualizó
+			setTimeout(() => {
+				console.log(`✅ Verificación: nuevos vuelos procesados = ${vuelosUnicos.length}`);
+			}, 100);
+
+			const vuelosActivos = vuelosUnicos.filter(v => v.status === 'active').length;
+			setFlightsInAir(prev => prev + vuelosActivos);
+			console.log(`Vuelos activos anadidos: ${vuelosActivos}`);
 		} else {
 			console.error(`NO SE CREARON VUELOS!`);
 			console.error(`   Vuelos recibidos:`, vuelos);
@@ -2943,7 +2721,7 @@ console.log(`Vuelos activos anadidos: ${vuelosActivos}`);
 
 		try {
 			console.log(`🛑 Cancelando simulación ${sessionId}...`);
-			
+
 			const response = await fetch(`${API_BASE_URL}/api/simulations/${sessionId}/cancel`, {
 				method: 'POST'
 			});
@@ -2951,7 +2729,7 @@ console.log(`Vuelos activos anadidos: ${vuelosActivos}`);
 			if (response.ok) {
 				agregarMensaje('🛑 Simulación cancelada', 'warning');
 				setEstadoSimulacionStomp('cancelled');
-				
+
 				// Desuscribirse
 				if (subscriptionRef.current) {
 					subscriptionRef.current.unsubscribe();
@@ -2983,7 +2761,7 @@ console.log(`Vuelos activos anadidos: ${vuelosActivos}`);
 	useEffect(() => {
 		// Comentar si no quieres auto-conexión
 		// conectarWebSocketStomp();
-		
+
 		return () => {
 			desconectarWebSocketStomp();
 		};
@@ -3216,68 +2994,69 @@ console.log(`Vuelos activos anadidos: ${vuelosActivos}`);
 								minHeight: 0, // Importante para el scroll
 								transition: 'flex 0.3s ease' // Transición suave
 							}}>
-							{sidebarTab === 'flights' && (
-								<Box>
-									{(vuelosEnMovimiento || []).filter(f => (f.status === 'active' || (f.progress && f.progress > 0 && f.progress < 1))).filter(f => {
-										const q = searchFlights.trim().toLowerCase();
-										if (!q) return true;
-										// 🆕 Buscar también por pedidoId
-										const matchId = String(f.id || '').toLowerCase().includes(q);
-										const matchOrigin = String(f.origin?.code || '').toLowerCase().includes(q);
-										const matchDest = String(f.destination?.code || '').toLowerCase().includes(q);
-										const matchPedido = String(f.pedidoId || '').toLowerCase().includes(q);
-										const matchPedidos = (f.pedidos || []).some(p => 
-											String(p.idPedido || p.id || '').toLowerCase().includes(q)
-										);
-										return matchId || matchOrigin || matchDest || matchPedido || matchPedidos;
-									}).map(flight => {
-										// 🆕 Calcular cantidad de pedidos
-										const cantidadPedidos = (flight.pedidos?.length || 0) || (flight.pedidoId ? 1 : 0);
-										return (
-										<Box key={flight.id} onClick={() => setSelectedFlight(flight)} sx={{ border: '1px solid #dee2e6', padding: '10px', borderRadius: '8px', marginBottom: '10px', background: selectedFlight?.id === flight.id ? '#e8f4f8' : '#f8f9fa', cursor: 'pointer', transition: 'all 0.2s ease', '&:hover': { borderColor: '#2c4a6b', boxShadow: '0 2px 8px rgba(44, 74, 107, 0.15)' } }}>
-											<Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
-												<Box sx={{ flex: 1 }}>
-													<Box sx={{ fontWeight: 700, fontSize: '0.95rem', color: '#2c4a6b' }}>{flight.id}</Box>
-													<Box sx={{ fontSize: '0.85rem', color: '#6c757d', marginTop: '2px' }}>{flight.origin?.code || 'N/A'} → {flight.destination?.code || 'N/A'}</Box>
-												</Box>
-												{/* 🆕 Badge de cantidad de pedidos */}
-												{cantidadPedidos > 0 && (
-													<Box sx={{ 
-														background: '#2c4a6b', 
-														color: '#fff', 
-														padding: '2px 8px', 
-														borderRadius: '12px', 
-														fontSize: '0.75rem', 
-														fontWeight: 600,
-														whiteSpace: 'nowrap'
-													}}>
-														📦 {cantidadPedidos}
-													</Box>
-												)}
-											</Box>
-											{expandedFlightIds[flight.id] && (
-												<Box sx={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #dee2e6' }}>
-													{flight.pedidos && flight.pedidos.length > 0 ? (
-														flight.pedidos.map(p => (
-															<Box key={p.idPedido || p.id} sx={{ padding: '6px 8px', borderRadius: '4px', border: '1px dashed #dee2e6', marginBottom: '6px', background: '#fff' }}>
-																<Box sx={{ fontSize: '0.85rem', fontWeight: 600, color: '#2c4a6b' }}>{p.idPedido || p.id}</Box>
-																<Box sx={{ fontSize: '0.8rem', color: '#6c757d', marginTop: '2px' }}>{p.descripcion || p.info || `Cantidad: ${p.cantidad || 1}`}</Box>
+								{sidebarTab === 'flights' && (
+									<Box>
+										{(vuelosEnMovimiento || []).filter(f => (f.status === 'active' || (f.progress && f.progress > 0 && f.progress < 1))).filter(f => {
+											const q = searchFlights.trim().toLowerCase();
+											if (!q) return true;
+											// 🆕 Buscar también por pedidoId
+											const matchId = String(f.id || '').toLowerCase().includes(q);
+											const matchOrigin = String(f.origin?.code || '').toLowerCase().includes(q);
+											const matchDest = String(f.destination?.code || '').toLowerCase().includes(q);
+											const matchPedido = String(f.pedidoId || '').toLowerCase().includes(q);
+											const matchPedidos = (f.pedidos || []).some(p =>
+												String(p.idPedido || p.id || '').toLowerCase().includes(q)
+											);
+											return matchId || matchOrigin || matchDest || matchPedido || matchPedidos;
+										}).map(flight => {
+											// 🆕 Calcular cantidad de pedidos
+											const cantidadPedidos = (flight.pedidos?.length || 0) || (flight.pedidoId ? 1 : 0);
+											return (
+												<Box key={flight.id} onClick={() => setSelectedFlight(flight)} sx={{ border: '1px solid #dee2e6', padding: '10px', borderRadius: '8px', marginBottom: '10px', background: selectedFlight?.id === flight.id ? '#e8f4f8' : '#f8f9fa', cursor: 'pointer', transition: 'all 0.2s ease', '&:hover': { borderColor: '#2c4a6b', boxShadow: '0 2px 8px rgba(44, 74, 107, 0.15)' } }}>
+													<Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+														<Box sx={{ flex: 1 }}>
+															<Box sx={{ fontWeight: 700, fontSize: '0.95rem', color: '#2c4a6b' }}>{flight.id}</Box>
+															<Box sx={{ fontSize: '0.85rem', color: '#6c757d', marginTop: '2px' }}>{flight.origin?.code || 'N/A'} → {flight.destination?.code || 'N/A'}</Box>
+														</Box>
+														{/* 🆕 Badge de cantidad de pedidos */}
+														{cantidadPedidos > 0 && (
+															<Box sx={{
+																background: '#2c4a6b',
+																color: '#fff',
+																padding: '2px 8px',
+																borderRadius: '12px',
+																fontSize: '0.75rem',
+																fontWeight: 600,
+																whiteSpace: 'nowrap'
+															}}>
+																📦 {cantidadPedidos}
 															</Box>
-														))
-													) : flight.pedidoId ? (
-														<Box sx={{ padding: '6px 8px', borderRadius: '4px', border: '1px dashed #dee2e6', background: '#fff', fontSize: '0.85rem', fontWeight: 600, color: '#2c4a6b' }}>📦 {flight.pedidoId}</Box>
-													) : (
-														<Box sx={{ fontSize: '0.85rem', color: '#6c757d' }}>Sin pedidos en este vuelo</Box>
+														)}
+													</Box>
+													{expandedFlightIds[flight.id] && (
+														<Box sx={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #dee2e6' }}>
+															{flight.pedidos && flight.pedidos.length > 0 ? (
+																flight.pedidos.map(p => (
+																	<Box key={p.idPedido || p.id} sx={{ padding: '6px 8px', borderRadius: '4px', border: '1px dashed #dee2e6', marginBottom: '6px', background: '#fff' }}>
+																		<Box sx={{ fontSize: '0.85rem', fontWeight: 600, color: '#2c4a6b' }}>{p.idPedido || p.id}</Box>
+																		<Box sx={{ fontSize: '0.8rem', color: '#6c757d', marginTop: '2px' }}>{p.descripcion || p.info || `Cantidad: ${p.cantidad || 1}`}</Box>
+																	</Box>
+																))
+															) : flight.pedidoId ? (
+																<Box sx={{ padding: '6px 8px', borderRadius: '4px', border: '1px dashed #dee2e6', background: '#fff', fontSize: '0.85rem', fontWeight: 600, color: '#2c4a6b' }}>📦 {flight.pedidoId}</Box>
+															) : (
+																<Box sx={{ fontSize: '0.85rem', color: '#6c757d' }}>Sin pedidos en este vuelo</Box>
+															)}
+														</Box>
 													)}
 												</Box>
-											)}
-										</Box>
-									)})}
-									{(vuelosEnMovimiento || []).filter(f => (f.status === 'active' || (f.progress && f.progress > 0 && f.progress < 1))).length === 0 && (
-										<Box sx={{ color: '#6c757d', fontSize: '0.9rem', textAlign: 'center', padding: '20px 10px' }}>No hay vuelos en vuelo</Box>
-									)}
-								</Box>
-							)}								{sidebarTab === 'airports' && (
+											)
+										})}
+										{(vuelosEnMovimiento || []).filter(f => (f.status === 'active' || (f.progress && f.progress > 0 && f.progress < 1))).length === 0 && (
+											<Box sx={{ color: '#6c757d', fontSize: '0.9rem', textAlign: 'center', padding: '20px 10px' }}>No hay vuelos en vuelo</Box>
+										)}
+									</Box>
+								)}								{sidebarTab === 'airports' && (
 									<Box>
 										{(airports || []).filter(a => {
 											const q = searchAirports.trim().toLowerCase();
@@ -3318,21 +3097,21 @@ console.log(`Vuelos activos anadidos: ${vuelosActivos}`);
 											// 🆕 Extraer pedidos de flights (vuelos activos)
 											(flights || []).forEach(f => {
 												if (f.pedidos && Array.isArray(f.pedidos)) {
-													f.pedidos.forEach(p => list.push({ 
-														...(p), 
-														flightId: f.id, 
+													f.pedidos.forEach(p => list.push({
+														...(p),
+														flightId: f.id,
 														flightData: f, // 🆕 Referencia al vuelo completo
-														origin: p.origen || f.origin?.code, 
+														origin: p.origen || f.origin?.code,
 														destination: p.destino || f.destination?.code,
 														cantidad: p.cantidad || 1,
 														status: f.status
 													}));
 												} else if (f.pedidoId) {
-													list.push({ 
-														idPedido: f.pedidoId, 
-														flightId: f.id, 
+													list.push({
+														idPedido: f.pedidoId,
+														flightId: f.id,
 														flightData: f, // 🆕 Referencia al vuelo completo
-														origin: f.origin?.code, 
+														origin: f.origin?.code,
 														destination: f.destination?.code,
 														cantidad: f.currentPackages || 1,
 														status: f.status
@@ -3345,20 +3124,20 @@ console.log(`Vuelos activos anadidos: ${vuelosActivos}`);
 											const q = searchOrders.trim().toLowerCase();
 											return list.filter(o => {
 												if (!q) return true;
-												return String(o.idPedido || o.id || o.flightId || '').toLowerCase().includes(q) || 
-													String(o.origin || '').toLowerCase().includes(q) || 
+												return String(o.idPedido || o.id || o.flightId || '').toLowerCase().includes(q) ||
+													String(o.origin || '').toLowerCase().includes(q) ||
 													String(o.destination || '').toLowerCase().includes(q) ||
 													String(o.cliente || '').toLowerCase().includes(q);
 											});
 										})().map(order => (
-											<Box 
-												key={order.idPedido || order.id || `${order.flightId}-${order.origin}-${order.destination}-${Math.random()}`} 
+											<Box
+												key={order.idPedido || order.id || `${order.flightId}-${order.origin}-${order.destination}-${Math.random()}`}
 												onClick={() => order.flightData && setSelectedFlight(order.flightData)}
-												sx={{ 
-													border: '1px solid #dee2e6', 
-													padding: '10px', 
-													borderRadius: '8px', 
-													marginBottom: '10px', 
+												sx={{
+													border: '1px solid #dee2e6',
+													padding: '10px',
+													borderRadius: '8px',
+													marginBottom: '10px',
 													background: order.status === 'active' ? '#e8f8e8' : '#f8f9fa',
 													cursor: 'pointer',
 													transition: 'all 0.2s ease',
@@ -3367,13 +3146,13 @@ console.log(`Vuelos activos anadidos: ${vuelosActivos}`);
 												<Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
 													<Box sx={{ fontWeight: 700, fontSize: '0.95rem', color: '#2c4a6b' }}>📦 {order.idPedido || order.id}</Box>
 													{order.cantidad && (
-														<Box sx={{ 
-															background: '#e3f2fd', 
-															color: '#1976d2', 
-															padding: '2px 8px', 
-															borderRadius: '12px', 
-															fontSize: '0.75rem', 
-															fontWeight: 600 
+														<Box sx={{
+															background: '#e3f2fd',
+															color: '#1976d2',
+															padding: '2px 8px',
+															borderRadius: '12px',
+															fontSize: '0.75rem',
+															fontWeight: 600
 														}}>
 															{order.cantidad} uds
 														</Box>
@@ -3387,11 +3166,11 @@ console.log(`Vuelos activos anadidos: ${vuelosActivos}`);
 														✈️ {order.flightId || 'N/A'}
 													</Box>
 													{order.status === 'active' && (
-														<Box sx={{ 
-															background: '#28a745', 
-															color: '#fff', 
-															padding: '1px 6px', 
-															borderRadius: '8px', 
+														<Box sx={{
+															background: '#28a745',
+															color: '#fff',
+															padding: '1px 6px',
+															borderRadius: '8px',
 															fontSize: '0.7rem',
 															fontWeight: 600
 														}}>
@@ -3567,848 +3346,33 @@ console.log(`Vuelos activos anadidos: ${vuelosActivos}`);
 					flexGrow: 1,
 					minWidth: 0,
 					transition: 'margin 0.2s ease', // transición suave al abrir/cerrar el drawer
-						marginLeft: 0,
-						paddingLeft: 0,
-						boxSizing: 'border-box',
-					}}
-				>
-					{/* Contenido principal con mapa*/}
-					<div className="simulation-main-content">
-						<div className="content-wrapper">
-							{/* Panel de control superior */}
-							<div className="control-panel">
-
-								{/* ==================== PANEL SIMPLE DE TIEMPO SSE ==================== */}
-								<div>
-									<div className="row-fecha-inicio">
-										<div className="btn-back-wrapper">
-											<BackIconButton size={30} />
-										</div>
-										{/* Selector de fecha de inicio */}
-										<div className="form-group" style={{ margin: 0 }}>
-											<label className="form-label" htmlFor="fecha-inicio">
-												Fecha de Inicio:
-											</label>
-											<input
-												type="date"
-												id="fecha-inicio"
-												className="date-input"
-												value={fechaInicioSimulacion}
-												onChange={(e) => setFechaInicioSimulacion(e.target.value)}
-											/>
-										</div>
-
-										{/* Selector de hora de inicio */}
-										<div className="form-group" style={{ margin: 0 }}>
-											<label className="form-label" htmlFor="hora-inicio">
-												Hora de Inicio:
-											</label>
-											<input
-												type="time"
-												id="hora-inicio"
-												className="date-input"
-												value={horaInicioSimulacion}
-												onChange={(e) => setHoraInicioSimulacion(e.target.value)}
-												style={{ width: '100px' }}
-											/>
-										</div>
-
-										{/* Panel de información de tiempo */}
-										<div style={{
-											background: '#f8f9fa',
-											borderRadius: '8px',
-											padding: '15px 20px',
-											border: '1px solid #dee2e6',
-											flex: 1,
-											minWidth: '400px'
-										}}>
-											<div style={{
-												display: 'flex',
-												gap: '30px',
-												flexWrap: 'wrap'
-											}}>
-												<div>
-												<span style={{ fontSize: '14px', color: '#6c757d', marginRight: '8px' }}>
-													Fecha y hora de simulación:
-												</span>
-												<span style={{ fontSize: '14px', fontWeight: '600', color: '#212529' }}>
-													{tiempoSimulacionActual ? 
-														new Date(tiempoSimulacionActual).toLocaleString('es-ES', {
-															timeZone: 'UTC',
-															day: '2-digit',
-															month: '2-digit',
-															year: 'numeric',
-															hour: '2-digit',
-															minute: '2-digit',
-															second: '2-digit',
-															hour12: false
-														})
-														: fechaInicioSimulacion ? 
-														new Date(fechaInicioSimulacion).toLocaleString('es-ES', {
-															timeZone: 'UTC',
-															day: '2-digit',
-															month: '2-digit',
-															year: 'numeric',
-															hour: '2-digit',
-															minute: '2-digit',
-															second: '2-digit',
-															hour12: false
-														}) 
-														: '--:--:--'
-													}
-												</span>
-											</div>
-											<div>
-												<span style={{ fontSize: '14px', color: '#6c757d', marginRight: '8px' }}>
-													Tiempo transcurrido:
-												</span>
-												<span style={{ fontSize: '14px', fontWeight: '600', color: '#212529', fontFamily: 'monospace' }}>
-													{(() => {
-														const horas = Math.floor(tiempoRealTranscurrido / 3600);
-														const minutos = Math.floor((tiempoRealTranscurrido % 3600) / 60);
-														const segundos = tiempoRealTranscurrido % 60;
-														return `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}:${String(segundos).padStart(2, '0')}`;
-													})()}
-												</span>
-												<span style={{ fontSize: '12px', color: '#6c757d', marginLeft: '8px' }}>
-													({simulacionActiva || estadoPlanificacion === 'running' || estadoPlanificacion === 'waiting' ? 'En ejecución' : 'Detenido'})
-												</span>
-											</div>
-										</div>
-									</div>
-
-									{/* Botones de control SIMPLIFICADOS */}
-									<div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-										<div className="status-container" style={{ marginBottom: 0 }}>
-												<span className="status-label">Estado:</span>
-												<div className="status-indicator">
-													<span className={`status-dot ${simulacionActiva ? "active" : "stopped"}`} />
-													<span className="status-text">{simulacionActiva ? 'Ejecutándose' : 'Detenida'}</span>
-												</div>
-											</div>
-										{/* Controles de simulación SIMPLIFICADOS */}
-										<div className="simulation-controls">
-											<div className="control-buttons" style={{ display: 'flex', gap: '10px' }}>
-												<button
-													onClick={handleIniciarSimulacion}
-													disabled={simulacionActiva}
-													style={{
-														padding: '8px 16px',
-														borderRadius: '6px',
-														border: simulacionActiva ? '1px solid #e9ecef' : '1px solid #28a745',
-														background: simulacionActiva ? '#e9ecef' : '#28a745',
-														color: simulacionActiva ? '#6c757d' : 'white',
-														fontSize: '14px',
-														fontWeight: '500',
-														cursor: simulacionActiva ? 'not-allowed' : 'pointer',
-														display: 'flex',
-														alignItems: 'center',
-														gap: '8px',
-														transition: 'all 0.2s',
-														boxShadow: simulacionActiva ? 'none' : '0 2px 8px rgba(40, 167, 69, 0.3)'
-													}}
-												>	
-													<FaPlay size={18} />
-													{startButtonLabel}
-												</button>
-												<button
-													onClick={handleDetenerSimulacion}
-													disabled={!simulacionActiva}
-													style={{
-														padding: '8px 16px',
-														borderRadius: '6px',
-														border: simulacionActiva ? '1px solid #dc3545' : '1px solid #e9ecef',
-														background: simulacionActiva ? '#dc3545' : '#e9ecef',
-														color: simulacionActiva ? 'white' : '#6c757d',
-														fontSize: '14px',
-														fontWeight: '500',
-														cursor: simulacionActiva ? 'pointer' : 'not-allowed',
-														display: 'flex',
-														alignItems: 'center',
-														gap: '8px',
-														transition: 'all 0.2s',
-														boxShadow: simulacionActiva ? '0 2px 8px rgba(220, 53, 69, 0.3)' : 'none'
-													}}
-												>
-													<FaStop size={18} />
-													Detener
-												</button>
-												<button
-													onClick={() => setShowFlightLines(!showFlightLines)}
-													style={{
-														padding: '8px 16px',
-														borderRadius: '6px',
-														border: showFlightLines ? '1px solid #0d6efd' : '1px solid #e9ecef',
-														background: showFlightLines ? '#0d6efd' : '#e9ecef',
-														color: showFlightLines ? 'white' : '#6c757d',
-														fontSize: '14px',
-														fontWeight: '500',
-														cursor: 'pointer',
-														display: 'flex',
-														alignItems: 'center',
-														gap: '8px',
-														transition: 'all 0.2s',
-														boxShadow: showFlightLines ? '0 2px 8px rgba(13, 110, 253, 0.3)' : 'none'
-													}}
-													title={showFlightLines ? 'Ocultar líneas de rutas' : 'Mostrar líneas de rutas'}
-												>
-													<FaRoad size={18}/> Rutas
-												</button>
-											</div>
-										</div>
-
-										{/* Controles de planificación WebSocket - OCULTOS */}
-										{false && wsConnected && (
-											<div style={{ display: 'flex', gap: '10px', marginLeft: '20px', paddingLeft: '20px', borderLeft: '2px solid #dee2e6' }}>
-												<button
-													onClick={handleDetenerPlanificacion}
-													disabled={estadoPlanificacion !== 'running'}
-													style={{
-														padding: '8px 16px',
-														borderRadius: '6px',
-														border: estadoPlanificacion === 'running' ? '1px solid #ffc107' : '1px solid #e9ecef',
-														background: estadoPlanificacion === 'running' ? '#ffc107' : '#e9ecef',
-														color: estadoPlanificacion === 'running' ? 'white' : '#6c757d',
-														fontSize: '14px',
-														fontWeight: '500',
-														cursor: estadoPlanificacion === 'running' ? 'pointer' : 'not-allowed',
-														transition: 'all 0.2s',
-														display: 'flex',
-														alignItems: 'center',
-														gap: '8px'
-													}}
-												>
-													<FaStop size={16} />
-													Detener Planificación
-												</button>
-												<button
-													onClick={handleLimpiarMapa}
-													disabled={flights.length === 0}
-													style={{
-														padding: '8px 16px',
-														borderRadius: '6px',
-														border: flights.length > 0 ? '1px solid #17a2b8' : '1px solid #e9ecef',
-														background: flights.length > 0 ? '#17a2b8' : '#e9ecef',
-														color: flights.length > 0 ? 'white' : '#6c757d',
-														fontSize: '14px',
-														fontWeight: '500',
-														cursor: flights.length > 0 ? 'pointer' : 'not-allowed',
-														transition: 'all 0.2s',
-														display: 'flex',
-														alignItems: 'center',
-														gap: '8px'
-													}}
-												>
-													🧹 Limpiar Mapa
-												</button>
-											</div>
-										)}
-									</div>
-								</div>
-							</div>
-
-							{/* ==================== PANEL WEBSOCKET STOMP (SIMULACIÓN SEMANAL) - OCULTO ==================== */}
-							<div style={{
-								marginTop: '20px',
-								padding: '20px',
-								background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-								borderRadius: '12px',
-								boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
-								display: 'none' // 🔥 OCULTO - Solo usar botones Iniciar/Detener
-							}}>
-								<div style={{
-									display: 'flex',
-									justifyContent: 'space-between',
-									alignItems: 'center',
-									marginBottom: '20px'
-								}}>
-									<h3 style={{ color: 'white', margin: 0, fontSize: '20px', fontWeight: '600' }}>
-										🌐 WebSocket STOMP - Simulación en Tiempo Real
-									</h3>
-									
-									{/* Indicador de estado */}
-									<div style={{
-										padding: '8px 16px',
-										borderRadius: '20px',
-										background: wsStompConectado ? '#3b82f6' : '#ef4444',
-										color: 'white',
-										fontWeight: '600',
-										fontSize: '14px',
-										display: 'flex',
-										alignItems: 'center',
-										gap: '8px',
-										boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
-									}}>
-										<span style={{
-											width: '10px',
-											height: '10px',
-											borderRadius: '50%',
-											background: 'white',
-											animation: wsStompConectado ? 'pulse 2s infinite' : 'none',
-											display: 'none'
-										}}></span>
-										{wsStompConectado ? 'CONECTADO' : 'DESCONECTADO'}
-									</div>
-								</div>
-
-								{/* Controles */}
-								<div style={{
-									display: 'flex',
-									gap: '12px',
-									flexWrap: 'wrap',
-									marginBottom: '20px'
-								}}>
-									{!wsStompConectado ? (
-										<button
-											onClick={conectarWebSocketStomp}
-											style={{
-												padding: '10px 20px',
-												background: '#3b82f6',
-												color: 'white',
-												border: 'none',
-												borderRadius: '8px',
-												fontWeight: '600',
-												cursor: 'pointer',
-												transition: 'all 0.3s',
-												boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)'
-											}}
-										>
-											🔌 Conectar WebSocket
-										</button>
-									) : (
-										<>
-											<button
-												onClick={iniciarSimulacionWebSocketStomp}
-												disabled={estadoSimulacionStomp === 'running' || !fechaInicioSimulacion}
-												style={{
-													padding: '10px 20px',
-													background: estadoSimulacionStomp === 'running' ? '#6b7280' : '#3b82f6',
-													color: 'white',
-													border: 'none',
-													borderRadius: '8px',
-													fontWeight: '600',
-													cursor: estadoSimulacionStomp === 'running' ? 'not-allowed' : 'pointer',
-													transition: 'all 0.3s',
-													boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
-												}}
-											>
-												🚀 Iniciar Simulación Semanal
-											</button>
-
-											<button
-												onClick={cancelarSimulacionStomp}
-												disabled={!sessionId || estadoSimulacionStomp !== 'running'}
-												style={{
-													padding: '10px 20px',
-													background: sessionId && estadoSimulacionStomp === 'running' ? '#ef4444' : '#6b7280',
-													color: 'white',
-													border: 'none',
-													borderRadius: '8px',
-													fontWeight: '600',
-													cursor: sessionId && estadoSimulacionStomp === 'running' ? 'pointer' : 'not-allowed',
-													transition: 'all 0.3s'
-												}}
-											>
-												🛑 Cancelar Simulación
-											</button>
-
-											<button
-												onClick={limpiarTodoStomp}
-												style={{
-													padding: '10px 20px',
-													background: '#f59e0b',
-													color: 'white',
-													border: 'none',
-													borderRadius: '8px',
-													fontWeight: '600',
-													cursor: 'pointer',
-													transition: 'all 0.3s'
-												}}
-											>
-												🧹 Limpiar Todo
-											</button>
-											
-											{/* 🔥 BOTÓN DE PRUEBA - Añadir vuelos manualmente */}
-											<button
-												onClick={() => {
-													console.log('🧪 PRUEBA: Añadiendo vuelos de prueba...');
-													const vuelosPrueba = [
-														{
-															id: `TEST-${Date.now()}-1`,
-															origin: { code: 'KJFK', lat: 40.6413, lng: -73.7781, region: 'North America' },
-															destination: { code: 'EGLL', lat: 51.4700, lng: -0.4543, region: 'Europe' },
-															progress: 0.5,
-															altitude: 35000,
-															speed: 850,
-															status: 'active',
-															currentLat: 46.0, // Mitad del Atlántico
-															currentLng: -37.0,
-															aircraftColor: '#3b82f6', // Azul
-															rotation: 45,
-															packageCapacity: 1,
-															currentPackages: 1,
-															packageType: 'TEST'
-														},
-														{
-															id: `TEST-${Date.now()}-2`,
-															origin: { code: 'EGLL', lat: 51.4700, lng: -0.4543, region: 'Europe' },
-															destination: { code: 'RJTT', lat: 35.5494, lng: 139.7798, region: 'Asia' },
-															progress: 0.3,
-															altitude: 35000,
-															speed: 850,
-															status: 'active',
-															currentLat: 55.0, // Europa del Este
-															currentLng: 50.0,
-															aircraftColor: '#ef4444', // Rojo
-															rotation: 90,
-															packageCapacity: 1,
-															currentPackages: 1,
-															packageType: 'TEST'
-														}
-													];
-													
-													console.log('🧪 Vuelos de prueba:', vuelosPrueba);
-													setFlights(prev => [...prev, ...vuelosPrueba]);
-													setFlightsInAir(prev => prev + 2);
-													console.log('✅ Vuelos de prueba añadidos');
-												}}
-												style={{
-													padding: '10px 20px',
-													background: '#8b5cf6',
-													color: 'white',
-													border: 'none',
-													borderRadius: '8px',
-													fontWeight: '600',
-													cursor: 'pointer',
-													transition: 'all 0.3s'
-												}}
-											>
-												🧪 Test Vuelos
-											</button>
-
-											<button
-												onClick={desconectarWebSocketStomp}
-												style={{
-													padding: '10px 20px',
-													background: '#6b7280',
-													color: 'white',
-													border: 'none',
-													borderRadius: '8px',
-													fontWeight: '600',
-													cursor: 'pointer',
-													transition: 'all 0.3s'
-												}}
-											>
-												🔌 Desconectar
-											</button>
-										</>
-									)}
-								</div>
-
-								{/* Progreso del AG */}
-								{progresoAG && (
-									<div style={{
-										background: 'rgba(255, 255, 255, 0.95)',
-										borderRadius: '10px',
-										padding: '20px',
-										marginBottom: '20px',
-										boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
-									}}>
-										<h4 style={{ margin: '0 0 15px 0', color: '#1f2937', fontSize: '16px', fontWeight: '600' }}>
-											🧬 Progreso del Algoritmo Genético
-										</h4>
-										
-										{/* Barra de progreso */}
-										<div style={{
-											width: '100%',
-											height: '30px',
-											background: '#e5e7eb',
-											borderRadius: '15px',
-											overflow: 'hidden',
-											marginBottom: '15px',
-											position: 'relative'
-										}}>
-											<div style={{
-												width: `${progresoAG.progreso || 0}%`,
-												height: '100%',
-												background: 'linear-gradient(90deg, #3b82f6 0%, #3b82f6 100%)',
-												transition: 'width 0.5s ease',
-												display: 'flex',
-												alignItems: 'center',
-												justifyContent: 'center',
-												color: 'white',
-												fontWeight: '600',
-												fontSize: '14px'
-											}}>
-												{progresoAG.progreso?.toFixed(1)}%
-											</div>
-										</div>
-
-										{/* Métricas */}
-										<div style={{
-											display: 'grid',
-											gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-											gap: '15px'
-										}}>
-											<div style={{ background: '#f3f4f6', padding: '12px', borderRadius: '8px' }}>
-												<div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Generación</div>
-												<div style={{ fontSize: '20px', fontWeight: '700', color: '#1f2937' }}>
-													{progresoAG.generacion} / {progresoAG.maxGeneraciones}
-												</div>
-											</div>
-
-											<div style={{ background: '#f3f4f6', padding: '12px', borderRadius: '8px' }}>
-												<div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Mejor Fitness</div>
-												<div style={{ fontSize: '20px', fontWeight: '700', color: '#3b82f6' }}>
-													{progresoAG.mejorFitness?.toFixed(2)}
-												</div>
-											</div>
-
-											<div style={{ background: '#f3f4f6', padding: '12px', borderRadius: '8px' }}>
-												<div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Fitness Promedio</div>
-												<div style={{ fontSize: '20px', fontWeight: '700', color: '#3b82f6' }}>
-													{progresoAG.fitnessPromedio?.toFixed(2)}
-												</div>
-											</div>
-
-											<div style={{ background: '#f3f4f6', padding: '12px', borderRadius: '8px' }}>
-												<div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Pedidos Procesados</div>
-												<div style={{ fontSize: '20px', fontWeight: '700', color: '#f59e0b' }}>
-													{progresoAG.pedidosProcesados} / {progresoAG.pedidosTotales}
-												</div>
-											</div>
-										</div>
-									</div>
-								)}
-
-								{/* 📦 PANEL DE CONTADOR ACUMULATIVO DE PEDIDOS */}
-								{pedidosAcumulados.totalProcesados > 0 && (
-									<div style={{
-										background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
-										borderRadius: '12px',
-										padding: '20px',
-										marginBottom: '15px',
-										boxShadow: '0 4px 20px rgba(5, 150, 105, 0.3)'
-									}}>
-										<h4 style={{ 
-											margin: '0 0 15px 0', 
-											color: 'white', 
-											fontSize: '16px', 
-											fontWeight: '700',
-											display: 'flex',
-											alignItems: 'center',
-											gap: '8px'
-										}}>
-											📦 Total Pedidos Procesados en Simulación
-										</h4>
-
-										{/* Número grande principal */}
-										<div style={{
-											textAlign: 'center',
-											marginBottom: '15px',
-											padding: '15px',
-											background: 'rgba(255,255,255,0.15)',
-											borderRadius: '10px'
-										}}>
-											<div style={{ 
-												fontSize: '48px', 
-												fontWeight: '800', 
-												color: 'white',
-												textShadow: '2px 2px 4px rgba(0,0,0,0.2)'
-											}}>
-												{pedidosAcumulados.totalProcesados.toLocaleString()}
-											</div>
-											<div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginTop: '5px' }}>
-												pedidos procesados
-											</div>
-										</div>
-
-										{/* Grid de métricas secundarias */}
-										<div style={{
-											display: 'grid',
-											gridTemplateColumns: 'repeat(3, 1fr)',
-											gap: '10px'
-										}}>
-											<div style={{ 
-												background: 'rgba(255,255,255,0.2)', 
-												padding: '12px', 
-												borderRadius: '8px',
-												textAlign: 'center'
-											}}>
-												<div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.8)', marginBottom: '4px' }}>
-													Iteraciones AG
-												</div>
-												<div style={{ fontSize: '22px', fontWeight: '700', color: 'white' }}>
-													{pedidosAcumulados.totalIteraciones}
-												</div>
-											</div>
-
-											<div style={{ 
-												background: 'rgba(255,255,255,0.2)', 
-												padding: '12px', 
-												borderRadius: '8px',
-												textAlign: 'center'
-											}}>
-												<div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.8)', marginBottom: '4px' }}>
-													Última Iteración
-												</div>
-												<div style={{ fontSize: '22px', fontWeight: '700', color: 'white' }}>
-													+{pedidosAcumulados.ultimaIteracion}
-												</div>
-											</div>
-
-											<div style={{ 
-												background: 'rgba(255,255,255,0.2)', 
-												padding: '12px', 
-												borderRadius: '8px',
-												textAlign: 'center'
-											}}>
-												<div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.8)', marginBottom: '4px' }}>
-													Promedio/Iter
-												</div>
-												<div style={{ fontSize: '22px', fontWeight: '700', color: 'white' }}>
-													{pedidosAcumulados.totalIteraciones > 0 
-														? Math.round(pedidosAcumulados.totalProcesados / pedidosAcumulados.totalIteraciones)
-														: 0}
-												</div>
-											</div>
-										</div>
-
-										{/* Top 5 destinos con más pedidos */}
-										{Object.keys(pedidosAcumulados.porDestino).length > 0 && (
-											<div style={{ marginTop: '15px' }}>
-												<div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.8)', marginBottom: '8px' }}>
-													🏆 Top Destinos (por paquetes)
-												</div>
-												<div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-													{Object.entries(pedidosAcumulados.porDestino)
-														.sort((a, b) => b[1] - a[1])
-														.slice(0, 5)
-														.map(([destino, cantidad]) => (
-															<span key={destino} style={{
-																background: 'rgba(255,255,255,0.25)',
-																padding: '4px 10px',
-																borderRadius: '12px',
-																fontSize: '12px',
-																color: 'white',
-																fontWeight: '600'
-															}}>
-																{destino}: {cantidad}
-															</span>
-														))}
-												</div>
-											</div>
-										)}
-									</div>
-								)}
-
-								{/* Log de mensajes */}
-								<div style={{
-									background: 'rgba(255, 255, 255, 0.95)',
-									borderRadius: '10px',
-									padding: '15px',
-									maxHeight: '300px',
-									overflowY: 'auto',
-									boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
-								}}>
-									<h4 style={{ margin: '0 0 12px 0', color: '#1f2937', fontSize: '14px', fontWeight: '600' }}>
-										📝 Log de Eventos ({mensajesSimulacion.length})
-									</h4>
-									
-									{mensajesSimulacion.length === 0 ? (
-										<div style={{ textAlign: 'center', color: '#6b7280', padding: '20px', fontSize: '14px' }}>
-											No hay mensajes aún
-										</div>
-									) : (
-										<div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-											{mensajesSimulacion.map(msg => (
-												<div
-													key={msg.id}
-													style={{
-														padding: '10px 12px',
-														borderRadius: '6px',
-														background: 
-															msg.tipo === 'success' ? '#d1fae5' :
-															msg.tipo === 'error' ? '#fee2e2' :
-															msg.tipo === 'warning' ? '#fef3c7' :
-															'#dbeafe',
-														borderLeft: `4px solid ${
-															msg.tipo === 'success' ? '#3b82f6' :
-															msg.tipo === 'error' ? '#ef4444' :
-															msg.tipo === 'warning' ? '#f59e0b' :
-															'#3b82f6'
-														}`,
-														fontSize: '13px',
-														color: '#1f2937'
-													}}
-												>
-													<span style={{ fontWeight: '600', marginRight: '8px', fontSize: '11px', color: '#6b7280' }}>
-														{msg.timestamp}
-													</span>
-													{msg.texto}
-												</div>
-											))}
-										</div>
-									)}
-								</div>
-							</div>
-						</div>
-
-
+					marginLeft: 0,
+					paddingLeft: 0,
+					boxSizing: 'border-box',
+				}}
+			>
+				{/* Contenido principal con mapa*/}
+				<div className="simulation-main-content">
+					<div className="content-wrapper">
 						{/* Mapa interactivo */}
 						<div className="map-container">
-							<MapContainer center={[20.0, 10.0]} zoom={3} className="flight-map" scrollWheelZoom={false} minZoom={2} maxZoom={10} zoomControl={true} doubleClickZoom={true} boxZoom={true} keyboard={true} touchZoom={true} worldCopyJump={true} maxBoundsViscosity={1.0} maxBounds={[[-90, -180], [90, 180]]}>
-								<TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='© OpenStreetMap contributors' noWrap={true} bounds={[[-90, -180], [90, 180]]} />
-								<DynamicMarkers 
-									flights={flights} 
-									airports={airports} 
-									activeView={activeView} 
-									showRoutes={showRoutes} 
+							<MapContainer center={[13.0, 10.0]} zoom={3} className="flight-map" scrollWheelZoom={true} minZoom={2} maxZoom={10} zoomControl={true} zoomSnap={0.5} zoomDelta={0.5} doubleClickZoom={false} boxZoom={true} keyboard={true} touchZoom={true} worldCopyJump={false} maxBoundsViscosity={0.8} maxBounds={[[-90, -180], [90, 180]]}>
+								<TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" attribution='&copy; OpenStreetMap contributors &copy; CARTO' noWrap={true} bounds={[[-90, -180], [90, 180]]}/>
+								<DynamicMarkers
+									flights={flights}
+									airports={airports}
+									activeView={activeView}
+									showRoutes={showRoutes}
 									vuelosEnMovimiento={vuelosEnMovimiento}
 									showFlightLines={showFlightLines}
 								/>
 							</MapContainer>
-							
-							{/* 📦 PANEL FLOTANTE DE ESTADÍSTICAS DE PEDIDOS */}
-							<div style={{
-								position: 'absolute',
-								top: '10px',
-								right: '10px',
-								zIndex: 1000,
-								background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
-								borderRadius: '12px',
-								padding: '12px 16px',
-								boxShadow: '0 4px 20px rgba(5, 150, 105, 0.4)',
-								minWidth: '200px',
-								color: 'white'
-							}}>
-								<div style={{ 
-									fontSize: '11px', 
-									fontWeight: '600', 
-									marginBottom: '8px',
-									opacity: 0.9,
-									display: 'flex',
-									alignItems: 'center',
-									gap: '6px'
-								}}>
-									📦 PEDIDOS PROCESADOS
-								</div>
-								<div style={{ 
-									fontSize: '36px', 
-									fontWeight: '800', 
-									textAlign: 'center',
-									textShadow: '2px 2px 4px rgba(0,0,0,0.2)',
-									lineHeight: 1
-								}}>
-									{pedidosAcumulados.totalProcesados.toLocaleString()}
-								</div>
-								
-								{/* 🆕 CONTADOR DE VUELOS - FILA 1: Totales */}
-								<div style={{
-									display: 'flex',
-									justifyContent: 'space-around',
-									marginTop: '10px',
-									fontSize: '11px',
-									borderTop: '1px solid rgba(255,255,255,0.3)',
-									paddingTop: '8px',
-									gap: '6px'
-								}}>
-									<div style={{ 
-										textAlign: 'center',
-										background: 'rgba(76, 175, 80, 0.3)',
-										padding: '6px 8px',
-										borderRadius: '8px',
-										flex: 1,
-										border: '1px solid rgba(76, 175, 80, 0.5)'
-									}}>
-										<div style={{ opacity: 0.9, fontSize: '9px' }}>✈️ VUELOS ÚNICOS</div>
-										<div style={{ fontWeight: '800', fontSize: '18px', color: '#4caf50' }}>{metricasVuelos.totalRecibidosBackend}</div>
-									</div>
-									<div style={{ 
-										textAlign: 'center',
-										background: 'rgba(33, 150, 243, 0.3)',
-										padding: '6px 8px',
-										borderRadius: '8px',
-										flex: 1,
-										border: '1px solid rgba(33, 150, 243, 0.5)'
-									}}>
-										<div style={{ opacity: 0.9, fontSize: '9px' }}>🛫 EN EL AIRE</div>
-										<div style={{ fontWeight: '800', fontSize: '18px', color: '#2196f3' }}>{flightsInAir}</div>
-									</div>
-								</div>
-								
-								{/* 🆕 CONTADOR DE VUELOS - FILA 2: Estados */}
-								<div style={{
-									display: 'flex',
-									justifyContent: 'space-around',
-									marginTop: '6px',
-									fontSize: '10px',
-									gap: '4px'
-								}}>
-									<div style={{ 
-										textAlign: 'center',
-										background: 'rgba(255, 193, 7, 0.25)',
-										padding: '4px 6px',
-										borderRadius: '6px',
-										flex: 1
-									}}>
-										<div style={{ opacity: 0.8, fontSize: '8px' }}>⏳ Esperando</div>
-										<div style={{ fontWeight: '700', fontSize: '14px', color: '#ffc107' }}>{metricasVuelos.vuelosWaiting || 0}</div>
-									</div>
-									<div style={{ 
-										textAlign: 'center',
-										background: 'rgba(76, 175, 80, 0.25)',
-										padding: '4px 6px',
-										borderRadius: '6px',
-										flex: 1
-									}}>
-										<div style={{ opacity: 0.8, fontSize: '8px' }}>✅ Completados</div>
-										<div style={{ fontWeight: '700', fontSize: '14px', color: '#4caf50' }}>{metricasVuelos.vuelosCompleted || 0}</div>
-									</div>
-									<div style={{ 
-										textAlign: 'center',
-										background: 'rgba(244, 67, 54, 0.25)',
-										padding: '4px 6px',
-										borderRadius: '6px',
-										flex: 1
-									}}>
-										<div style={{ opacity: 0.8, fontSize: '8px' }}>⚠️ Tardíos</div>
-										<div style={{ fontWeight: '700', fontSize: '14px', color: '#f44336' }}>{metricasVuelos.totalPerdidosAntesDeTiempo || 0}</div>
-									</div>
-								</div>
-
-								{/* Fila de iteraciones */}
-								<div style={{
-									display: 'flex',
-									justifyContent: 'space-between',
-									marginTop: '8px',
-									fontSize: '10px',
-									borderTop: '1px solid rgba(255,255,255,0.2)',
-									paddingTop: '6px'
-								}}>
-									<div style={{ textAlign: 'center' }}>
-										<div style={{ opacity: 0.7 }}>Iter</div>
-										<div style={{ fontWeight: '700', fontSize: '12px' }}>{pedidosAcumulados.totalIteraciones}</div>
-									</div>
-									<div style={{ textAlign: 'center' }}>
-										<div style={{ opacity: 0.7 }}>Última</div>
-										<div style={{ fontWeight: '700', fontSize: '12px' }}>+{pedidosAcumulados.ultimaIteracion}</div>
-									</div>
-									<div style={{ textAlign: 'center' }}>
-										<div style={{ opacity: 0.7 }}>Prom</div>
-										<div style={{ fontWeight: '700', fontSize: '12px' }}>
-											{pedidosAcumulados.totalIteraciones > 0 
-												? Math.round(pedidosAcumulados.totalProcesados / pedidosAcumulados.totalIteraciones)
-												: 0}
-										</div>
-									</div>
-								</div>
-							</div>
-
 							{/* Botón de Metricas */}
 							<MetricsButton onClick={handleMetricsButtonClick} selected={isMetricsPanelOpen} />
 							{/* Botón de leyenda flotante */}
 							<LegendButton onClick={handleToggleLegend} />
+							{/* Controles de simulación */} 
+							<ControlButton onClick={handleControlButtonClick} selected={isControlPanelOpen}/>
 						</div>
 					</div>
 				</div>
@@ -4426,6 +3390,23 @@ console.log(`Vuelos activos anadidos: ${vuelosActivos}`);
 				orderCount={ordersCount}
 				flights={flightsInMovement}
 				getSaturation={getSaturation}
+			/>
+			<ControlPopper
+				open={isControlPopperOpen}
+				anchorEl={controlAnchorEl}
+				fechaInicioSimulacion={fechaInicioSimulacion}
+				setFechaInicioSimulacion={setFechaInicioSimulacion}
+				horaInicioSimulacion={horaInicioSimulacion}
+				setHoraInicioSimulacion={setHoraInicioSimulacion}
+				tiempoSimulacionActual={tiempoSimulacionActual}
+				tiempoRealTranscurrido={tiempoRealTranscurrido}
+				simulacionActiva={simulacionActiva}
+				estadoPlanificacion={estadoPlanificacion}
+				handleIniciarSimulacion={handleIniciarSimulacion}
+				handleDetenerSimulacion={handleDetenerSimulacion}
+				startButtonLabel={startButtonLabel}
+				showFlightLines={showFlightLines}
+				setShowFlightLines={setShowFlightLines}
 			/>
 		</div>
 	);

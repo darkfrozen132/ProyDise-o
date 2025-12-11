@@ -37,8 +37,8 @@ export default function ControlPopper({
             <Paper
                 sx={{
                     borderRadius: 2,
-                    width: { xs: '95vw', sm: '90vw', md: 850, lg: 950 },
-                    maxWidth: '95vw',
+                    width: { xs: '80vw', sm: '80vw', md: 750, lg: 900 },
+                    maxWidth: '85vw',
                     padding: { xs: 1.5, sm: 2 },
                     boxShadow: 4,
                     backgroundColor: "rgba(255,255,255,0.8)",

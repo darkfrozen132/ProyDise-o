@@ -1,44 +1,30 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer } from 'react-leaflet';
-import { Drawer, Dialog, DialogTitle, DialogContent, IconButton, Tabs, Tab, Box } from '@mui/material';
+import { Drawer, IconButton, Tabs, Tab, Box } from '@mui/material';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
-import { FaRoad } from "react-icons/fa";
-import BackIconButton from '../../../components/ui/Button/BackIconButton';
-import { IoArrowBackCircleOutline } from "react-icons/io5";
-import { RiResetLeftFill } from "react-icons/ri";
-import { FaStop } from "react-icons/fa6";
-import { FaPlay } from "react-icons/fa6";
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import SockJS from 'sockjs-client';
 import { Client } from '@stomp/stompjs';
 import vuelosSemana from '../../../assets/data/vuelosSemana.json';
-import { getPlanificacionSemanal, API_BASE_URL, WS_URL } from '../../../config/api';
+import { API_BASE_URL, WS_URL } from '../../../config/api';
 import './SimuladorSemanal.css';
 import './WebSocketStomp.css';
-import {
-	getAirports,
-	getFlights,
-	iniciarSimulacion,
-	pausarSimulacion,
-	reanudarSimulacion,
-	detenerSimulacion
-} from '../../../config/api';
+import { getAirports } from '../../../config/api';
 import LegendDialog from '../../../components/ui/Dialog/LegendDialog';
 import LegendButton from '../../../components/ui/Button/LegendButton';
 import MetricsPopper from '../../../components/ui/Dialog/MetricsPopper';
 import MetricsButton from '../../../components/ui/Button/MetricsButton';
-// 🆕 COMPONENTE DE INDICADOR DE ESTADO WEBSOCKET
-// Nota: usePlanificacionWebSocket está deshabilitado - ver comentario en línea ~513
-import WebSocketStatusIndicator from '../../../components/ui/WebSocketStatusIndicator';
 import ControlButton from '../../../components/ui/Button/ControlButton';
 import ControlPopper from '../../../components/ui/Dialog/ControlPopper';
 
+import { IoMdAirplane } from "react-icons/io";
+import ReactDOMServer from "react-dom/server";
+
 /* Constantes de configuracion de tiempo de simulacion */
 const DESIRED_TIME_SCALE = 300; // Valor de K
-const REAL_TICK_MS = 1000; // Intervalo del reloj (1s)
 const TIEMPO_RECOGIDA_MS = 2 * 60 * 60 * 1000; // 2 horas en milisegundos - tiempo para recoger paquetes del almacén
 
 /* Reparar iconos por defecto de Leaflet */
@@ -49,53 +35,46 @@ L.Icon.Default.mergeOptions({
 	shadowUrl: require('leaflet/dist/images/marker-shadow.png'),
 });
 
-/* Iconos de aviones personalizados como SVG dentro de divIcon */
-/**
- * Determinar color del avión basado en el PORCENTAJE DE CARGA
- * - Azul: < 40% de capacidad usada (poco cargado)
- * - Amarillo: 40-60% de capacidad usada (carga media)
- * - Rojo: > 60% de capacidad usada (muy cargado)
- */
+/* ======= Obtener color del avión según estado ======= */
 const getAircraftColorByStatus = (flight) => {
-	// Calcular porcentaje de carga
 	const capacidad = flight.packageCapacity || 1; // Evitar división por 0
 	const cargaActual = flight.currentPackages || 0;
 	const porcentajeCarga = (cargaActual / capacidad) * 100;
 
 	// Colores según porcentaje de carga
-	if (porcentajeCarga > 60) {
-		return '#ef4444'; // 🔴 Rojo - Muy cargado (> 60%)
-	} else if (porcentajeCarga >= 40) {
-		return '#f59e0b'; // 🟡 Amarillo - Carga media (40-60%)
+	if (porcentajeCarga >= 80) {
+		return '#dc3545';
+	} else if (porcentajeCarga >= 50) {
+		return '#f59e0b';
 	} else {
-		return '#28a745'; // verde - Poco cargado (< 40%)
+		return '#28a745';
 	}
 };
 
+/* ======= Obtener SVG del icono de avión con color dinámico ======= */
+const getAirplaneSvg = (color, size = 0) => {
+	return ReactDOMServer.renderToString(
+		<IoMdAirplane color={color} size={size} />
+	);
+};
+
+/* ======= Crear icono de avión personalizado en SVG ======= */
 const createAirplaneIcon = (flight, rotation = 0) => {
-	// Determinar color basado en el estado del vuelo
 	const color = getAircraftColorByStatus(flight);
+	const iconSvg = getAirplaneSvg(color, 20);
 
-	const iconSvg = `<svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
-			<ellipse cx="11" cy="11" rx="2" ry="10" fill="${color}" stroke="#ffffff" stroke-width="0.5"/>
-			<ellipse cx="11" cy="8" rx="9" ry="1.8" fill="${color}" stroke="#ffffff" stroke-width="0.5"/>
-			<ellipse cx="11" cy="15" rx="4" ry="1.2" fill="${color}" stroke="#ffffff" stroke-width="0.5"/>
-			<path d="M11 17 L11 19.5 L10 19.5 L10 17 Z" fill="${color}" stroke="#ffffff" stroke-width="0.3"/>
-		</svg>`;
-
-	/* Crear divIcon con el SVG correspondiente y transición suave */
 	return L.divIcon({
-		html: `<div style="transform: rotate(${rotation}deg); display: flex; align-items: center; justify-content: center; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2)); transition: transform 0.3s ease-out, filter 0.3s ease-out;">${iconSvg}</div>`,
-		className: 'airplane-icon-animated',
-		iconSize: [22, 22],
-		iconAnchor: [11, 11],
-		popupAnchor: [0, -12]
+		html: `<div style="transform: rotate(${rotation}deg); transform-origin: center center; display: flex; align-items: center; justify-content: center;">
+        			${iconSvg}
+      			</div>`,
+		className: "airplane-icon-animated",
+		iconSize: [20, 20],
+		iconAnchor: [13, 13],
+		popupAnchor: [0, -16],
 	});
 };
 
-/**
- * Crear popup detallado para un vuelo
- */
+/* ======= Crear popup detallado para un vuelo (HTML string) ======= */
 const createFlightPopup = (flight) => {
 	const statusIcon =
 		flight.status === 'completed' || flight.progress >= 100 ? '✅' :
@@ -183,23 +162,28 @@ const createFlightPopup = (flight) => {
 	`;
 };
 
-/* Iconos de aeropuertos personalizados */
+/* ======= Crear icono de aeropuerto personalizado ======= */
 const createAirportIcon = (name, saturation = 0) => {
 	let size, color, borderColor, borderWidth, shadow;
-	/* Color y tamaño según tipo y saturación */
+	// Estilos especiales para sedes
 	if (name == "Bruselas" || name == "Lima" || name == "Baku") {
-		size = 28; color = '#ff6b35'; borderColor = '#FFD700'; borderWidth = 2; shadow = '0 4px 16px rgba(220, 53, 69, 0.6)';
+		size = 23; color = '#4954b6ff'; borderColor = '#ffffffff'; borderWidth = 1.8; shadow = '0 2px 2px rgba(0,0,0,0.4)';
 	} else {
-		size = 22; borderColor = '#ffffff'; borderWidth = 2; shadow = '0 3px 10px rgba(0,0,0,0.4)';
-		if (saturation >= 80) color = '#dc3545'; else if (saturation >= 50) color = '#ffc107'; else color = '#28a745';
+		// Estilos para aeropuertos normales según saturación
+		size = 18; borderColor = '#ffffff'; borderWidth = 1.5; shadow = '0 2px 2px rgba(0,0,0,0.4)';
+		if (saturation >= 80) color = '#dc3545'; 
+		else if (saturation >= 50) color = '#f59e0b'; 
+		else color = '#28a745';
 	}
-	/* Crear divIcon con estilos */
+	// Crear icono con estilos definidos
 	return new L.DivIcon({
 		className: 'airport-marker',
 		html: `<div style="background: ${color}; border: ${borderWidth}px solid ${borderColor}; border-radius: 50%; width: ${size}px; height: ${size}px; display:flex;align-items:center;justify-content:center; box-shadow:${shadow}; position:relative; cursor:pointer; transition: all .3s ease;">
 			<i class="fas fa-${(name == "Bruselas" || name == "Lima" || name == "Baku") ? 'building' : 'plane'}" style="color:white; font-size:${size * 0.4}px; ${(name == "Bruselas" || name == "Lima" || name == "Baku") ? '' : 'transform: rotate(45deg);'} text-shadow:0 1px 3px rgba(0,0,0,.5);"></i>
 		</div>`,
-		iconSize: [size, size], iconAnchor: [size / 2, size / 2], popupAnchor: [0, -size / 2]
+		iconSize: [size, size], 
+		iconAnchor: [size / 2, size / 2], 
+		popupAnchor: [0, -size / 2]
 	});
 };
 
@@ -294,7 +278,27 @@ const createAirportPopup = (airport) => {
 	`;
 };
 
-/* Componente para manejar marcadores dinámicos en el mapa */
+/* ======= Calcular rumbo entre dos puntos ======= */
+const toRad = (deg) => (deg * Math.PI) / 180;
+const toDeg = (rad) => (rad * 180) / Math.PI;
+
+const calculateBearing = (from, to) => {
+	const lat1 = toRad(from.lat);
+	const lat2 = toRad(to.lat);
+	const dLon = toRad(to.lng - from.lng);
+
+	const y = Math.sin(dLon) * Math.cos(lat2);
+	const x =
+		Math.cos(lat1) * Math.sin(lat2) -
+		Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+
+	let brng = toDeg(Math.atan2(y, x)); // -180 .. 180
+	brng = (brng + 360) % 360; // 0 .. 360
+
+	return brng;
+};
+
+/* ======= Componente para manejar marcadores y líneas dinámicas ======= */
 function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMovimiento, showFlightLines }) {
 	const map = (0, require('react-leaflet').useMap)();
 	const markersRef = React.useRef({});
@@ -304,41 +308,44 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMov
 
 	React.useEffect(() => {
 		const now = Date.now();
+
+		// DEBUG: Log cuando cambia el número de vuelos o cada 5 segundos
 		if (flights.length !== lastLogRef.current.count || now - lastLogRef.current.time > 5000) {
 			console.log(`🗺️ DynamicMarkers - Recibidos ${flights.length} vuelos, activeView: ${activeView}`);
 			lastLogRef.current = { count: flights.length, time: now };
 		}
 
-		/* AEROPUERTOS */
+		/***** AEROPUERTOS *****/
 		const currentAirportCodes = new Set();
-
 		airports.forEach(airport => {
+			// Validar coordenadas
 			if (!airport.lat || !airport.lng || isNaN(airport.lat) || isNaN(airport.lng)) {
-				console.warn(`⚠️ Aeropuerto ${airport.code} sin coordenadas válidas`);
+				console.warn(`Aeropuerto ${airport.code} sin coordenadas válidas`);
 				return;
 			}
 
+			// Añadir código al set actual
 			currentAirportCodes.add(airport.code);
 			const existingMarker = airportMarkersRef.current[airport.code];
 
+			// Actualizar o crear marcador
 			if (existingMarker) {
 				existingMarker.setPopupContent(createAirportPopup(airport));
 			} else {
 				const isUnlimited = airport.capacity === 'ILIMITADO';
 				const saturation = isUnlimited ? 0 : (airport.packages / airport.capacity) * 100;
-				const icon = createAirportIcon(airport.name, saturation);
-				const marker = L.marker([airport.lat, airport.lng], {
-					icon,
-					isAirport: true
-				}).bindPopup(createAirportPopup(airport), {
+				const icon = createAirportIcon(airport.name, saturation); // Crear icono con saturación
+				const marker = L.marker([airport.lat, airport.lng],
+					{ icon, isAirport: true}).bindPopup(createAirportPopup(airport), {
 					closeOnClick: false,
 					autoClose: false
-				});
-				marker.addTo(map);
-				airportMarkersRef.current[airport.code] = marker;
+				}); // crear popup detallado
+				marker.addTo(map); // Agregar al mapa
+				airportMarkersRef.current[airport.code] = marker; // Guardar referencia
 			}
 		});
 
+		// Remover marcadores de aeropuertos que ya no existen
 		Object.keys(airportMarkersRef.current).forEach(code => {
 			if (!currentAirportCodes.has(code)) {
 				map.removeLayer(airportMarkersRef.current[code]);
@@ -346,16 +353,16 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMov
 			}
 		});
 
-		/* VUELOS */
+		/***** VUELOS *****/
 		if (activeView === 'flights' || activeView === 'routes') {
 			const currentFlightIds = new Set();
 
-			// ✅ CAMBIO CRÍTICO: < 100 en lugar de <= 100
+			// Filtrar vuelos activos en movimiento
 			const vuelosActivos = vuelosEnMovimiento.filter(v =>
 				v.status === 'active' && v.progress > 0 && v.progress < 100
 			);
 
-			// 🔍 DEBUG: Ver vuelos excluidos
+			// Logs de vuelos excluidos
 			const vuelosNoActivos = vuelosEnMovimiento.filter(v =>
 				!(v.status === 'active' && v.progress > 0 && v.progress < 100)
 			);
@@ -364,37 +371,57 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMov
 					`${v.id.substring(0, 8)}... (status=${v.status}, progress=${v.progress?.toFixed(1)}%)`
 				));
 			}
-
 			if (vuelosActivos.length !== lastLogRef.current.activeCount) {
 				console.log(`✈️ Aviones en vuelo: ${vuelosActivos.length}/${vuelosEnMovimiento.length}`);
 				lastLogRef.current.activeCount = vuelosActivos.length;
 			}
 
+			// Procesar cada vuelo activo
 			vuelosActivos.forEach((flight, index) => {
+				// Validar coordenadas
 				if (!flight.currentLat || !flight.currentLng ||
 					isNaN(flight.currentLat) || isNaN(flight.currentLng)) {
 					return;
 				}
 
+				// Añadir ID al set actual
 				currentFlightIds.add(flight.id);
 				const existingMarker = markersRef.current[flight.id];
 				const position = { lat: flight.currentLat, lng: flight.currentLng };
 
+				// Actualizar o crear marcador
 				if (existingMarker) {
+					// Actualizar posición con animación suave si la distancia es significativa
 					const currentLatLng = existingMarker.getLatLng();
 					const newLatLng = L.latLng(position.lat, position.lng);
 					const distance = currentLatLng.distanceTo(newLatLng);
 
+					// Calcular rotación según el movimiento actual
+					const rotation = calculateBearing(
+						{ lat: currentLatLng.lat, lng: currentLatLng.lng },
+						{ lat: newLatLng.lat, lng: newLatLng.lng }
+					);
+
+					// Animar solo si la distancia es mayor a 100 metros
 					if (distance > 100) {
 						animateMarker(existingMarker, currentLatLng, newLatLng, 1000);
 					} else {
 						existingMarker.setLatLng(newLatLng);
 					}
-
-					existingMarker.setIcon(createAirplaneIcon(flight, flight.rotation));
+					// Actualizar icono y popup
+					existingMarker.setIcon(createAirplaneIcon(flight, rotation));
 					existingMarker.setPopupContent(createFlightPopup(flight));
 				} else {
-					const icon = createAirplaneIcon(flight, flight.rotation);
+					// Calcular rotación inicial
+					let rotation = 0;
+					if (flight.origin && flight.destination) {
+						rotation = calculateBearing(
+							{ lat: flight.origin.lat, lng: flight.origin.lng },
+							{ lat: flight.destination.lat, lng: flight.destination.lng }
+						);
+					}
+					// Crear nuevo marcador
+					const icon = createAirplaneIcon(flight, rotation);
 					const popupContent = createFlightPopup(flight);
 					const marker = L.marker([position.lat, position.lng], {
 						icon,
@@ -414,8 +441,9 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMov
 						if (existingLine) {
 							existingLine.setLatLngs(coords);
 						} else {
+							const colorAirplane = getAircraftColorByStatus(flight);
 							const flightLine = L.polyline(coords, {
-								color: '#ec9119ff',
+								color: colorAirplane,
 								weight: 2,
 								opacity: 1.0,
 								dashArray: '3, 8',
@@ -452,7 +480,7 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMov
 				}
 			});
 
-			// 🆕 Limpiar TODAS las líneas si el botón está desactivado
+			// Limpiar TODAS las líneas si el botón está desactivado
 			if (!showFlightLines && Object.keys(flightLinesRef.current).length > 0) {
 				console.log('🧹 Limpiando todas las líneas (botón desactivado)');
 				Object.values(flightLinesRef.current).forEach(line => {
@@ -466,7 +494,6 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMov
 			// Limpiar todo si no estamos en vista de vuelos
 			Object.values(markersRef.current).forEach(marker => map.removeLayer(marker));
 			markersRef.current = {};
-
 			Object.values(flightLinesRef.current).forEach(line => map.removeLayer(line));
 			flightLinesRef.current = {};
 		}
@@ -1225,26 +1252,6 @@ const SimuladorSemanal = () => {
 		});
 	}, [paquetesEnAlmacen]);
 
-	/* ==================== VUELOS LOCALES DESHABILITADOS - SOLO WEBSOCKET ==================== */
-	// ❌ COMENTADO: Ya no usamos vuelos locales basados en planFixed y simClock
-	// ✅ AHORA: Todos los vuelos vienen del WebSocket mediante procesarRutasSimulacion()
-
-	// useEffect(() => {
-	// 	if (!simClock || planFixed.length === 0 || airports.length === 0) return;
-	// 	... código comentado ...
-	// }, [simClock, planFixed, airports]);
-
-	/* ==================== RELOJ LOCAL DESHABILITADO - SOLO WEBSOCKET ==================== */
-	// ❌ COMENTADO: Ya no avanzamos el reloj localmente
-	// ✅ AHORA: El tiempo viene del backend en los mensajes WebSocket
-
-	// useEffect(() => {
-	// 	if (!simulacionActiva) return;
-	// 	const advanceMs = DESIRED_TIME_SCALE * REAL_TICK_MS;
-	// 	const id = setInterval(() => { ... }, REAL_TICK_MS);
-	// 	return () => clearInterval(id);
-	// }, [simulacionActiva]);
-
 	// ==================== 🆕 RELOJ LOCAL CON VELOCIDAD CONSTANTE ====================
 	// Sistema simplificado: Buffer inicial de 20 segundos, luego velocidad constante K=500
 	// SIN sistema adaptativo - avance uniforme del tiempo
@@ -1312,16 +1319,6 @@ const SimuladorSemanal = () => {
 
 		return () => clearInterval(interval);
 	}, [simulacionLocalActiva]);
-
-
-useEffect(() => {
-  console.log("📍 controlAnchorEl cambió:", controlAnchorEl);
-  console.log("📍 isControlPopperOpen:", isControlPopperOpen);
-  if (controlAnchorEl) {
-    console.log("📍 Posición del botón:", controlAnchorEl.getBoundingClientRect());
-  }
-}, [controlAnchorEl, isControlPopperOpen]);
-
 
 	// ==================== FUNCIONES PARA CONTROLAR SIMULACIÓN ====================
 	const handleIniciarSimulacion = async () => {

@@ -635,14 +635,20 @@ const SimuladorSemanal = () => {
 	const [showFlightLines, setShowFlightLines] = useState(true); // 🆕 Toggle para líneas dinámicas de vuelos
 
 	// ===================== ESTADO BOTONES FLOTANTES ==================== 
+	const controlButtonRef = useRef(null);
+
 	const [legendAnchorEl, setLegendAnchorEl] = useState(null);
 	const [isMetricsPanelOpen, setIsMetricsPanelOpen] = useState(false);
 	const [isControlPanelOpen, setIsControlPanelOpen] = useState(false);
 
-	const [isMetricsPopperOpen, setIsMetricsPopperOpen] = useState(false);
-	const [isControlPopperOpen, setIsControlPopperOpen] = useState(false);
+	//const [isMetricsPopperOpen, setIsMetricsPopperOpen] = useState(false);
+	//const [isControlPopperOpen, setIsControlPopperOpen] = useState(false);
 	const [metricsAnchorEl, setMetricsAnchorEl] = useState(null);
 	const [controlAnchorEl, setControlAnchorEl] = useState(null);
+	const [hasAutoOpened, setHasAutoOpened] = useState(false);
+
+	const isControlPopperOpen = Boolean(controlAnchorEl);
+	const isMetricsPopperOpen = Boolean(metricsAnchorEl);
 	
 	/* Datos de aeropuertos - se cargarán desde la API */
 	const [airports, setAirports] = useState([]);
@@ -1308,6 +1314,14 @@ const SimuladorSemanal = () => {
 	}, [simulacionLocalActiva]);
 
 
+useEffect(() => {
+  console.log("📍 controlAnchorEl cambió:", controlAnchorEl);
+  console.log("📍 isControlPopperOpen:", isControlPopperOpen);
+  if (controlAnchorEl) {
+    console.log("📍 Posición del botón:", controlAnchorEl.getBoundingClientRect());
+  }
+}, [controlAnchorEl, isControlPopperOpen]);
+
 
 	// ==================== FUNCIONES PARA CONTROLAR SIMULACIÓN ====================
 	const handleIniciarSimulacion = async () => {
@@ -1567,14 +1581,42 @@ const SimuladorSemanal = () => {
 		setLegendAnchorEl(legendAnchorEl ? null : event.currentTarget);
 	};
 
-	const handleMetricsButtonClick = (event) => {
-		setMetricsAnchorEl(event.currentTarget); // botón como anchor
-		setIsMetricsPopperOpen((prev) => !prev);
+	// Callback que se ejecuta cuando el botón se monta
+	const handleControlButtonMount = (buttonElement) => {
+		// Solo abrir automáticamente la primera vez
+		if (!hasAutoOpened) {
+			setTimeout(() => {
+				setControlAnchorEl(buttonElement);
+				setHasAutoOpened(true);
+			}, 100);
+		}
+	};
+
+	// Callback que se ejecuta cuando el botón se monta
+	const handleMetricButtonMount = (buttonElement) => {
+		// Solo abrir automáticamente la primera vez
+		if (!hasAutoOpened) {
+			setTimeout(() => {
+				setMetricsAnchorEl(buttonElement);
+				setHasAutoOpened(true);
+			}, 100);
+		}
 	};
 
 	const handleControlButtonClick = (event) => {
-		setControlAnchorEl(event.currentTarget); // botón como anchor
-		setIsControlPopperOpen((prev) => !prev);
+		if (controlAnchorEl) {
+			setControlAnchorEl(null);
+		} else {
+			setControlAnchorEl(event.currentTarget);
+		}
+	};
+
+	const handleMetricsButtonClick = (event) => {
+		if (metricsAnchorEl) {
+			setMetricsAnchorEl(null);
+		} else {
+			setMetricsAnchorEl(event.currentTarget);
+		}
 	};
 
 	// ==================== FUNCIONES WEBSOCKET DE PLANIFICACIÓN ====================
@@ -3368,11 +3410,11 @@ const SimuladorSemanal = () => {
 								/>
 							</MapContainer>
 							{/* Botón de Metricas */}
-							<MetricsButton onClick={handleMetricsButtonClick} selected={isMetricsPanelOpen} />
+							<MetricsButton onClick={handleMetricsButtonClick} onMount={handleMetricButtonMount}/>
 							{/* Botón de leyenda flotante */}
 							<LegendButton onClick={handleToggleLegend} />
 							{/* Controles de simulación */} 
-							<ControlButton onClick={handleControlButtonClick} selected={isControlPanelOpen}/>
+							<ControlButton onClick={handleControlButtonClick} onMount={handleControlButtonMount}/>
 						</div>
 					</div>
 				</div>

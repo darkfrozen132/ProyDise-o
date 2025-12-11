@@ -1,9 +1,20 @@
 import { IconButton } from "@mui/material";
 import { BiBarChartAlt2 } from "react-icons/bi";
+import { useEffect, useRef } from "react";
 
-export default function MetricsButton({ onClick, style }) {
+export default function MetricsButton({ onClick, style, onMount }) {
+    const buttonRef = useRef(null);
+        
+        useEffect(() => {
+            // Notificar al padre que el botón se montó
+            if (buttonRef.current && onMount) {
+                onMount(buttonRef.current);
+            }
+        }, [onMount]);
+
     return (
         <IconButton
+            ref={buttonRef}
             onClick={onClick}
             title="Métricas"
             sx={{

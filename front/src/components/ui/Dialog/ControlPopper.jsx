@@ -21,6 +21,7 @@ export default function ControlPopper({
     startButtonLabel,
     showFlightLines,
     setShowFlightLines, }) {
+
     return (
         <Popper
             open={open}
@@ -39,7 +40,7 @@ export default function ControlPopper({
                     borderRadius: 2,
                     width: { xs: '80vw', sm: '80vw', md: 750, lg: 900 },
                     maxWidth: '85vw',
-                    padding: { xs: 1.5, sm: 2 },
+                    padding: { xs: 0.8, sm: 1 },
                     boxShadow: 4,
                     backgroundColor: "rgba(255,255,255,0.8)",
                 }}

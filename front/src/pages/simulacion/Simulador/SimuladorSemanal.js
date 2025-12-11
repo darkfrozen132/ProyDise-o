@@ -435,12 +435,10 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMov
 				if (showFlightLines) {
 					try {
 						const lineKey = flight.id;
-						const coords = [[flight.origin.lat, flight.origin.lng], [position.lat, position.lng]];
+						const coords = [[flight.origin.lat, flight.origin.lng], [flight.destination.lat, flight.destination.lng]];
 						const existingLine = flightLinesRef.current[lineKey];
 
-						if (existingLine) {
-							existingLine.setLatLngs(coords);
-						} else {
+						if (!existingLine) {
 							const colorAirplane = getAircraftColorByStatus(flight);
 							const flightLine = L.polyline(coords, {
 								color: colorAirplane,
@@ -906,54 +904,6 @@ const SimuladorSemanal = () => {
 			setPlanFixed(vuelosSemana.vuelos);
 		}
 	}, [vuelosSemana]);
-
-	// ========== INTERVALO: Incrementar tiempoMovimiento ==========
-	// ❌ DESACTIVADO: Ahora el reloj local controla todo el tiempo
-	// Este sistema creaba conflictos con el reloj local
-	/*
-	useEffect(() => {
-		if (!ultimaActualizacionReal || !tiempoSimuladoBackend) return;
-
-		console.log('🕐 Iniciando intervalo de tiempo simulado');
-
-		const interval = setInterval(() => {
-			const tiempoReal = Date.now() - ultimaActualizacionReal;
-			setTiempoMovimiento(tiempoReal);
-		}, 50); // 20 FPS (cada 50ms)
-
-		return () => {
-			console.log('🛑 Deteniendo intervalo de tiempo simulado');
-			clearInterval(interval);
-		};
-	}, [ultimaActualizacionReal, tiempoSimuladoBackend]);
-	*/
-
-	// ========== CALCULAR: Tiempo Simulado ==========
-	// ❌ DESACTIVADO: Ahora el reloj local actualiza tiempoSimulado directamente
-	// Este sistema creaba conflictos con el reloj local
-	/*
-	useEffect(() => {
-		if (!tiempoSimuladoBackend) {
-			setTiempoSimulado(Date.now());
-			return;
-		}
-
-		// Calcular tiempo simulado: base + (tiempo_real × velocidad)
-		const msSimuladosPasados = tiempoMovimiento * speedMultiplier;
-		const nuevoTiempoSimulado = tiempoSimuladoBackend + msSimuladosPasados;
-		
-		setTiempoSimulado(nuevoTiempoSimulado);
-
-		// Debug cada 2 segundos (solo algunos frames)
-		if (Math.random() < 0.02) {
-			const fechaSimulada = new Date(nuevoTiempoSimulado);
-			console.log(`⏰ Tiempo simulado: ${fechaSimulada.toISOString()}`);
-			console.log(`   Base: ${new Date(tiempoSimuladoBackend).toISOString()}`);
-			console.log(`   Δ Real: ${(tiempoMovimiento / 1000).toFixed(1)}s`);
-			console.log(`   Velocidad: ${speedMultiplier}x`);
-		}
-	}, [tiempoSimuladoBackend, tiempoMovimiento, speedMultiplier]);
-	*/
 
 	// ========== CALCULAR: Vuelos en Movimiento (REACTIVO) ==========
 	const vuelosEnMovimiento = useMemo(() => {

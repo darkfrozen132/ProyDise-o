@@ -33,6 +33,8 @@ import MetricsButton from '../../../components/ui/Button/MetricsButton';
 // 🆕 COMPONENTE DE INDICADOR DE ESTADO WEBSOCKET
 // Nota: usePlanificacionWebSocket está deshabilitado - ver comentario en línea ~513
 import WebSocketStatusIndicator from '../../../components/ui/WebSocketStatusIndicator';
+import ControlButton from '../../../components/ui/Button/ControlButton';
+import ControlPopper from '../../../components/ui/Dialog/ControlPopper';
 
 /* Constantes de configuracion de tiempo de simulacion */
 const DESIRED_TIME_SCALE = 300; // Valor de K
@@ -635,10 +637,13 @@ const SimuladorSemanal = () => {
 	// ===================== ESTADO BOTONES FLOTANTES ==================== 
 	const [legendAnchorEl, setLegendAnchorEl] = useState(null);
 	const [isMetricsPanelOpen, setIsMetricsPanelOpen] = useState(false);
+	const [isControlPanelOpen, setIsControlPanelOpen] = useState(false);
 
 	const [isMetricsPopperOpen, setIsMetricsPopperOpen] = useState(false);
+	const [isControlPopperOpen, setIsControlPopperOpen] = useState(false);
 	const [metricsAnchorEl, setMetricsAnchorEl] = useState(null);
-
+	const [controlAnchorEl, setControlAnchorEl] = useState(null);
+	
 	/* Datos de aeropuertos - se cargarán desde la API */
 	const [airports, setAirports] = useState([]);
 	const [loadingAirports, setLoadingAirports] = useState(true);
@@ -1565,6 +1570,11 @@ const SimuladorSemanal = () => {
 	const handleMetricsButtonClick = (event) => {
 		setMetricsAnchorEl(event.currentTarget); // botón como anchor
 		setIsMetricsPopperOpen((prev) => !prev);
+	};
+
+	const handleControlButtonClick = (event) => {
+		setControlAnchorEl(event.currentTarget); // botón como anchor
+		setIsControlPopperOpen((prev) => !prev);
 	};
 
 	// ==================== FUNCIONES WEBSOCKET DE PLANIFICACIÓN ====================
@@ -3346,9 +3356,8 @@ const SimuladorSemanal = () => {
 					<div className="content-wrapper">
 						{/* Mapa interactivo */}
 						<div className="map-container">
-							<MapContainer center={[13.0, 10.0]} zoom={3} className="flight-map" scrollWheelZoom={true} minZoom={2} maxZoom={10} zoomControl={true} doubleClickZoom={false} boxZoom={true} keyboard={true} touchZoom={true} worldCopyJump={false} maxBoundsViscosity={0.8} maxBounds={[[-90, -180], [90, 180]]}>
+							<MapContainer center={[13.0, 10.0]} zoom={3} className="flight-map" scrollWheelZoom={true} minZoom={2} maxZoom={10} zoomControl={true} zoomSnap={0.5} zoomDelta={0.5} doubleClickZoom={false} boxZoom={true} keyboard={true} touchZoom={true} worldCopyJump={false} maxBoundsViscosity={0.8} maxBounds={[[-90, -180], [90, 180]]}>
 								<TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" attribution='&copy; OpenStreetMap contributors &copy; CARTO' noWrap={true} bounds={[[-90, -180], [90, 180]]}/>
-
 								<DynamicMarkers
 									flights={flights}
 									airports={airports}
@@ -3362,6 +3371,8 @@ const SimuladorSemanal = () => {
 							<MetricsButton onClick={handleMetricsButtonClick} selected={isMetricsPanelOpen} />
 							{/* Botón de leyenda flotante */}
 							<LegendButton onClick={handleToggleLegend} />
+							{/* Controles de simulación */} 
+							<ControlButton onClick={handleControlButtonClick} selected={isControlPanelOpen}/>
 						</div>
 					</div>
 				</div>
@@ -3379,6 +3390,10 @@ const SimuladorSemanal = () => {
 				orderCount={ordersCount}
 				flights={flightsInMovement}
 				getSaturation={getSaturation}
+			/>
+			<ControlPopper
+				open={isControlPanelOpen}
+				anchorEl={controlAnchorEl}
 			/>
 		</div>
 	);

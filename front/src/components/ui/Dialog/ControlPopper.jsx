@@ -1,4 +1,5 @@
 // MetricsPopper.jsx
+import React, { useState, useEffect } from 'react';
 import { Popper, Paper } from "@mui/material";
 import { FaRoad } from "react-icons/fa";
 import BackIconButton from '../../../components/ui/Button/BackIconButton';
@@ -21,6 +22,45 @@ export default function ControlPopper({
     startButtonLabel,
     showFlightLines,
     setShowFlightLines, }) {
+
+    const [now, setNow] = useState(new Date());
+    
+    /* ======= Calcular tiempo de simulación transcurrido ======= */
+    const tiempoSimulacionTranscurrido = (() => {
+        if (!tiempoSimulacionActual || !fechaInicioSimulacion) return 0;
+        try {
+            const tiempoActualMs = new Date(tiempoSimulacionActual).getTime();
+            // Construir ISO string: YYYY-MM-DDTHH:mm:00.000Z
+            const isoString = `${fechaInicioSimulacion}T${horaInicioSimulacion}:00.000Z`;
+            const tiempoInicioMs = new Date(isoString).getTime();
+            if (isNaN(tiempoActualMs) || isNaN(tiempoInicioMs)) {
+                return 0;
+            }
+            
+            // Calcular diferencia en segundos
+            const diferencia = Math.floor((tiempoActualMs - tiempoInicioMs) / 1000);
+            
+            // Asegurar que el resultado sea positivo o cero
+            return Math.max(0, diferencia);
+        } catch (error) {
+            console.error('Error calculando tiempo simulación transcurrido:', error);
+            return 0;
+        }
+    })();
+    /* ======= Actualizar hora real cada segundo ======= */
+    useEffect(() => {
+        // Solo actualizar la hora real si la simulación está activa
+        if (!fechaInicioSimulacion || !simulacionActiva) {
+            return;
+        }
+        
+        const interval = setInterval(() => {
+            setNow(new Date());
+        }, 1000);
+
+        return () => clearInterval(interval); // limpieza
+    }, [fechaInicioSimulacion, simulacionActiva]);
+
     return (
         <Popper
             open={open}
@@ -37,9 +77,9 @@ export default function ControlPopper({
             <Paper
                 sx={{
                     borderRadius: 2,
-                    width: { xs: '95vw', sm: '90vw', md: 850, lg: 950 },
-                    maxWidth: '95vw',
-                    padding: { xs: 1.5, sm: 2 },
+                    width: { xs: '80vw', sm: '80vw', md: 550, lg: 750 },
+                    maxWidth: '85vw',
+                    padding: { xs: 0.8, sm: 1 },
                     boxShadow: 4,
                     backgroundColor: "rgba(255,255,255,0.8)",
                 }}
@@ -132,10 +172,10 @@ export default function ControlPopper({
                             gap: '8px'
                         }}>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', alignItems: 'baseline' }}>
-                                <span style={{ fontSize: '11px', color: '#6c757d', whiteSpace: 'nowrap' }}>
+                                <span style={{ fontSize: '12px', fontWeight: '600', color: '#495057', whiteSpace: 'nowrap' }}>
                                     Simulación:
                                 </span>
-                                <span style={{ fontSize: '13px', fontWeight: '600', color: '#212529' }}>
+                                <span style={{ fontSize: '12px', fontWeight: '500', color: '#212529' }}>
                                     {tiempoSimulacionActual ?
                                         new Date(tiempoSimulacionActual).toLocaleString('es-ES', {
                                             timeZone: 'UTC',
@@ -161,21 +201,46 @@ export default function ControlPopper({
                                             : '--:--:--'
                                     }
                                 </span>
+                                <span style={{ fontSize: '12px', color: '#6c757d', fontFamily: 'monospace' }}>
+                                    {(() => {
+                                        const total = tiempoSimulacionTranscurrido;
+
+                                        const dias = Math.floor(total / 86400);
+                                        const horas = Math.floor(total / 3600);
+                                        const minutos = Math.floor((total % 3600) / 60);
+                                        const segundos = total % 60;
+
+                                        return `(${String(dias).padStart(2, '0')}:${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}:${String(segundos).padStart(2, '0')})`;
+                                    })()}
+                                </span>
+
                             </div>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', alignItems: 'baseline' }}>
-                                <span style={{ fontSize: '11px', color: '#6c757d', whiteSpace: 'nowrap' }}>
-                                    Transcurrido:
+                                <span style={{ fontSize: '12px', fontWeight: '600', color: '#495057', whiteSpace: 'nowrap' }}>
+                                    Tiempo real:
                                 </span>
-                                <span style={{ fontSize: '13px', fontWeight: '600', color: '#212529', fontFamily: 'monospace' }}>
+                                <span style={{ fontSize: '12px', fontWeight: '500', color: '#212529' }}>
+                                    {!fechaInicioSimulacion
+                                        ? '--:--:--'
+                                        : now.toLocaleString('es-ES', {
+                                            day: '2-digit',
+                                            month: '2-digit',
+                                            year: 'numeric',
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                            second: '2-digit',
+                                            hour12: false
+                                        })
+                                    }
+                                </span>
+                                <span style={{ fontSize: '12px', color: '#6c757d', fontFamily: 'monospace' }}>
                                     {(() => {
+                                        const dias = Math.floor(tiempoRealTranscurrido / 86400);
                                         const horas = Math.floor(tiempoRealTranscurrido / 3600);
                                         const minutos = Math.floor((tiempoRealTranscurrido % 3600) / 60);
                                         const segundos = tiempoRealTranscurrido % 60;
-                                        return `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}:${String(segundos).padStart(2, '0')}`;
+                                        return `(${String(dias).padStart(2, '0')}:${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}:${String(segundos).padStart(2, '0')})`;
                                     })()}
-                                </span>
-                                <span style={{ fontSize: '11px', color: '#6c757d' }}>
-                                    ({simulacionActiva || estadoPlanificacion === 'running' || estadoPlanificacion === 'waiting' ? 'Activo' : 'Detenido'})
                                 </span>
                             </div>
                         </div>

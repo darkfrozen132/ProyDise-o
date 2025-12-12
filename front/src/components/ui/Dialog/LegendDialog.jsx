@@ -22,7 +22,8 @@ export default function LegendDialog({ anchorEl, open, onClose }) {
                 sx={{
                     borderRadius: 3,
                     boxShadow: 3,
-                    width: 200,
+                    width: 180,
+                    maxWidth: '30vw',
                     backgroundColor: "rgba(255,255,255,0.8)",
                 }}
             >
@@ -33,24 +34,25 @@ export default function LegendDialog({ anchorEl, open, onClose }) {
                         color: "white",
                         display: "flex",
                         alignItems: "center",
-                        justifyContent: "space-between",
-                        padding: "8px 12px",
-                        borderTopLeftRadius: "12px",
-                        borderTopRightRadius: "12px",
+                        gap: "6px",
+                        padding: "6px 10px",
+                        borderTopLeftRadius: "8px",
+                        borderTopRightRadius: "8px",
+                        fontSize: "13px",
+                        fontWeight: "700",
                     }}
                 >
-                    <div style={{ display: "flex", alignItems: "center", fontSize: "15px", fontWeight: "800"}}>
-                        Leyenda del Mapa
-                    </div>
+                    Leyenda del Mapa
                     <IconButton
                         onClick={onClose}
                         sx={{
                             color: "white",
                             "&:hover": { backgroundColor: "rgba(255,255,255,0.1)" },
+                            p: 0.5,
+                            marginLeft: "auto",
                         }}
-                        size="small"
                     >
-                        <IoClose />
+                        <IoClose style={{ fontSize: 13 }}/>
                     </IconButton>
                 </div>
 

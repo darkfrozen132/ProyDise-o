@@ -210,7 +210,7 @@ export default function ControlPopper({
                                         const minutos = Math.floor((total % 3600) / 60);
                                         const segundos = total % 60;
 
-                                        return `(${String(dias).padStart(2, '0')}:${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}:${String(segundos).padStart(2, '0')})`;
+                                        return `(${String(dias).padStart(2, '0')}:${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')})`;
                                     })()}
                                 </span>
 
@@ -239,7 +239,7 @@ export default function ControlPopper({
                                         const horas = Math.floor(tiempoRealTranscurrido / 3600);
                                         const minutos = Math.floor((tiempoRealTranscurrido % 3600) / 60);
                                         const segundos = tiempoRealTranscurrido % 60;
-                                        return `(${String(dias).padStart(2, '0')}:${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}:${String(segundos).padStart(2, '0')})`;
+                                        return `(${String(dias).padStart(2, '0')}:${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')})`;
                                     })()}
                                 </span>
                             </div>

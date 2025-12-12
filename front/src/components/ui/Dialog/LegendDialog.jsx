@@ -67,7 +67,7 @@ export default function LegendDialog({ anchorEl, open, onClose }) {
                                 style={{
                                     width: 12,
                                     height: 12,
-                                    backgroundColor: "#ff6b35",
+                                    backgroundColor: "#4954b6ff",
                                     borderRadius: "80%",
                                     marginRight: 10,
                                 }}

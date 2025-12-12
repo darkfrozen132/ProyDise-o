@@ -768,6 +768,7 @@ const SimuladorSemanal = () => {
 		// Calcular rotación basada en dirección
 		const deltaLat = ruta.destinoLatitud - ruta.origenLatitud;
 		const deltaLng = ruta.destinoLongitud - ruta.origenLongitud;
+		// El SVG apunta hacia arriba (norte), usamos atan2 pero con orden (deltaLat, deltaLng) para norte=0°
 		const rotation = Math.atan2(deltaLng, deltaLat) * (180 / Math.PI);
 
 		// Crear objeto de vuelo compatible con el mapa
@@ -942,7 +943,9 @@ const SimuladorSemanal = () => {
 				flight.destination.lat,
 				flight.destination.lng
 			);
-			const rotation = (bearing - 90 + 360) % 360;
+			// El SVG del avión apunta hacia arriba (norte), así que usamos bearing directamente
+			// bearing: 0°=norte, 90°=este, 180°=sur, 270°=oeste
+			const rotation = bearing;
 
 			return {
 				...flight,
@@ -1371,7 +1374,7 @@ const SimuladorSemanal = () => {
 			setVuelosEnAire([]);
 			setKActual(kBase);
 			setModoRalentizado(false);
-			// ⏸️ NO ACTIVAR RELOJ AÚN - Se activa después del buffer de 15 segundos
+			// ⏸️ NO ACTIVAR RELOJ AÚN - Se activa después del buffer de 20 segundos
 			setSimulacionLocalActiva(false);
 			setTiempoSimulacionActual(inicioUTC.toISOString()); // Mostrar en UI
 
@@ -1381,8 +1384,8 @@ const SimuladorSemanal = () => {
 			tiempoSimuladoBackendRef.current = null;
 			setTiempoSimuladoBackend(null);
 
-			// 🆕 ACTIVAR BUFFER DE 15 SEGUNDOS para acumular vuelos iniciales
-			console.log(`⏳ ACTIVANDO BUFFER DE ${BUFFER_DELAY_MS / 1000} SEGUNDOS para acumular vuelos iniciales...`);
+			// 🆕 ACTIVAR BUFFER DE 20 SEGUNDOS para dar ventaja al backend
+			console.log(`⏳ ACTIVANDO BUFFER DE ${BUFFER_DELAY_MS / 1000} SEGUNDOS - Los aviones se mostrarán después de este tiempo...`);
 			setBufferActivo(true);
 			vuelosBufferRef.current = [];
 
@@ -1391,9 +1394,10 @@ const SimuladorSemanal = () => {
 				clearTimeout(bufferTimeoutRef.current);
 			}
 
-			// Después de 15 segundos, finalizar buffer y activar animación
+			// 🕐 Después de 20 SEGUNDOS REALES, finalizar buffer y activar animación
+			// Esto da 20 segundos de ventaja al backend para procesar datos
 			bufferTimeoutRef.current = setTimeout(() => {
-				console.log(`✅ BUFFER COMPLETADO - ${vuelosBufferRef.current.length} vuelos acumulados`);
+				console.log(`✅ BUFFER DE 20 SEGUNDOS COMPLETADO - ${vuelosBufferRef.current.length} vuelos acumulados`);
 				setBufferActivo(false);
 
 				// Procesar todos los vuelos acumulados
@@ -1403,11 +1407,13 @@ const SimuladorSemanal = () => {
 					setFlights(vuelosBufferRef.current);
 					setFlightsInAir(vuelosBufferRef.current.filter(v => v.status === 'active').length);
 
-					// 🚀 ACTIVAR RELOJ LOCAL
+					// 🚀 ACTIVAR RELOJ LOCAL - AHORA SÍ EMPIEZAN A MOSTRARSE LOS AVIONES
 					setSimulacionLocalActiva(true);
 					console.log(`🚀 Reloj local ACTIVADO - ${vuelosBufferRef.current.length} vuelos listos para animar`);
 				} else {
 					console.warn(`⚠️ Buffer vacío - no hay vuelos para animar, esperando más datos...`);
+					// Aún así activamos el reloj local para que empiece a correr
+					setSimulacionLocalActiva(true);
 				}
 
 				// Limpiar buffer
@@ -1424,7 +1430,7 @@ const SimuladorSemanal = () => {
 				body: JSON.stringify({
 					fecha: fechaInicioSimulacion,
 					hora: horaInicioSimulacion,
-					factorK: 5
+					factorK: 10
 				})
 			});
 
@@ -1623,7 +1629,8 @@ const SimuladorSemanal = () => {
 
 		// Calcular rotación usando bearingDegrees
 		const brg = bearingDegrees(origen.lat, origen.lng, destino.lat, destino.lng);
-		const rotation = (brg - 90 + 360) % 360;
+		// El SVG del avión apunta hacia arriba (norte), así que usamos bearing directamente
+		const rotation = brg;
 
 		// Determinar estado del vuelo
 		const status = progress >= 1 ? 'arrived' : (progress <= 0 ? 'scheduled' : 'active');
@@ -2031,7 +2038,7 @@ const SimuladorSemanal = () => {
 				body: JSON.stringify({
 					fecha: fechaInicioSimulacion,
 					hora: horaInicioSimulacion, // Hora de inicio (formato HH:mm)
-					factorK: 5 // Factor K fijo para simulación semanal
+					factorK: 10 // Factor K para backend (10x)
 				})
 			});
 
@@ -3359,11 +3366,11 @@ const SimuladorSemanal = () => {
 							<MapContainer center={[13.0, 10.0]} zoom={3} className="flight-map" scrollWheelZoom={true} minZoom={2} maxZoom={10} zoomControl={true} zoomSnap={0.5} zoomDelta={0.5} doubleClickZoom={false} boxZoom={true} keyboard={true} touchZoom={true} worldCopyJump={false} maxBoundsViscosity={0.8} maxBounds={[[-90, -180], [90, 180]]}>
 								<TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" attribution='&copy; OpenStreetMap contributors &copy; CARTO' noWrap={true} bounds={[[-90, -180], [90, 180]]}/>
 								<DynamicMarkers
-									flights={flights}
+									flights={simulacionLocalActiva ? flights : []}
 									airports={airports}
 									activeView={activeView}
 									showRoutes={showRoutes}
-									vuelosEnMovimiento={vuelosEnMovimiento}
+									vuelosEnMovimiento={simulacionLocalActiva ? vuelosEnMovimiento : []}
 									showFlightLines={showFlightLines}
 								/>
 							</MapContainer>

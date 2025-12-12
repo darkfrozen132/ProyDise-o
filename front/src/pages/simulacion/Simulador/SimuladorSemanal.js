@@ -248,7 +248,7 @@ const createAirportPopup = (airport) => {
 		<div style="margin-top:12px; padding-top:12px; border-top: 1px solid #e5e7eb;">
 			<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
 				<span style="font-size:12px; font-weight:600; color:#374151;">📦 Almacén</span>
-				<span style="font-size:13px; font-weight:700; color:#6b7280;">♾️ ILIMITADO</span>
+				<span style="font-size:13px; font-weight:700; color:#6b7280;">ILIMITADO</span>
 			</div>
 			<div style="background:#f8fafc; padding:10px; border-radius:6px; text-align:center; margin-top:8px;">
 				<div style="font-size:20px; font-weight:700; color:#1f2937;">${packages.toLocaleString()}</div>
@@ -270,7 +270,7 @@ const createAirportPopup = (airport) => {
 					<div style="font-size:15px; font-weight:800; color:#0f172a; line-height:1.1;">${airport.name}</div>
 					<div style="font-size:12px; color:#6b7280; margin-top:4px;">${airport.country || 'País desconocido'} • Código: ${airport.code || 'N/A'}</div>
 				</div>
-				<div style="text-align:right; font-size:12px; color:#6b7280; white-space:nowrap;">${airport.isSede ? '🏢 Sede' : '✈️ Aeropuerto'}</div>
+				<div style="text-align:right; font-size:12px; color:#6b7280; white-space:nowrap;">${airport.isSede ? 'Sede' : 'Aeropuerto'}</div>
 			</div>
 			<div style="margin-top:10px; font-size:13px; color:#374151;">${airport.region ? `Región: ${airport.region}` : ''}${airport.operationType ? ` • ${airport.operationType}` : ''}</div>
 			${isUnlimited ? unlimitedSection : progressBar}
@@ -349,19 +349,49 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMov
 			// Añadir código al set actual
 			currentAirportCodes.add(airport.code);
 			const existingMarker = airportMarkersRef.current[airport.code];
+			const html = createAirportPopup(airport);
 
 			// Actualizar o crear marcador
 			if (existingMarker) {
-				existingMarker.setPopupContent(createAirportPopup(airport));
+				// ✅ Actualizar solo el contenido del tooltip
+				if (existingMarker.getTooltip()) {
+					existingMarker.setTooltipContent(html);
+				} else {
+					existingMarker.bindTooltip(html, {
+						direction: 'top',
+						opacity: 0.95,
+						sticky: true,
+						interactive: true,
+						className: 'airport-tooltip'
+					});
+				}
 			} else {
 				const isUnlimited = airport.capacity === 'ILIMITADO';
 				const saturation = isUnlimited ? 0 : (airport.packages / airport.capacity) * 100;
 				const icon = createAirportIcon(airport.name, saturation); // Crear icono con saturación
 				const marker = L.marker([airport.lat, airport.lng],
 					{ icon, isAirport: true}).bindPopup(createAirportPopup(airport), {
-					closeOnClick: false,
-					autoClose: false
-				}); // crear popup detallado
+						closeOnClick: false,
+						autoClose: false
+					}); // crear popup detallado
+				// Bind tooltip personalizado
+				marker.bindTooltip(html, {
+					direction: 'top',
+					opacity: 0.95,
+					sticky: true,        // sigue al cursor / marker
+					interactive: true,   // permite mover el mouse dentro
+					className: 'airport-tooltip'
+				});
+
+				// Abrir/cerrar al pasar el mouse
+				marker.on('mouseover', function () {
+					this.openTooltip();
+				});
+
+				marker.on('mouseout', function () {
+					this.closeTooltip();
+				});
+
 				marker.addTo(map); // Agregar al mapa
 				airportMarkersRef.current[airport.code] = marker; // Guardar referencia
 			}

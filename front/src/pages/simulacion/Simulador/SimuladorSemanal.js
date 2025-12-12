@@ -74,90 +74,88 @@ const createAirplaneIcon = (flight, rotation = 0) => {
 	});
 };
 
+function getAirportByCode(code, airports) {
+	if (!code || !airports) return null;
+	return airports.find(a => a.code === code) || null;
+}
+
+
 /* ======= Crear popup detallado para un vuelo (HTML string) ======= */
 const createFlightPopup = (flight) => {
-	const statusIcon =
-		flight.status === 'completed' || flight.progress >= 100 ? '✅' :
-			flight.status === 'delayed' || flight.retrasado ? '🔴' : '🔵';
-
-	const statusText =
-		flight.status === 'completed' || flight.progress >= 100 ? 'Completado' :
-			flight.status === 'delayed' || flight.retrasado ? 'Retrasado' : 'En curso';
-
 	const color = getAircraftColorByStatus(flight);
+	const flightType = flight.isSameContinentFlight ? 'INTRACONTINENTAL' : 'INTERCONTINENTAL';
+	
+	// Calcular porcentaje de capacidad
+	const capacityPercent = flight.currentPackages !== undefined && flight.packageCapacity !== undefined 
+		? (flight.currentPackages / flight.packageCapacity) * 100 
+		: 0;
 
 	return `
-		<div style="min-width: 200px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-			<div style="background: linear-gradient(135deg, ${color}dd 0%, ${color}aa 100%); color: white; padding: 8px 12px; margin: -10px -10px 10px -10px; border-radius: 4px 4px 0 0;">
-				<strong style="font-size: 15px;">✈️ ${flight.id}</strong>
+		<div style="min-width:220px; max-width:260px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background:white; border-radius:8px; box-shadow:0 2px 12px rgba(0,0,0,0.15); overflow:hidden;">
+			<!-- Header con color del avión -->
+			<div style="background:${color}; padding:6px 12px; border-bottom:1px solid rgba(0,0,0,0.1);">
+				<div style="font-size:11px; font-weight:600; color:white; text-transform:uppercase; letter-spacing:0.5px;">
+					✈️ VUELO ${flightType}
+				</div>
 			</div>
 			
-			<div style="padding: 4px 0;">
-				<div style="margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid #e5e7eb;">
-					<div style="font-size: 13px; color: #6b7280; margin-bottom: 4px;">
-						<strong>Ruta:</strong>
-					</div>
-					<div style="font-size: 14px; font-weight: 600; color: #1f2937;">
-						${flight.origin?.code || 'N/A'} → ${flight.destination?.code || 'N/A'}
-					</div>
-					${flight.origin?.region && flight.destination?.region ?
-			`<div style="font-size: 11px; color: #9ca3af; margin-top: 2px;">
-							${flight.isSameContinentFlight ? '🌍 Mismo continente' : '🌏 Intercontinental'}
-						</div>` : ''
-		}
+			<!-- ID del vuelo -->
+			<div style="padding:10px 12px 8px 12px;">
+				<div style="font-size:15px; font-weight:700; color:#0f172a;">
+					${flight.id}
 				</div>
-				
-				<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
-					<div>
-						<div style="font-size: 11px; color: #6b7280;">Progreso</div>
-						<div style="font-size: 14px; font-weight: 600; color: #1f2937;">
-							${Math.round(flight.progress || 0)}%
-						</div>
-					</div>
-					<div>
-						<div style="font-size: 11px; color: #6b7280;">Estado</div>
-						<div style="font-size: 13px; font-weight: 600;">
-							${statusIcon} ${statusText}
-						</div>
-					</div>
-				</div>
-				
-				${flight.speed ?
-			`<div style="margin-bottom: 6px;">
-						<div style="font-size: 11px; color: #6b7280;">Velocidad</div>
-						<div style="font-size: 13px; color: #1f2937;">${flight.speed} km/h</div>
-					</div>` : ''
-		}
-				
-				${flight.altitude ?
-			`<div style="margin-bottom: 6px;">
-						<div style="font-size: 11px; color: #6b7280;">Altitud</div>
-						<div style="font-size: 13px; color: #1f2937;">${flight.altitude.toLocaleString()} ft</div>
-					</div>` : ''
-		}
-				
-				${flight.packageType ?
-			`<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #e5e7eb;">
-						<div style="font-size: 11px; color: #6b7280;">Tipo de paquete</div>
-						<div style="font-size: 13px; color: #1f2937; font-weight: 500;">
-							${flight.packageType === 'AG' ? '📦 Algoritmo Genético' :
-				flight.packageType === 'Inicial' ? '🎯 Planificación Inicial' :
-					flight.packageType}
-						</div>
-						${flight.currentPackages !== undefined && flight.packageCapacity !== undefined ?
-				`<div style="font-size: 12px; color: #6b7280; margin-top: 2px;">
-								Capacidad: ${flight.currentPackages}/${flight.packageCapacity} paquetes
-							</div>` : ''
-			}
-					</div>` : ''
-		}
-				
-				${flight.pedidoId ?
-			`<div style="margin-top: 6px; font-size: 11px; color: #6b7280;">
-						Pedido: <span style="font-family: monospace; color: #1f2937;">${flight.pedidoId}</span>
-					</div>` : ''
-		}
 			</div>
+			
+			<!-- Origen y Destino -->
+			<div style="padding:0 12px 10px 12px;">
+				<div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
+					<span style="font-size:12px; color:#64748b;"> 📍 Origen:</span>
+					<span style="font-size:13px; font-weight:600; color:#1f2937;">${flight.origin?.code || 'N/A'}</span>
+					${flight.origin.name ? `<span style="font-size:11px; color:#94a3b8;">(${flight.origin.name})</span>` : ''}
+				</div>
+				<div style="display:flex; align-items:center; gap:6px;">
+					<span style="font-size:12px; color:#64748b;"> 📍 Destino:</span>
+					<span style="font-size:13px; font-weight:600; color:#1f2937;">${flight.destination?.code || 'N/A'} </span>
+					${flight.destination.name ? `<span style="font-size:11px; color:#94a3b8;">(${flight.destination.name})</span>` : ''}
+				</div>
+			</div>
+			
+			<!-- Stats Grid -->
+			<div style="padding:0 12px 10px 12px;">
+				<div style="font-size:11px; color:#64748b; margin-bottom:2px;">
+					Progreso
+				</div>
+				<div style="font-size:13px; font-weight:600; color:#1f2937; margin-bottom:8px;">
+					${Math.round(flight.progress || 0)}% completado
+				</div>
+				
+				<div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+					${flight.altitude ? `
+					<div>
+						<div style="font-size:11px; color:#64748b;">Altitud:</div>
+						<div style="font-size:13px; font-weight:600; color:#1f2937;">${flight.altitude.toLocaleString()} ft</div>
+					</div>
+					` : ''}
+					${flight.speed ? `
+					<div>
+						<div style="font-size:11px; color:#64748b;">Velocidad:</div>
+						<div style="font-size:13px; font-weight:600; color:#1f2937;">${flight.speed} km/h</div>
+					</div>
+					` : ''}
+				</div>
+			</div>
+			
+			<!-- Barra de capacidad de paquetes -->
+			${flight.currentPackages !== undefined && flight.packageCapacity !== undefined ? `
+			<div style="padding:0 12px 10px 12px;">
+				<div style="font-size:11px; color:#64748b; margin-bottom:4px;">
+					${flight.currentPackages} / ${flight.packageCapacity} paquetes
+				</div>
+				<div style="height:8px; background:#e5e7eb; border-radius:4px; overflow:hidden;">
+					<div style="width:${Math.min(100, Math.round(capacityPercent))}%; height:100%; background:${color}; transition:width .3s ease;"></div>
+				</div>
+			</div>
+			` : ''}
 		</div>
 	`;
 };
@@ -440,6 +438,12 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMov
 				currentFlightIds.add(flight.id);
 				const existingMarker = markersRef.current[flight.id];
 				const position = { lat: flight.currentLat, lng: flight.currentLng };
+				const originAirport = getAirportByCode(flight.origin?.code, airports);
+				const destinationAirport = getAirportByCode(flight.destination?.code, airports);
+				flight.origin.name = originAirport?.name || null;
+    			flight.destination.name = destinationAirport?.name || null
+
+				const html = createFlightPopup(flight);
 
 				// Actualizar o crear marcador
 				if (existingMarker) {
@@ -462,7 +466,17 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMov
 					}
 					// Actualizar icono y popup
 					existingMarker.setIcon(createAirplaneIcon(flight, rotation));
-					existingMarker.setPopupContent(createFlightPopup(flight));
+					if (existingMarker.getTooltip()) {
+						existingMarker.setTooltipContent(html);
+					} else {
+						existingMarker.bindTooltip(html, {
+							direction: 'top',
+							opacity: 0.95,
+							sticky: true,
+							interactive: true,
+							className: 'flight-tooltip'
+						});
+					}
 				} else {
 					// Calcular rotación inicial
 					let rotation = 0;
@@ -474,11 +488,25 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMov
 					}
 					// Crear nuevo marcador
 					const icon = createAirplaneIcon(flight, rotation);
-					const popupContent = createFlightPopup(flight);
+					const html = createFlightPopup(flight);
 					const marker = L.marker([position.lat, position.lng], {
 						icon,
 						isFlight: true
-					}).bindPopup(popupContent);
+					});
+					marker.bindTooltip(html, {
+						direction: 'top',
+						opacity: 0.95,
+						sticky: true,      
+						interactive: true, 
+						className: 'flight-tooltip'
+					});
+
+					marker.on('mouseover', function () {
+						this.openTooltip();
+					});
+					marker.on('mouseout', function () {
+						this.closeTooltip();
+					});
 					marker.addTo(map);
 					markersRef.current[flight.id] = marker;
 				}

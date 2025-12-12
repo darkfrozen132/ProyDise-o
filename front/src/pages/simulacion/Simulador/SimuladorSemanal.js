@@ -160,6 +160,27 @@ const createFlightPopup = (flight) => {
 	`;
 };
 
+/* ======= Aumentar luminosidad del marcador suavemente ======= */
+const lightenColor = (hex, percent) => {
+	// Remover # si existe
+	hex = hex.replace('#', '');
+
+	// Convertir a RGB
+	let r = parseInt(hex.substring(0, 2), 16);
+	let g = parseInt(hex.substring(2, 4), 16);
+	let b = parseInt(hex.substring(4, 6), 16);
+
+	// Aclarar según el porcentaje
+	r = Math.min(255, r + (255 - r) * percent);
+	g = Math.min(255, g + (255 - g) * percent);
+	b = Math.min(255, b + (255 - b) * percent);
+
+	// Convertir de vuelta a HEX
+	const toHex = (n) => n.toString(16).padStart(2, '0');
+
+	return `#${toHex(Math.round(r))}${toHex(Math.round(g))}${toHex(Math.round(b))}`;
+};
+
 /* ======= Crear icono de aeropuerto personalizado ======= */
 const createAirportIcon = (name, saturation = 0) => {
 	let size, color, borderColor, borderWidth, shadow;
@@ -193,7 +214,9 @@ const createAirportPopup = (airport) => {
 	const pedidosCount = airport.pedidosCount || 0; // 🆕 Número de pedidos (diferente a paquetes)
 	const tiempoRestante = airport.tiempoRestanteRecogida; // 🆕 Tiempo hasta próxima recogida (minutos)
 	const saturation = isUnlimited || !capacityValue ? 0 : ((packages / capacityValue) * 100);
-
+	const colorAirport = saturation >= 80 ? '#dc3545' : saturation >= 50 ? '#f59e0b' : '#28a745';
+	const colorLight = lightenColor(colorAirport, 0.9);
+	
 	// Formatear tiempo restante
 	const formatearTiempoRestante = (minutos) => {
 		if (!minutos || minutos === Infinity) return null;
@@ -218,13 +241,13 @@ const createAirportPopup = (airport) => {
 		<div style="margin-top:12px; padding-top:12px; border-top: 1px solid #e5e7eb;">
 			<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
 				<span style="font-size:12px; font-weight:600; color:#374151;">📦 Ocupación del almacén</span>
-				<span style="font-size:13px; font-weight:700; color:${saturation >= 80 ? '#dc3545' : saturation >= 50 ? '#f59e0b' : '#28a745'};">${saturation.toFixed(1)}%</span>
+				<span style="font-size:13px; font-weight:700; color:${colorAirport};">${saturation.toFixed(1)}%</span>
 			</div>
 			<div style="height:12px; background:#eef2f6; border-radius:8px; overflow:hidden; box-shadow: inset 0 1px 2px rgba(0,0,0,0.04);">
-				<div style="width:${Math.min(100, Math.round(saturation))}%; height:100%; background: linear-gradient(90deg, ${saturation >= 80 ? '#dc3545' : saturation >= 50 ? '#f59e0b' : '#28a745'}, ${saturation >= 80 ? '#ef4444' : saturation >= 50 ? '#fbbf24' : '#22c55e'}); transition:width .35s ease;"></div>
+				<div style="width:${Math.min(100, Math.round(saturation))}%; height:100%; background: linear-gradient(90deg, ${colorAirport}, ${colorAirport}); transition:width .35s ease;"></div>
 			</div>
 			<div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-top:10px;">
-				<div style="background:#f8fafc; padding:8px; border-radius:6px; text-align:center;">
+				<div style="background:${colorLight}; padding:8px; border-radius:6px; text-align:center;">
 					<div style="font-size:18px; font-weight:700; color:#1f2937;">${packages.toLocaleString()}</div>
 					<div style="font-size:11px; color:#6b7280;">Paquetes actuales</div>
 				</div>
@@ -294,27 +317,6 @@ const calculateBearing = (from, to) => {
 	brng = (brng + 360) % 360; // 0 .. 360
 
 	return brng;
-};
-
-/* ======= Aumentar luminosidad del marcador suavemente ======= */
-const lightenColor = (hex, percent) => {
-	// Remover # si existe
-	hex = hex.replace('#', '');
-
-	// Convertir a RGB
-	let r = parseInt(hex.substring(0, 2), 16);
-	let g = parseInt(hex.substring(2, 4), 16);
-	let b = parseInt(hex.substring(4, 6), 16);
-
-	// Aclarar según el porcentaje
-	r = Math.min(255, r + (255 - r) * percent);
-	g = Math.min(255, g + (255 - g) * percent);
-	b = Math.min(255, b + (255 - b) * percent);
-
-	// Convertir de vuelta a HEX
-	const toHex = (n) => n.toString(16).padStart(2, '0');
-
-	return `#${toHex(Math.round(r))}${toHex(Math.round(g))}${toHex(Math.round(b))}`;
 };
 
 
@@ -3167,27 +3169,56 @@ const SimuladorSemanal = () => {
 									<Box>
 										{(() => {
 											const list = [];
-											// 🆕 Extraer pedidos de flights (vuelos activos)
-											(flights || []).forEach(f => {
+											// Usar `vuelosEnMovimiento` (estado interpolado) para obtener status y progreso real
+											(vuelosEnMovimiento || []).forEach(f => {
+												// Determinar estado del pedido basándose en el vuelo y el tiempo simulado
+												let computedStatus = f.status || 'waiting';
+
+												// Si el vuelo está completado, distinguir entre 'llegado' y 'recogido'
+												if ((f.status === 'completed' || (f.progress !== undefined && f.progress >= 100))) {
+													// Calcular hora de llegada
+													let llegadaMs = null;
+													if (f.fechaFinal) {
+														let fechaStr = f.fechaFinal;
+														if (typeof fechaStr === 'string' && !fechaStr.endsWith('Z')) fechaStr = fechaStr + 'Z';
+														llegadaMs = new Date(fechaStr).getTime();
+													}
+
+													if (llegadaMs && typeof tiempoSimulado === 'number') {
+														const tiempoDesdeAterrizaje = tiempoSimulado - llegadaMs;
+														if (tiempoDesdeAterrizaje >= TIEMPO_RECOGIDA_MS) {
+															computedStatus = 'recogido';
+														} else {
+															computedStatus = 'llegado';
+														}
+													} else {
+														computedStatus = 'llegado';
+													}
+												} else if (f.status === 'active' || (f.progress && f.progress > 0 && f.progress < 100)) {
+													computedStatus = 'active';
+												} else if (f.status === 'waiting') {
+													computedStatus = 'waiting';
+												}
+
 												if (f.pedidos && Array.isArray(f.pedidos)) {
 													f.pedidos.forEach(p => list.push({
 														...(p),
 														flightId: f.id,
-														flightData: f, // 🆕 Referencia al vuelo completo
+														flightData: f, // referencia al vuelo interpolado
 														origin: p.origen || f.origin?.code,
 														destination: p.destino || f.destination?.code,
 														cantidad: p.cantidad || 1,
-														status: f.status
+														status: computedStatus
 													}));
 												} else if (f.pedidoId) {
 													list.push({
 														idPedido: f.pedidoId,
 														flightId: f.id,
-														flightData: f, // 🆕 Referencia al vuelo completo
+														flightData: f, // referencia al vuelo interpolado
 														origin: f.origin?.code,
 														destination: f.destination?.code,
 														cantidad: f.currentPackages || 1,
-														status: f.status
+														status: computedStatus
 													});
 												}
 											});
@@ -3238,6 +3269,7 @@ const SimuladorSemanal = () => {
 													<Box sx={{ fontSize: '0.8rem', color: '#495057', fontWeight: 500 }}>
 														✈️ {order.flightId || 'N/A'}
 													</Box>
+													{/* Mostrar badge según estado derivado del pedido */}
 													{order.status === 'active' && (
 														<Box sx={{
 															background: '#28a745',
@@ -3248,6 +3280,45 @@ const SimuladorSemanal = () => {
 															fontWeight: 600
 														}}>
 															En vuelo
+														</Box>
+													)}
+
+													{order.status === 'llegado' && (
+														<Box sx={{
+															background: '#f59e0b',
+															color: '#1f2937',
+															padding: '1px 6px',
+															borderRadius: '8px',
+															fontSize: '0.7rem',
+															fontWeight: 600
+														}}>
+															Finalizado
+														</Box>
+													)}
+
+													{order.status === 'recogido' && (
+														<Box sx={{
+															background: '#6b7280',
+															color: '#fff',
+															padding: '1px 6px',
+															borderRadius: '8px',
+															fontSize: '0.7rem',
+															fontWeight: 600
+														}}>
+															Recogido
+														</Box>
+													)}
+
+													{order.status === 'waiting' && (
+														<Box sx={{
+															background: '#e2e8f0',
+															color: '#374151',
+															padding: '1px 6px',
+															borderRadius: '8px',
+															fontSize: '0.7rem',
+															fontWeight: 600
+														}}>
+															En origen
 														</Box>
 													)}
 												</Box>

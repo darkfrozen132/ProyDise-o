@@ -369,11 +369,7 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMov
 				const isUnlimited = airport.capacity === 'ILIMITADO';
 				const saturation = isUnlimited ? 0 : (airport.packages / airport.capacity) * 100;
 				const icon = createAirportIcon(airport.name, saturation); // Crear icono con saturación
-				const marker = L.marker([airport.lat, airport.lng],
-					{ icon, isAirport: true}).bindPopup(createAirportPopup(airport), {
-						closeOnClick: false,
-						autoClose: false
-					}); // crear popup detallado
+				const marker = L.marker([airport.lat, airport.lng], { icon, isAirport: true }); // crear marcador sin popup (usar tooltip)
 				// Bind tooltip personalizado
 				marker.bindTooltip(html, {
 					direction: 'top',
@@ -392,19 +388,20 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMov
 					this.closeTooltip();
 				});
 
-				// Click en marcador: si es sede (capacidad ilimitada) abrir sidebar y seleccionar
+				// Click en marcador: abrir sidebar y seleccionar aeropuerto (para sedes y aeropuertos)
 				marker.on('click', function () {
 					try {
-						if (airport.capacity === 'ILIMITADO') {
-							if (typeof setOpen === 'function') setOpen(true);
-							if (typeof setSidebarTab === 'function') setSidebarTab('airports');
-							if (typeof setSelectedAirport === 'function') setSelectedAirport(airport);
-						}
+						const latest = (airports || []).find(a => String(a.code || '').toUpperCase() === String(airport.code || '').toUpperCase()) || airport;
+						if (typeof setOpen === 'function') setOpen(true);
+						if (typeof setSidebarTab === 'function') setSidebarTab('airports');
+						if (typeof setSelectedAirport === 'function') setSelectedAirport(latest);
 					} catch (err) {
 						console.error('Error al manejar click en marcador:', err);
 					}
 					this.openPopup();
 				});
+
+				// No abrir popup al click; solo selección y apertura del sidebar
 
 				marker.addTo(map); // Agregar al mapa
 				airportMarkersRef.current[airport.code] = marker; // Guardar referencia
@@ -846,6 +843,25 @@ const SimuladorSemanal = () => {
 		if (f.status === 'active' || (f.progress !== undefined && f.progress > 0 && f.progress < 1)) return 'En vuelo';
 		if (f.status === 'waiting') return 'En origen';
 		if (f.status === 'completed' || (f.progress !== undefined && f.progress >= 1)) {
+			// Antes de marcar como finalizado, verificar que el aeropuerto destino ya recibió los paquetes
+			try {
+				const destCode = f.destination?.code;
+				if (destCode && Array.isArray(airportsRef?.current)) {
+					const dest = (airportsRef.current || []).find(a => String(a.code || '').toUpperCase() === String(destCode).toUpperCase());
+					if (dest) {
+						// Si el destino ya contiene el pedido en su listado, considerarlo llegado
+						const pedidoId = order.idPedido || order.id;
+						const found = Array.isArray(dest.pedidos) && dest.pedidos.some(p => String(p.idPedido || p.id || '').toUpperCase() === String(pedidoId || '').toUpperCase());
+						if (!found) {
+							// Todavía no aparece en el aeropuerto: no marcar como finalizado hasta que se refleje la llegada
+							return 'En vuelo';
+						}
+					}
+				}
+			} catch (e) {
+				console.warn('Error verificando llegada en airportsRef:', e);
+			}
+			// Si llegamos aquí, el aeropuerto ya registra la llegada del pedido — aplicar lógica de tiempos
 			let llegadaMs = null;
 			if (f.fechaFinal) {
 				let fechaStr = f.fechaFinal;
@@ -860,6 +876,14 @@ const SimuladorSemanal = () => {
 			return 'Finalizado';
 		}
 		return 'Planificado';
+	};
+
+	// Helper para pedidos que están en aeropuerto: 'Finalizado' o 'Recogido'
+	const computeAirportOrderStatus = (order) => {
+		if (!order || !order.llegadaMs || typeof tiempoSimulado !== 'number') return 'Finalizado';
+		const desde = tiempoSimulado - order.llegadaMs;
+		if (desde >= TIEMPO_RECOGIDA_MS) return 'Recogido';
+		return 'Finalizado';
 	};
 
 	// Pedidos que llegan desde el backend (planificados) — se acumulan cuando
@@ -1164,6 +1188,27 @@ const SimuladorSemanal = () => {
 						for (let i = 0; i < updated.length; i++) {
 							if (String(updated[i].code || '').toUpperCase() === String(destCode).toUpperCase()) {
 								updated[i].packages = (updated[i].packages || 0) + (cantidadEntregada || 0);
+								// Agregar pedidos que arribaron a este aeropuerto (acumulativo)
+								if (!updated[i].pedidos) updated[i].pedidos = [];
+								// calcular llegadaMs
+								let llegadaMs = null;
+								if (v.fechaFinal) {
+									let fstr = v.fechaFinal;
+									if (typeof fstr === 'string' && !fstr.endsWith('Z')) fstr = fstr + 'Z';
+									llegadaMs = new Date(fstr).getTime();
+								} else if (typeof tiempoSimulado === 'number') {
+									llegadaMs = tiempoSimulado;
+								} else {
+									llegadaMs = Date.now();
+								}
+								// push pedidos en aeropuerto
+								if (v.pedidos && v.pedidos.length > 0) {
+									v.pedidos.forEach(p => {
+										updated[i].pedidos.push({ idPedido: p.idPedido || p.id || `${v.id}-p`, cantidad: p.cantidad || 1, llegadaMs });
+									});
+								} else if (v.pedidoId) {
+									updated[i].pedidos.push({ idPedido: v.pedidoId, cantidad: v.currentPackages || 1, llegadaMs });
+								}
 								break;
 							}
 						}
@@ -3067,6 +3112,21 @@ const SimuladorSemanal = () => {
 	const [selectedFlight, setSelectedFlight] = useState(null); // Vuelo seleccionado para ver detalles
 	const tabsRef = useRef(null); // Referencia para scroll de tabs
 
+	// Sincronizar `selectedAirport` cuando el array `airports` cambie (p.ej. llegan pedidos y aumenta packages)
+	useEffect(() => {
+		if (!selectedAirport || !Array.isArray(airports)) return;
+		const updated = (airports || []).find(a => String(a.code || '').toUpperCase() === String(selectedAirport.code || '').toUpperCase());
+		if (!updated) return;
+		// Actualizar solo si hay cambios relevantes (packages o pedidos)
+		const prevPackages = selectedAirport.packages || 0;
+		const newPackages = updated.packages || 0;
+		const prevPedidos = (selectedAirport.pedidos || []).length;
+		const newPedidos = (updated.pedidos || []).length;
+		if (newPackages !== prevPackages || newPedidos !== prevPedidos) {
+			setSelectedAirport(updated);
+		}
+	}, [airports, selectedAirport]);
+
 	/* Accion de boton de Regresar */
 	const goBack = () => {
 		window.history.back(); // retrocede una página
@@ -3293,7 +3353,25 @@ const SimuladorSemanal = () => {
 											if (!q) return true;
 											return (String(a.name || '').toLowerCase().includes(q) || String(a.code || '').toLowerCase().includes(q));
 										}).map(airport => (
-											<Box key={airport.code || airport.name} onClick={() => setSelectedAirport(airport)} sx={{ border: '1px solid #dee2e6', padding: '10px', borderRadius: '8px', marginBottom: '10px', background: selectedAirport?.code === airport.code ? '#e8f4f8' : (airport.isSede ? '#fff3cd' : '#f8f9fa'), cursor: 'pointer', transition: 'all 0.2s ease', '&:hover': { borderColor: '#2c4a6b', boxShadow: '0 2px 8px rgba(44, 74, 107, 0.15)' } }}>
+											<Box
+												key={airport.code || airport.name}
+												onClick={() => {
+													const latest = (airports || []).find(a => String(a.code || '').toUpperCase() === String(airport.code || '').toUpperCase()) || airport;
+													setSelectedAirport(latest);
+													setSidebarTab('airports');
+													setOpen(true);
+												}}
+												sx={{
+													border: '1px solid #dee2e6',
+													padding: '10px',
+													borderRadius: '8px',
+													marginBottom: '10px',
+													background: selectedAirport?.code === airport.code ? '#d9eef6' : (airport.isSede ? '#fff3cd' : '#eaf6fb'),
+													cursor: 'pointer',
+													transition: 'all 0.2s ease',
+													'&:hover': { borderColor: '#2c4a6b', boxShadow: '0 2px 8px rgba(44, 74, 107, 0.15)' }
+												}}
+											>
 												<Box sx={{ fontWeight: 700, fontSize: '0.95rem', color: airport.isSede ? '#FF6B35' : '#2c4a6b' }}>
 													{airport.isSede && '🏢'} {airport.name} <span style={{ fontSize: '0.85rem', color: '#6c757d', fontWeight: 400 }}>({airport.code})</span>
 												</Box>
@@ -3302,16 +3380,8 @@ const SimuladorSemanal = () => {
 													<Box sx={{ fontWeight: 600, color: '#2c4a6b' }}>{airport.packages || 0} 📦</Box>
 													<Box sx={{ color: '#6c757d' }}>{typeof airport.capacity === 'number' ? `${airport.capacity}` : airport.capacity}</Box>
 												</Box>
-												{airport.pedidos && airport.pedidos.length > 0 && (
-													<Box sx={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #dee2e6' }}>
-														<Box sx={{ fontSize: '0.8rem', fontWeight: 700, color: '#2c4a6b', marginBottom: '6px' }}>Pedidos en aeropuerto:</Box>
-														{airport.pedidos.map(p => (
-															<Box key={p.idPedido || p.id} sx={{ padding: '4px 6px', borderRadius: '4px', border: '1px dashed #dee2e6', marginBottom: '4px', fontSize: '0.8rem', background: '#fff' }}>
-																{p.idPedido || p.id}
-															</Box>
-														))}
-													</Box>
-												)}
+												{/* NOTA: La lista de pedidos ya no se muestra dentro de cada card global.
+													Los pedidos se muestran en el panel inferior cuando se selecciona un aeropuerto. */}
 											</Box>
 										))}
 										{(airports || []).length === 0 && (
@@ -3569,16 +3639,17 @@ const SimuladorSemanal = () => {
 												);
 											})()
 										) : (
-											// Comportamiento previo para aeropuertos no sede
-											(selectedAirport.pedidos && selectedAirport.pedidos.length > 0) ? (
-												selectedAirport.pedidos.map(p => (
-													<Box key={p.idPedido || p.id} sx={{ padding: '6px 8px', borderRadius: '4px', border: '1px solid #dee2e6', marginBottom: '6px', fontSize: '0.8rem', background: '#fff', color: '#495057' }}>
-														📦 {p.idPedido || p.id}
-													</Box>
-												))
-											) : (
-												<Box sx={{ fontSize: '0.8rem', color: '#6c757d', fontStyle: 'italic' }}>Sin pedidos</Box>
-											)
+												// Comportamiento para aeropuertos normales: mostrar pedidos que arribaron
+												(selectedAirport.pedidos && selectedAirport.pedidos.length > 0) ? (
+													selectedAirport.pedidos.map(p => (
+														<Box key={p.idPedido || p.id} sx={{ padding: '6px 8px', borderRadius: '4px', border: '1px solid #dee2e6', marginBottom: '6px', fontSize: '0.85rem', background: '#fff', color: '#495057', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+															<span>{p.idPedido || p.id} {p.cantidad ? `(${p.cantidad})` : ''}</span>
+															<span style={{ fontSize: '0.8rem', color: '#6b7280', fontWeight: 700 }}>{computeAirportOrderStatus(p)}</span>
+														</Box>
+													))
+												) : (
+													<Box sx={{ fontSize: '0.85rem', color: '#6c757d', fontStyle: 'italic' }}>Sin pedidos</Box>
+												)
 										)}
 									</Box>
 								</Box>

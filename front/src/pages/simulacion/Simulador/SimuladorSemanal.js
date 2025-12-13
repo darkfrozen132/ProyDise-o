@@ -321,7 +321,7 @@ const calculateBearing = (from, to) => {
 
 
 /* ======= Componente para manejar marcadores y líneas dinámicas ======= */
-function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMovimiento, showFlightLines }) {
+function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMovimiento, showFlightLines, setSelectedAirport, setSidebarTab, setOpen }) {
 	const map = (0, require('react-leaflet').useMap)();
 	const markersRef = React.useRef({});
 	const airportMarkersRef = React.useRef({});
@@ -390,6 +390,20 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMov
 
 				marker.on('mouseout', function () {
 					this.closeTooltip();
+				});
+
+				// Click en marcador: si es sede (capacidad ilimitada) abrir sidebar y seleccionar
+				marker.on('click', function () {
+					try {
+						if (airport.capacity === 'ILIMITADO') {
+							if (typeof setOpen === 'function') setOpen(true);
+							if (typeof setSidebarTab === 'function') setSidebarTab('airports');
+							if (typeof setSelectedAirport === 'function') setSelectedAirport(airport);
+						}
+					} catch (err) {
+						console.error('Error al manejar click en marcador:', err);
+					}
+					this.openPopup();
 				});
 
 				marker.addTo(map); // Agregar al mapa
@@ -814,6 +828,45 @@ const SimuladorSemanal = () => {
 	const [vuelosEnAire, setVuelosEnAire] = useState([]);       // Vuelos activos (procesándose en animación)
 	const [pedidosCompletados, setPedidosCompletados] = useState([]);
 	const [contadorPedidosTotal, setContadorPedidosTotal] = useState(0); // 🆕 Contador de todos los pedidos en pantalla
+	// Estado para acumular todos los pedidos que se hayan generado durante la simulación
+	const [pedidosAcumulados, setPedidosAcumulados] = useState([]);
+	const pedidosVistosRef = useRef(new Set()); // para evitar duplicados al acumular
+
+	// Estado y ref para acumular vuelos que llegan a sedes durante la simulación
+	const [vuelosAcumulados, setVuelosAcumulados] = useState([]);
+	const vuelosVistosRef = useRef(new Set());
+	// Estado para pestañas internas del panel de sede
+	const [selectedAirportInnerTab, setSelectedAirportInnerTab] = useState(0);
+
+	// Helper: calcular estado actual de un pedido consultando vuelos en movimiento
+	const computeOrderStatus = (order) => {
+		const flightId = order.flightId;
+		const f = (vuelosEnMovimiento || []).find(v => v.id === flightId) || (flights || []).find(v => v.id === flightId);
+		if (!f) return 'Planificado';
+		if (f.status === 'active' || (f.progress !== undefined && f.progress > 0 && f.progress < 1)) return 'En vuelo';
+		if (f.status === 'waiting') return 'En origen';
+		if (f.status === 'completed' || (f.progress !== undefined && f.progress >= 1)) {
+			let llegadaMs = null;
+			if (f.fechaFinal) {
+				let fechaStr = f.fechaFinal;
+				if (typeof fechaStr === 'string' && !fechaStr.endsWith('Z')) fechaStr = fechaStr + 'Z';
+				llegadaMs = new Date(fechaStr).getTime();
+			}
+			if (llegadaMs && typeof tiempoSimulado === 'number') {
+				const tiempoDesdeAterrizaje = tiempoSimulado - llegadaMs;
+				if (tiempoDesdeAterrizaje >= TIEMPO_RECOGIDA_MS) return 'Entregado';
+				return 'Finalizado';
+			}
+			return 'Finalizado';
+		}
+		return 'Planificado';
+	};
+
+	// Pedidos que llegan desde el backend (planificados) — se acumulan cuando
+	// el backend envía el flight con sus pedidos. Estos se usan en la pestaña
+	// "Pedidos planificados" y su estado se calcula dinámicamente.
+	const [pedidosPlanificados, setPedidosPlanificados] = useState([]);
+	const pedidosPlanificadosRef = useRef(new Set());
 	const [relojLocal, setRelojLocal] = useState(null);         // Reloj de simulación local (independiente)
 	const [kActual, setKActual] = useState(500);                // Factor K actual (adaptable)
 	const [kBase] = useState(500);                               // Factor K base (constante)
@@ -1146,7 +1199,108 @@ const SimuladorSemanal = () => {
 			}
 		});
 
-		setContadorPedidosTotal(totalPedidos);
+		// Nota: mantenemos contador visible de pedidos actuales, pero la acumulación
+		// real se realiza en el efecto `pedidosAcumulados` (más abajo). Aquí solo
+		// sincronizamos con el conteo inmediato si el acumulado está vacío.
+		if (pedidosAcumulados.length === 0) {
+			setContadorPedidosTotal(totalPedidos);
+		}
+	}, [flights]);
+
+	// 🆕 EFECTO: Acumular cuando un vuelo sale de una sede (capacity === 'ILIMITADO')
+	// - Al primer momento en que el vuelo cambia a 'active' o progress>0 se considera
+	//   que salió de su origen. Entonces:
+	//   * se agregan los pedidos asociados a `pedidosAcumulados`
+	//   * se agrega el vuelo a `vuelosAcumulados`
+	useEffect(() => {
+		if (!vuelosEnMovimiento || vuelosEnMovimiento.length === 0 || !airports) return;
+		const nuevosPedidos = [];
+		const nuevosVuelos = [];
+
+		(vuelosEnMovimiento || []).forEach(f => {
+			if (!f || !f.id) return;
+
+			// Considerar que el vuelo ha salido SOLO cuando su progreso > 0 (está en movimiento)
+			const hasDeparted = (f.progress !== undefined && f.progress > 0);
+			if (!hasDeparted) return;
+
+			// Evitar procesar dos veces el mismo vuelo
+			if (vuelosVistosRef.current.has(f.id)) return;
+
+			const origin = f.origin?.code;
+			if (!origin) return;
+			const originAirport = (airports || []).find(a => String(a.code || '').toUpperCase() === String(origin).toUpperCase());
+			if (!originAirport || originAirport.capacity !== 'ILIMITADO') return;
+
+			// Marcar vuelo como procesado
+			vuelosVistosRef.current.add(f.id);
+			nuevosVuelos.push(f);
+
+			// Agregar pedidos del vuelo a la lista acumulada (solo al salir)
+			if (f.pedidos && Array.isArray(f.pedidos)) {
+				f.pedidos.forEach((p, idx) => {
+					const id = p.idPedido || p.id || `${f.id}-p-${idx}`;
+					if (!pedidosVistosRef.current.has(id)) {
+						pedidosVistosRef.current.add(id);
+						nuevosPedidos.push({ ...p, idPedido: id, flightId: f.id, origin: origin, destination: p.destino || f.destination?.code, cantidad: p.cantidad || 1 });
+					}
+				});
+			} else if (f.pedidoId) {
+				const id = String(f.pedidoId);
+				if (!pedidosVistosRef.current.has(id)) {
+					pedidosVistosRef.current.add(id);
+					nuevosPedidos.push({ idPedido: id, flightId: f.id, cantidad: f.currentPackages || 1, origin: origin, destination: f.destination?.code });
+				}
+			}
+		});
+
+		if (nuevosPedidos.length > 0) {
+			setPedidosAcumulados(prev => {
+				const acumulado = [...prev, ...nuevosPedidos];
+				setContadorPedidosTotal(acumulado.length);
+				return acumulado;
+			});
+			console.log(`📥 Acumulados ${nuevosPedidos.length} pedido(s) al salir de sedes`);
+		}
+
+		if (nuevosVuelos.length > 0) {
+			setVuelosAcumulados(prev => {
+				const acumulado = [...prev, ...nuevosVuelos];
+				return acumulado;
+			});
+			console.log(`✈️ Acumulados ${nuevosVuelos.length} vuelo(s) saliendo de sedes`);
+		}
+	}, [vuelosEnMovimiento, airports]);
+
+	// 🆕 EFECTO: Acumular pedidos planificados cuando el backend envía los vuelos
+	useEffect(() => {
+		if (!flights || flights.length === 0) return;
+		const nuevos = [];
+
+		(flights || []).forEach(f => {
+			if (!f || !f.id) return;
+			// Si el vuelo tiene pedidos, recogerlos
+			if (f.pedidos && Array.isArray(f.pedidos)) {
+				f.pedidos.forEach((p, idx) => {
+					const id = p.idPedido || p.id || `${f.id}-p-${idx}`;
+					if (!pedidosPlanificadosRef.current.has(id)) {
+						pedidosPlanificadosRef.current.add(id);
+						nuevos.push({ ...p, idPedido: id, flightId: f.id, origin: p.origen || f.origin?.code, destination: p.destino || f.destination?.code, cantidad: p.cantidad || 1 });
+					}
+				});
+			} else if (f.pedidoId) {
+				const id = String(f.pedidoId);
+				if (!pedidosPlanificadosRef.current.has(id)) {
+					pedidosPlanificadosRef.current.add(id);
+					nuevos.push({ idPedido: id, flightId: f.id, origin: f.origin?.code, destination: f.destination?.code, cantidad: f.currentPackages || 1 });
+				}
+			}
+		});
+
+		if (nuevos.length > 0) {
+			setPedidosPlanificados(prev => [...prev, ...nuevos]);
+			console.log(`📥 Agregados ${nuevos.length} pedidos planificados desde backend`);
+		}
 	}, [flights]);
 
 	// 📊 EFECTO: Mostrar métricas cada 10 segundos en consola
@@ -3006,14 +3160,15 @@ const SimuladorSemanal = () => {
 								value={sidebarTab === 'flights' ? 0 : sidebarTab === 'airports' ? 1 : 2}
 								onChange={(e, newValue) => setSidebarTab(['flights', 'airports', 'orders'][newValue])}
 								sx={{
-									'& .MuiTabs-indicator': { background: '#2c4a6b', height: 3 },
+									'& .MuiTabs-indicator': { background: '#2c4a6b', height: 2 },
 									'& .MuiTab-root': {
 										color: '#6c757d',
 										fontWeight: 500,
-										fontSize: '0.9rem',
+										fontSize: '0.85rem',
 										textTransform: 'none',
-										minHeight: 44,
-										padding: '8px 16px',
+										minHeight: 36,
+										padding: '6px 10px',
+										lineHeight: 1,
 										'&.Mui-selected': { color: '#2c4a6b', fontWeight: 600 }
 									}
 								}}
@@ -3343,7 +3498,7 @@ const SimuladorSemanal = () => {
 								<Box sx={{
 									borderTop: '2px solid #dee2e6',
 									paddingY: '12px',
-									flex: 0.4, // Ocupa 40% del espacio
+									flex: selectedAirport.capacity === 'ILIMITADO' ? 0.6 : 0.4, // Más espacio para sedes
 									display: 'flex',
 									flexDirection: 'column',
 									overflow: 'hidden',
@@ -3366,14 +3521,64 @@ const SimuladorSemanal = () => {
 										flex: 1,
 										minHeight: 0
 									}}>
-										{selectedAirport.pedidos && selectedAirport.pedidos.length > 0 ? (
-											selectedAirport.pedidos.map(p => (
-												<Box key={p.idPedido || p.id} sx={{ padding: '6px 8px', borderRadius: '4px', border: '1px solid #dee2e6', marginBottom: '6px', fontSize: '0.8rem', background: '#fff', color: '#495057' }}>
-													📦 {p.idPedido || p.id}
-												</Box>
-											))
+										{(selectedAirport.capacity === 'ILIMITADO') ? (
+											(() => {
+												const code = String(selectedAirport.code || '').toUpperCase();
+												const planned = (pedidosPlanificados || []).filter(p => String(p.origin || '').toUpperCase() === code);
+												const departures = (vuelosAcumulados || []).filter(f => String(f.origin?.code || '').toUpperCase() === code);
+												return (
+													<>
+								<Box sx={{ borderBottom: 1, borderColor: '#e6e9ee', marginBottom: 1 }}>
+											<Tabs value={selectedAirportInnerTab} onChange={(e, v) => setSelectedAirportInnerTab(v)} variant="fullWidth" sx={{ '& .MuiTabs-indicator': { background: '#2c4a6b', height: 2 } }}>
+												<Tab sx={{ minHeight: 28, paddingY: 0, paddingX: '6px', fontSize: '0.78rem', lineHeight: 1 }} label={`Pedidos planificados ${planned.length > 0 ? `(${planned.length})` : ''}`} />
+												<Tab sx={{ minHeight: 28, paddingY: 0, paddingX: '6px', fontSize: '0.78rem', lineHeight: 1 }} label={`Vuelos salientes ${departures.length > 0 ? `(${departures.length})` : ''}`} />
+											</Tabs>
+								</Box>
+
+														{/* Tab 0: Pedidos planificados */}
+														{selectedAirportInnerTab === 0 && (
+															<Box>
+																{planned.length > 0 ? (
+																	planned.map(p => (
+																		<Box key={p.idPedido || p.id} sx={{ padding: '6px 8px', borderRadius: '4px', border: '1px solid #dee2e6', marginBottom: '6px', fontSize: '0.85rem', background: '#fff', color: '#495057', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+																			<span>{p.idPedido || p.id} {p.cantidad ? `(${p.cantidad})` : ''}</span>
+																			<span style={{ fontSize: '0.8rem', color: '#6b7280', fontWeight: 700 }}>{computeOrderStatus(p)}</span>
+																		</Box>
+																	))
+																) : (
+																	<Box sx={{ fontSize: '0.85rem', color: '#6c757d', fontStyle: 'italic' }}>Sin pedidos planificados desde esta sede</Box>
+																)}
+															</Box>
+														)}
+
+														{/* Tab 1: Vuelos salientes */}
+														{selectedAirportInnerTab === 1 && (
+															<Box>
+																{departures.length > 0 ? (
+																	departures.map(f => (
+																		<Box key={f.id} sx={{ padding: '6px 8px', borderRadius: '4px', border: '1px solid #dee2e6', marginBottom: '6px', fontSize: '0.85rem', background: '#fff', color: '#495057' }}>
+																			✈️ {f.id} • {f.origin?.code || '?'} → {f.destination?.code || '?'} {f.progress !== undefined ? `• ${Math.round((f.progress||0)*100)}%` : ''}
+																		</Box>
+																	))
+																) : (
+																	<Box sx={{ fontSize: '0.85rem', color: '#6c757d', fontStyle: 'italic' }}>No hay vuelos salientes registrados desde esta sede</Box>
+																)}
+															</Box>
+														)}
+													</>
+												);
+											})()
 										) : (
-											<Box sx={{ fontSize: '0.8rem', color: '#6c757d', fontStyle: 'italic' }}>Sin pedidos</Box>
+											// Comportamiento previo para aeropuertos no sede
+											(selectedAirport.pedidos && selectedAirport.pedidos.length > 0) ? (
+												selectedAirport.pedidos.map(p => (
+													<Box key={p.idPedido || p.id} sx={{ padding: '6px 8px', borderRadius: '4px', border: '1px solid #dee2e6', marginBottom: '6px', fontSize: '0.8rem', background: '#fff', color: '#495057' }}>
+														📦 {p.idPedido || p.id}
+													</Box>
+												))
+											) : (
+												<Box sx={{ fontSize: '0.8rem', color: '#6c757d', fontStyle: 'italic' }}>Sin pedidos</Box>
+											)
 										)}
 									</Box>
 								</Box>
@@ -3509,6 +3714,9 @@ const SimuladorSemanal = () => {
 									showRoutes={showRoutes}
 									vuelosEnMovimiento={vuelosEnMovimiento}
 									showFlightLines={showFlightLines}
+									setSelectedAirport={setSelectedAirport}
+									setSidebarTab={setSidebarTab}
+									setOpen={setOpen}
 								/>
 							</MapContainer>
 							{/* Botón de Metricas */}

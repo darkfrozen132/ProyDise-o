@@ -206,11 +206,11 @@ export default function ControlPopper({
                                         const total = tiempoSimulacionTranscurrido;
 
                                         const dias = Math.floor(total / 86400);
-                                        const horas = Math.floor(total / 3600);
+                                        const horasRestantes = Math.floor((total % 86400) / 3600);
                                         const minutos = Math.floor((total % 3600) / 60);
                                         const segundos = total % 60;
 
-                                        return `(${String(dias).padStart(2, '0')}:${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')})`;
+                                        return `(${String(dias).padStart(2, '0')}d ${String(horasRestantes).padStart(2, '0')}:${String(minutos).padStart(2, '0')}:${String(segundos).padStart(2, '0')})`;
                                     })()}
                                 </span>
 
@@ -235,11 +235,10 @@ export default function ControlPopper({
                                 </span>
                                 <span style={{ fontSize: '12px', color: '#6c757d', fontFamily: 'monospace' }}>
                                     {(() => {
-                                        const dias = Math.floor(tiempoRealTranscurrido / 86400);
                                         const horas = Math.floor(tiempoRealTranscurrido / 3600);
                                         const minutos = Math.floor((tiempoRealTranscurrido % 3600) / 60);
                                         const segundos = tiempoRealTranscurrido % 60;
-                                        return `(${String(dias).padStart(2, '0')}:${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')})`;
+                                        return `(${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}:${String(segundos).padStart(2, '0')})`;
                                     })()}
                                 </span>
                             </div>

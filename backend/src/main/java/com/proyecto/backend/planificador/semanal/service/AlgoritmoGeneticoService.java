@@ -36,14 +36,14 @@
         private static final int PLAZO_DIFERENTE_CONTINENTE_DIAS = 3;
         private static final int VENTANA_RECOJO_HORAS = 2;
 
-        // Parametros del algoritmo genetico (valores por defecto - MODO DEMO RÁPIDO)
-        private static final int TAMANIO_POBLACION_DEFAULT = 10;      // Numero de individuos (reducido de 20)
-        private static final int MAX_GENERACIONES_DEFAULT = 2;       // Generaciones maximas (reducido de 5 a 2)
-        private static final int NO_MEJORA_LIMITE_DEFAULT = 3;       // Parar si 3 gen sin mejora (reducido de 10)
-        private static final int ELITE_K = 4;                 // Mejores preservados (elitismo)
-        private static final double PROB_CRUCE = 0.8;         // Probabilidad de cruce
-        private static final double PROB_MUTACION = 0.05;     // Probabilidad de mutacion
-        private static final int TAMANIO_TORNEO = 3;          // Individuos en torneo
+        // Parametros del algoritmo genetico (valores por defecto - MODO ULTRA RÁPIDO)
+        private static final int TAMANIO_POBLACION_DEFAULT = 3;       // Mínimo para diversidad
+        private static final int MAX_GENERACIONES_DEFAULT = 1;        // Solo 1 generación (el más rápido)
+        private static final int NO_MEJORA_LIMITE_DEFAULT = 1;        // Parar inmediatamente si no mejora
+        private static final int ELITE_K = 1;                         // Solo el mejor
+        private static final double PROB_CRUCE = 0.8;                 // Probabilidad de cruce
+        private static final double PROB_MUTACION = 0.05;             // Probabilidad de mutacion
+        private static final int TAMANIO_TORNEO = 2;                  // Torneo mínimo
         
         // Parámetros configurables (pueden ser sobrescritos desde WebSocket)
         private int TAMANIO_POBLACION = TAMANIO_POBLACION_DEFAULT;
@@ -774,7 +774,7 @@
      * Calcula el horizonte temporal en dias
      *
      * Reglas:
-     * - Minimo: plazo maximo de entrega (3 dias) + 1 dia buffer = 4 dias
+     * - Minimo: 10 dias (una semana + buffer de 3 dias para entregas)
      * - Dinamico: dia maximo de pedidos + 3 dias
      *
      * @param request Request de planificacion
@@ -782,8 +782,8 @@
      * @return Numero de dias del horizonte
      */
     private int calcularHorizonteDias(PlanificacionRequest request, List<PedidoSemanal> pedidos) {
-        // Por defecto: 7 dias (una semana)
-        int diasBase = 7;
+        // 🆕 CAMBIO: Minimo 10 dias para cubrir semana completa + buffer
+        int diasBase = 10;
 
         // Calcular dia maximo de los pedidos
         LocalDate fechaMaxPedido = request.getFecha();
@@ -1278,8 +1278,11 @@
                             dto.setFechaInicial(formatearFecha(salidaUTC));
                             dto.setFechaFinal(formatearFecha(llegadaUTC));
                             
-                            // 🆕 NUEVOS CAMPOS PARA FRONTEND:
-                            // 1. FlightId: {ORIGEN}-{DESTINO}-{HORA}
+                            // 🆕 CAMPOS PARA FRONTEND:
+                            // 1. VueloId: ID único completo (incluye fecha) - USAR ESTE PARA IDENTIFICAR VUELOS
+                            dto.setVueloId(vueloId);
+                            
+                            // 2. FlightId: {ORIGEN}-{DESTINO}-{HORA} (versión corta, puede repetirse entre días)
                             String hora = String.format("%02d%02d", salidaUTC.getHour(), salidaUTC.getMinute());
                             dto.setFlightId(vueloUso.getOrigen() + "-" + vueloUso.getDestino() + "-" + hora);
                             
@@ -1294,17 +1297,22 @@
                             // Por ahora lo dejamos en 0, se calculará después con todos los pedidos
                             dto.setSlackMinutes(0);
                             
+                            // 5. Capacidad máxima del avión
+                            dto.setCapacidadMaxima(vueloUso.getCapacidadMaxima());
+                            
                         } else {
                             // Fallback (no debería ocurrir)
                             log.warn("VueloInstancia no encontrada para ID: {}", vueloId);
                             LocalDateTime ahora = LocalDateTime.now();
                             dto.setFechaInicial(formatearFecha(ahora));
                             dto.setFechaFinal(formatearFecha(ahora.plusHours(2)));
+                            dto.setVueloId(vueloId); // Usar el ID que ya tenemos
                             dto.setDepartureUtc(formatearFechaUTC(ahora));
                             dto.setArrivalUtc(formatearFechaUTC(ahora.plusHours(2)));
                             dto.setFlightId(vueloUso.getOrigen() + "-" + vueloUso.getDestino() + "-0000");
                             dto.setQuantity(vueloUso.getCantidadAsignada());
                             dto.setSlackMinutes(0);
+                            dto.setCapacidadMaxima(vueloUso.getCapacidadMaxima());
                         }
 
                         // Agregar primer pedido
@@ -1495,7 +1503,16 @@
             // ⏱️ TIMING: Cargar pedidos (incluye query BD)
             long t2 = System.currentTimeMillis();
             List<PedidoSemanal> pedidos = cargarPedidosEnRango(tempRequest, tiempoActualSimulacion);
-            log.info("⏱️ [TIMING] Cargar Pedidos Total: {}ms", System.currentTimeMillis() - t2);
+            log.info("⏱️ [TIMING] Cargar Pedidos: {} pedidos en {}ms | Ventana: {} → {}", 
+                    pedidos.size(), System.currentTimeMillis() - t2,
+                    tiempoActualSimulacion.toLocalTime(),
+                    tiempoActualSimulacion.plusMinutes(factorK * 5).toLocalTime());
+            
+            // Si no hay pedidos, saltar esta iteración
+            if (pedidos.isEmpty()) {
+                log.info("⏸️ Sin pedidos en esta ventana, saltando...");
+                return;
+            }
             
             int numeroDias = calcularHorizonteDias(tempRequest, pedidos);
 
@@ -1537,11 +1554,18 @@
             Solution solucion = ejecutarAlgoritmoGeneticoConProgreso(worldTemporal, controladorAlmacenes, pedidos, estado, callbackProgreso);
             
             int pedidosAsignados = (solucion != null && solucion.getRutas() != null) 
-                ? solucion.getRutas().size() 
+                ? (int) solucion.getRutas().values().stream().filter(r -> !r.isEmpty()).count()
                 : 0;
+            int pedidosSinRuta = pedidos.size() - pedidosAsignados;
 
             long duracionTotal = System.currentTimeMillis() - inicioIteracion;
-            log.info("✅ [ITERACIÓN END] {} pedidos asignados | Duración TOTAL: {}ms", pedidosAsignados, duracionTotal);
+            log.info("✅ [ITERACIÓN END] Pedidos: {} cargados → {} con ruta ({} sin ruta) | {}ms", 
+                    pedidos.size(), pedidosAsignados, pedidosSinRuta, duracionTotal);
+            
+            if (pedidosSinRuta > 0 && pedidos.size() > 0) {
+                double porcentajeExito = (pedidosAsignados * 100.0) / pedidos.size();
+                log.warn("⚠️ Tasa de éxito: {:.1f}% - {} pedidos sin ruta", porcentajeExito, pedidosSinRuta);
+            }
             log.info("🚀 ═══════════════════════════════════════════════════════════════");
 
         } catch (Exception e) {

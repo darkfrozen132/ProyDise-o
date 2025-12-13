@@ -342,4 +342,10 @@ export const getPlanificacionSemanal = async (fecha, factorK) => {
   return data; // { vuelos, totalPedidos, totalVuelos }
 };
 
+/* Pedidos diarios*/
+export async function createPedidoDiario(payload) {
+  const { data } = await api.post('/pedidos-diarios', payload);
+  return data;
+}
+
 export default api;

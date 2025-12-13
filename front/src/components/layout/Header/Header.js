@@ -66,10 +66,10 @@ const Header = () => {
         
         {/* Desktop Navigation */}
         <nav className="header-nav desktop-nav">
-          <NavLink to="/configuracion" className="nav-item">
+          {/*<NavLink to="/configuracion" className="nav-item">
             <i className="fas fa-cog"></i>
             Configuración
-          </NavLink>
+          </NavLink>*/}
           <NavLink to="/usuarios" className="nav-item">
             <i className="fas fa-users"></i>
             Usuarios
@@ -78,10 +78,10 @@ const Header = () => {
             <i className="fas fa-plane"></i>
             Operaciones
           </NavLink>
-          <NavLink to="/clientes" className="nav-item">
+          {/*<NavLink to="/clientes" className="nav-item">
             <i className="fas fa-box"></i>
             Clientes
-          </NavLink>
+          </NavLink>*/}
           <NavLink to="/pedidos" className="nav-item">
             <i className="fas fa-clipboard-list"></i>
             Pedidos

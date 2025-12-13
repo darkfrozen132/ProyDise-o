@@ -13,6 +13,7 @@ import { API_BASE_URL, WS_URL } from '../../../config/api';
 import './SimuladorSemanal.css';
 import './WebSocketStomp.css';
 import { getAirports } from '../../../config/api';
+import { getAirportByCode } from './getAirportByCode';
 import LegendDialog from '../../../components/ui/Dialog/LegendDialog';
 import LegendButton from '../../../components/ui/Button/LegendButton';
 import MetricsPopper from '../../../components/ui/Dialog/MetricsPopper';
@@ -64,49 +65,29 @@ const createAirplaneIcon = (flight, rotation = 0) => {
 	const iconSvg = getAirplaneSvg(color, 20);
 
 	return L.divIcon({
-		html: `<div style="transform: rotate(${rotation}deg); transform-origin: center center; display: flex; align-items: center; justify-content: center;">
-        			${iconSvg}
-      			</div>`,
-		className: "airplane-icon-animated",
+		html: `<div style="transform: rotate(${rotation}deg); transform-origin: center center; display: flex; align-items: center; justify-content: center;">${iconSvg}</div>`,
+		className: 'airplane-marker',
 		iconSize: [20, 20],
-		iconAnchor: [13, 13],
-		popupAnchor: [0, -16],
+		iconAnchor: [10, 10]
 	});
 };
 
-function getAirportByCode(code, airports) {
-	if (!code || !airports) return null;
-	return airports.find(a => a.code === code) || null;
-}
-
-
-/* ======= Crear popup detallado para un vuelo (HTML string) ======= */
+/* ======= Crear contenido de tooltip/popup para vuelo (HTML string) ======= */
 const createFlightPopup = (flight) => {
 	const color = getAircraftColorByStatus(flight);
 	const flightType = flight.isSameContinentFlight ? 'INTRACONTINENTAL' : 'INTERCONTINENTAL';
-	
-	// Calcular porcentaje de capacidad
 	const capacityPercent = flight.currentPackages !== undefined && flight.packageCapacity !== undefined 
 		? (flight.currentPackages / flight.packageCapacity) * 100 
 		: 0;
 
 	return `
 		<div style="min-width:220px; max-width:260px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background:white; border-radius:8px; box-shadow:0 2px 12px rgba(0,0,0,0.15); overflow:hidden;">
-			<!-- Header con color del avión -->
 			<div style="background:${color}; padding:6px 12px; border-bottom:1px solid rgba(0,0,0,0.1);">
-				<div style="font-size:11px; font-weight:600; color:white; text-transform:uppercase; letter-spacing:0.5px;">
-					✈️ VUELO ${flightType}
-				</div>
+				<div style="font-size:11px; font-weight:600; color:white; text-transform:uppercase; letter-spacing:0.5px;">✈️ VUELO ${flightType}</div>
 			</div>
-			
-			<!-- ID del vuelo -->
 			<div style="padding:10px 12px 8px 12px;">
-				<div style="font-size:15px; font-weight:700; color:#0f172a;">
-					${flight.id}
-				</div>
+				<div style="font-size:15px; font-weight:700; color:#0f172a;">${flight.id}</div>
 			</div>
-			
-			<!-- Origen y Destino -->
 			<div style="padding:0 12px 10px 12px;">
 				<div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
 					<span style="font-size:12px; color:#64748b;"> 📍 Origen:</span>
@@ -115,20 +96,13 @@ const createFlightPopup = (flight) => {
 				</div>
 				<div style="display:flex; align-items:center; gap:6px;">
 					<span style="font-size:12px; color:#64748b;"> 📍 Destino:</span>
-					<span style="font-size:13px; font-weight:600; color:#1f2937;">${flight.destination?.code || 'N/A'} </span>
+					<span style="font-size:13px; font-weight:600; color:#1f2937;">${flight.destination?.code || 'N/A'}</span>
 					${flight.destination.name ? `<span style="font-size:11px; color:#94a3b8;">(${flight.destination.name})</span>` : ''}
 				</div>
 			</div>
-			
-			<!-- Stats Grid -->
 			<div style="padding:0 12px 10px 12px;">
-				<div style="font-size:11px; color:#64748b; margin-bottom:2px;">
-					Progreso
-				</div>
-				<div style="font-size:13px; font-weight:600; color:#1f2937; margin-bottom:8px;">
-					${Math.round(flight.progress || 0)}% completado
-				</div>
-				
+				<div style="font-size:11px; color:#64748b; margin-bottom:2px;">Progreso</div>
+				<div style="font-size:13px; font-weight:600; color:#1f2937; margin-bottom:8px;">${Math.round(flight.progress || 0)}% completado</div>
 				<div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
 					${flight.altitude ? `
 					<div>
@@ -144,13 +118,9 @@ const createFlightPopup = (flight) => {
 					` : ''}
 				</div>
 			</div>
-			
-			<!-- Barra de capacidad de paquetes -->
 			${flight.currentPackages !== undefined && flight.packageCapacity !== undefined ? `
 			<div style="padding:0 12px 10px 12px;">
-				<div style="font-size:11px; color:#64748b; margin-bottom:4px;">
-					${flight.currentPackages} / ${flight.packageCapacity} paquetes
-				</div>
+				<div style="font-size:11px; color:#64748b; margin-bottom:4px;">${flight.currentPackages} / ${flight.packageCapacity} paquetes</div>
 				<div style="height:8px; background:#e5e7eb; border-radius:4px; overflow:hidden;">
 					<div style="width:${Math.min(100, Math.round(capacityPercent))}%; height:100%; background:${color}; transition:width .3s ease;"></div>
 				</div>
@@ -159,7 +129,6 @@ const createFlightPopup = (flight) => {
 		</div>
 	`;
 };
-
 /* ======= Aumentar luminosidad del marcador suavemente ======= */
 const lightenColor = (hex, percent) => {
 	// Remover # si existe
@@ -321,7 +290,7 @@ const calculateBearing = (from, to) => {
 
 
 /* ======= Componente para manejar marcadores y líneas dinámicas ======= */
-function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMovimiento, showFlightLines, setSelectedAirport, setSidebarTab, setOpen }) {
+function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMovimiento, showFlightLines, setSelectedAirport, setSidebarTab, setOpen, setSelectedFlight }) {
 	const map = (0, require('react-leaflet').useMap)();
 	const markersRef = React.useRef({});
 	const airportMarkersRef = React.useRef({});
@@ -490,6 +459,14 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMov
 							className: 'flight-tooltip'
 						});
 					}
+					// Re-bindear evento click en marcador existente
+					existingMarker.off('click');
+					existingMarker.on('click', () => {
+						const latest = (flights || []).find(ff => ff.id === flight.id) || flight;
+						if (typeof setSelectedFlight === 'function') setSelectedFlight(latest);
+						if (typeof setSidebarTab === 'function') setSidebarTab('flights');
+						if (typeof setOpen === 'function') setOpen(true);
+					});
 				} else {
 					// Calcular rotación inicial
 					let rotation = 0;
@@ -520,12 +497,15 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMov
 					marker.on('mouseout', function () {
 						this.closeTooltip();
 					});
-					marker.addTo(map);
-					markersRef.current[flight.id] = marker;
-				}
-
-				// Dibujar líneas de vuelo si está habilitado
-				if (showFlightLines) {
+				marker.on('click', () => {
+					const latest = (flights || []).find(ff => ff.id === flight.id) || flight;
+					if (typeof setSelectedFlight === 'function') setSelectedFlight(latest);
+					if (typeof setSidebarTab === 'function') setSidebarTab('flights');
+					if (typeof setOpen === 'function') setOpen(true);
+				});
+				// Asegurar que el marcador se agregue al mapa y se guarde la referencia
+				marker.addTo(map);
+				markersRef.current[flight.id] = marker;
 					try {
 						const lineKey = flight.id;
 						const coords = [[position.lat, position.lng], [flight.destination.lat, flight.destination.lng]];
@@ -836,53 +816,21 @@ const SimuladorSemanal = () => {
 	const [selectedAirportInnerTab, setSelectedAirportInnerTab] = useState(0);
 
 	// Helper: calcular estado actual de un pedido consultando vuelos en movimiento
+	// Estados posibles: "Planificado", "En vuelo", "Finalizado"
 	const computeOrderStatus = (order) => {
 		const flightId = order.flightId;
 		const f = (vuelosEnMovimiento || []).find(v => v.id === flightId) || (flights || []).find(v => v.id === flightId);
 		if (!f) return 'Planificado';
+		// Si el vuelo está activo o en progreso intermedio → En vuelo
 		if (f.status === 'active' || (f.progress !== undefined && f.progress > 0 && f.progress < 1)) return 'En vuelo';
-		if (f.status === 'waiting') return 'En origen';
-		if (f.status === 'completed' || (f.progress !== undefined && f.progress >= 1)) {
-			// Antes de marcar como finalizado, verificar que el aeropuerto destino ya recibió los paquetes
-			try {
-				const destCode = f.destination?.code;
-				if (destCode && Array.isArray(airportsRef?.current)) {
-					const dest = (airportsRef.current || []).find(a => String(a.code || '').toUpperCase() === String(destCode).toUpperCase());
-					if (dest) {
-						// Si el destino ya contiene el pedido en su listado, considerarlo llegado
-						const pedidoId = order.idPedido || order.id;
-						const found = Array.isArray(dest.pedidos) && dest.pedidos.some(p => String(p.idPedido || p.id || '').toUpperCase() === String(pedidoId || '').toUpperCase());
-						if (!found) {
-							// Todavía no aparece en el aeropuerto: no marcar como finalizado hasta que se refleje la llegada
-							return 'En vuelo';
-						}
-					}
-				}
-			} catch (e) {
-				console.warn('Error verificando llegada en airportsRef:', e);
-			}
-			// Si llegamos aquí, el aeropuerto ya registra la llegada del pedido — aplicar lógica de tiempos
-			let llegadaMs = null;
-			if (f.fechaFinal) {
-				let fechaStr = f.fechaFinal;
-				if (typeof fechaStr === 'string' && !fechaStr.endsWith('Z')) fechaStr = fechaStr + 'Z';
-				llegadaMs = new Date(fechaStr).getTime();
-			}
-			if (llegadaMs && typeof tiempoSimulado === 'number') {
-				const tiempoDesdeAterrizaje = tiempoSimulado - llegadaMs;
-				if (tiempoDesdeAterrizaje >= TIEMPO_RECOGIDA_MS) return 'Entregado';
-				return 'Finalizado';
-			}
-			return 'Finalizado';
-		}
+		// Si el vuelo está completado → Finalizado
+		if (f.status === 'completed' || (f.progress !== undefined && f.progress >= 1)) return 'Finalizado';
+		// Por defecto, aún no ha despegado → Planificado
 		return 'Planificado';
 	};
 
-	// Helper para pedidos que están en aeropuerto: 'Finalizado' o 'Recogido'
+	// Helper para pedidos que están en aeropuerto: siempre 'Finalizado'
 	const computeAirportOrderStatus = (order) => {
-		if (!order || !order.llegadaMs || typeof tiempoSimulado !== 'number') return 'Finalizado';
-		const desde = tiempoSimulado - order.llegadaMs;
-		if (desde >= TIEMPO_RECOGIDA_MS) return 'Recogido';
 		return 'Finalizado';
 	};
 
@@ -3111,6 +3059,22 @@ const SimuladorSemanal = () => {
 	const [selectedAirport, setSelectedAirport] = useState(null); // Aeropuerto seleccionado para ver detalles
 	const [selectedFlight, setSelectedFlight] = useState(null); // Vuelo seleccionado para ver detalles
 	const tabsRef = useRef(null); // Referencia para scroll de tabs
+	const flightsListRef = useRef(null); // Referencia para scroll de vuelos
+
+	// Scroll automático y expansión cuando se selecciona un vuelo
+	useEffect(() => {
+		if (selectedFlight && sidebarTab === 'flights') {
+			// Expandir el vuelo seleccionado
+			setExpandedFlightIds(prev => ({ ...prev, [selectedFlight.id]: true }));
+			// Hacer scroll al vuelo
+			setTimeout(() => {
+				const element = document.getElementById(`flight-card-${selectedFlight.id}`);
+				if (element) {
+					element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+				}
+			}, 100);
+		}
+	}, [selectedFlight, sidebarTab]);
 
 	// Sincronizar `selectedAirport` cuando el array `airports` cambie (p.ej. llegan pedidos y aumenta packages)
 	useEffect(() => {
@@ -3285,7 +3249,7 @@ const SimuladorSemanal = () => {
 								transition: 'flex 0.3s ease' // Transición suave
 							}}>
 								{sidebarTab === 'flights' && (
-									<Box>
+									<Box ref={flightsListRef}>
 										{(vuelosEnMovimiento || []).filter(f => (f.status === 'active' || (f.progress && f.progress > 0 && f.progress < 1))).filter(f => {
 											const q = searchFlights.trim().toLowerCase();
 											if (!q) return true;
@@ -3299,46 +3263,14 @@ const SimuladorSemanal = () => {
 											);
 											return matchId || matchOrigin || matchDest || matchPedido || matchPedidos;
 										}).map(flight => {
-											// 🆕 Calcular cantidad de pedidos
-											const cantidadPedidos = (flight.pedidos?.length || 0) || (flight.pedidoId ? 1 : 0);
 											return (
-												<Box key={flight.id} onClick={() => setSelectedFlight(flight)} sx={{ border: '1px solid #dee2e6', padding: '10px', borderRadius: '8px', marginBottom: '10px', background: selectedFlight?.id === flight.id ? '#e8f4f8' : '#f8f9fa', cursor: 'pointer', transition: 'all 0.2s ease', '&:hover': { borderColor: '#2c4a6b', boxShadow: '0 2px 8px rgba(44, 74, 107, 0.15)' } }}>
+												<Box id={`flight-card-${flight.id}`} key={flight.id} onClick={() => setSelectedFlight(flight)} sx={{ border: '1px solid #dee2e6', padding: '10px', borderRadius: '8px', marginBottom: '10px', background: selectedFlight?.id === flight.id ? '#e8f4f8' : '#f8f9fa', cursor: 'pointer', transition: 'all 0.2s ease', '&:hover': { borderColor: '#2c4a6b', boxShadow: '0 2px 8px rgba(44, 74, 107, 0.15)' } }}>
 													<Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
 														<Box sx={{ flex: 1 }}>
 															<Box sx={{ fontWeight: 700, fontSize: '0.95rem', color: '#2c4a6b' }}>{flight.id}</Box>
 															<Box sx={{ fontSize: '0.85rem', color: '#6c757d', marginTop: '2px' }}>{flight.origin?.code || 'N/A'} → {flight.destination?.code || 'N/A'}</Box>
 														</Box>
-														{/* 🆕 Badge de cantidad de pedidos */}
-														{cantidadPedidos > 0 && (
-															<Box sx={{
-																background: '#2c4a6b',
-																color: '#fff',
-																padding: '2px 8px',
-																borderRadius: '12px',
-																fontSize: '0.75rem',
-																fontWeight: 600,
-																whiteSpace: 'nowrap'
-															}}>
-																📦 {cantidadPedidos}
-															</Box>
-														)}
 													</Box>
-													{expandedFlightIds[flight.id] && (
-														<Box sx={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #dee2e6' }}>
-															{flight.pedidos && flight.pedidos.length > 0 ? (
-																flight.pedidos.map(p => (
-																	<Box key={p.idPedido || p.id} sx={{ padding: '6px 8px', borderRadius: '4px', border: '1px dashed #dee2e6', marginBottom: '6px', background: '#fff' }}>
-																		<Box sx={{ fontSize: '0.85rem', fontWeight: 600, color: '#2c4a6b' }}>{p.idPedido || p.id}</Box>
-																		<Box sx={{ fontSize: '0.8rem', color: '#6c757d', marginTop: '2px' }}>{p.descripcion || p.info || `Cantidad: ${p.cantidad || 1}`}</Box>
-																	</Box>
-																))
-															) : flight.pedidoId ? (
-																<Box sx={{ padding: '6px 8px', borderRadius: '4px', border: '1px dashed #dee2e6', background: '#fff', fontSize: '0.85rem', fontWeight: 600, color: '#2c4a6b' }}>📦 {flight.pedidoId}</Box>
-															) : (
-																<Box sx={{ fontSize: '0.85rem', color: '#6c757d' }}>Sin pedidos en este vuelo</Box>
-															)}
-														</Box>
-													)}
 												</Box>
 											)
 										})}
@@ -3788,6 +3720,7 @@ const SimuladorSemanal = () => {
 									setSelectedAirport={setSelectedAirport}
 									setSidebarTab={setSidebarTab}
 									setOpen={setOpen}
+									setSelectedFlight={setSelectedFlight}
 								/>
 							</MapContainer>
 							{/* Botón de Metricas */}

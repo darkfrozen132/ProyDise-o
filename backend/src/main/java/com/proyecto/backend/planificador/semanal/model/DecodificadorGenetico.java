@@ -68,7 +68,7 @@ public class DecodificadorGenetico {
 
         Solution solucion = new Solution();
 
-        log.debug("Decodificando cromosoma para {} pedidos", pedidos.size());
+        log.info("🧬 Decodificando cromosoma para {} pedidos", pedidos.size());
 
         // Ordenar pedidos segun prioridades del cromosoma (mayor prioridad primero)
         List<PedidoConPrioridad> pedidosOrdenados = ordenarPedidosPorPrioridad(cromosoma, pedidos);
@@ -87,8 +87,9 @@ public class DecodificadorGenetico {
                     solucion.agregarRutas(pedido, subrutas);
                     rutasGeneradas++;
                 } else {
-                    log.debug("No se pudo generar ruta para pedido {} (prioridad: {:.3f})",
-                            pedido.getId(), pedidoPriorizado.prioridad);
+                    log.warn("❌ No ruta para pedido {} → destino: {} | hora: {}:{} | cantidad: {}",
+                            pedido.getId(), pedido.getAeropuertoDestinoId(), 
+                            pedido.getHora(), pedido.getMinuto(), pedido.getCantidadProductos());
                     rutasFallidas++;
                     solucion.agregarRutas(pedido, new ArrayList<>());
                 }
@@ -100,8 +101,9 @@ public class DecodificadorGenetico {
             }
         }
 
-        log.debug("Decodificacion completada: {} rutas generadas, {} fallidas",
-                rutasGeneradas, rutasFallidas);
+        log.info("📊 Decodificacion: {} rutas OK, {} fallidas ({}% éxito)",
+                rutasGeneradas, rutasFallidas, 
+                pedidos.isEmpty() ? 0 : (rutasGeneradas * 100 / pedidos.size()));
 
         // Calcular metricas y fitness
         solucion.calcularMetricasYFitness(calculadorPlazos);

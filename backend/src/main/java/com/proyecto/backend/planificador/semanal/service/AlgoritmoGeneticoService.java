@@ -1503,7 +1503,16 @@
             // ⏱️ TIMING: Cargar pedidos (incluye query BD)
             long t2 = System.currentTimeMillis();
             List<PedidoSemanal> pedidos = cargarPedidosEnRango(tempRequest, tiempoActualSimulacion);
-            log.info("⏱️ [TIMING] Cargar Pedidos Total: {}ms", System.currentTimeMillis() - t2);
+            log.info("⏱️ [TIMING] Cargar Pedidos: {} pedidos en {}ms | Ventana: {} → {}", 
+                    pedidos.size(), System.currentTimeMillis() - t2,
+                    tiempoActualSimulacion.toLocalTime(),
+                    tiempoActualSimulacion.plusMinutes(factorK * 5).toLocalTime());
+            
+            // Si no hay pedidos, saltar esta iteración
+            if (pedidos.isEmpty()) {
+                log.info("⏸️ Sin pedidos en esta ventana, saltando...");
+                return;
+            }
             
             int numeroDias = calcularHorizonteDias(tempRequest, pedidos);
 
@@ -1545,11 +1554,18 @@
             Solution solucion = ejecutarAlgoritmoGeneticoConProgreso(worldTemporal, controladorAlmacenes, pedidos, estado, callbackProgreso);
             
             int pedidosAsignados = (solucion != null && solucion.getRutas() != null) 
-                ? solucion.getRutas().size() 
+                ? (int) solucion.getRutas().values().stream().filter(r -> !r.isEmpty()).count()
                 : 0;
+            int pedidosSinRuta = pedidos.size() - pedidosAsignados;
 
             long duracionTotal = System.currentTimeMillis() - inicioIteracion;
-            log.info("✅ [ITERACIÓN END] {} pedidos asignados | Duración TOTAL: {}ms", pedidosAsignados, duracionTotal);
+            log.info("✅ [ITERACIÓN END] Pedidos: {} cargados → {} con ruta ({} sin ruta) | {}ms", 
+                    pedidos.size(), pedidosAsignados, pedidosSinRuta, duracionTotal);
+            
+            if (pedidosSinRuta > 0 && pedidos.size() > 0) {
+                double porcentajeExito = (pedidosAsignados * 100.0) / pedidos.size();
+                log.warn("⚠️ Tasa de éxito: {:.1f}% - {} pedidos sin ruta", porcentajeExito, pedidosSinRuta);
+            }
             log.info("🚀 ═══════════════════════════════════════════════════════════════");
 
         } catch (Exception e) {

@@ -808,6 +808,10 @@ const SimuladorSemanal = () => {
 	// Estado para acumular todos los pedidos que se hayan generado durante la simulación
 	const [pedidosAcumulados, setPedidosAcumulados] = useState([]);
 	const pedidosVistosRef = useRef(new Set()); // para evitar duplicados al acumular
+	
+	// 🆕 ACUMULADOR PERSISTENTE: Ref para guardar TODOS los pedidos únicos recibidos durante la simulación
+	// Este ref NO se limpia cuando los vuelos aterrizan, así que acumula todo el historial
+	const pedidosAcumuladosRef = useRef(new Set());
 
 	// Estado y ref para acumular vuelos que llegan a sedes durante la simulación
 	const [vuelosAcumulados, setVuelosAcumulados] = useState([]);
@@ -1579,6 +1583,10 @@ const SimuladorSemanal = () => {
 			setFlightsInAir(0);
 			setProgresoAG(null);
 			contadorVuelosRef.current = 0;
+			
+			// 🆕 LIMPIAR CONTADOR DE PEDIDOS ACUMULADOS para nueva simulación
+			pedidosAcumuladosRef.current.clear();
+			setOrdersCount(0);
 
 			// Iniciar reloj local
 			const inicioUTC = new Date(`${fechaInicioSimulacion}T${horaInicioSimulacion}:00Z`);
@@ -1655,7 +1663,7 @@ const SimuladorSemanal = () => {
 				body: JSON.stringify({
 					fecha: fechaInicioSimulacion,
 					hora: horaInicioSimulacion,
-					factorK: 10
+					factorK: 12
 				})
 			});
 
@@ -2037,6 +2045,10 @@ const SimuladorSemanal = () => {
 		setIteracionesPlanificacion([]);
 		setIntentosRealizados(0);
 		contadorVuelosRef.current = 0;
+
+		// 🆕 LIMPIAR CONTADOR DE PEDIDOS ACUMULADOS
+		pedidosAcumuladosRef.current.clear();
+		setOrdersCount(0);
 
 		// ✅ RESETEAR TIEMPO SIMULADO
 		setTiempoSimuladoBackend(null);
@@ -3074,20 +3086,32 @@ const SimuladorSemanal = () => {
 	/* Efecto: Actualizar la cantidad de pedidos */
 	const [ordersCount, setOrdersCount] = useState(0);
 
+	// Actualizar la métrica de pedidos: ACUMULAR todos los pedidos únicos recibidos del backend (sin perder los anteriores)
 	useEffect(() => {
-		const list = [];
-
+		let nuevosAgregados = 0;
 		(flights || []).forEach(f => {
 			if (Array.isArray(f.pedidos)) {
-				f.pedidos.forEach(p => list.push({ ...p, flightId: f.id }));
+				f.pedidos.forEach(p => {
+					const id = p.idPedido || p.id;
+					if (id && !pedidosAcumuladosRef.current.has(String(id))) {
+						pedidosAcumuladosRef.current.add(String(id));
+						nuevosAgregados++;
+					}
+				});
 			} else if (f.pedidoId) {
-				list.push({ idPedido: f.pedidoId, flightId: f.id });
+				if (!pedidosAcumuladosRef.current.has(String(f.pedidoId))) {
+					pedidosAcumuladosRef.current.add(String(f.pedidoId));
+					nuevosAgregados++;
+				}
 			}
 		});
-
-		// Actualizar el estado global de pedidos
-		setOrdersCount(list.length);
-		console.log(`📦 Total pedidos en simulación: ${list.length}`);
+		
+		const totalAcumulado = pedidosAcumuladosRef.current.size;
+		setOrdersCount(totalAcumulado);
+		
+		if (nuevosAgregados > 0) {
+			console.log(`📦 Pedidos: +${nuevosAgregados} nuevos | Total acumulado: ${totalAcumulado}`);
+		}
 	}, [flights]);
 
 	/* Estado y lógica para el drawer lateral */

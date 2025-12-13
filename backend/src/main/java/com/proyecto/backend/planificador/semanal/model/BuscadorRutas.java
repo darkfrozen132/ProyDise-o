@@ -61,10 +61,31 @@ public class BuscadorRutas {
      * @return SubRuta o null si no se encuentra
      */
     public SubRuta buscarRutaConHoraMinima(String origen, String destino, int cantidad, int diaInicial, java.time.LocalTime horaMinima) {
+        // 🆕 PRIMER INTENTO: con restricción de hora mínima
+        SubRuta resultado = buscarRutaInterno(origen, destino, cantidad, diaInicial, horaMinima);
+        
+        // 🆕 SEGUNDO INTENTO: sin restricción de hora (fallback)
+        if (resultado == null && horaMinima != null) {
+            log.trace("Segundo intento sin restricción de hora para {} → {}", origen, destino);
+            resultado = buscarRutaInterno(origen, destino, cantidad, diaInicial, null);
+        }
+        
+        return resultado;
+    }
+    
+    /**
+     * Búsqueda interna con BFS
+     */
+    private SubRuta buscarRutaInterno(String origen, String destino, int cantidad, int diaInicial, java.time.LocalTime horaMinima) {
         Queue<RutaParcial> cola = new LinkedList<>();
         RutaParcial inicial = new RutaParcial(origen, diaInicial);
-        inicial.horaMinima = horaMinima; // 🆕 Guardar hora mínima
+        inicial.horaMinima = horaMinima;
         cola.add(inicial);
+        
+        int vuelosEvaluados = 0;
+        int sinCapacidad = 0;
+        int horaTemprana = 0;
+        int sinAlmacen = 0;
 
         while (!cola.isEmpty()) {
             RutaParcial actual = cola.poll();
@@ -80,10 +101,96 @@ public class BuscadorRutas {
             }
 
             // Explorar vuelos desde el aeropuerto actual
-            expandirRutaParcialConHoraMinima(actual, destino, cantidad, cola);
+            int[] stats = expandirRutaParcialConHoraMinimaConStats(actual, destino, cantidad, cola);
+            vuelosEvaluados += stats[0];
+            sinCapacidad += stats[1];
+            horaTemprana += stats[2];
+            sinAlmacen += stats[3];
+        }
+        
+        // Log de diagnóstico si no encuentra ruta
+        if (vuelosEvaluados > 0 && sinCapacidad > 0) {
+            log.debug("🔍 BFS {} → {}: evaluados={}, sinCapacidad={}, horaTemprana={}, sinAlmacen={}",
+                    origen, destino, vuelosEvaluados, sinCapacidad, horaTemprana, sinAlmacen);
         }
 
         return null; // No se encontro ruta
+    }
+    
+    /**
+     * 🆕 Versión con estadísticas para diagnóstico
+     */
+    private int[] expandirRutaParcialConHoraMinimaConStats(RutaParcial rutaActual, String destinoFinal,
+                                     int cantidad, Queue<RutaParcial> cola) {
+        int vuelosEvaluados = 0;
+        int sinCapacidad = 0;
+        int horaTemprana = 0;
+        int sinAlmacen = 0;
+        
+        String aeropuertoActual = rutaActual.aeropuertoActual;
+        int diaActual = rutaActual.diaActual;
+
+        // Buscar vuelos desde aeropuerto actual en dia actual y siguiente
+        for (int diaOffset = 0; diaOffset <= 1; diaOffset++) {
+            int dia = diaActual + diaOffset;
+
+            if (dia >= worldTemporal.getNumeroDias()) {
+                break;
+            }
+
+            List<VueloInstancia> vuelosDisponibles = worldTemporal.getVuelosDesde(aeropuertoActual, dia);
+
+            for (VueloInstancia vuelo : vuelosDisponibles) {
+                vuelosEvaluados++;
+                
+                // ⚠️ FILTRO CRÍTICO: NO usar vuelos que ya despegaron o aterrizaron
+                if (!vuelo.esModificable()) {
+                    continue; // Vuelo EN_VUELO o ATERRIZADO → NO se puede reasignar
+                }
+                
+                // 🆕 FILTRO DE HORA MÍNIMA: Solo para el primer vuelo
+                if (rutaActual.vuelosAcumulados.isEmpty() && rutaActual.horaMinima != null) {
+                    java.time.LocalTime horaSalidaVuelo = vuelo.getSalidaUTC().toLocalTime();
+                    if (diaOffset == 0 && horaSalidaVuelo.isBefore(rutaActual.horaMinima)) {
+                        horaTemprana++;
+                        continue;
+                    }
+                }
+
+                // No volver al origen
+                if (vuelo.getDestino().equals(rutaActual.vuelosAcumulados.isEmpty() ?
+                        aeropuertoActual : rutaActual.vuelosAcumulados.get(0).getOrigen())) {
+                    continue;
+                }
+
+                // Si no es el primer vuelo, verificar conexion valida
+                if (!rutaActual.vuelosAcumulados.isEmpty()) {
+                    VueloInstancia ultimoVuelo = rutaActual.vuelosAcumulados.get(
+                            rutaActual.vuelosAcumulados.size() - 1);
+
+                    if (vuelo.getSalidaUTC().isBefore(ultimoVuelo.getLlegadaUTC())) {
+                        continue;
+                    }
+                }
+
+                // Verificar capacidad del vuelo
+                if (!vuelo.tieneCapacidad(cantidad)) {
+                    sinCapacidad++;
+                    continue;
+                }
+
+                // Verificar capacidad del almacen
+                if (!verificarCapacidadAlmacen(vuelo, destinoFinal, cantidad, rutaActual)) {
+                    sinAlmacen++;
+                    continue;
+                }
+
+                // Agregar a la cola para explorar
+                cola.add(new RutaParcial(rutaActual, vuelo));
+            }
+        }
+        
+        return new int[] { vuelosEvaluados, sinCapacidad, horaTemprana, sinAlmacen };
     }
 
     /**

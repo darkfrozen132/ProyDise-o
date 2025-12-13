@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer } from 'react-leaflet';
-import { Drawer, IconButton, Tabs, Tab, Box } from '@mui/material';
+import { Drawer, IconButton, Tabs, Tab, Box, Menu, MenuItem } from '@mui/material';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import FilterListIcon from '@mui/icons-material/FilterList';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import SockJS from 'sockjs-client';
@@ -837,22 +838,22 @@ const SimuladorSemanal = () => {
 	const [selectedAirportInnerTab, setSelectedAirportInnerTab] = useState(0);
 
 	// Helper: calcular estado actual de un pedido consultando vuelos en movimiento
-	// Estados posibles: "Planificado", "En vuelo", "Finalizado"
+	// Estados posibles: "Planificado", "En vuelo", "Entregado"
 	const computeOrderStatus = (order) => {
 		const flightId = order.flightId;
 		const f = (vuelosEnMovimiento || []).find(v => v.id === flightId) || (flights || []).find(v => v.id === flightId);
 		if (!f) return 'Planificado';
 		// Si el vuelo está activo o en progreso intermedio → En vuelo
 		if (f.status === 'active' || (f.progress !== undefined && f.progress > 0 && f.progress < 1)) return 'En vuelo';
-		// Si el vuelo está completado → Finalizado
-		if (f.status === 'completed' || (f.progress !== undefined && f.progress >= 1)) return 'Finalizado';
+		// Si el vuelo está completado → Entregado
+		if (f.status === 'completed' || (f.progress !== undefined && f.progress >= 1)) return 'Entregado';
 		// Por defecto, aún no ha despegado → Planificado
 		return 'Planificado';
 	};
 
-	// Helper para pedidos que están en aeropuerto: siempre 'Finalizado'
+	// Helper para pedidos que están en aeropuerto: siempre 'Entregado'
 	const computeAirportOrderStatus = (order) => {
-		return 'Finalizado';
+		return 'Entregado';
 	};
 
 	// Pedidos que llegan desde el backend (planificados) — se acumulan cuando
@@ -3076,6 +3077,8 @@ const SimuladorSemanal = () => {
 	const [searchFlights, setSearchFlights] = useState('');
 	const [searchAirports, setSearchAirports] = useState('');
 	const [searchOrders, setSearchOrders] = useState('');
+	const [orderStatusFilter, setOrderStatusFilter] = useState('todos'); // 'todos' | 'Planificado' | 'En vuelo' | 'Entregado'
+	const [showOrderFilterMenu, setShowOrderFilterMenu] = useState(false); // Mostrar/ocultar menú de filtro
 	const [expandedFlightIds, setExpandedFlightIds] = useState({});
 	const [selectedAirport, setSelectedAirport] = useState(null); // Aeropuerto seleccionado para ver detalles
 	const [selectedFlight, setSelectedFlight] = useState(null); // Vuelo seleccionado para ver detalles
@@ -3238,7 +3241,7 @@ const SimuladorSemanal = () => {
 						</Box>
 
 						{/* Buscador */}
-						<Box sx={{ padding: '8px 12px', marginBottom: '8px' }}>
+						<Box sx={{ padding: '8px 12px', marginBottom: '8px', display: 'flex', gap: '8px', alignItems: 'center' }}>
 							<input
 								placeholder={
 									sidebarTab === 'flights' ? 'Buscar vuelo, origen o destino...' :
@@ -3252,7 +3255,7 @@ const SimuladorSemanal = () => {
 									else setSearchOrders(e.target.value);
 								}}
 								style={{
-									width: '100%',
+									flex: 1,
 									padding: '10px 12px',
 									borderRadius: '8px',
 									border: '1px solid #dee2e6',
@@ -3261,6 +3264,61 @@ const SimuladorSemanal = () => {
 									boxSizing: 'border-box'
 								}}
 							/>
+							{/* Botón de filtro solo para pestaña de pedidos */}
+							{sidebarTab === 'orders' && (
+								<Box sx={{ position: 'relative' }}>
+									<IconButton
+										onClick={() => setShowOrderFilterMenu(!showOrderFilterMenu)}
+										sx={{
+											padding: '8px',
+											background: orderStatusFilter !== 'todos' ? '#2c4a6b' : '#f8f9fa',
+											color: orderStatusFilter !== 'todos' ? '#fff' : '#6c757d',
+											border: '1px solid #dee2e6',
+											borderRadius: '8px',
+											'&:hover': { background: orderStatusFilter !== 'todos' ? '#1e3a5f' : '#e9ecef' }
+										}}
+									>
+										<FilterListIcon fontSize="small" />
+									</IconButton>
+									{/* Menú desplegable de filtro */}
+									{showOrderFilterMenu && (
+										<Box sx={{
+											position: 'absolute',
+											top: '100%',
+											right: 0,
+											marginTop: '4px',
+											background: '#fff',
+											border: '1px solid #dee2e6',
+											borderRadius: '8px',
+											boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+											zIndex: 1000,
+											minWidth: '140px',
+											overflow: 'hidden'
+										}}>
+											{['todos', 'Planificado', 'En vuelo', 'Entregado', 'Recogido'].map(status => (
+												<Box
+													key={status}
+													onClick={() => {
+														setOrderStatusFilter(status);
+														setShowOrderFilterMenu(false);
+													}}
+													sx={{
+														padding: '8px 12px',
+														fontSize: '0.85rem',
+														cursor: 'pointer',
+														background: orderStatusFilter === status ? '#e8f4f8' : '#fff',
+														fontWeight: orderStatusFilter === status ? 600 : 400,
+														color: orderStatusFilter === status ? '#2c4a6b' : '#495057',
+														'&:hover': { background: '#f8f9fa' }
+													}}
+												>
+													{status === 'todos' ? 'Todos' : status}
+												</Box>
+											))}
+										</Box>
+									)}
+								</Box>
+							)}
 						</Box>
 
 						{/* Contenido de cada pestaña - con espacio para detalles */}
@@ -3336,7 +3394,7 @@ const SimuladorSemanal = () => {
 												else baseColor = '#28a745'; // Verde
 											}
 											// Aplicar luminosidad 0.80 para color base, y más claro si está seleccionado
-											const bgColor = isSelected ? lightenColor(baseColor, 0.90) : lightenColor(baseColor, 0.80);
+											const bgColor = isSelected ? lightenColor(baseColor, 0.80) : lightenColor(baseColor, 0.90);
 											// Color del nombre del aeropuerto: versión más oscura del color base
 											const nameColor = darkenColor(baseColor, 0.30);
 											
@@ -3358,8 +3416,7 @@ const SimuladorSemanal = () => {
 													background: bgColor,
 													cursor: 'pointer',
 													transition: 'all 0.2s ease',
-													boxShadow: isSelected ? `0 2px 8px ${lightenColor(baseColor, 0.50)}` : 'none',
-													'&:hover': { boxShadow: `0 2px 8px ${lightenColor(baseColor, 0.50)}` }
+													boxShadow: 'none',
 												}}
 											>
 												<Box sx={{ fontWeight: 700, fontSize: '0.95rem', color: nameColor }}>
@@ -3443,11 +3500,25 @@ const SimuladorSemanal = () => {
 
 											const q = searchOrders.trim().toLowerCase();
 											return list.filter(o => {
-												if (!q) return true;
-												return String(o.idPedido || o.id || o.flightId || '').toLowerCase().includes(q) ||
+												// Filtro por texto de búsqueda
+												const matchesSearch = !q || (
+													String(o.idPedido || o.id || o.flightId || '').toLowerCase().includes(q) ||
 													String(o.origin || '').toLowerCase().includes(q) ||
 													String(o.destination || '').toLowerCase().includes(q) ||
-													String(o.cliente || '').toLowerCase().includes(q);
+													String(o.cliente || '').toLowerCase().includes(q)
+												);
+												// Filtro por estado
+												let matchesStatus = true;
+												if (orderStatusFilter !== 'todos') {
+													// Mapear el status interno al estado visible
+													let visibleStatus = 'Planificado';
+													if (o.status === 'active') visibleStatus = 'En vuelo';
+													else if (o.status === 'llegado') visibleStatus = 'Entregado';
+													else if (o.status === 'recogido') visibleStatus = 'Recogido';
+													else if (o.status === 'waiting') visibleStatus = 'Planificado';
+													matchesStatus = visibleStatus === orderStatusFilter;
+												}
+												return matchesSearch && matchesStatus;
 											});
 										})().map(order => (
 											<Box
@@ -3486,6 +3557,19 @@ const SimuladorSemanal = () => {
 														✈️ {order.flightId || 'N/A'}
 													</Box>
 													{/* Mostrar badge según estado derivado del pedido */}
+													{(order.status === 'waiting' || !order.status) && (
+														<Box sx={{
+															background: '#3b82f6',
+															color: '#fff',
+															padding: '1px 6px',
+															borderRadius: '8px',
+															fontSize: '0.7rem',
+															fontWeight: 600
+														}}>
+															Planificado
+														</Box>
+													)}
+
 													{order.status === 'active' && (
 														<Box sx={{
 															background: '#28a745',
@@ -3508,7 +3592,7 @@ const SimuladorSemanal = () => {
 															fontSize: '0.7rem',
 															fontWeight: 600
 														}}>
-															Finalizado
+															Entregado
 														</Box>
 													)}
 
@@ -3522,19 +3606,6 @@ const SimuladorSemanal = () => {
 															fontWeight: 600
 														}}>
 															Recogido
-														</Box>
-													)}
-
-													{order.status === 'waiting' && (
-														<Box sx={{
-															background: '#e2e8f0',
-															color: '#374151',
-															padding: '1px 6px',
-															borderRadius: '8px',
-															fontSize: '0.7rem',
-															fontWeight: 600
-														}}>
-															En origen
 														</Box>
 													)}
 												</Box>

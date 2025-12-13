@@ -29,7 +29,10 @@ function DynamicMarkers({
   airports, 
   activeView, 
   showRoutes, 
-  vuelosEnMovimiento 
+  vuelosEnMovimiento,
+  setSelectedAirport,
+  setSidebarTab,
+  setOpen
 }) {
   const map = useMap();
   const markersRef = useRef({}); // Guardar marcadores por ID para animarlos
@@ -58,16 +61,21 @@ function DynamicMarkers({
         const marker = L.marker([airport.lat, airport.lng], { 
           icon,
           isAirport: true // Flag para identificar
-        }).bindPopup(`
-          <div class="popup-content">
-            <div class="popup-header">
-              <strong class="popup-title ${airport.isSede ? 'sede-title' : 'airport-title'}">
-                ${airport.name}
-              </strong>
-            </div>
-          </div>
-        `);
-        marker.addTo(map); 
+        });
+        marker.addTo(map);
+        // Al hacer click en el marcador de aeropuerto, abrir sidebar y seleccionar aeropuerto
+        try {
+          marker.on('click', () => {
+            const latest = (airports || []).find(a => String(a.code || '').toUpperCase() === String(airport.code || '').toUpperCase()) || airport;
+            if (typeof setSelectedAirport === 'function') setSelectedAirport(latest);
+            if (typeof setSidebarTab === 'function') setSidebarTab('airports');
+            if (typeof setOpen === 'function') setOpen(true);
+          });
+          // No abrir popup al click - solo usar tooltip and seleccionar/abrir sidebar
+        } catch (e) {
+          // No crítico: si falla el binding, continuar
+          console.warn('[DynamicMarkers] No se pudo bindear evento click/popupopen al marcador de aeropuerto', e);
+        }
         airportMarkers.push(marker);
       });
     }

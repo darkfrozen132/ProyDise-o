@@ -6,6 +6,7 @@
     import com.proyecto.backend.simulation.dto.ProgresoAGDTO;
     import com.proyecto.backend.simulation.state.SessionStateManager;
     import com.proyecto.backend.model.Aeropuerto;
+    import com.proyecto.backend.model.PedidoDiario;
     import com.proyecto.backend.model.PedidoSemanal;
     import com.proyecto.backend.repository.PedidoSemanalRepository;
     import lombok.RequiredArgsConstructor;
@@ -1587,6 +1588,368 @@
         ControladorAlmacenes ca = controladorAlmacenesCache.remove(sessionId);
         log.info("🧹 Cache limpiado para sesión {} | WorldTemporal={}, ControladorAlmacenes={}", 
                 sessionId, wt != null, ca != null);
+    }
+
+    /**
+     * Convierte PedidoDiario a PedidoSemanal para reutilizar la lógica del AG.
+     * Ambas entidades tienen la misma estructura, solo diferente nombre de tabla.
+     */
+    private PedidoSemanal convertirDiarioASemanal(PedidoDiario diario) {
+        PedidoSemanal semanal = new PedidoSemanal(
+            diario.getAnio(),
+            diario.getMes(),
+            diario.getDia(),
+            diario.getHora(),
+            diario.getMinuto(),
+            diario.getAeropuertoDestinoId(),
+            diario.getCantidadProductos(),
+            diario.getClienteId()
+        );
+        semanal.setId(diario.getId()); // Mantener el ID original
+        return semanal;
+    }
+
+    /**
+     * Planifica pedidos diarios con progreso en tiempo real via WebSocket.
+     * Esta versión recibe directamente la lista de pedidos diarios y los convierte internamente.
+     *
+     * @param sessionId ID de la sesión WebSocket
+     * @param pedidosDiarios Lista de pedidos diarios a planificar
+     * @param tiempoActualSimulacion Tiempo actual de la simulación
+     * @param factorK Factor K para el algoritmo
+     * @param tamanioPoblacion Tamaño de la población del AG (opcional)
+     * @param maxGeneraciones Máximo de generaciones del AG (opcional)
+     * @param limiteGeneracionesSinMejora Límite de generaciones sin mejora (opcional)
+     * @param callbackProgreso Callback para enviar progreso
+     */
+    public void planificarDiarioConProgresoWS(
+            String sessionId,
+            List<PedidoDiario> pedidosDiarios,
+            LocalDateTime tiempoActualSimulacion,
+            int factorK,
+            Integer tamanioPoblacion,
+            Integer maxGeneraciones,
+            Integer limiteGeneracionesSinMejora,
+            java.util.function.Consumer<ProgresoAGDTO> callbackProgreso) {
+
+        // Convertir PedidoDiario a PedidoSemanal para reutilizar la lógica existente
+        List<PedidoSemanal> pedidos = pedidosDiarios.stream()
+                .map(this::convertirDiarioASemanal)
+                .toList();
+
+        log.info("📦 [DIARIO] Convertidos {} pedidos diarios a formato semanal para procesamiento", pedidos.size());
+
+        // Reutilizar la lógica existente pero con los pedidos ya cargados
+        planificarConPedidosDirectosWS(sessionId, pedidos, tiempoActualSimulacion, factorK,
+                tamanioPoblacion, maxGeneraciones, limiteGeneracionesSinMejora, callbackProgreso);
+    }
+
+    /**
+     * Planifica con una lista de pedidos ya cargados (sin consultar BD).
+     * Usado para operación diaria y otros casos donde los pedidos ya están en memoria.
+     */
+    private void planificarConPedidosDirectosWS(
+            String sessionId,
+            List<PedidoSemanal> pedidos,
+            LocalDateTime tiempoActualSimulacion,
+            int factorK,
+            Integer tamanioPoblacion,
+            Integer maxGeneraciones,
+            Integer limiteGeneracionesSinMejora,
+            java.util.function.Consumer<ProgresoAGDTO> callbackProgreso) {
+
+        EstadoEjecucion estado = new EstadoEjecucion();
+        sesionesActivas.put(sessionId, estado);
+
+        // Configurar parámetros del AG
+        this.TAMANIO_POBLACION = (tamanioPoblacion != null) ? tamanioPoblacion : TAMANIO_POBLACION_DEFAULT;
+        this.MAX_GENERACIONES = (maxGeneraciones != null) ? maxGeneraciones : MAX_GENERACIONES_DEFAULT;
+        this.NO_MEJORA_LIMITE = (limiteGeneracionesSinMejora != null) ? limiteGeneracionesSinMejora : NO_MEJORA_LIMITE_DEFAULT;
+
+        try {
+            long inicioIteracion = System.currentTimeMillis();
+            log.info("🚀 ═══════════════════════════════════════════════════════════════");
+            log.info("🚀 [DIARIO ITERACIÓN START] sessionId={}, tiempoSim={}", sessionId, tiempoActualSimulacion);
+            log.info("⚙️  Parámetros AG: población={}, maxGen={}, límiteSinMejora={}", 
+                     TAMANIO_POBLACION, MAX_GENERACIONES, NO_MEJORA_LIMITE);
+
+            // 1. Enviar progreso inicial
+            callbackProgreso.accept(ProgresoAGDTO.builder()
+                    .tipo("PROGRESO_AG")
+                    .generacion(0)
+                    .maxGeneraciones(MAX_GENERACIONES)
+                    .progreso(0.0)
+                    .mejorFitness(0.0)
+                    .fitnessPromedio(0.0)
+                    .pedidosProcesados(0)
+                    .pedidosTotales(pedidos.size())
+                    .timestamp(LocalDateTime.now())
+                    .build());
+
+            // Obtener World desde cache
+            long t1 = System.currentTimeMillis();
+            World world = worldCacheService.getWorld();
+            log.info("⏱️ [TIMING] Obtener World (cache): {}ms", System.currentTimeMillis() - t1);
+            
+            // Si no hay pedidos, terminar
+            if (pedidos.isEmpty()) {
+                log.info("⏸️ Sin pedidos para procesar");
+                return;
+            }
+
+            // Calcular horizonte de días basado en los pedidos
+            int numeroDias = calcularHorizonteDiasDesdePedidos(pedidos);
+            log.info("📅 Horizonte de días calculado: {}", numeroDias);
+
+            // Crear WorldTemporal y ControladorAlmacenes
+            long t3 = System.currentTimeMillis();
+            LocalDateTime fechaBaseUTC = tiempoActualSimulacion;
+            
+            WorldTemporal worldTemporal = worldTemporalCache.get(sessionId);
+            ControladorAlmacenes controladorAlmacenes = controladorAlmacenesCache.get(sessionId);
+            
+            if (worldTemporal == null) {
+                worldTemporal = new WorldTemporal(world, fechaBaseUTC, numeroDias);
+                worldTemporalCache.put(sessionId, worldTemporal);
+                log.info("⏱️ [TIMING] Crear WorldTemporal (NUEVO): {}ms | {}", 
+                        System.currentTimeMillis() - t3, worldTemporal.getEstadisticas());
+            } else {
+                log.info("⏱️ [TIMING] WorldTemporal (CACHE HIT): 0ms | {}", worldTemporal.getEstadisticas());
+            }
+            
+            long t4 = System.currentTimeMillis();
+            if (controladorAlmacenes == null) {
+                controladorAlmacenes = new ControladorAlmacenes(numeroDias, fechaBaseUTC);
+                for (Aeropuerto aeropuerto : world.getAeropuertos().values()) {
+                    int capacidad = aeropuerto.tieneStockIlimitado() ? 0 : aeropuerto.getCapacidadAlmacen();
+                    controladorAlmacenes.registrarAeropuerto(aeropuerto.getCodigoICAO(), capacidad);
+                }
+                controladorAlmacenesCache.put(sessionId, controladorAlmacenes);
+                log.info("⏱️ [TIMING] Crear ControladorAlmacenes (NUEVO): {}ms", System.currentTimeMillis() - t4);
+            } else {
+                log.info("⏱️ [TIMING] ControladorAlmacenes (CACHE HIT): 0ms");
+            }
+
+            // 2. Ejecutar AG con progreso
+            Solution solucion = ejecutarAlgoritmoGeneticoConProgreso(worldTemporal, controladorAlmacenes, pedidos, estado, callbackProgreso);
+            
+            int pedidosAsignados = (solucion != null && solucion.getRutas() != null) 
+                ? (int) solucion.getRutas().values().stream().filter(r -> !r.isEmpty()).count()
+                : 0;
+            int pedidosSinRuta = pedidos.size() - pedidosAsignados;
+
+            long duracionTotal = System.currentTimeMillis() - inicioIteracion;
+            log.info("✅ [DIARIO ITERACIÓN END] Pedidos: {} cargados → {} con ruta ({} sin ruta) | {}ms", 
+                    pedidos.size(), pedidosAsignados, pedidosSinRuta, duracionTotal);
+            
+            if (pedidosSinRuta > 0 && pedidos.size() > 0) {
+                double porcentajeExito = (pedidosAsignados * 100.0) / pedidos.size();
+                log.warn("⚠️ Tasa de éxito: {:.1f}% - {} pedidos sin ruta", porcentajeExito, pedidosSinRuta);
+            }
+            log.info("🚀 ═══════════════════════════════════════════════════════════════");
+
+        } catch (Exception e) {
+            log.error("❌ Error en planificación diaria WS", e);
+            throw new RuntimeException("Error en planificación diaria: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Calcula el horizonte de días basado en los pedidos cargados
+     */
+    private int calcularHorizonteDiasDesdePedidos(List<PedidoSemanal> pedidos) {
+        if (pedidos.isEmpty()) {
+            return 1;
+        }
+        
+        // Encontrar el rango de días en los pedidos
+        int minDia = pedidos.stream().mapToInt(PedidoSemanal::getDia).min().orElse(1);
+        int maxDia = pedidos.stream().mapToInt(PedidoSemanal::getDia).max().orElse(1);
+        
+        // Agregar margen para entregas (3 días adicionales para entregas intercontinentales)
+        int horizonte = (maxDia - minDia) + 1 + 3;
+        
+        return Math.max(horizonte, 7); // Mínimo 7 días para permitir entregas
+    }
+
+    /**
+     * DTO interno para el resultado de planificación diaria síncrona
+     */
+    public static class ResultadoPlanificacionDiaria {
+        public final Solution solucion;
+        public final int pedidosAsignados;
+        public final int pedidosSinRuta;
+        public final double mejorFitness;
+        public final long tiempoProcesamiento;
+        
+        public ResultadoPlanificacionDiaria(Solution solucion, int pedidosAsignados, 
+                int pedidosSinRuta, double mejorFitness, long tiempoProcesamiento) {
+            this.solucion = solucion;
+            this.pedidosAsignados = pedidosAsignados;
+            this.pedidosSinRuta = pedidosSinRuta;
+            this.mejorFitness = mejorFitness;
+            this.tiempoProcesamiento = tiempoProcesamiento;
+        }
+    }
+
+    /**
+     * Planifica pedidos diarios de forma SÍNCRONA (sin WebSocket).
+     * Procesa todos los pedidos y devuelve el resultado directamente.
+     *
+     * @param pedidosDiarios Lista de pedidos diarios a planificar
+     * @param tiempoInicio Tiempo de inicio para la planificación
+     * @param tamanioPoblacion Tamaño de la población del AG
+     * @param maxGeneraciones Máximo de generaciones del AG
+     * @param limiteGeneracionesSinMejora Límite de generaciones sin mejora
+     * @return ResultadoPlanificacionDiaria con la solución y métricas
+     */
+    public ResultadoPlanificacionDiaria planificarDiarioSincrono(
+            List<PedidoDiario> pedidosDiarios,
+            LocalDateTime tiempoInicio,
+            int tamanioPoblacion,
+            int maxGeneraciones,
+            int limiteGeneracionesSinMejora) {
+
+        long inicioMs = System.currentTimeMillis();
+        
+        // Convertir PedidoDiario a PedidoSemanal
+        List<PedidoSemanal> pedidos = pedidosDiarios.stream()
+                .map(this::convertirDiarioASemanal)
+                .toList();
+
+        log.info("📦 [DIARIO-SYNC] Procesando {} pedidos diarios", pedidos.size());
+
+        if (pedidos.isEmpty()) {
+            log.warn("⚠️ [DIARIO-SYNC] No hay pedidos para procesar");
+            return new ResultadoPlanificacionDiaria(null, 0, 0, 0.0, 0);
+        }
+
+        // Configurar parámetros del AG
+        this.TAMANIO_POBLACION = tamanioPoblacion;
+        this.MAX_GENERACIONES = maxGeneraciones;
+        this.NO_MEJORA_LIMITE = limiteGeneracionesSinMejora;
+
+        log.info("⚙️  [DIARIO-SYNC] Parámetros AG: población={}, maxGen={}, límiteSinMejora={}", 
+                 TAMANIO_POBLACION, MAX_GENERACIONES, NO_MEJORA_LIMITE);
+
+        try {
+            // Obtener World
+            World world = worldCacheService.getWorld();
+            
+            // Calcular horizonte de días
+            int numeroDias = calcularHorizonteDiasDesdePedidos(pedidos);
+            log.info("📅 [DIARIO-SYNC] Horizonte de días: {}", numeroDias);
+
+            // Crear WorldTemporal y ControladorAlmacenes (sin cache, es operación única)
+            WorldTemporal worldTemporal = new WorldTemporal(world, tiempoInicio, numeroDias);
+            
+            ControladorAlmacenes controladorAlmacenes = new ControladorAlmacenes(numeroDias, tiempoInicio);
+            for (Aeropuerto aeropuerto : world.getAeropuertos().values()) {
+                int capacidad = aeropuerto.tieneStockIlimitado() ? 0 : aeropuerto.getCapacidadAlmacen();
+                controladorAlmacenes.registrarAeropuerto(aeropuerto.getCodigoICAO(), capacidad);
+            }
+
+            // Ejecutar AG (sin callbacks, síncrono)
+            EstadoEjecucion estado = new EstadoEjecucion();
+            Solution solucion = ejecutarAlgoritmoGeneticoSincrono(worldTemporal, controladorAlmacenes, pedidos, estado);
+            
+            // Calcular métricas
+            int pedidosAsignados = 0;
+            double mejorFitness = 0.0;
+            
+            if (solucion != null && solucion.getRutas() != null) {
+                pedidosAsignados = (int) solucion.getRutas().values().stream()
+                        .filter(r -> r != null && !r.isEmpty())
+                        .count();
+                mejorFitness = solucion.getObjetivo();
+            }
+            
+            int pedidosSinRuta = pedidos.size() - pedidosAsignados;
+            long tiempoProcesamiento = System.currentTimeMillis() - inicioMs;
+
+            log.info("✅ [DIARIO-SYNC] Completado: {} asignados, {} sin ruta, fitness={:.2f}, tiempo={}ms", 
+                    pedidosAsignados, pedidosSinRuta, mejorFitness, tiempoProcesamiento);
+
+            return new ResultadoPlanificacionDiaria(solucion, pedidosAsignados, pedidosSinRuta, 
+                    mejorFitness, tiempoProcesamiento);
+
+        } catch (Exception e) {
+            log.error("❌ [DIARIO-SYNC] Error: {}", e.getMessage(), e);
+            throw new RuntimeException("Error en planificación diaria: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Ejecuta el AG de forma síncrona (sin callbacks)
+     */
+    private Solution ejecutarAlgoritmoGeneticoSincrono(
+            WorldTemporal worldTemporal,
+            ControladorAlmacenes controladorAlmacenes,
+            List<PedidoSemanal> pedidos,
+            EstadoEjecucion estado) {
+
+        log.info("🧬 [AG-SYNC] Iniciando AG con {} pedidos", pedidos.size());
+
+        Random random = new Random();
+        int numeroPedidos = pedidos.size();
+
+        DecodificadorGenetico decodificador = new DecodificadorGenetico(worldTemporal, controladorAlmacenes);
+
+        // Generar población inicial
+        List<Individuo> poblacion = generarPoblacionInicial(numeroPedidos, TAMANIO_POBLACION, random);
+        
+        // Evaluar población inicial
+        evaluarPoblacion(poblacion, decodificador, pedidos, worldTemporal, controladorAlmacenes);
+        poblacion.sort(Comparator.comparingDouble((Individuo i) -> i.fitness).reversed());
+
+        double mejorFitnessGlobal = poblacion.get(0).fitness;
+        Solution mejorSolucionGlobal = poblacion.get(0).solucion;
+
+        log.info("🧬 [AG-SYNC] Gen 0: fitness={:.2f}", mejorFitnessGlobal);
+
+        // Loop evolutivo
+        for (int generacion = 1; generacion <= MAX_GENERACIONES; generacion++) {
+            List<Individuo> nuevaPoblacion = new ArrayList<>();
+
+            // Elitismo
+            for (int i = 0; i < ELITE_K && i < poblacion.size(); i++) {
+                nuevaPoblacion.add(new Individuo(poblacion.get(i).cromosoma.copiar()));
+            }
+
+            // Generar resto
+            while (nuevaPoblacion.size() < TAMANIO_POBLACION) {
+                Chromosome padre1 = seleccionTorneo(poblacion, random).cromosoma;
+                Chromosome padre2 = seleccionTorneo(poblacion, random).cromosoma;
+
+                Chromosome hijo;
+                if (random.nextDouble() < PROB_CRUCE) {
+                    hijo = padre1.cruzar(padre2, random);
+                } else {
+                    hijo = padre1.copiar();
+                }
+
+                hijo.mutar(PROB_MUTACION, random);
+                nuevaPoblacion.add(new Individuo(hijo));
+            }
+
+            // Evaluar nueva población
+            evaluarPoblacion(nuevaPoblacion, decodificador, pedidos, worldTemporal, controladorAlmacenes);
+            nuevaPoblacion.sort(Comparator.comparingDouble((Individuo i) -> i.fitness).reversed());
+
+            poblacion = nuevaPoblacion;
+
+            // Actualizar mejor solución
+            double mejorFitnessActual = poblacion.get(0).fitness;
+            if (mejorFitnessActual > mejorFitnessGlobal) {
+                mejorFitnessGlobal = mejorFitnessActual;
+                mejorSolucionGlobal = poblacion.get(0).solucion;
+            }
+
+            log.debug("🧬 [AG-SYNC] Gen {}/{}: fitness={:.2f}", generacion, MAX_GENERACIONES, mejorFitnessGlobal);
+        }
+
+        log.info("🧬 [AG-SYNC] Finalizado: fitness final={:.2f}", mejorFitnessGlobal);
+        return mejorSolucionGlobal;
     }
 
     /**

@@ -150,6 +150,27 @@ const lightenColor = (hex, percent) => {
 	return `#${toHex(Math.round(r))}${toHex(Math.round(g))}${toHex(Math.round(b))}`;
 };
 
+/* ======= Reducir luminosidad (oscurecer) de un color ======= */
+const darkenColor = (hex, percent) => {
+	// Remover # si existe
+	hex = hex.replace('#', '');
+
+	// Convertir a RGB
+	let r = parseInt(hex.substring(0, 2), 16);
+	let g = parseInt(hex.substring(2, 4), 16);
+	let b = parseInt(hex.substring(4, 6), 16);
+
+	// Oscurecer según el porcentaje
+	r = Math.max(0, r * (1 - percent));
+	g = Math.max(0, g * (1 - percent));
+	b = Math.max(0, b * (1 - percent));
+
+	// Convertir de vuelta a HEX
+	const toHex = (n) => n.toString(16).padStart(2, '0');
+
+	return `#${toHex(Math.round(r))}${toHex(Math.round(g))}${toHex(Math.round(b))}`;
+};
+
 /* ======= Crear icono de aeropuerto personalizado ======= */
 const createAirportIcon = (name, saturation = 0) => {
 	let size, color, borderColor, borderWidth, shadow;
@@ -3060,6 +3081,7 @@ const SimuladorSemanal = () => {
 	const [selectedFlight, setSelectedFlight] = useState(null); // Vuelo seleccionado para ver detalles
 	const tabsRef = useRef(null); // Referencia para scroll de tabs
 	const flightsListRef = useRef(null); // Referencia para scroll de vuelos
+	const airportsListRef = useRef(null); // Referencia para scroll de aeropuertos
 
 	// Scroll automático y expansión cuando se selecciona un vuelo
 	useEffect(() => {
@@ -3075,6 +3097,18 @@ const SimuladorSemanal = () => {
 			}, 100);
 		}
 	}, [selectedFlight, sidebarTab]);
+
+	// Scroll automático cuando se selecciona un aeropuerto
+	useEffect(() => {
+		if (selectedAirport && sidebarTab === 'airports') {
+			setTimeout(() => {
+				const element = document.getElementById(`airport-card-${selectedAirport.code}`);
+				if (element) {
+					element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+				}
+			}, 100);
+		}
+	}, [selectedAirport, sidebarTab]);
 
 	// Sincronizar `selectedAirport` cuando el array `airports` cambie (p.ej. llegan pedidos y aumenta packages)
 	useEffect(() => {
@@ -3284,8 +3318,31 @@ const SimuladorSemanal = () => {
 											const q = searchAirports.trim().toLowerCase();
 											if (!q) return true;
 											return (String(a.name || '').toLowerCase().includes(q) || String(a.code || '').toLowerCase().includes(q));
-										}).map(airport => (
+										}).map(airport => {
+											// Calcular color según capacidad (leyenda)
+											const isSede = airport.capacity === 'ILIMITADO' || airport.isSede;
+											const isSelected = selectedAirport?.code === airport.code;
+											let baseColor;
+											if (isSede) {
+												// Sedes: azul bajito
+												baseColor = '#4954b6';
+											} else {
+												// Aeropuertos: color según saturación
+												const capacityValue = typeof airport.capacity === 'number' ? airport.capacity : (Number(airport.capacity) || 100);
+												const packages = airport.packages || 0;
+												const saturation = capacityValue > 0 ? (packages / capacityValue) * 100 : 0;
+												if (saturation >= 80) baseColor = '#dc3545'; // Rojo
+												else if (saturation >= 50) baseColor = '#f59e0b'; // Amarillo
+												else baseColor = '#28a745'; // Verde
+											}
+											// Aplicar luminosidad 0.80 para color base, y más claro si está seleccionado
+											const bgColor = isSelected ? lightenColor(baseColor, 0.90) : lightenColor(baseColor, 0.80);
+											// Color del nombre del aeropuerto: versión más oscura del color base
+											const nameColor = darkenColor(baseColor, 0.30);
+											
+											return (
 											<Box
+												id={`airport-card-${airport.code}`}
 												key={airport.code || airport.name}
 												onClick={() => {
 													const latest = (airports || []).find(a => String(a.code || '').toUpperCase() === String(airport.code || '').toUpperCase()) || airport;
@@ -3294,28 +3351,30 @@ const SimuladorSemanal = () => {
 													setOpen(true);
 												}}
 												sx={{
-													border: '1px solid #dee2e6',
+													border: isSelected ? `2px solid ${baseColor}` : 'none',
 													padding: '10px',
 													borderRadius: '8px',
 													marginBottom: '10px',
-													background: selectedAirport?.code === airport.code ? '#d9eef6' : (airport.isSede ? '#fff3cd' : '#eaf6fb'),
+													background: bgColor,
 													cursor: 'pointer',
 													transition: 'all 0.2s ease',
-													'&:hover': { borderColor: '#2c4a6b', boxShadow: '0 2px 8px rgba(44, 74, 107, 0.15)' }
+													boxShadow: isSelected ? `0 2px 8px ${lightenColor(baseColor, 0.50)}` : 'none',
+													'&:hover': { boxShadow: `0 2px 8px ${lightenColor(baseColor, 0.50)}` }
 												}}
 											>
-												<Box sx={{ fontWeight: 700, fontSize: '0.95rem', color: airport.isSede ? '#FF6B35' : '#2c4a6b' }}>
-													{airport.isSede && '🏢'} {airport.name} <span style={{ fontSize: '0.85rem', color: '#6c757d', fontWeight: 400 }}>({airport.code})</span>
+												<Box sx={{ fontWeight: 700, fontSize: '0.95rem', color: nameColor }}>
+													{isSede && '🏢'} {airport.name} <span style={{ fontSize: '0.85rem', color: nameColor, fontWeight: 400 }}>({airport.code})</span>
 												</Box>
-												<Box sx={{ fontSize: '0.85rem', color: '#6c757d', marginTop: '4px' }}>{airport.operationType || airport.region || ''}</Box>
+												<Box sx={{ fontSize: '0.85rem', color: '#333', marginTop: '4px' }}>{airport.operationType || airport.region || ''}</Box>
 												<Box sx={{ marginTop: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem' }}>
-													<Box sx={{ fontWeight: 600, color: '#2c4a6b' }}>{airport.packages || 0} 📦</Box>
-													<Box sx={{ color: '#6c757d' }}>{typeof airport.capacity === 'number' ? `${airport.capacity}` : airport.capacity}</Box>
+													<Box sx={{ fontWeight: 600, color: '#333' }}>{airport.packages || 0} 📦</Box>
+													<Box sx={{ color: '#555' }}>{typeof airport.capacity === 'number' ? `${airport.capacity}` : airport.capacity}</Box>
 												</Box>
 												{/* NOTA: La lista de pedidos ya no se muestra dentro de cada card global.
 													Los pedidos se muestran en el panel inferior cuando se selecciona un aeropuerto. */}
 											</Box>
-										))}
+											);
+										})}
 										{(airports || []).length === 0 && (
 											<Box sx={{ color: '#6c757d', fontSize: '0.9rem', textAlign: 'center', padding: '20px 10px' }}>No hay aeropuertos cargados</Box>
 										)}
@@ -3530,12 +3589,12 @@ const SimuladorSemanal = () => {
 												const departures = (vuelosAcumulados || []).filter(f => String(f.origin?.code || '').toUpperCase() === code);
 												return (
 													<>
-								<Box sx={{ borderBottom: 1, borderColor: '#e6e9ee', marginBottom: 1 }}>
-											<Tabs value={selectedAirportInnerTab} onChange={(e, v) => setSelectedAirportInnerTab(v)} variant="fullWidth" sx={{ '& .MuiTabs-indicator': { background: '#2c4a6b', height: 2 } }}>
-												<Tab sx={{ minHeight: 28, paddingY: 0, paddingX: '6px', fontSize: '0.78rem', lineHeight: 1 }} label={`Pedidos planificados ${planned.length > 0 ? `(${planned.length})` : ''}`} />
-												<Tab sx={{ minHeight: 28, paddingY: 0, paddingX: '6px', fontSize: '0.78rem', lineHeight: 1 }} label={`Vuelos salientes ${departures.length > 0 ? `(${departures.length})` : ''}`} />
-											</Tabs>
-								</Box>
+														<Box sx={{ borderBottom: 1, borderColor: '#e6e9ee', marginBottom: 1 }}>
+															<Tabs value={selectedAirportInnerTab} onChange={(e, v) => setSelectedAirportInnerTab(v)} variant="fullWidth" sx={{ '& .MuiTabs-indicator': { background: '#2c4a6b', height: 2 } }}>
+																<Tab sx={{ minHeight: 28, paddingY: 0, paddingX: '6px', fontSize: '0.78rem', lineHeight: 1 }} label={`Pedidos planificados ${planned.length > 0 ? `(${planned.length})` : ''}`} />
+																<Tab sx={{ minHeight: 28, paddingY: 0, paddingX: '6px', fontSize: '0.78rem', lineHeight: 1 }} label={`Vuelos salientes ${departures.length > 0 ? `(${departures.length})` : ''}`} />
+															</Tabs>
+														</Box>
 
 														{/* Tab 0: Pedidos planificados */}
 														{selectedAirportInnerTab === 0 && (

@@ -113,7 +113,8 @@
 }
 
 .list-section .list-header { display:flex; gap:12px; align-items:center; justify-content:space-between; }
-.search { flex:1; border:1px solid #d1d5db; border-radius:8px; padding:10px 12px; max-width: 300px; }
+.list-section .list-actions { display: flex; gap: 8px; align-items: center; }
+.search { border:1px solid #d1d5db; border-radius:8px; padding:10px 12px; width: 250px; }
 
 /* DataTable Styles */
 .orders-table.datatable { 

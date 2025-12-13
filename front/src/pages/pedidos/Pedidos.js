@@ -75,6 +75,30 @@ const Pedidos = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showOrderDetail, setShowOrderDetail] = useState(false);
   const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  // Cargar pedidos al iniciar
+  useEffect(() => {
+    cargarPedidos();
+  }, []);
+
+  const cargarPedidos = async () => {
+    setLoading(true);
+    try {
+      const pedidos = await PedidoDiarioService.obtenerTodos();
+      // Mapear los pedidos para agregar status si no existe
+      const pedidosConStatus = pedidos.map(p => ({
+        ...p,
+        status: p.status || 'Pendiente'
+      }));
+      setOrders(pedidosConStatus);
+      console.log('✅ Pedidos cargados:', pedidosConStatus.length);
+    } catch (error) {
+      console.error('❌ Error al cargar pedidos:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Filtrar pedidos según búsqueda
   const totalFiltrado = useMemo(() => {
@@ -338,7 +362,12 @@ const Pedidos = () => {
         <section className="list-section">
           <div className="list-header">
             <h2><i className="fas fa-boxes"></i> Pedidos ({totalFiltrado.length})</h2>
-            <input className="search" placeholder="Buscar por ID, cliente, destino..." value={filter} onChange={e=>setFilter(e.target.value)} />
+            <div className="list-actions">
+              <input className="search" placeholder="Buscar por ID, cliente, destino..." value={filter} onChange={e=>setFilter(e.target.value)} />
+              <button className="btn" onClick={cargarPedidos} disabled={loading}>
+                <i className={`fas fa-sync-alt ${loading ? 'fa-spin' : ''}`}></i>
+              </button>
+            </div>
           </div>
           <div className="orders-table datatable">
             <table>
@@ -353,7 +382,13 @@ const Pedidos = () => {
                 </tr>
               </thead>
               <tbody>
-                {totalFiltrado.length === 0 ? (
+                {loading ? (
+                  <tr>
+                    <td colSpan="6" className="empty">
+                      <i className="fas fa-spinner fa-spin"></i> Cargando pedidos...
+                    </td>
+                  </tr>
+                ) : totalFiltrado.length === 0 ? (
                   <tr>
                     <td colSpan="6" className="empty">Sin pedidos registrados</td>
                   </tr>

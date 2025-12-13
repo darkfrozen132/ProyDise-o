@@ -113,12 +113,59 @@
 }
 
 .list-section .list-header { display:flex; gap:12px; align-items:center; justify-content:space-between; }
-.search { flex:1; border:1px solid #d1d5db; border-radius:8px; padding:10px 12px; }
-.orders-table { margin-top:12px; border:1px solid #e5e7eb; border-radius:8px; overflow:hidden; }
-.orders-table .table-head, .orders-table .table-row { display:grid; grid-template-columns: 1.2fr 1.5fr 1fr 1fr .8fr .9fr 1fr 80px; gap:10px; align-items:center; padding:10px 12px; }
-.orders-table .table-head { background:#f9fafb; font-weight:600; color:#374151; }
-.orders-table .table-row { border-top:1px solid #f1f5f9; }
-.orders-table .empty { padding:24px; text-align:center; color:#6b7280; }
+.search { flex:1; border:1px solid #d1d5db; border-radius:8px; padding:10px 12px; max-width: 300px; }
+
+/* DataTable Styles */
+.orders-table.datatable { 
+  margin-top: 12px; 
+  border: 1px solid #e5e7eb; 
+  border-radius: 8px; 
+  overflow: hidden;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.orders-table.datatable table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.orders-table.datatable thead {
+  background: #f9fafb;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.orders-table.datatable th {
+  padding: 12px 16px;
+  text-align: left;
+  font-weight: 600;
+  color: #374151;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.orders-table.datatable td {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f1f5f9;
+  color: #4b5563;
+}
+
+.orders-table.datatable td.center {
+  text-align: center;
+}
+
+.orders-table.datatable tbody tr:hover {
+  background-color: #f8fafc;
+}
+
+.orders-table.datatable .empty {
+  padding: 32px;
+  text-align: center;
+  color: #6b7280;
+  font-style: italic;
+}
 .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
 .badge { display:inline-block; padding:4px 8px; border-radius:999px; background:#eef2ff; color:#3730a3; font-size:.75rem; }
 .badge.normal { background:#ecfeff; color:#155e75; }

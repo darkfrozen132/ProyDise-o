@@ -1,5 +1,19 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import './Pedidos.css';
+import PedidoDiarioService from '../../services/PedidoDiarioService';
+
+const PRODUCTOS = [
+  { id: 'ELEC001', name: 'Laptop', categoria: 'Electrónica', peso: 2.5 },
+  { id: 'ELEC002', name: 'Smartphone', categoria: 'Electrónica', peso: 0.3 },
+  { id: 'ELEC003', name: 'Tablet', categoria: 'Electrónica', peso: 0.5 },
+  { id: 'ROPA001', name: 'Camiseta', categoria: 'Ropa', peso: 0.2 },
+  { id: 'ROPA002', name: 'Pantalón', categoria: 'Ropa', peso: 0.4 },
+  { id: 'ALIM001', name: 'Conservas', categoria: 'Alimentos', peso: 1.0 },
+  { id: 'ALIM002', name: 'Café', categoria: 'Alimentos', peso: 0.5 },
+  { id: 'DOC001', name: 'Documentos', categoria: 'Documentos', peso: 0.1 },
+  { id: 'MED001', name: 'Medicamentos', categoria: 'Medicina', peso: 0.3 },
+  { id: 'OTR001', name: 'Otros', categoria: 'Otros', peso: 1.0 },
+];
 
 const AIRPORTS = [
   // América del Sur
@@ -37,92 +51,6 @@ const AIRPORTS = [
   { code: 'OJAI', name: 'Amán (Jordania) - OJAI' },
 ];
 
-const PRODUCTOS = [
-  { id: 'ELEC001', name: 'Laptop Lenovo ThinkPad', peso: 2.5, categoria: 'Electrónica' },
-  { id: 'ELEC002', name: 'iPhone 15 Pro', peso: 0.2, categoria: 'Electrónica' },
-  { id: 'ELEC003', name: 'Monitor Samsung 27"', peso: 4.8, categoria: 'Electrónica' },
-  { id: 'ROPA001', name: 'Camisa Polo Ralph Lauren', peso: 0.3, categoria: 'Ropa' },
-  { id: 'ROPA002', name: 'Jeans Levi\'s 501', peso: 0.7, categoria: 'Ropa' },
-  { id: 'LIBR001', name: 'Enciclopedia Britannica', peso: 3.2, categoria: 'Libros' },
-  { id: 'DECO001', name: 'Jarrón de Cerámica', peso: 1.8, categoria: 'Decoración' },
-  { id: 'DECO002', name: 'Cuadro Enmarcado', peso: 2.1, categoria: 'Decoración' },
-  { id: 'MED001', name: 'Medicamentos Especiales', peso: 0.5, categoria: 'Medicinas' },
-  { id: 'DOC001', name: 'Documentos Legales', peso: 0.1, categoria: 'Documentos' }
-];
-
-const PEDIDOS_EJEMPLO = [
-  {
-    id: 'ORD-20240915-0001',
-    cliente: 'Juan Pérez',
-    email: 'juan.perez@email.com',
-    telefono: '+51 999 123 456',
-    origen: 'SPIM',
-    destino: 'SKBO',
-    productos: [
-      { id: 'ELEC001', nombre: 'Laptop Lenovo ThinkPad', cantidad: 1, pesoUnitario: 2.5, pesoTotal: 2.5 }
-    ],
-    pesoTotal: '2.50',
-    cantidadTotal: 1,
-    prioridad: 'Normal',
-    status: 'Hecho',
-    createdAt: '2024-09-15T08:30:00.000Z',
-    notas: 'Entrega urgente'
-  },
-  {
-    id: 'ORD-20240915-0002',
-    cliente: 'María González',
-    email: 'maria.gonzalez@empresa.com',
-    telefono: '+57 300 456 789',
-    origen: 'EBCI',
-    destino: 'SPIM',
-    productos: [
-      { id: 'ROPA001', nombre: 'Camisa Polo Ralph Lauren', cantidad: 3, pesoUnitario: 0.3, pesoTotal: 0.9 },
-      { id: 'ROPA002', nombre: 'Jeans Levi\'s 501', cantidad: 2, pesoUnitario: 0.7, pesoTotal: 1.4 }
-    ],
-    pesoTotal: '2.30',
-    cantidadTotal: 5,
-    prioridad: 'Urgente',
-    status: 'En curso',
-    createdAt: '2024-09-15T10:15:00.000Z',
-    notas: ''
-  },
-  {
-    id: 'ORD-20240915-0003',
-    cliente: 'Carlos Rodriguez',
-    email: 'carlos.r@gmail.com',
-    telefono: '+34 666 789 012',
-    origen: 'EDDI',
-    destino: 'UBBB',
-    productos: [
-      { id: 'MED001', nombre: 'Medicamentos Especiales', cantidad: 2, pesoUnitario: 0.5, pesoTotal: 1.0 }
-    ],
-    pesoTotal: '1.00',
-    cantidadTotal: 2,
-    prioridad: 'Crítico',
-    status: 'Cancelado',
-    createdAt: '2024-09-15T14:22:00.000Z',
-    notas: 'Producto descontinuado'
-  },
-  {
-    id: 'ORD-20240915-0004',
-    cliente: 'Ana Silva',
-    email: 'ana.silva@tech.com',
-    telefono: '+55 11 98765 4321',
-    origen: 'SBBR',
-    destino: 'EHAM',
-    productos: [
-      { id: 'ELEC003', nombre: 'Monitor Samsung 27"', cantidad: 1, pesoUnitario: 4.8, pesoTotal: 4.8 },
-      { id: 'ELEC002', nombre: 'iPhone 15 Pro', cantidad: 1, pesoUnitario: 0.2, pesoTotal: 0.2 }
-    ],
-    pesoTotal: '5.00',
-    cantidadTotal: 2,
-    prioridad: 'Normal',
-    status: 'En curso',
-    createdAt: '2024-09-15T16:45:00.000Z',
-    notas: 'Frágil - manejar con cuidado'
-  }
-];
-
 const initialForm = {
   cliente: '',
   email: '',
@@ -142,25 +70,23 @@ const initialProducto = {
 const Pedidos = () => {
   const [form, setForm] = useState(initialForm);
   const [errors, setErrors] = useState({});
-  const [orders, setOrders] = useState(PEDIDOS_EJEMPLO);
   const [filter, setFilter] = useState('');
   const [currentProduct, setCurrentProduct] = useState(initialProducto);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showOrderDetail, setShowOrderDetail] = useState(false);
+  const [orders, setOrders] = useState([]);
 
-  useEffect(() => {
-    const saved = localStorage.getItem('morapack_orders');
-    if (saved) {
-      setOrders(JSON.parse(saved));
-    } else {
-      // Si no hay datos guardados, usar los pedidos de ejemplo
-      setOrders(PEDIDOS_EJEMPLO);
-    }
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem('morapack_orders', JSON.stringify(orders));
-  }, [orders]);
+  // Filtrar pedidos según búsqueda
+  const totalFiltrado = useMemo(() => {
+    if (!filter.trim()) return orders;
+    const f = filter.toLowerCase();
+    return orders.filter(o =>
+      String(o.id || '').toLowerCase().includes(f) ||
+      String(o.clienteId || '').toLowerCase().includes(f) ||
+      String(o.aeropuertoDestinoId || '').toLowerCase().includes(f) ||
+      String(o.status || '').toLowerCase().includes(f)
+    );
+  }, [orders, filter]);
 
   const resetForm = () => { 
     setForm(initialForm); 
@@ -205,20 +131,6 @@ const Pedidos = () => {
     }
   };
 
-  useEffect(() => {
-    const saved = localStorage.getItem('morapack_orders');
-    if (saved) {
-      setOrders(JSON.parse(saved));
-    } else {
-      // Si no hay datos guardados, usar los pedidos de ejemplo
-      setOrders(PEDIDOS_EJEMPLO);
-    }
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem('morapack_orders', JSON.stringify(orders));
-  }, [orders]);
-
   const generateId = () => {
     const now = new Date();
     const y = now.getFullYear();
@@ -233,28 +145,6 @@ const Pedidos = () => {
     setForm(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleImportFile = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        try {
-          const importedOrders = JSON.parse(event.target.result);
-          if (Array.isArray(importedOrders)) {
-            setOrders(prev => [...importedOrders, ...prev]);
-            alert(`Se importaron ${importedOrders.length} pedidos correctamente`);
-          } else {
-            alert('El formato del archivo no es válido');
-          }
-        } catch (error) {
-          alert('Error al leer el archivo. Asegúrate de que sea un archivo JSON válido.');
-        }
-      };
-      reader.readAsText(file);
-    }
-    e.target.value = ''; // Reset input
-  };
-
   const exportOrders = () => {
     const dataStr = JSON.stringify(orders, null, 2);
     const dataBlob = new Blob([dataStr], { type: 'application/json' });
@@ -266,46 +156,80 @@ const Pedidos = () => {
     URL.revokeObjectURL(url);
   };
 
+  const handleImportFile = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const importedOrders = JSON.parse(event.target.result);
+        if (Array.isArray(importedOrders)) {
+          setOrders(prev => [...prev, ...importedOrders]);
+        }
+      } catch (error) {
+        console.error('Error al importar pedidos:', error);
+      }
+    };
+    reader.readAsText(file);
+  };
+
   const validate = () => {
     const v = {};
-    if (!form.cliente.trim()) v.cliente = 'Requerido';
-    if (!form.email.match(/^\S+@\S+\.\S+$/)) v.email = 'Email inválido';
-    if (form.origen === form.destino) v.destino = 'Destino no puede ser igual a origen';
-    if (form.productos.length === 0) v.productos = 'Debe agregar al menos un producto';
+    if (!form.cliente.trim()) v.cliente = 'DNI del cliente es requerido';
+    if (!form.destino) v.destino = 'Destino es requerido';
+    if (currentProduct.cantidad < 1) v.cantidad = 'Cantidad debe ser al menos 1';
     setErrors(v);
     return Object.keys(v).length === 0;
   };
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
-    const id = generateId();
-    
-    // Calcular peso total y crear resumen de productos
-    let pesoTotal = 0;
-    const productosResumen = form.productos.map(p => {
-      const producto = PRODUCTOS.find(prod => prod.id === p.id);
-      pesoTotal += producto.peso * p.cantidad;
-      return {
-        ...p,
-        nombre: producto.name,
-        pesoUnitario: producto.peso,
-        pesoTotal: producto.peso * p.cantidad
-      };
-    });
 
-    const order = { 
-      id, 
-      status: 'Pendiente', 
-      createdAt: new Date().toISOString(),
-      productos: productosResumen,
-      pesoTotal: pesoTotal.toFixed(2),
-      cantidadTotal: form.productos.reduce((sum, p) => sum + p.cantidad, 0),
-      ...form 
+    // Obtener fecha actual en UTC
+    const now = new Date();
+    const utcDia = now.getUTCDate();
+    const utcMes = now.getUTCMonth() + 1; // getUTCMonth() es 0-indexed
+    const utcAnio = now.getUTCFullYear();
+    const utcHora = now.getUTCHours();
+    const utcMinuto = now.getUTCMinutes();
+
+    // Crear el nuevo pedido con formato del backend
+    const newOrder = {
+      clienteId: form.cliente,
+      aeropuertoDestinoId: form.destino,
+      cantidadProductos: parseInt(currentProduct.cantidad),
+      dia: utcDia,
+      mes: utcMes,
+      anio: utcAnio,
+      hora: utcHora,
+      minuto: utcMinuto
     };
-    setOrders(prev => [order, ...prev]);
-    resetForm();
-    alert('Pedido creado exitosamente');
+
+    // Enviar al backend
+    console.log('📤 Enviando pedido al backend:', JSON.stringify(newOrder, null, 2));
+    try {
+      const response = await PedidoDiarioService.crearPedido(newOrder);
+      console.log('✅ Pedido creado:', response);
+      
+      // Agregar a la lista local con el ID del backend
+      const pedidoCreado = {
+        id: response.pedido?.id,
+        cliente: newOrder.clienteId,
+        origen: 'SPIM', // Lima es el origen fijo
+        destino: newOrder.aeropuertoDestinoId,
+        cantidadTotal: newOrder.cantidadProductos,
+        prioridad: 'Normal',
+        status: 'Pendiente',
+        fechaUTC: `${utcDia}/${utcMes}/${utcAnio} ${utcHora}:${String(utcMinuto).padStart(2, '0')} UTC`
+      };
+      setOrders(prev => [...prev, pedidoCreado]);
+      resetForm();
+      alert('✅ Pedido creado exitosamente');
+    } catch (error) {
+      console.error('❌ Error al crear pedido:', error);
+      alert('Error al crear el pedido. Por favor, intente nuevamente.');
+    }
   };
 
   const showOrderDetails = (order) => {
@@ -318,52 +242,24 @@ const Pedidos = () => {
     setShowOrderDetail(false);
   };
 
-  const totalFiltrado = useMemo(() => orders.filter(o =>
-    [o.id, o.cliente, o.email, o.origen, o.destino, o.status].join(' ').toLowerCase().includes(filter.toLowerCase())
-  ), [orders, filter]);
-
   return (
     <div className="pedidos-page">
       <div className="pedidos-layout">
         <section className="form-section">
           <div className="form-header">
             <h2><i className="fas fa-clipboard-list"></i> Ingresar Pedido</h2>
-            <div className="import-actions">
-              <label className="btn secondary">
-                <i className="fas fa-upload"></i> Importar Pedidos
-                <input type="file" accept=".json" onChange={handleImportFile} style={{display: 'none'}} />
-              </label>
-              <button className="btn secondary" onClick={exportOrders}>
-                <i className="fas fa-download"></i> Exportar Pedidos
-              </button>
-            </div>
           </div>
           
           <form className="pedido-form" onSubmit={submit}>
             <div className="grid two">
               <div className="field">
-                <label>Cliente *</label>
+                <label>Cliente (DNI) *</label>
                 <input name="cliente" value={form.cliente} onChange={handleChange} placeholder="Nombre o razón social" />
                 {errors.cliente && <small className="error">{errors.cliente}</small>}
-              </div>
-              <div className="field">
-                <label>Email *</label>
-                <input name="email" type="email" value={form.email} onChange={handleChange} placeholder="cliente@dominio.com" />
-                {errors.email && <small className="error">{errors.email}</small>}
               </div>
             </div>
 
             <div className="grid three">
-              <div className="field">
-                <label>Teléfono</label>
-                <input name="telefono" value={form.telefono} onChange={handleChange} placeholder="+51 999 999 999" />
-              </div>
-              <div className="field">
-                <label>Origen *</label>
-                <select name="origen" value={form.origen} onChange={handleChange}>
-                  {AIRPORTS.map(a => <option key={a.code} value={a.code}>{a.name}</option>)}
-                </select>
-              </div>
               <div className="field">
                 <label>Destino *</label>
                 <select name="destino" value={form.destino} onChange={handleChange}>
@@ -375,19 +271,6 @@ const Pedidos = () => {
 
             <div className="grid three">
               <div className="field">
-                <label>Producto *</label>
-                <select 
-                  value={currentProduct.id} 
-                  onChange={(e) => setCurrentProduct(prev => ({ ...prev, id: e.target.value }))}
-                >
-                  {PRODUCTOS.map(p => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} ({p.categoria}) - {p.peso}kg
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="field">
                 <label>Cantidad *</label>
                 <input 
                   type="number" 
@@ -395,11 +278,6 @@ const Pedidos = () => {
                   value={currentProduct.cantidad} 
                   onChange={(e) => setCurrentProduct(prev => ({ ...prev, cantidad: e.target.value }))}
                 />
-              </div>
-              <div className="field">
-                <button type="button" className="btn secondary add-product-btn" onClick={addProduct}>
-                  <i className="fas fa-plus"></i> Agregar Producto
-                </button>
               </div>
             </div>
 
@@ -450,23 +328,6 @@ const Pedidos = () => {
               </div>
             )}
 
-            <div className="grid two">
-              <div className="field">
-                <label>Prioridad</label>
-                <select name="prioridad" value={form.prioridad} onChange={handleChange}>
-                  <option>Normal</option>
-                  <option>Urgente</option>
-                  <option>Crítico</option>
-                </select>
-              </div>
-              <div></div>
-            </div>
-
-            <div className="field">
-              <label>Notas</label>
-              <textarea name="notas" rows="3" value={form.notas} onChange={handleChange} placeholder="Instrucciones adicionales" />
-            </div>
-
             <div className="actions">
               <button type="submit" className="btn primary"><i className="fas fa-check"></i> Aceptar Pedido</button>
               <button type="button" className="btn" onClick={resetForm}><i className="fas fa-eraser"></i> Limpiar</button>
@@ -477,32 +338,48 @@ const Pedidos = () => {
         <section className="list-section">
           <div className="list-header">
             <h2><i className="fas fa-boxes"></i> Pedidos ({totalFiltrado.length})</h2>
-            <input className="search" placeholder="Buscar por ID, cliente, email, estado…" value={filter} onChange={e=>setFilter(e.target.value)} />
+            <input className="search" placeholder="Buscar por ID, cliente, destino..." value={filter} onChange={e=>setFilter(e.target.value)} />
           </div>
-          <div className="orders-table">
-            <div className="table-head">
-              <div>ID</div>
-              <div>Cliente</div>
-              <div>Origen</div>
-              <div>Destino</div>
-              <div>Cantidad</div>
-              <div>Prioridad</div>
-              <div>Estado</div>
-            </div>
-            {totalFiltrado.length === 0 && <div className="empty">Sin pedidos</div>}
-            {totalFiltrado.map(o => {
-              return (
-                <div className="table-row clickable-row" key={o.id} onClick={() => showOrderDetails(o)}>
-                  <div className="mono">{o.id}</div>
-                  <div>{o.cliente}</div>
-                  <div>{o.origen}</div>
-                  <div>{o.destino}</div>
-                  <div>{o.cantidadTotal || o.cantidad || 0}</div>
-                  <div><span className={`badge ${o.prioridad.toLowerCase()}`}>{o.prioridad}</span></div>
-                  <div><span className={`badge status-badge ${o.status.toLowerCase().replace(' ', '-')}`}>{o.status}</span></div>
-                </div>
-              );
-            })}
+          <div className="orders-table datatable">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Cliente (DNI)</th>
+                  <th>Destino</th>
+                  <th>Cantidad</th>
+                  <th>Fecha (UTC)</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {totalFiltrado.length === 0 ? (
+                  <tr>
+                    <td colSpan="6" className="empty">Sin pedidos registrados</td>
+                  </tr>
+                ) : (
+                  totalFiltrado.map(o => {
+                    const status = o.status || 'Pendiente';
+                    // Formatear fecha
+                    const fecha = o.fechaUTC || `${o.dia || '-'}/${o.mes || '-'}/${o.anio || '-'} ${o.hora || '00'}:${String(o.minuto || '00').padStart(2, '0')}`;
+                    return (
+                      <tr key={o.id} className="clickable-row" onClick={() => showOrderDetails(o)}>
+                        <td className="mono">{o.id}</td>
+                        <td>{o.clienteId || '-'}</td>
+                        <td>{o.aeropuertoDestinoId || '-'}</td>
+                        <td className="center">{o.cantidadProductos || 0}</td>
+                        <td>{fecha}</td>
+                        <td>
+                          <span className={`badge status-badge ${status.toLowerCase().replace(' ', '-')}`}>
+                            {status}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
           </div>
         </section>
       </div>
@@ -512,7 +389,7 @@ const Pedidos = () => {
         <div className="modal-overlay" onClick={closeOrderDetail}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>Detalles del Pedido - {selectedOrder.id}</h3>
+              <h3>Detalles del Pedido #{selectedOrder.id}</h3>
               <button className="modal-close" onClick={closeOrderDetail}>
                 <i className="fas fa-times"></i>
               </button>
@@ -522,74 +399,35 @@ const Pedidos = () => {
               <div className="order-info">
                 <div className="info-grid">
                   <div className="info-item">
-                    <label>Cliente:</label>
-                    <span>{selectedOrder.cliente}</span>
+                    <label>ID Pedido:</label>
+                    <span className="mono">{selectedOrder.id}</span>
                   </div>
                   <div className="info-item">
-                    <label>Email:</label>
-                    <span>{selectedOrder.email}</span>
+                    <label>Cliente (DNI):</label>
+                    <span>{selectedOrder.clienteId || '-'}</span>
                   </div>
                   <div className="info-item">
-                    <label>Teléfono:</label>
-                    <span>{selectedOrder.telefono || 'No especificado'}</span>
+                    <label>Aeropuerto Destino:</label>
+                    <span>{selectedOrder.aeropuertoDestinoId || '-'}</span>
                   </div>
                   <div className="info-item">
-                    <label>Origen:</label>
-                    <span>{selectedOrder.origen}</span>
+                    <label>Cantidad Productos:</label>
+                    <span>{selectedOrder.cantidadProductos || 0}</span>
                   </div>
                   <div className="info-item">
-                    <label>Destino:</label>
-                    <span>{selectedOrder.destino}</span>
-                  </div>
-                  <div className="info-item">
-                    <label>Prioridad:</label>
-                    <span className={`badge ${selectedOrder.prioridad.toLowerCase()}`}>
-                      {selectedOrder.prioridad}
+                    <label>Fecha (UTC):</label>
+                    <span>
+                      {selectedOrder.fechaUTC || 
+                       `${selectedOrder.dia || '-'}/${selectedOrder.mes || '-'}/${selectedOrder.anio || '-'} ${selectedOrder.hora || '00'}:${String(selectedOrder.minuto || '00').padStart(2, '0')}`}
                     </span>
                   </div>
                   <div className="info-item">
                     <label>Estado:</label>
-                    <span className={`badge status-badge ${selectedOrder.status.toLowerCase().replace(' ', '-')}`}>
-                      {selectedOrder.status}
+                    <span className={`badge status-badge ${(selectedOrder.status || 'pendiente').toLowerCase().replace(' ', '-')}`}>
+                      {selectedOrder.status || 'Pendiente'}
                     </span>
                   </div>
-                  <div className="info-item">
-                    <label>Fecha:</label>
-                    <span>{new Date(selectedOrder.createdAt).toLocaleDateString()}</span>
-                  </div>
                 </div>
-                
-                {selectedOrder.notas && (
-                  <div className="info-item full-width">
-                    <label>Notas:</label>
-                    <span>{selectedOrder.notas}</span>
-                  </div>
-                )}
-              </div>
-
-              <div className="products-section">
-                <h4>Productos del Pedido</h4>
-                {selectedOrder.productos && selectedOrder.productos.length > 0 ? (
-                  <div className="products-list">
-                    {selectedOrder.productos.map((producto, index) => (
-                      <div key={index} className="product-item">
-                        <div className="product-name">{producto.nombre}</div>
-                        <div className="product-details">
-                          <span>Cantidad: {producto.cantidad}</span>
-                          <span>Peso unitario: {producto.pesoUnitario}kg</span>
-                          <span>Peso total: {producto.pesoTotal}kg</span>
-                        </div>
-                      </div>
-                    ))}
-                    <div className="products-summary">
-                      <strong>
-                        Total del pedido: {selectedOrder.cantidadTotal} productos - {selectedOrder.pesoTotal}kg
-                      </strong>
-                    </div>
-                  </div>
-                ) : (
-                  <p>No hay productos en este pedido.</p>
-                )}
               </div>
             </div>
           </div>

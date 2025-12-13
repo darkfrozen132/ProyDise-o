@@ -21,6 +21,7 @@ import MetricsPopper from '../../../components/ui/Dialog/MetricsPopper';
 import MetricsButton from '../../../components/ui/Button/MetricsButton';
 import ControlButton from '../../../components/ui/Button/ControlButton';
 import ControlPopper from '../../../components/ui/Dialog/ControlPopper';
+import SimulationReportDialog from '../../../components/ui/Dialog/SimulationReportDialog';
 
 import { IoMdAirplane } from "react-icons/io";
 import ReactDOMServer from "react-dom/server";
@@ -897,6 +898,23 @@ const SimuladorSemanal = () => {
 
 	// ✅ ELIMINADO: Refs de tiempo movidas a estado reactivo (ver línea ~215)
 
+	// ==================== 📋 ESTADO POPUP REPORTE SIMULACIÓN ====================
+	const [showReportDialog, setShowReportDialog] = useState(false);
+	const [reportData, setReportData] = useState(null);
+	
+	// 🆕 Acumuladores para el reporte (se van llenando durante la simulación)
+	const [acumuladorReporte, setAcumuladorReporte] = useState({
+		totalVuelosGenerados: 0,
+		totalPedidosProcesados: 0,
+		vuelosCompletados: 0,
+		pedidosEntregados: 0,
+		fechaInicioSimulacion: null,
+		fechaFinSimulacion: null
+	});
+
+	// 🆕 REF para la función de generar reporte (evita problemas de closure)
+	const generarReporteSimulacionRef = useRef(null);
+
 	// ==================== 📊 MÉTRICAS DE VUELOS ====================
 	// Para diagnosticar si el backend envía vuelos tarde o si hay problemas de graficación
 	const [metricasVuelos, setMetricasVuelos] = useState({
@@ -1741,6 +1759,18 @@ const SimuladorSemanal = () => {
 		setColaVuelos([]);
 		setVuelosEnAire([]);
 		colaVuelosRef.current = [];
+
+		// 🆕 MOSTRAR REPORTE AL DETENER MANUALMENTE (usando setTimeout para asegurar estados actualizados)
+		setTimeout(() => {
+			// Solo si hay datos de la simulación (al menos un vuelo o pedido)
+			if ((vuelosAcumulados && vuelosAcumulados.length > 0) || 
+				(pedidosAcumulados && pedidosAcumulados.length > 0) ||
+				(flights && flights.length > 0)) {
+				setEstadoSimulacionStomp('completed');
+				// Trigger reporte - el useEffect se encarga de generarlo
+				setShowReportDialog(true);
+			}
+		}, 500);
 	};
 
 	const handleResetSimulacion = () => {
@@ -1772,6 +1802,16 @@ const SimuladorSemanal = () => {
 			ultimaActualizacion: null
 		});
 		vuelosRecibidosIdsRef.current = new Set();
+
+		// 🆕 RESETEAR ACUMULADORES PARA EL REPORTE
+		setPedidosAcumulados([]);
+		setVuelosAcumulados([]);
+		setPedidosCompletados([]);
+		setContadorPedidosTotal(0);
+		pedidosVistosRef.current = new Set();
+		vuelosVistosRef.current = new Set();
+		vuelosCompletadosRef.current = new Set();
+		setReportData(null);
 
 		// Si deseas también resetear planificaciones recibidas:
 		// setPlanFixed([]);
@@ -2323,6 +2363,115 @@ const SimuladorSemanal = () => {
 	}, [fechaInicioSimulacion, wsStompConectado, conectarWebSocketStomp, agregarMensaje]);
 
 	/**
+	 * 🆕 Generar reporte de simulación y mostrar popup
+	 * Se llama cuando la simulación se completa (status === 'COMPLETED')
+	 */
+	const generarReporteSimulacion = useCallback(() => {
+		console.log('📋 Generando reporte de simulación...');
+
+		// Calcular pedidos por destino usando los pedidos acumulados
+		const pedidosPorDestinoMap = {};
+		(pedidosAcumulados || []).forEach(pedido => {
+			const destino = pedido.destination || pedido.destino || 'Desconocido';
+			if (!pedidosPorDestinoMap[destino]) {
+				pedidosPorDestinoMap[destino] = { destino, cantidad: 0, paquetes: 0 };
+			}
+			pedidosPorDestinoMap[destino].cantidad += 1;
+			pedidosPorDestinoMap[destino].paquetes += (pedido.cantidad || 1);
+		});
+
+		// Convertir a array y ordenar por cantidad de pedidos
+		const pedidosPorDestino = Object.values(pedidosPorDestinoMap)
+			.sort((a, b) => b.cantidad - a.cantidad);
+
+		// Calcular saturación de almacenes (desde el estado de airports)
+		const saturacionAlmacenes = (airports || [])
+			.filter(a => a.capacity !== 'ILIMITADO' && a.capacity > 0)
+			.map(airport => {
+				const ocupacion = airport.packages || 0;
+				const capacidad = typeof airport.capacity === 'number' ? airport.capacity : parseInt(airport.capacity) || 1;
+				const porcentaje = (ocupacion / capacidad) * 100;
+				return {
+					codigo: airport.code,
+					nombre: airport.name,
+					ocupacion,
+					capacidad,
+					porcentaje: Math.min(100, porcentaje)
+				};
+			})
+			.sort((a, b) => b.porcentaje - a.porcentaje);
+
+		// Contar vuelos completados (los que tienen status completed o progress >= 100)
+		const vuelosCompletados = (vuelosAcumulados || []).filter(v => 
+			v.status === 'completed' || v.progress >= 100 || v.progress >= 1
+		).length;
+
+		// Total de pedidos entregados (los que están en aeropuertos que no son sedes)
+		const pedidosEntregados = (pedidosCompletados || []).length;
+
+		// Formatear fechas
+		const formatearFecha = (fecha) => {
+			if (!fecha) return 'N/A';
+			try {
+				const d = new Date(fecha);
+				return d.toLocaleDateString('es-PE', {
+					year: 'numeric',
+					month: '2-digit',
+					day: '2-digit',
+					hour: '2-digit',
+					minute: '2-digit'
+				});
+			} catch (e) {
+				return String(fecha);
+			}
+		};
+
+		// Construir objeto del reporte
+		const reporte = {
+			fechaInicio: formatearFecha(fechaInicioSimulacion + 'T' + horaInicioSimulacion),
+			fechaFin: formatearFecha(tiempoSimulacionActual),
+			tiempoRealTranscurrido: tiempoRealTranscurrido,
+			pedidosPorDestino: pedidosPorDestino,
+			metricas: {
+				totalVuelos: vuelosAcumulados?.length || flights?.length || 0,
+				totalPedidos: pedidosAcumulados?.length || contadorPedidosTotal || 0,
+				vuelosCompletados: vuelosCompletados,
+				pedidosEntregados: pedidosEntregados
+			},
+			saturacionAlmacenes: saturacionAlmacenes,
+			vuelosGenerados: vuelosAcumulados || []
+		};
+
+		console.log('📊 Reporte generado:', reporte);
+
+		// Guardar datos y mostrar popup
+		setReportData(reporte);
+		setShowReportDialog(true);
+	}, [
+		pedidosAcumulados,
+		vuelosAcumulados,
+		airports,
+		pedidosCompletados,
+		fechaInicioSimulacion,
+		horaInicioSimulacion,
+		tiempoSimulacionActual,
+		tiempoRealTranscurrido,
+		flights,
+		contadorPedidosTotal
+	]);
+
+	// 🆕 Mantener ref actualizado para uso en callbacks
+	generarReporteSimulacionRef.current = generarReporteSimulacion;
+
+	// 🆕 useEffect para generar reporte cuando se abre el dialog sin datos (detención manual)
+	useEffect(() => {
+		if (showReportDialog && !reportData && generarReporteSimulacionRef.current) {
+			console.log('📋 Generando reporte para detención manual...');
+			generarReporteSimulacionRef.current();
+		}
+	}, [showReportDialog, reportData]);
+
+	/**
 	 * Procesar mensajes recibidos del WebSocket
 	 */
 	const procesarMensajeSimulacion = useCallback((datos) => {
@@ -2488,13 +2637,16 @@ const SimuladorSemanal = () => {
 				subscriptionRef.current = null;
 			}
 
+			// 🆕 GENERAR REPORTE Y MOSTRAR POPUP
+			generarReporteSimulacion();
+
 		} else if (datos.tipo === 'ERROR') {
 			// Error en la simulación
 			console.error('❌ Error en simulación:', datos.mensaje);
 			setEstadoSimulacionStomp('error');
 			agregarMensaje(`❌ Error: ${datos.mensaje}`, 'error');
 		}
-	}, [agregarMensaje]); // 🔥 No incluir funciones de procesamiento (causa circular reference)
+	}, [agregarMensaje, generarReporteSimulacion]); // 🔥 Incluir generarReporteSimulacion
 
 	/**
 	 * 🆕 Procesar vuelos DIRECTOS (formato nuevo del backend)
@@ -3893,6 +4045,17 @@ const SimuladorSemanal = () => {
 				startButtonLabel={startButtonLabel}
 				showFlightLines={showFlightLines}
 				setShowFlightLines={setShowFlightLines}
+			/>
+			
+			{/* 🆕 Dialog de Reporte de Simulación */}
+			<SimulationReportDialog
+				open={showReportDialog}
+				onClose={() => {
+					setShowReportDialog(false);
+					// Limpiar reportData para la próxima simulación
+					setReportData(null);
+				}}
+				reportData={reportData}
 			/>
 		</div>
 	);

@@ -103,6 +103,13 @@ public class VueloSimplificadoDTO {
      */
     @JsonProperty("slackMinutes")
     private Integer slackMinutes;
+    
+    /**
+     * Capacidad máxima del avión (paquetes)
+     * Viene del PlanVuelo y representa cuántos paquetes puede llevar el avión
+     */
+    @JsonProperty("capacidadMaxima")
+    private Integer capacidadMaxima;
 
     /**
      * Agrega un pedido a la lista de pedidos del vuelo

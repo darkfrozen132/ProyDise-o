@@ -36,14 +36,14 @@
         private static final int PLAZO_DIFERENTE_CONTINENTE_DIAS = 3;
         private static final int VENTANA_RECOJO_HORAS = 2;
 
-        // Parametros del algoritmo genetico (valores por defecto - MODO DEMO RÁPIDO)
-        private static final int TAMANIO_POBLACION_DEFAULT = 10;      // Numero de individuos (reducido de 20)
-        private static final int MAX_GENERACIONES_DEFAULT = 2;       // Generaciones maximas (reducido de 5 a 2)
-        private static final int NO_MEJORA_LIMITE_DEFAULT = 3;       // Parar si 3 gen sin mejora (reducido de 10)
-        private static final int ELITE_K = 4;                 // Mejores preservados (elitismo)
-        private static final double PROB_CRUCE = 0.8;         // Probabilidad de cruce
-        private static final double PROB_MUTACION = 0.05;     // Probabilidad de mutacion
-        private static final int TAMANIO_TORNEO = 3;          // Individuos en torneo
+        // Parametros del algoritmo genetico (valores por defecto - MODO ULTRA RÁPIDO)
+        private static final int TAMANIO_POBLACION_DEFAULT = 3;       // Mínimo para diversidad
+        private static final int MAX_GENERACIONES_DEFAULT = 1;        // Solo 1 generación (el más rápido)
+        private static final int NO_MEJORA_LIMITE_DEFAULT = 1;        // Parar inmediatamente si no mejora
+        private static final int ELITE_K = 1;                         // Solo el mejor
+        private static final double PROB_CRUCE = 0.8;                 // Probabilidad de cruce
+        private static final double PROB_MUTACION = 0.05;             // Probabilidad de mutacion
+        private static final int TAMANIO_TORNEO = 2;                  // Torneo mínimo
         
         // Parámetros configurables (pueden ser sobrescritos desde WebSocket)
         private int TAMANIO_POBLACION = TAMANIO_POBLACION_DEFAULT;
@@ -774,7 +774,7 @@
      * Calcula el horizonte temporal en dias
      *
      * Reglas:
-     * - Minimo: plazo maximo de entrega (3 dias) + 1 dia buffer = 4 dias
+     * - Minimo: 10 dias (una semana + buffer de 3 dias para entregas)
      * - Dinamico: dia maximo de pedidos + 3 dias
      *
      * @param request Request de planificacion
@@ -782,8 +782,8 @@
      * @return Numero de dias del horizonte
      */
     private int calcularHorizonteDias(PlanificacionRequest request, List<PedidoSemanal> pedidos) {
-        // Por defecto: 7 dias (una semana)
-        int diasBase = 7;
+        // 🆕 CAMBIO: Minimo 10 dias para cubrir semana completa + buffer
+        int diasBase = 10;
 
         // Calcular dia maximo de los pedidos
         LocalDate fechaMaxPedido = request.getFecha();
@@ -1297,6 +1297,9 @@
                             // Por ahora lo dejamos en 0, se calculará después con todos los pedidos
                             dto.setSlackMinutes(0);
                             
+                            // 5. Capacidad máxima del avión
+                            dto.setCapacidadMaxima(vueloUso.getCapacidadMaxima());
+                            
                         } else {
                             // Fallback (no debería ocurrir)
                             log.warn("VueloInstancia no encontrada para ID: {}", vueloId);
@@ -1309,6 +1312,7 @@
                             dto.setFlightId(vueloUso.getOrigen() + "-" + vueloUso.getDestino() + "-0000");
                             dto.setQuantity(vueloUso.getCantidadAsignada());
                             dto.setSlackMinutes(0);
+                            dto.setCapacidadMaxima(vueloUso.getCapacidadMaxima());
                         }
 
                         // Agregar primer pedido

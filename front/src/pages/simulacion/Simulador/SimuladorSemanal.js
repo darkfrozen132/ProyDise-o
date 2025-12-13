@@ -1758,8 +1758,8 @@ const SimuladorSemanal = () => {
 			currentLng,
 			aircraftColor: '#3b82f6', // Azul para vuelos de planificación
 			rotation,
-			packageCapacity: totalPaquetes,
-			currentPackages: totalPaquetes,
+			packageCapacity: vuelo.capacidadMaxima || totalPaquetes, // 🆕 Usar capacidad máxima del avión
+			currentPackages: totalPaquetes, // Paquetes actualmente asignados
 			packageType: 'MPE',
 			isSameContinentFlight: origen.region === destino.region,
 			// Datos adicionales de planificación
@@ -2132,7 +2132,7 @@ const SimuladorSemanal = () => {
 				body: JSON.stringify({
 					fecha: fechaInicioSimulacion,
 					hora: horaInicioSimulacion, // Hora de inicio (formato HH:mm)
-					factorK: 10 // Factor K para backend (10x)
+					factorK: 1 // Factor K para backend (10x)
 				})
 			});
 
@@ -2662,8 +2662,8 @@ const SimuladorSemanal = () => {
 				currentLng,
 				aircraftColor: '#3b82f6', // 🔵 Azul para vuelos del WebSocket
 				rotation,
-				packageCapacity: vuelo.totalPaquetes || 1,
-				currentPackages: vuelo.totalPaquetes || 1,
+				packageCapacity: vuelo.capacidadMaxima || vuelo.totalPaquetes || 1, // 🆕 Usar capacidad máxima del avión
+				currentPackages: vuelo.totalPaquetes || vuelo.quantity || 1, // Paquetes actualmente asignados
 				packageType: 'WS',
 				isSameContinentFlight: origen.region === destino.region,
 				vuelo: `WS-${vuelo.pedidos?.[0]?.idPedido || index}`,

@@ -128,6 +128,10 @@ public class DecodificadorGenetico {
      * 
      * 🆕 MEJORA: Selecciona el hub más cercano al destino para optimizar rutas
      * y distribuir carga entre las 3 sedes (SPIM, EBCI, UBBB)
+     * 
+     * 🆕 MEJORA 2: Ahora pasa la hora del pedido al buscador para que seleccione
+     * vuelos que salgan DESPUÉS de la hora del pedido, distribuyendo así los
+     * pedidos entre diferentes horarios de vuelos.
      *
      * @param pedido Pedido a procesar
      * @return Lista de subrutas (normalmente 1)
@@ -147,20 +151,25 @@ public class DecodificadorGenetico {
             return subrutas;
         }
 
+        // 🆕 Calcular hora mínima de salida (hora del pedido)
+        // Los vuelos deben salir DESPUÉS de esta hora para que el pedido pueda estar listo
+        java.time.LocalTime horaPedido = java.time.LocalTime.of(pedido.getHora(), pedido.getMinuto());
+        
         // 🆕 ORDENAR HUBS POR CERCANÍA AL DESTINO
         // Esto asegura que los pedidos salgan del hub más cercano geográficamente
         List<String> hubsOrdenados = ordenarHubsPorCercania(destino);
         
-        log.trace("Pedido {} -> Destino: {} | Hubs ordenados por cercanía: {}", 
-                  pedido.getId(), destino, hubsOrdenados);
+        log.trace("Pedido {} -> Destino: {} | Hora: {} | Hubs ordenados por cercanía: {}", 
+                  pedido.getId(), destino, horaPedido, hubsOrdenados);
 
         // Intentar generar ruta desde el hub más cercano primero
         for (String hub : hubsOrdenados) {
-            SubRuta subruta = buscadorRutas.buscarRuta(hub, destino, cantidad, diaRelativo);
+            // 🆕 Pasar hora mínima de salida al buscador
+            SubRuta subruta = buscadorRutas.buscarRutaConHoraMinima(hub, destino, cantidad, diaRelativo, horaPedido);
 
             if (subruta != null) {
-                log.trace("Pedido {} asignado a hub {} (destino: {})", 
-                         pedido.getId(), hub, destino);
+                log.trace("Pedido {} asignado a hub {} (destino: {}, hora salida >= {})", 
+                         pedido.getId(), hub, destino, horaPedido);
                 subrutas.add(subruta);
                 break; // Solo necesitamos una ruta
             }

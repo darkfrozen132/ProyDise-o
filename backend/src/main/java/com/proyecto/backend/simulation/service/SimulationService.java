@@ -187,6 +187,10 @@ public class SimulationService {
      * Ejecuta la simulación en un Virtual Thread
      * NO tiene @Transactional para no bloquear la BD
      * ESTADO DE PEDIDOS EN RAM: Cada sesión tiene su propio estado aislado
+     * 
+     * 🆕 OPCIÓN 2: MÚLTIPLES ITERACIONES DEL AG
+     * Al inicio, ejecuta el AG para CADA ventana de tiempo del día completo
+     * para generar TODOS los vuelos usando TODOS los planes de vuelo disponibles.
      */
     private void runSimulation(SimulationSession session, WorldSnapshot world) {
         session.setExecutionThread(Thread.currentThread());
@@ -209,7 +213,69 @@ public class SimulationService {
             
             log.info("📊 Sesión {} iniciada. Total pedidos a procesar: {}", sessionId, totalPedidos);
             
-            // 🆕 Definir fecha límite de simulación (7 días desde inicio)
+            // 🆕 OPCIÓN 2: PRE-PROCESAR TODA LA SEMANA AL INICIO
+            // Ejecutar el AG para cada ventana de tiempo de los 7 días completos
+            // para usar TODOS los planes de vuelo disponibles
+            log.info("🚀 ═══════════════════════════════════════════════════════════════");
+            log.info("🚀 [PRE-PROCESAMIENTO] Ejecutando AG para TODA LA SEMANA (7 días)...");
+            log.info("🚀 Esto generará vuelos para cada franja horaria de los 7 días");
+            log.info("🚀 ═══════════════════════════════════════════════════════════════");
+            
+            // Calcular cuántas iteraciones necesitamos para cubrir 7 días (168 horas)
+            // saltoConsumo = K × Sa (ej: 10 × 7 = 70 minutos)
+            int diasSimulacion = 7; // 🆕 UNA SEMANA COMPLETA
+            int minutosPorSemana = diasSimulacion * 24 * 60; // 10080 minutos (7 días)
+            int iteracionesSemana = (int) Math.ceil((double) minutosPorSemana / saltoConsumo);
+            
+            log.info("📊 Configuración: saltoConsumo={}min, diasSimulacion={}, iteracionesSemana={}", 
+                    saltoConsumo, diasSimulacion, iteracionesSemana);
+            
+            // Ejecutar AG para cada ventana de la semana
+            LocalDateTime tiempoVentana = currentTime;
+            int diaActual = 0;
+            for (int i = 0; i < iteracionesSemana && session.isRunning(); i++) {
+                // Calcular qué día estamos procesando
+                int nuevoDia = (int) java.time.Duration.between(currentTime, tiempoVentana).toDays();
+                if (nuevoDia > diaActual) {
+                    diaActual = nuevoDia;
+                    log.info("� ═══════════════════════════════════════════════════════════════");
+                    log.info("📅 [DÍA {}/{}] Procesando fecha: {}", diaActual + 1, diasSimulacion, tiempoVentana.toLocalDate());
+                    log.info("📅 ═══════════════════════════════════════════════════════════════");
+                }
+                
+                log.debug("�🔄 [PRE-PROC {}/{}] Día {} - Ventana: {} - {}", 
+                        i + 1, iteracionesSemana, 
+                        diaActual + 1,
+                        tiempoVentana.toLocalTime(), 
+                        tiempoVentana.plusMinutes(saltoConsumo).toLocalTime());
+                
+                // Ejecutar AG para esta ventana
+                SimulationResult result = runGeneticAlgorithm(
+                        Collections.emptyList(),
+                        world.flights(),
+                        session.getConfiguration(),
+                        session,
+                        tiempoVentana
+                );
+                
+                pedidosProcesados += result.processedOrders();
+                
+                // Avanzar a la siguiente ventana
+                tiempoVentana = tiempoVentana.plusMinutes(saltoConsumo);
+                
+                // Pequeña pausa para no saturar (reducida para procesar más rápido)
+                Thread.sleep(10);
+            }
+            
+            log.info("✅ ═══════════════════════════════════════════════════════════════");
+            log.info("✅ [PRE-PROCESAMIENTO COMPLETADO] {} pedidos procesados en {} iteraciones", 
+                    pedidosProcesados, iteracionesSemana);
+            log.info("✅ Días procesados: {} | Ventanas por día: ~{}", 
+                    diasSimulacion, iteracionesSemana / diasSimulacion);
+            log.info("✅ ═══════════════════════════════════════════════════════════════");
+            
+            // 🆕 Ahora continuar con el loop normal de simulación en tiempo real
+            // (para actualizar el progreso del tiempo simulado)
             LocalDateTime fechaLimite = currentTime.plusDays(7);
 
             while (session.isRunning() && currentTime.isBefore(fechaLimite)) {
@@ -233,14 +299,9 @@ public class SimulationService {
                 // 1. Calcular ventana de tiempo
                 LocalDateTime windowEnd = currentTime.plusMinutes(saltoConsumo);
 
-                // 2. Ejecutar Algoritmo Genético (él carga los pedidos bajo demanda)
-                SimulationResult result = runGeneticAlgorithm(
-                        Collections.emptyList(), // No pasamos pedidos, el AG los carga 
-                        world.flights(),
-                        session.getConfiguration(),
-                        session,
-                        currentTime
-                );
+                // 2. 🆕 Ya no ejecutamos el AG aquí (ya se pre-procesó todo el día)
+                // Solo actualizamos el tiempo simulado
+                SimulationResult result = new SimulationResult(0, 0.0, Collections.emptyList());
 
                 // 3. Actualizar contador de pedidos procesados
                 pedidosProcesados += result.processedOrders();

@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer } from 'react-leaflet';
-import { Drawer, IconButton, Tabs, Tab, Box } from '@mui/material';
+import { Drawer, IconButton, Tabs, Tab, Box, Menu, MenuItem } from '@mui/material';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import FilterListIcon from '@mui/icons-material/FilterList';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import SockJS from 'sockjs-client';
@@ -143,6 +144,27 @@ const lightenColor = (hex, percent) => {
 	r = Math.min(255, r + (255 - r) * percent);
 	g = Math.min(255, g + (255 - g) * percent);
 	b = Math.min(255, b + (255 - b) * percent);
+
+	// Convertir de vuelta a HEX
+	const toHex = (n) => n.toString(16).padStart(2, '0');
+
+	return `#${toHex(Math.round(r))}${toHex(Math.round(g))}${toHex(Math.round(b))}`;
+};
+
+/* ======= Reducir luminosidad (oscurecer) de un color ======= */
+const darkenColor = (hex, percent) => {
+	// Remover # si existe
+	hex = hex.replace('#', '');
+
+	// Convertir a RGB
+	let r = parseInt(hex.substring(0, 2), 16);
+	let g = parseInt(hex.substring(2, 4), 16);
+	let b = parseInt(hex.substring(4, 6), 16);
+
+	// Oscurecer según el porcentaje
+	r = Math.max(0, r * (1 - percent));
+	g = Math.max(0, g * (1 - percent));
+	b = Math.max(0, b * (1 - percent));
 
 	// Convertir de vuelta a HEX
 	const toHex = (n) => n.toString(16).padStart(2, '0');
@@ -820,22 +842,22 @@ const SimuladorSemanal = () => {
 	const [selectedAirportInnerTab, setSelectedAirportInnerTab] = useState(0);
 
 	// Helper: calcular estado actual de un pedido consultando vuelos en movimiento
-	// Estados posibles: "Planificado", "En vuelo", "Finalizado"
+	// Estados posibles: "Planificado", "En vuelo", "Entregado"
 	const computeOrderStatus = (order) => {
 		const flightId = order.flightId;
 		const f = (vuelosEnMovimiento || []).find(v => v.id === flightId) || (flights || []).find(v => v.id === flightId);
 		if (!f) return 'Planificado';
 		// Si el vuelo está activo o en progreso intermedio → En vuelo
 		if (f.status === 'active' || (f.progress !== undefined && f.progress > 0 && f.progress < 1)) return 'En vuelo';
-		// Si el vuelo está completado → Finalizado
-		if (f.status === 'completed' || (f.progress !== undefined && f.progress >= 1)) return 'Finalizado';
+		// Si el vuelo está completado → Entregado
+		if (f.status === 'completed' || (f.progress !== undefined && f.progress >= 1)) return 'Entregado';
 		// Por defecto, aún no ha despegado → Planificado
 		return 'Planificado';
 	};
 
-	// Helper para pedidos que están en aeropuerto: siempre 'Finalizado'
+	// Helper para pedidos que están en aeropuerto: siempre 'Entregado'
 	const computeAirportOrderStatus = (order) => {
-		return 'Finalizado';
+		return 'Entregado';
 	};
 
 	// Pedidos que llegan desde el backend (planificados) — se acumulan cuando
@@ -3123,11 +3145,14 @@ const SimuladorSemanal = () => {
 	const [searchFlights, setSearchFlights] = useState('');
 	const [searchAirports, setSearchAirports] = useState('');
 	const [searchOrders, setSearchOrders] = useState('');
+	const [orderStatusFilter, setOrderStatusFilter] = useState('todos'); // 'todos' | 'Planificado' | 'En vuelo' | 'Entregado'
+	const [showOrderFilterMenu, setShowOrderFilterMenu] = useState(false); // Mostrar/ocultar menú de filtro
 	const [expandedFlightIds, setExpandedFlightIds] = useState({});
 	const [selectedAirport, setSelectedAirport] = useState(null); // Aeropuerto seleccionado para ver detalles
 	const [selectedFlight, setSelectedFlight] = useState(null); // Vuelo seleccionado para ver detalles
 	const tabsRef = useRef(null); // Referencia para scroll de tabs
 	const flightsListRef = useRef(null); // Referencia para scroll de vuelos
+	const airportsListRef = useRef(null); // Referencia para scroll de aeropuertos
 
 	// Scroll automático y expansión cuando se selecciona un vuelo
 	useEffect(() => {
@@ -3143,6 +3168,18 @@ const SimuladorSemanal = () => {
 			}, 100);
 		}
 	}, [selectedFlight, sidebarTab]);
+
+	// Scroll automático cuando se selecciona un aeropuerto
+	useEffect(() => {
+		if (selectedAirport && sidebarTab === 'airports') {
+			setTimeout(() => {
+				const element = document.getElementById(`airport-card-${selectedAirport.code}`);
+				if (element) {
+					element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+				}
+			}, 100);
+		}
+	}, [selectedAirport, sidebarTab]);
 
 	// Sincronizar `selectedAirport` cuando el array `airports` cambie (p.ej. llegan pedidos y aumenta packages)
 	useEffect(() => {
@@ -3272,7 +3309,7 @@ const SimuladorSemanal = () => {
 						</Box>
 
 						{/* Buscador */}
-						<Box sx={{ padding: '8px 12px', marginBottom: '8px' }}>
+						<Box sx={{ padding: '8px 12px', marginBottom: '8px', display: 'flex', gap: '8px', alignItems: 'center' }}>
 							<input
 								placeholder={
 									sidebarTab === 'flights' ? 'Buscar vuelo, origen o destino...' :
@@ -3286,7 +3323,7 @@ const SimuladorSemanal = () => {
 									else setSearchOrders(e.target.value);
 								}}
 								style={{
-									width: '100%',
+									flex: 1,
 									padding: '10px 12px',
 									borderRadius: '8px',
 									border: '1px solid #dee2e6',
@@ -3295,6 +3332,61 @@ const SimuladorSemanal = () => {
 									boxSizing: 'border-box'
 								}}
 							/>
+							{/* Botón de filtro solo para pestaña de pedidos */}
+							{sidebarTab === 'orders' && (
+								<Box sx={{ position: 'relative' }}>
+									<IconButton
+										onClick={() => setShowOrderFilterMenu(!showOrderFilterMenu)}
+										sx={{
+											padding: '8px',
+											background: orderStatusFilter !== 'todos' ? '#2c4a6b' : '#f8f9fa',
+											color: orderStatusFilter !== 'todos' ? '#fff' : '#6c757d',
+											border: '1px solid #dee2e6',
+											borderRadius: '8px',
+											'&:hover': { background: orderStatusFilter !== 'todos' ? '#1e3a5f' : '#e9ecef' }
+										}}
+									>
+										<FilterListIcon fontSize="small" />
+									</IconButton>
+									{/* Menú desplegable de filtro */}
+									{showOrderFilterMenu && (
+										<Box sx={{
+											position: 'absolute',
+											top: '100%',
+											right: 0,
+											marginTop: '4px',
+											background: '#fff',
+											border: '1px solid #dee2e6',
+											borderRadius: '8px',
+											boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+											zIndex: 1000,
+											minWidth: '140px',
+											overflow: 'hidden'
+										}}>
+											{['todos', 'Planificado', 'En vuelo', 'Entregado', 'Recogido'].map(status => (
+												<Box
+													key={status}
+													onClick={() => {
+														setOrderStatusFilter(status);
+														setShowOrderFilterMenu(false);
+													}}
+													sx={{
+														padding: '8px 12px',
+														fontSize: '0.85rem',
+														cursor: 'pointer',
+														background: orderStatusFilter === status ? '#e8f4f8' : '#fff',
+														fontWeight: orderStatusFilter === status ? 600 : 400,
+														color: orderStatusFilter === status ? '#2c4a6b' : '#495057',
+														'&:hover': { background: '#f8f9fa' }
+													}}
+												>
+													{status === 'todos' ? 'Todos' : status}
+												</Box>
+											))}
+										</Box>
+									)}
+								</Box>
+							)}
 						</Box>
 
 						{/* Contenido de cada pestaña - con espacio para detalles */}
@@ -3352,8 +3444,31 @@ const SimuladorSemanal = () => {
 											const q = searchAirports.trim().toLowerCase();
 											if (!q) return true;
 											return (String(a.name || '').toLowerCase().includes(q) || String(a.code || '').toLowerCase().includes(q));
-										}).map(airport => (
+										}).map(airport => {
+											// Calcular color según capacidad (leyenda)
+											const isSede = airport.capacity === 'ILIMITADO' || airport.isSede;
+											const isSelected = selectedAirport?.code === airport.code;
+											let baseColor;
+											if (isSede) {
+												// Sedes: azul bajito
+												baseColor = '#4954b6';
+											} else {
+												// Aeropuertos: color según saturación
+												const capacityValue = typeof airport.capacity === 'number' ? airport.capacity : (Number(airport.capacity) || 100);
+												const packages = airport.packages || 0;
+												const saturation = capacityValue > 0 ? (packages / capacityValue) * 100 : 0;
+												if (saturation >= 80) baseColor = '#dc3545'; // Rojo
+												else if (saturation >= 50) baseColor = '#f59e0b'; // Amarillo
+												else baseColor = '#28a745'; // Verde
+											}
+											// Aplicar luminosidad 0.80 para color base, y más claro si está seleccionado
+											const bgColor = isSelected ? lightenColor(baseColor, 0.80) : lightenColor(baseColor, 0.90);
+											// Color del nombre del aeropuerto: versión más oscura del color base
+											const nameColor = darkenColor(baseColor, 0.30);
+											
+											return (
 											<Box
+												id={`airport-card-${airport.code}`}
 												key={airport.code || airport.name}
 												onClick={() => {
 													const latest = (airports || []).find(a => String(a.code || '').toUpperCase() === String(airport.code || '').toUpperCase()) || airport;
@@ -3362,28 +3477,29 @@ const SimuladorSemanal = () => {
 													setOpen(true);
 												}}
 												sx={{
-													border: '1px solid #dee2e6',
+													border: isSelected ? `2px solid ${baseColor}` : 'none',
 													padding: '10px',
 													borderRadius: '8px',
 													marginBottom: '10px',
-													background: selectedAirport?.code === airport.code ? '#d9eef6' : (airport.isSede ? '#fff3cd' : '#eaf6fb'),
+													background: bgColor,
 													cursor: 'pointer',
 													transition: 'all 0.2s ease',
-													'&:hover': { borderColor: '#2c4a6b', boxShadow: '0 2px 8px rgba(44, 74, 107, 0.15)' }
+													boxShadow: 'none',
 												}}
 											>
-												<Box sx={{ fontWeight: 700, fontSize: '0.95rem', color: airport.isSede ? '#FF6B35' : '#2c4a6b' }}>
-													{airport.isSede && '🏢'} {airport.name} <span style={{ fontSize: '0.85rem', color: '#6c757d', fontWeight: 400 }}>({airport.code})</span>
+												<Box sx={{ fontWeight: 700, fontSize: '0.95rem', color: nameColor }}>
+													{isSede && '🏢'} {airport.name} <span style={{ fontSize: '0.85rem', color: nameColor, fontWeight: 400 }}>({airport.code})</span>
 												</Box>
-												<Box sx={{ fontSize: '0.85rem', color: '#6c757d', marginTop: '4px' }}>{airport.operationType || airport.region || ''}</Box>
+												<Box sx={{ fontSize: '0.85rem', color: '#333', marginTop: '4px' }}>{airport.operationType || airport.region || ''}</Box>
 												<Box sx={{ marginTop: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem' }}>
-													<Box sx={{ fontWeight: 600, color: '#2c4a6b' }}>{airport.packages || 0} 📦</Box>
-													<Box sx={{ color: '#6c757d' }}>{typeof airport.capacity === 'number' ? `${airport.capacity}` : airport.capacity}</Box>
+													<Box sx={{ fontWeight: 600, color: '#333' }}>{airport.packages || 0} 📦</Box>
+													<Box sx={{ color: '#555' }}>{typeof airport.capacity === 'number' ? `${airport.capacity}` : airport.capacity}</Box>
 												</Box>
 												{/* NOTA: La lista de pedidos ya no se muestra dentro de cada card global.
 													Los pedidos se muestran en el panel inferior cuando se selecciona un aeropuerto. */}
 											</Box>
-										))}
+											);
+										})}
 										{(airports || []).length === 0 && (
 											<Box sx={{ color: '#6c757d', fontSize: '0.9rem', textAlign: 'center', padding: '20px 10px' }}>No hay aeropuertos cargados</Box>
 										)}
@@ -3452,11 +3568,25 @@ const SimuladorSemanal = () => {
 
 											const q = searchOrders.trim().toLowerCase();
 											return list.filter(o => {
-												if (!q) return true;
-												return String(o.idPedido || o.id || o.flightId || '').toLowerCase().includes(q) ||
+												// Filtro por texto de búsqueda
+												const matchesSearch = !q || (
+													String(o.idPedido || o.id || o.flightId || '').toLowerCase().includes(q) ||
 													String(o.origin || '').toLowerCase().includes(q) ||
 													String(o.destination || '').toLowerCase().includes(q) ||
-													String(o.cliente || '').toLowerCase().includes(q);
+													String(o.cliente || '').toLowerCase().includes(q)
+												);
+												// Filtro por estado
+												let matchesStatus = true;
+												if (orderStatusFilter !== 'todos') {
+													// Mapear el status interno al estado visible
+													let visibleStatus = 'Planificado';
+													if (o.status === 'active') visibleStatus = 'En vuelo';
+													else if (o.status === 'llegado') visibleStatus = 'Entregado';
+													else if (o.status === 'recogido') visibleStatus = 'Recogido';
+													else if (o.status === 'waiting') visibleStatus = 'Planificado';
+													matchesStatus = visibleStatus === orderStatusFilter;
+												}
+												return matchesSearch && matchesStatus;
 											});
 										})().map(order => (
 											<Box
@@ -3495,6 +3625,19 @@ const SimuladorSemanal = () => {
 														✈️ {order.flightId || 'N/A'}
 													</Box>
 													{/* Mostrar badge según estado derivado del pedido */}
+													{(order.status === 'waiting' || !order.status) && (
+														<Box sx={{
+															background: '#3b82f6',
+															color: '#fff',
+															padding: '1px 6px',
+															borderRadius: '8px',
+															fontSize: '0.7rem',
+															fontWeight: 600
+														}}>
+															Planificado
+														</Box>
+													)}
+
 													{order.status === 'active' && (
 														<Box sx={{
 															background: '#28a745',
@@ -3517,7 +3660,7 @@ const SimuladorSemanal = () => {
 															fontSize: '0.7rem',
 															fontWeight: 600
 														}}>
-															Finalizado
+															Entregado
 														</Box>
 													)}
 
@@ -3531,19 +3674,6 @@ const SimuladorSemanal = () => {
 															fontWeight: 600
 														}}>
 															Recogido
-														</Box>
-													)}
-
-													{order.status === 'waiting' && (
-														<Box sx={{
-															background: '#e2e8f0',
-															color: '#374151',
-															padding: '1px 6px',
-															borderRadius: '8px',
-															fontSize: '0.7rem',
-															fontWeight: 600
-														}}>
-															En origen
 														</Box>
 													)}
 												</Box>
@@ -3598,12 +3728,12 @@ const SimuladorSemanal = () => {
 												const departures = (vuelosAcumulados || []).filter(f => String(f.origin?.code || '').toUpperCase() === code);
 												return (
 													<>
-								<Box sx={{ borderBottom: 1, borderColor: '#e6e9ee', marginBottom: 1 }}>
-											<Tabs value={selectedAirportInnerTab} onChange={(e, v) => setSelectedAirportInnerTab(v)} variant="fullWidth" sx={{ '& .MuiTabs-indicator': { background: '#2c4a6b', height: 2 } }}>
-												<Tab sx={{ minHeight: 28, paddingY: 0, paddingX: '6px', fontSize: '0.78rem', lineHeight: 1 }} label={`Pedidos planificados ${planned.length > 0 ? `(${planned.length})` : ''}`} />
-												<Tab sx={{ minHeight: 28, paddingY: 0, paddingX: '6px', fontSize: '0.78rem', lineHeight: 1 }} label={`Vuelos salientes ${departures.length > 0 ? `(${departures.length})` : ''}`} />
-											</Tabs>
-								</Box>
+														<Box sx={{ borderBottom: 1, borderColor: '#e6e9ee', marginBottom: 1 }}>
+															<Tabs value={selectedAirportInnerTab} onChange={(e, v) => setSelectedAirportInnerTab(v)} variant="fullWidth" sx={{ '& .MuiTabs-indicator': { background: '#2c4a6b', height: 2 } }}>
+																<Tab sx={{ minHeight: 28, paddingY: 0, paddingX: '6px', fontSize: '0.78rem', lineHeight: 1 }} label={`Pedidos planificados ${planned.length > 0 ? `(${planned.length})` : ''}`} />
+																<Tab sx={{ minHeight: 28, paddingY: 0, paddingX: '6px', fontSize: '0.78rem', lineHeight: 1 }} label={`Vuelos salientes ${departures.length > 0 ? `(${departures.length})` : ''}`} />
+															</Tabs>
+														</Box>
 
 														{/* Tab 0: Pedidos planificados */}
 														{selectedAirportInnerTab === 0 && (

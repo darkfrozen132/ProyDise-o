@@ -691,3 +691,17 @@ body,
     align-items: baseline;
     gap: 10px;
 }
+
+.leaflet-tooltip.airport-tooltip {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+}
+
+
+.leaflet-tooltip.flight-tooltip {
+	border: none;
+	box-shadow: none;
+	padding: 0;
+}

@@ -68,7 +68,7 @@ public class DecodificadorGenetico {
 
         Solution solucion = new Solution();
 
-        log.debug("Decodificando cromosoma para {} pedidos", pedidos.size());
+        log.info("🧬 Decodificando cromosoma para {} pedidos", pedidos.size());
 
         // Ordenar pedidos segun prioridades del cromosoma (mayor prioridad primero)
         List<PedidoConPrioridad> pedidosOrdenados = ordenarPedidosPorPrioridad(cromosoma, pedidos);
@@ -87,8 +87,9 @@ public class DecodificadorGenetico {
                     solucion.agregarRutas(pedido, subrutas);
                     rutasGeneradas++;
                 } else {
-                    log.debug("No se pudo generar ruta para pedido {} (prioridad: {:.3f})",
-                            pedido.getId(), pedidoPriorizado.prioridad);
+                    log.warn("❌ No ruta para pedido {} → destino: {} | hora: {}:{} | cantidad: {}",
+                            pedido.getId(), pedido.getAeropuertoDestinoId(), 
+                            pedido.getHora(), pedido.getMinuto(), pedido.getCantidadProductos());
                     rutasFallidas++;
                     solucion.agregarRutas(pedido, new ArrayList<>());
                 }
@@ -100,8 +101,9 @@ public class DecodificadorGenetico {
             }
         }
 
-        log.debug("Decodificacion completada: {} rutas generadas, {} fallidas",
-                rutasGeneradas, rutasFallidas);
+        log.info("📊 Decodificacion: {} rutas OK, {} fallidas ({}% éxito)",
+                rutasGeneradas, rutasFallidas, 
+                pedidos.isEmpty() ? 0 : (rutasGeneradas * 100 / pedidos.size()));
 
         // Calcular metricas y fitness
         solucion.calcularMetricasYFitness(calculadorPlazos);
@@ -128,6 +130,10 @@ public class DecodificadorGenetico {
      * 
      * 🆕 MEJORA: Selecciona el hub más cercano al destino para optimizar rutas
      * y distribuir carga entre las 3 sedes (SPIM, EBCI, UBBB)
+     * 
+     * 🆕 MEJORA 2: Ahora pasa la hora del pedido al buscador para que seleccione
+     * vuelos que salgan DESPUÉS de la hora del pedido, distribuyendo así los
+     * pedidos entre diferentes horarios de vuelos.
      *
      * @param pedido Pedido a procesar
      * @return Lista de subrutas (normalmente 1)
@@ -147,20 +153,25 @@ public class DecodificadorGenetico {
             return subrutas;
         }
 
+        // 🆕 Calcular hora mínima de salida (hora del pedido)
+        // Los vuelos deben salir DESPUÉS de esta hora para que el pedido pueda estar listo
+        java.time.LocalTime horaPedido = java.time.LocalTime.of(pedido.getHora(), pedido.getMinuto());
+        
         // 🆕 ORDENAR HUBS POR CERCANÍA AL DESTINO
         // Esto asegura que los pedidos salgan del hub más cercano geográficamente
         List<String> hubsOrdenados = ordenarHubsPorCercania(destino);
         
-        log.trace("Pedido {} -> Destino: {} | Hubs ordenados por cercanía: {}", 
-                  pedido.getId(), destino, hubsOrdenados);
+        log.trace("Pedido {} -> Destino: {} | Hora: {} | Hubs ordenados por cercanía: {}", 
+                  pedido.getId(), destino, horaPedido, hubsOrdenados);
 
         // Intentar generar ruta desde el hub más cercano primero
         for (String hub : hubsOrdenados) {
-            SubRuta subruta = buscadorRutas.buscarRuta(hub, destino, cantidad, diaRelativo);
+            // 🆕 Pasar hora mínima de salida al buscador
+            SubRuta subruta = buscadorRutas.buscarRutaConHoraMinima(hub, destino, cantidad, diaRelativo, horaPedido);
 
             if (subruta != null) {
-                log.trace("Pedido {} asignado a hub {} (destino: {})", 
-                         pedido.getId(), hub, destino);
+                log.trace("Pedido {} asignado a hub {} (destino: {}, hora salida >= {})", 
+                         pedido.getId(), hub, destino, horaPedido);
                 subrutas.add(subruta);
                 break; // Solo necesitamos una ruta
             }

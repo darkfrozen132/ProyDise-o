@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import typeOperation from '../../assets/images/type_operation.jpg';
-import { FiActivity, FiCalendar, FiAlertTriangle } from "react-icons/fi";
+import { FiActivity, FiCalendar, FiAlertTriangle, FiSunrise } from "react-icons/fi";
 import { FaChevronRight } from "react-icons/fa";
 
 const Seleccion = () => {
@@ -17,6 +17,14 @@ const Seleccion = () => {
             icon: FiActivity,
             color: '#00d4ff',
             path: 'monitoreo'
+        },
+        {
+            id: 'daily',
+            title: 'Operación Diaria',
+            description: 'Planificación de todos los pedidos del día',
+            icon: FiSunrise,
+            color: '#f59e0b',
+            path: 'simulador-diario'
         },
         {
             id: 'weekly',

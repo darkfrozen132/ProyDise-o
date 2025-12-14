@@ -6,6 +6,7 @@ import Configuracion from './pages/configuracion/Configuracion';
 import Usuarios from './pages/usuarios/Usuarios';
 import Simulador from './pages/simulacion/Monitoreo/Simulador';
 import SimuladorSemanal from './pages/simulacion/Simulador/SimuladorSemanal';
+import SimuladorDiario from './pages/simulacion/Simulador/SimuladorDiario';
 import SimuladorSimple from './components/SimuladorSimple';
 import SimuladorColapso from './pages/simulacion/Simulador/SimuladorColapso';
 import Clientes from './pages/clientes/Clientes';
@@ -53,6 +54,7 @@ function AppContent() {
               <Route index element={<Seleccion />} />
               <Route path="monitoreo" element={<Simulador />} />
               <Route path="simulador-semanal" element={<SimuladorSemanal />} />
+              <Route path="simulador-diario" element={<SimuladorDiario />} />
               <Route path="simulador-simple" element={<SimuladorSimple />} />
               <Route path="simulador-colapso" element={<SimuladorColapso />} />
             </Route>

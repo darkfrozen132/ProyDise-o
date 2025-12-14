@@ -1,8 +1,10 @@
 package com.proyecto.backend.simulation.service;
 
+import com.proyecto.backend.model.PedidoDiario;
 import com.proyecto.backend.model.PedidoSemanal;
 import com.proyecto.backend.model.PlanDeVuelo;
 import com.proyecto.backend.planificador.semanal.service.AlgoritmoGeneticoService;
+import com.proyecto.backend.repository.PedidoDiarioRepository;
 import com.proyecto.backend.repository.PedidoSemanalRepository;
 import com.proyecto.backend.repository.PlanDeVueloRepository;
 import com.proyecto.backend.simulation.dto.ProgresoAGDTO;
@@ -48,6 +50,7 @@ public class SimulationService {
 
     // ============ DEPENDENCIAS ============
     private final PedidoSemanalRepository pedidoSemanalRepository;
+    private final PedidoDiarioRepository pedidoDiarioRepository;
     private final PlanDeVueloRepository planDeVueloRepository;
     private final WebSocketService webSocketService;
     private final AlgoritmoGeneticoService algoritmoGeneticoService;
@@ -213,38 +216,41 @@ public class SimulationService {
             
             log.info("📊 Sesión {} iniciada. Total pedidos a procesar: {}", sessionId, totalPedidos);
             
-            // 🆕 OPCIÓN 2: PRE-PROCESAR TODA LA SEMANA AL INICIO
-            // Ejecutar el AG para cada ventana de tiempo de los 7 días completos
-            // para usar TODOS los planes de vuelo disponibles
-            log.info("🚀 ═══════════════════════════════════════════════════════════════");
-            log.info("🚀 [PRE-PROCESAMIENTO] Ejecutando AG para TODA LA SEMANA (7 días)...");
-            log.info("🚀 Esto generará vuelos para cada franja horaria de los 7 días");
-            log.info("🚀 ═══════════════════════════════════════════════════════════════");
+            // Determinar si es simulacion diaria o semanal
+            String tipoSimulacion = session.getConfiguration().getTipoSimulacion();
+            boolean esDiario = "diario".equalsIgnoreCase(tipoSimulacion);
+            int diasSimulacion = esDiario ? 3 : 7;
+            String tipoTexto = esDiario ? "DIARIO (3 dias)" : "SEMANAL (7 dias)";
             
-            // Calcular cuántas iteraciones necesitamos para cubrir 7 días (168 horas)
-            // saltoConsumo = K × Sa (ej: 10 × 7 = 70 minutos)
-            int diasSimulacion = 7; // 🆕 UNA SEMANA COMPLETA
-            int minutosPorSemana = diasSimulacion * 24 * 60; // 10080 minutos (7 días)
-            int iteracionesSemana = (int) Math.ceil((double) minutosPorSemana / saltoConsumo);
+            // PRE-PROCESAR el periodo completo al inicio
+            log.info("═══════════════════════════════════════════════════════════════");
+            log.info("[PRE-PROCESAMIENTO] Ejecutando AG - Modo {}...", tipoTexto);
+            log.info("Esto generara vuelos para cada franja horaria de {} dias", diasSimulacion);
+            log.info("═══════════════════════════════════════════════════════════════");
             
-            log.info("📊 Configuración: saltoConsumo={}min, diasSimulacion={}, iteracionesSemana={}", 
-                    saltoConsumo, diasSimulacion, iteracionesSemana);
+            // Calcular cuantas iteraciones necesitamos
+            // saltoConsumo = K x Sa (ej: 10 x 7 = 70 minutos)
+            int minutosPeriodo = diasSimulacion * 24 * 60;
+            int iteracionesPeriodo = (int) Math.ceil((double) minutosPeriodo / saltoConsumo);
             
-            // Ejecutar AG para cada ventana de la semana
+            log.info("Configuracion: saltoConsumo={}min, diasSimulacion={}, iteraciones={}", 
+                    saltoConsumo, diasSimulacion, iteracionesPeriodo);
+            
+            // Ejecutar AG para cada ventana del periodo
             LocalDateTime tiempoVentana = currentTime;
             int diaActual = 0;
-            for (int i = 0; i < iteracionesSemana && session.isRunning(); i++) {
-                // Calcular qué día estamos procesando
+            for (int i = 0; i < iteracionesPeriodo && session.isRunning(); i++) {
+                // Calcular que dia estamos procesando
                 int nuevoDia = (int) java.time.Duration.between(currentTime, tiempoVentana).toDays();
                 if (nuevoDia > diaActual) {
                     diaActual = nuevoDia;
-                    log.info("� ═══════════════════════════════════════════════════════════════");
-                    log.info("📅 [DÍA {}/{}] Procesando fecha: {}", diaActual + 1, diasSimulacion, tiempoVentana.toLocalDate());
-                    log.info("📅 ═══════════════════════════════════════════════════════════════");
+                    log.info("═══════════════════════════════════════════════════════════════");
+                    log.info("[DIA {}/{}] Procesando fecha: {}", diaActual + 1, diasSimulacion, tiempoVentana.toLocalDate());
+                    log.info("═══════════════════════════════════════════════════════════════");
                 }
                 
-                log.debug("�🔄 [PRE-PROC {}/{}] Día {} - Ventana: {} - {}", 
-                        i + 1, iteracionesSemana, 
+                log.debug("[PRE-PROC {}/{}] Dia {} - Ventana: {} - {}", 
+                        i + 1, iteracionesPeriodo, 
                         diaActual + 1,
                         tiempoVentana.toLocalTime(), 
                         tiempoVentana.plusMinutes(saltoConsumo).toLocalTime());
@@ -263,25 +269,25 @@ public class SimulationService {
                 // Avanzar a la siguiente ventana
                 tiempoVentana = tiempoVentana.plusMinutes(saltoConsumo);
                 
-                // Pequeña pausa para no saturar (reducida para procesar más rápido)
+                // Pequena pausa para no saturar
                 Thread.sleep(10);
             }
             
-            log.info("✅ ═══════════════════════════════════════════════════════════════");
-            log.info("✅ [PRE-PROCESAMIENTO COMPLETADO] {} pedidos procesados en {} iteraciones", 
-                    pedidosProcesados, iteracionesSemana);
-            log.info("✅ Días procesados: {} | Ventanas por día: ~{}", 
-                    diasSimulacion, iteracionesSemana / diasSimulacion);
-            log.info("✅ ═══════════════════════════════════════════════════════════════");
+            log.info("═══════════════════════════════════════════════════════════════");
+            log.info("[PRE-PROCESAMIENTO COMPLETADO] {} pedidos procesados en {} iteraciones", 
+                    pedidosProcesados, iteracionesPeriodo);
+            log.info("Dias procesados: {} | Ventanas por dia: ~{}", 
+                    diasSimulacion, iteracionesPeriodo / diasSimulacion);
+            log.info("═══════════════════════════════════════════════════════════════");
             
-            // 🆕 Ahora continuar con el loop normal de simulación en tiempo real
+            // Continuar con el loop normal de simulacion en tiempo real
             // (para actualizar el progreso del tiempo simulado)
-            LocalDateTime fechaLimite = currentTime.plusDays(7);
+            LocalDateTime fechaLimite = currentTime.plusDays(diasSimulacion);
 
             while (session.isRunning() && currentTime.isBefore(fechaLimite)) {
                 // Verificar pausa
                 while (session.isPaused() && session.isRunning()) {
-                    Thread.sleep(100); // Esperar mientras esté pausado
+                    Thread.sleep(100); // Esperar mientras este pausado
                 }
 
                 if (!session.isRunning()) {
@@ -378,18 +384,22 @@ public class SimulationService {
                 // Enviar progreso vía WebSocket
                 webSocketService.sendToSimulation(session.getSessionId().toString(), progreso);
                 
-                log.debug("📤 Progreso AG enviado: Gen {}/{}, Fitness: {}", 
+                log.debug("Progreso AG enviado: Gen {}/{}, Fitness: {}", 
                          progreso.getGeneracion(), 
                          progreso.getMaxGeneraciones(),
                          progreso.getMejorFitness());
             };
 
         try {
-            // Ejecutar algoritmo genético con progreso en tiempo real
+            // Obtener tipo de simulacion de la configuracion
+            String tipoSimulacion = config.getTipoSimulacion();
+            
+            // Ejecutar algoritmo genetico con progreso en tiempo real
             algoritmoGeneticoService.planificarConProgresoWS(
                 session.getSessionId().toString(),
                 tiempoActual,
                 config.getFactorK(),
+                tipoSimulacion,
                 callback
             );
             
@@ -409,48 +419,95 @@ public class SimulationService {
 
     // ============ CARGA DE DATOS ============
 
-    // 🆕 SEDES/HUBS que no deben ser destino (constante)
+    // SEDES/HUBS que no deben ser destino (constante)
     private static final List<String> SEDES_HUBS = List.of("SPIM", "EBCI", "UBBB");
     
     /**
-     * 🆕 SIMULACIÓN SEMANAL: Carga pedidos de exactamente 7 días desde fecha inicio.
+     * Carga pedidos segun el tipo de simulacion (semanal o diario).
      * EXCLUYE pedidos con destino a HUBS/SEDES (SPIM, EBCI, UBBB).
      * 
-     * Ejemplo: Si inicio es 2025-01-02 10:30, carga pedidos del 2 al 8 de enero inclusive.
+     * - tipoSimulacion = "semanal": Carga de tabla pedidos_semanal (7 dias)
+     * - tipoSimulacion = "diario": Carga de tabla pedidos_diario (1 dia)
      * 
-     * @param request Configuración con fecha/hora de inicio
-     * @return WorldSnapshot con los pedidos de esa semana
+     * @param request Configuracion con fecha/hora de inicio y tipo de simulacion
+     * @return WorldSnapshot con los pedidos del periodo seleccionado
      */
     private WorldSnapshot loadWorldSnapshot(SimulationRequest request) {
-        log.info("📦 Cargando snapshot del mundo (SOLO 7 DÍAS)...");
+        String tipoSimulacion = request.getTipoSimulacion();
+        boolean esDiario = "diario".equalsIgnoreCase(tipoSimulacion);
+        
+        int diasSimulacion = esDiario ? 3 : 7;
+        String tablaNombre = esDiario ? "pedidos_diario" : "pedidos_semanal";
+        
+        log.info("Cargando snapshot del mundo ({} dias) desde tabla {}...", diasSimulacion, tablaNombre);
 
-        // 🆕 Calcular rango de fecha: inicio → inicio + 7 días
         LocalDateTime startDateTime = request.getStartDateTime();
-        LocalDateTime endDateTime = startDateTime.plusDays(7);
+        LocalDateTime endDateTime = startDateTime.plusDays(diasSimulacion);
         
-        log.info("📅 Rango de carga: {} → {}", startDateTime, endDateTime);
+        log.info("Rango de carga: {} -> {}", startDateTime, endDateTime);
         
-        // 🆕 Cargar SOLO pedidos de la semana seleccionada (excluyendo hubs/sedes)
-        List<PedidoSemanal> pedidosSemana = pedidoSemanalRepository.findPedidosSemana(
-                startDateTime.getYear(),
-                startDateTime.getMonthValue(),
-                startDateTime.getDayOfMonth(),
-                endDateTime.getYear(),
-                endDateTime.getMonthValue(),
-                endDateTime.getDayOfMonth(),
-                SEDES_HUBS
-        );
+        List<PedidoSemanal> pedidos;
         
-        // Cargar planes de vuelo (estos sí son necesarios y no son millones)
+        if (esDiario) {
+            // Cargar de tabla pedidos_diario y convertir a PedidoSemanal
+            List<PedidoDiario> pedidosDiarios = pedidoDiarioRepository.findPedidosDiarios(
+                    startDateTime.getYear(),
+                    startDateTime.getMonthValue(),
+                    startDateTime.getDayOfMonth(),
+                    endDateTime.getYear(),
+                    endDateTime.getMonthValue(),
+                    endDateTime.getDayOfMonth(),
+                    SEDES_HUBS
+            );
+            
+            // Convertir PedidoDiario a PedidoSemanal para reutilizar la logica existente
+            pedidos = pedidosDiarios.stream()
+                    .map(this::convertirDiarioASemanal)
+                    .toList();
+                    
+            log.info("Cargados {} pedidos diarios convertidos a formato semanal", pedidos.size());
+        } else {
+            // Cargar de tabla pedidos_semanal directamente
+            pedidos = pedidoSemanalRepository.findPedidosSemana(
+                    startDateTime.getYear(),
+                    startDateTime.getMonthValue(),
+                    startDateTime.getDayOfMonth(),
+                    endDateTime.getYear(),
+                    endDateTime.getMonthValue(),
+                    endDateTime.getDayOfMonth(),
+                    SEDES_HUBS
+            );
+        }
+        
+        // Cargar planes de vuelo
         List<PlanDeVuelo> allFlights = planDeVueloRepository.findAll();
 
-        log.info("✅ Snapshot cargado: {} pedidos de la semana ({} → {}), {} vuelos", 
-                pedidosSemana.size(), 
+        log.info("Snapshot cargado: {} pedidos ({} -> {}), {} vuelos", 
+                pedidos.size(), 
                 startDateTime.toLocalDate(), 
                 endDateTime.toLocalDate(),
                 allFlights.size());
 
-        return new WorldSnapshot(pedidosSemana, allFlights, pedidosSemana.size());
+        return new WorldSnapshot(pedidos, allFlights, pedidos.size());
+    }
+    
+    /**
+     * Convierte un PedidoDiario a PedidoSemanal para reutilizar la logica existente.
+     * Ambas entidades tienen los mismos campos.
+     */
+    private PedidoSemanal convertirDiarioASemanal(PedidoDiario diario) {
+        PedidoSemanal semanal = new PedidoSemanal(
+                diario.getAnio(),
+                diario.getMes(),
+                diario.getDia(),
+                diario.getHora(),
+                diario.getMinuto(),
+                diario.getAeropuertoDestinoId(),
+                diario.getCantidadProductos(),
+                diario.getClienteId()
+        );
+        semanal.setId(diario.getId());
+        return semanal;
     }
 
     /**

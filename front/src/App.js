@@ -52,7 +52,7 @@ function AppContent() {
             {/* Rutas privadas - Operaciones */}
             <Route path="/operaciones">
               <Route index element={<Seleccion />} />
-              <Route path="monitoreo" element={<Simulador />} />
+              <Route path="monitoreo" element={<SimuladorDiario />} />
               <Route path="simulador-semanal" element={<SimuladorSemanal />} />
               <Route path="simulador-diario" element={<SimuladorDiario />} />
               <Route path="simulador-simple" element={<SimuladorSimple />} />

@@ -8,6 +8,7 @@
     import com.proyecto.backend.model.Aeropuerto;
     import com.proyecto.backend.model.PedidoDiario;
     import com.proyecto.backend.model.PedidoSemanal;
+    import com.proyecto.backend.repository.PedidoDiarioRepository;
     import com.proyecto.backend.repository.PedidoSemanalRepository;
     import lombok.RequiredArgsConstructor;
     import lombok.extern.slf4j.Slf4j;
@@ -31,6 +32,13 @@
 
         private final WorldCacheService worldCacheService;
         private final PedidoSemanalRepository pedidoSemanalRepository;
+        private final PedidoDiarioRepository pedidoDiarioRepository;
+
+        // SEDES/HUBS que no deben ser destino
+        private static final List<String> SEDES_HUBS = List.of("SPIM", "EBCI", "UBBB");
+        
+        // Tipo de simulacion actual (se establece en cada llamada)
+        private String tipoSimulacionActual = "semanal";
 
         // Constantes de negocio
         private static final int PLAZO_MISMO_CONTINENTE_DIAS = 2;
@@ -814,12 +822,13 @@
         return cargarPedidosEnRango(request, null);
     }
     
-    // 🆕 SEDES/HUBS que no deben ser destino (constante para evitar recrear)
-    private static final List<String> SEDES_HUBS = List.of("SPIM", "EBCI", "UBBB");
-    
+    /**
+     * Carga pedidos en el rango de tiempo especificado.
+     * Usa pedidoSemanalRepository o pedidoDiarioRepository segun tipoSimulacionActual.
+     */
     private List<PedidoSemanal> cargarPedidosEnRango(PlanificacionRequest request, LocalDateTime tiempoActualSimulacion) {
         LocalDate fecha = request.getFecha();
-        int saltoConsumoMinutos = request.calcularRangoConsumoMinutos(); // Sc = K × Sa (ej: 70 min)
+        int saltoConsumoMinutos = request.calcularRangoConsumoMinutos(); // Sc = K x Sa (ej: 70 min)
 
         LocalDateTime inicio;
         LocalDateTime fin;
@@ -829,33 +838,78 @@
             inicio = tiempoActualSimulacion;
             fin = tiempoActualSimulacion.plusMinutes(saltoConsumoMinutos);
         } else {
-            // Primera iteración: ventana desde medianoche hasta medianoche + Sc
+            // Primera iteracion: ventana desde medianoche hasta medianoche + Sc
             inicio = LocalDateTime.of(fecha, LocalTime.MIDNIGHT);
             fin = inicio.plusMinutes(saltoConsumoMinutos);
         }
 
-        // ⏱️ TIMING: Medir query BD
+        // Medir query BD
         long tQuery = System.currentTimeMillis();
         
-        List<PedidoSemanal> pedidos = pedidoSemanalRepository.findByRangoFechaExcluyendoDestinos(
-                inicio.getYear(),
-                inicio.getMonthValue(),
-                inicio.getDayOfMonth(),
-                inicio.getHour(),
-                inicio.getMinute(),
-                fin.getYear(),
-                fin.getMonthValue(),
-                fin.getDayOfMonth(),
-                fin.getHour(),
-                fin.getMinute(),
-                SEDES_HUBS
-        );
+        List<PedidoSemanal> pedidos;
+        boolean esDiario = "diario".equalsIgnoreCase(tipoSimulacionActual);
+        String tablaNombre = esDiario ? "pedidos_diario" : "pedidos_semanal";
+        
+        if (esDiario) {
+            // Cargar de tabla pedidos_diario y convertir a PedidoSemanal
+            List<PedidoDiario> pedidosDiarios = pedidoDiarioRepository.findByRangoFechaExcluyendoDestinos(
+                    inicio.getYear(),
+                    inicio.getMonthValue(),
+                    inicio.getDayOfMonth(),
+                    inicio.getHour(),
+                    inicio.getMinute(),
+                    fin.getYear(),
+                    fin.getMonthValue(),
+                    fin.getDayOfMonth(),
+                    fin.getHour(),
+                    fin.getMinute(),
+                    SEDES_HUBS
+            );
+            
+            // Convertir PedidoDiario a PedidoSemanal
+            pedidos = pedidosDiarios.stream()
+                    .map(this::convertirDiarioASemanal)
+                    .toList();
+        } else {
+            // Cargar de tabla pedidos_semanal directamente
+            pedidos = pedidoSemanalRepository.findByRangoFechaExcluyendoDestinos(
+                    inicio.getYear(),
+                    inicio.getMonthValue(),
+                    inicio.getDayOfMonth(),
+                    inicio.getHour(),
+                    inicio.getMinute(),
+                    fin.getYear(),
+                    fin.getMonthValue(),
+                    fin.getDayOfMonth(),
+                    fin.getHour(),
+                    fin.getMinute(),
+                    SEDES_HUBS
+            );
+        }
         
         long queryMs = System.currentTimeMillis() - tQuery;
-        log.info("⏱️ [TIMING] Query BD: {} pedidos en {}ms | Ventana: [{} → {}]", 
-                pedidos.size(), queryMs, inicio.toLocalTime(), fin.toLocalTime());
+        log.info("[TIMING] Query BD ({}): {} pedidos en {}ms | Ventana: [{} -> {}]", 
+                tablaNombre, pedidos.size(), queryMs, inicio.toLocalTime(), fin.toLocalTime());
 
         return pedidos;
+    }
+    
+    /**
+     * Convierte un PedidoDiario a PedidoSemanal para reutilizar la logica existente.
+     */
+    private PedidoSemanal convertirDiarioASemanal(PedidoDiario diario) {
+        PedidoSemanal semanal = new PedidoSemanal(
+                diario.getAnio(),
+                diario.getMes(),
+                diario.getDia(),
+                diario.getHora(),
+                diario.getMinuto(),
+                diario.getAeropuertoDestinoId(),
+                diario.getCantidadProductos(),
+                diario.getClienteId()
+        );
+        semanal.setId(diario.getId());
+        return semanal;
     }
 
     /**
@@ -1436,21 +1490,9 @@
     private final Map<String, ControladorAlmacenes> controladorAlmacenesCache = new java.util.concurrent.ConcurrentHashMap<>();
 
     /**
-     * Planifica con progreso en tiempo real vía WebSocket
-     *
-     * @param sessionId ID de sesión WebSocket
-     * @param tiempoActualSimulacion Tiempo actual de la simulación
-     * @param factorK Factor de expansión temporal
-     * @param callbackProgreso Callback para enviar progreso
+     * Planifica con progreso en tiempo real vía WebSocket (usa tabla semanal por defecto)
+     * Para compatibilidad con PlanificacionWebSocketHandler
      */
-    public void planificarConProgresoWS(
-            String sessionId,
-            LocalDateTime tiempoActualSimulacion,
-            int factorK,
-            java.util.function.Consumer<ProgresoAGDTO> callbackProgreso) {
-        planificarConProgresoWS(sessionId, tiempoActualSimulacion, factorK, null, null, null, callbackProgreso);
-    }
-    
     public void planificarConProgresoWS(
             String sessionId,
             LocalDateTime tiempoActualSimulacion,
@@ -1459,7 +1501,40 @@
             Integer maxGeneraciones,
             Integer limiteGeneracionesSinMejora,
             java.util.function.Consumer<ProgresoAGDTO> callbackProgreso) {
+        planificarConProgresoWS(sessionId, tiempoActualSimulacion, factorK, "semanal", tamanioPoblacion, maxGeneraciones, limiteGeneracionesSinMejora, callbackProgreso);
+    }
 
+    /**
+     * Planifica con progreso en tiempo real vía WebSocket
+     *
+     * @param sessionId ID de sesión WebSocket
+     * @param tiempoActualSimulacion Tiempo actual de la simulación
+     * @param factorK Factor de expansión temporal
+     * @param tipoSimulacion "semanal" o "diario" - determina de qué tabla cargar pedidos
+     * @param callbackProgreso Callback para enviar progreso
+     */
+    public void planificarConProgresoWS(
+            String sessionId,
+            LocalDateTime tiempoActualSimulacion,
+            int factorK,
+            String tipoSimulacion,
+            java.util.function.Consumer<ProgresoAGDTO> callbackProgreso) {
+        planificarConProgresoWS(sessionId, tiempoActualSimulacion, factorK, tipoSimulacion, null, null, null, callbackProgreso);
+    }
+    
+    public void planificarConProgresoWS(
+            String sessionId,
+            LocalDateTime tiempoActualSimulacion,
+            int factorK,
+            String tipoSimulacion,
+            Integer tamanioPoblacion,
+            Integer maxGeneraciones,
+            Integer limiteGeneracionesSinMejora,
+            java.util.function.Consumer<ProgresoAGDTO> callbackProgreso) {
+
+        // Establecer tipo de simulacion para esta ejecucion
+        this.tipoSimulacionActual = (tipoSimulacion != null) ? tipoSimulacion : "semanal";
+        
         EstadoEjecucion estado = new EstadoEjecucion();
         sesionesActivas.put(sessionId, estado);
 
@@ -1588,25 +1663,6 @@
         ControladorAlmacenes ca = controladorAlmacenesCache.remove(sessionId);
         log.info("🧹 Cache limpiado para sesión {} | WorldTemporal={}, ControladorAlmacenes={}", 
                 sessionId, wt != null, ca != null);
-    }
-
-    /**
-     * Convierte PedidoDiario a PedidoSemanal para reutilizar la lógica del AG.
-     * Ambas entidades tienen la misma estructura, solo diferente nombre de tabla.
-     */
-    private PedidoSemanal convertirDiarioASemanal(PedidoDiario diario) {
-        PedidoSemanal semanal = new PedidoSemanal(
-            diario.getAnio(),
-            diario.getMes(),
-            diario.getDia(),
-            diario.getHora(),
-            diario.getMinuto(),
-            diario.getAeropuertoDestinoId(),
-            diario.getCantidadProductos(),
-            diario.getClienteId()
-        );
-        semanal.setId(diario.getId()); // Mantener el ID original
-        return semanal;
     }
 
     /**

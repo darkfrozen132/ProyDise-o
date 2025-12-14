@@ -1481,8 +1481,8 @@ const SimuladorDiario = () => {
 		flightsInAirRef.current = flightsInAir;
 	}, [flightsInAir]);
 
-	// CONSTANTE: Duracion de la simulacion diaria (3 dias en milisegundos)
-	const DURACION_SIMULACION_MS = 3 * 24 * 60 * 60 * 1000; // 259,200,000 ms = 3 dias
+	// CONSTANTE: Duracion de la simulacion diaria (1 dia en milisegundos)
+	const DURACION_SIMULACION_MS = 1 * 24 * 60 * 60 * 1000; // 86,400,000 ms = 1 dia
 
 	useEffect(() => {
 		if (!simulacionLocalActiva || !relojLocalRef.current || !simStartRef.current) return;
@@ -1499,10 +1499,10 @@ const SimuladorDiario = () => {
 			// Avanzar el reloj local
 			const nuevoTiempo = new Date(relojLocalRef.current.getTime() + msSimulados);
 
-			// VERIFICAR LIMITE DE 3 DIAS
+			// VERIFICAR LIMITE DE 1 DIA
 			const tiempoTranscurridoSimulado = nuevoTiempo.getTime() - simStartRef.current.getTime();
 			if (tiempoTranscurridoSimulado >= DURACION_SIMULACION_MS) {
-				console.log('SIMULACION DIARIA COMPLETADA - 3 dias simulados');
+				console.log('SIMULACION DIARIA COMPLETADA - 1 dia simulado');
 				console.log(`   Inicio: ${simStartRef.current.toISOString()}`);
 				console.log(`   Fin: ${nuevoTiempo.toISOString()}`);
 
@@ -1516,7 +1516,7 @@ const SimuladorDiario = () => {
 					intervalTiempoRealRef.current = null;
 				}
 
-				alert('Simulacion diaria completada (3 dias)');
+				alert('Simulacion diaria completada (1 dia)');
 				return;
 			}
 
@@ -1532,7 +1532,7 @@ const SimuladorDiario = () => {
 			if (Math.random() < 0.0125) {
 				const avionesEnPantalla = flightsInAirRef.current;
 				const diasTranscurridos = (tiempoTranscurridoSimulado / (24 * 60 * 60 * 1000)).toFixed(2);
-				console.log(`⏰ Reloj: ${nuevoTiempo.toISOString().slice(11, 19)} | Día ${diasTranscurridos}/3 | K=${K_CONSTANTE} | Aviones=${avionesEnPantalla}`);
+				console.log(`⏰ Reloj: ${nuevoTiempo.toISOString().slice(11, 19)} | Día ${diasTranscurridos}/7 | K=${K_CONSTANTE} | Aviones=${avionesEnPantalla}`);
 			}
 		}, TICK_REAL_MS);
 

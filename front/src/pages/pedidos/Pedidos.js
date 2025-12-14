@@ -307,8 +307,30 @@ const Pedidos = () => {
         // Recargar la lista de pedidos
         await cargarPedidos();
 
+        // Si está en modo diario, ejecutar planificación automática para todos los pedidos importados
+        const modoDiarioActivo = PedidoDiarioService.isModoDiarioActivo();
+        let planificacionExitosa = false;
+        
+        if (modoDiarioActivo && exitosos > 0) {
+          console.log('🔄 Modo diario activo: ejecutando planificación para pedidos importados...');
+          try {
+            await PedidoDiarioService.ejecutarPlanificacionDiaria();
+            planificacionExitosa = true;
+            console.log('✅ Planificación automática completada');
+          } catch (planError) {
+            console.warn('⚠️ Error en planificación automática:', planError);
+          }
+        }
+
+        // Mensajes según modo y resultado
         if (exitosos > 0 && fallidos === 0) {
-          showAlert('success', `!Importación completada! Se agregaron ${exitosos} pedidos exitosamente.`);
+          if (modoDiarioActivo && planificacionExitosa) {
+            showAlert('success', `🚀 Importación completada! ${exitosos} pedidos agregados y planificados automáticamente.`);
+          } else if (modoDiarioActivo && !planificacionExitosa) {
+            showAlert('warning', `📦 ${exitosos} pedidos importados, pero la planificación automática falló.`);
+          } else {
+            showAlert('success', `📦 Importación completada! ${exitosos} pedidos agregados (modo semanal).`);
+          }
         } else if (exitosos > 0 && fallidos > 0) {
           showAlert('warning', `Importación parcial: ${exitosos} pedidos agregados, ${fallidos} errores.`);
         } else {
@@ -366,26 +388,36 @@ const Pedidos = () => {
       minuto: utcMinuto
     };
 
-    // Enviar al backend
-    console.log('📤 Enviando pedido al backend:', JSON.stringify(newOrder, null, 2));
+    // Enviar al backend con planificación automática solo si está en modo diario
+    const modoDiarioActivo = PedidoDiarioService.isModoDiarioActivo();
+    console.log(`📤 Enviando pedido al backend (Modo: ${modoDiarioActivo ? 'DIARIO - con planificación' : 'SEMANAL - sin planificación'}):`, JSON.stringify(newOrder, null, 2));
+    
     try {
-      const response = await PedidoDiarioService.crearPedido(newOrder);
+      const response = await PedidoDiarioService.crearPedidoConPlanificacion(newOrder, modoDiarioActivo);
       console.log('✅ Pedido creado:', response);
       
       // Agregar a la lista local con el ID del backend
       const pedidoCreado = {
-        id: response.pedido?.id,
+        id: response.pedido?.pedido?.id || response.pedido?.id,
         cliente: newOrder.clienteId,
         origen: 'SPIM', // Lima es el origen fijo
         destino: newOrder.aeropuertoDestinoId,
         cantidadTotal: newOrder.cantidadProductos,
         prioridad: 'Normal',
-        status: 'Pendiente',
+        status: response.planificado ? 'Planificado' : 'Pendiente', // Estado según si se planificó
         fechaUTC: `${utcDia}/${utcMes}/${utcAnio} ${utcHora}:${String(utcMinuto).padStart(2, '0')} UTC`
       };
       setOrders(prev => [...prev, pedidoCreado]);
       resetForm();
-      showAlert('success', 'Pedido creado exitosamente');
+      
+      // Mensaje según el modo
+      if (modoDiarioActivo && response.planificado) {
+        showAlert('success', '🚀 Pedido creado y planificado automáticamente');
+      } else if (modoDiarioActivo && !response.planificado) {
+        showAlert('warning', '📦 Pedido creado, pero la planificación automática falló');
+      } else {
+        showAlert('success', '📦 Pedido creado exitosamente (modo semanal)');
+      }
     } catch (error) {
       console.error('Error al crear pedido:', error);
       showAlert('error', 'Error al crear el pedido. Por favor, intente nuevamente.');

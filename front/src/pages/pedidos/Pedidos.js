@@ -600,7 +600,7 @@ const Pedidos = () => {
               <thead>
                 <tr>
                   <th>ID</th>
-                  <th>Cliente (DNI)</th>
+                  <th>Cliente</th>
                   <th>Destino</th>
                   <th>Cantidad</th>
                   <th>Fecha (UTC)</th>

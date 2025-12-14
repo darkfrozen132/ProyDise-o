@@ -25,12 +25,19 @@ import java.util.stream.IntStream;
  *   1. Ordenar pedidos segun prioridades del cromosoma (descendente)
  *   2. Para cada pedido (en orden):
  *      - Buscar mejor ruta disponible (BFS)
+ *      - 🆕 Si el pedido es muy grande, dividirlo en múltiples subrutas
  *      - Asignar capacidades de vuelos y almacenes
  *   3. Calcular metricas y fitness
  *   4. Retornar solucion
  */
 @Slf4j
 public class DecodificadorGenetico {
+
+    // 🆕 Capacidad típica máxima de un vuelo (para decidir cuándo dividir)
+    private static final int CAPACIDAD_TIPICA_VUELO = 350;
+    
+    // 🆕 Máximo número de divisiones por pedido (evitar fragmentación excesiva)
+    private static final int MAX_DIVISIONES_POR_PEDIDO = 5;
 
     private final WorldTemporal worldTemporal;
     private final ControladorAlmacenes controladorAlmacenes;
@@ -134,15 +141,19 @@ public class DecodificadorGenetico {
      * 🆕 MEJORA 2: Ahora pasa la hora del pedido al buscador para que seleccione
      * vuelos que salgan DESPUÉS de la hora del pedido, distribuyendo así los
      * pedidos entre diferentes horarios de vuelos.
+     * 
+     * 🆕 MEJORA 3: DIVISIÓN DE PEDIDOS GRANDES
+     * Si un pedido excede la capacidad típica de un vuelo (350 paquetes),
+     * se divide automáticamente en múltiples subrutas/vuelos.
      *
      * @param pedido Pedido a procesar
-     * @return Lista de subrutas (normalmente 1)
+     * @return Lista de subrutas (puede ser múltiples si el pedido es grande)
      */
     private List<SubRuta> generarRutasPedido(PedidoSemanal pedido) {
         List<SubRuta> subrutas = new ArrayList<>();
 
         String destino = pedido.getAeropuertoDestinoId();
-        int cantidad = pedido.getCantidadProductos();
+        int cantidadTotal = pedido.getCantidadProductos();
 
         // Calcular dia relativo del pedido
         LocalDate fechaPedido = LocalDate.of(pedido.getAnio(), pedido.getMes(), pedido.getDia());
@@ -153,30 +164,122 @@ public class DecodificadorGenetico {
             return subrutas;
         }
 
-        // 🆕 Calcular hora mínima de salida (hora del pedido)
-        // Los vuelos deben salir DESPUÉS de esta hora para que el pedido pueda estar listo
+        // Calcular hora mínima de salida (hora del pedido)
         java.time.LocalTime horaPedido = java.time.LocalTime.of(pedido.getHora(), pedido.getMinuto());
         
-        // 🆕 ORDENAR HUBS POR CERCANÍA AL DESTINO
-        // Esto asegura que los pedidos salgan del hub más cercano geográficamente
+        // ORDENAR HUBS POR CERCANÍA AL DESTINO
         List<String> hubsOrdenados = ordenarHubsPorCercania(destino);
         
-        log.trace("Pedido {} -> Destino: {} | Hora: {} | Hubs ordenados por cercanía: {}", 
-                  pedido.getId(), destino, horaPedido, hubsOrdenados);
-
-        // Intentar generar ruta desde el hub más cercano primero
+        // 🆕 VERIFICAR SI NECESITA DIVISIÓN
+        if (cantidadTotal <= CAPACIDAD_TIPICA_VUELO) {
+            // Pedido pequeño: buscar ruta normal (comportamiento original)
+            return generarRutaSimple(pedido, destino, cantidadTotal, diaRelativo, horaPedido, hubsOrdenados);
+        }
+        
+        // 🆕 PEDIDO GRANDE: Dividir en múltiples envíos
+        log.info("📦 Pedido {} con {} paquetes excede capacidad típica ({}). Dividiendo...", 
+                 pedido.getId(), cantidadTotal, CAPACIDAD_TIPICA_VUELO);
+        
+        return generarRutasDivididas(pedido, destino, cantidadTotal, diaRelativo, horaPedido, hubsOrdenados);
+    }
+    
+    /**
+     * 🆕 Genera una ruta simple para pedidos pequeños (comportamiento original)
+     */
+    private List<SubRuta> generarRutaSimple(PedidoSemanal pedido, String destino, int cantidad, 
+            int diaRelativo, java.time.LocalTime horaPedido, List<String> hubsOrdenados) {
+        List<SubRuta> subrutas = new ArrayList<>();
+        
         for (String hub : hubsOrdenados) {
-            // 🆕 Pasar hora mínima de salida al buscador
             SubRuta subruta = buscadorRutas.buscarRutaConHoraMinima(hub, destino, cantidad, diaRelativo, horaPedido);
-
             if (subruta != null) {
                 log.trace("Pedido {} asignado a hub {} (destino: {}, hora salida >= {})", 
                          pedido.getId(), hub, destino, horaPedido);
                 subrutas.add(subruta);
-                break; // Solo necesitamos una ruta
+                break;
             }
         }
-
+        
+        return subrutas;
+    }
+    
+    /**
+     * 🆕 Genera múltiples rutas para pedidos grandes
+     * Divide el pedido en varios envíos que quepan en los vuelos disponibles
+     */
+    private List<SubRuta> generarRutasDivididas(PedidoSemanal pedido, String destino, int cantidadTotal,
+            int diaRelativo, java.time.LocalTime horaPedido, List<String> hubsOrdenados) {
+        
+        List<SubRuta> subrutas = new ArrayList<>();
+        int cantidadRestante = cantidadTotal;
+        int divisiones = 0;
+        int diaActual = diaRelativo;
+        java.time.LocalTime horaActual = horaPedido;
+        
+        // Intentar asignar toda la cantidad usando múltiples vuelos
+        while (cantidadRestante > 0 && divisiones < MAX_DIVISIONES_POR_PEDIDO) {
+            boolean asignado = false;
+            
+            // Intentar desde cada hub
+            for (String hub : hubsOrdenados) {
+                // Usar búsqueda con capacidad parcial
+                BuscadorRutas.ResultadoBusquedaParcial resultado = 
+                    buscadorRutas.buscarRutaConCapacidadParcial(hub, destino, cantidadRestante, diaActual, horaActual);
+                
+                if (resultado != null) {
+                    SubRuta subruta = resultado.getSubruta();
+                    int cantidadAsignada = resultado.getCantidadAsignada();
+                    
+                    // Actualizar la cantidad en la subruta
+                    subruta.setCantidad(cantidadAsignada);
+                    subrutas.add(subruta);
+                    
+                    cantidadRestante -= cantidadAsignada;
+                    divisiones++;
+                    asignado = true;
+                    
+                    log.debug("📦 Pedido {} división {}: {} paquetes vía {} (quedan {})", 
+                             pedido.getId(), divisiones, cantidadAsignada, hub, cantidadRestante);
+                    
+                    // Para la siguiente iteración, usar una hora posterior
+                    // (evitar asignar al mismo vuelo)
+                    if (subruta.getVuelos() != null && !subruta.getVuelos().isEmpty()) {
+                        // Avanzar la hora mínima para el siguiente envío
+                        horaActual = horaActual.plusMinutes(30);
+                        if (horaActual.getHour() >= 23) {
+                            // Pasar al día siguiente
+                            diaActual++;
+                            horaActual = java.time.LocalTime.of(0, 0);
+                        }
+                    }
+                    
+                    break; // Salir del loop de hubs, continuar con la siguiente división
+                }
+            }
+            
+            // Si no se pudo asignar en ningún hub, intentar el día siguiente
+            if (!asignado) {
+                if (diaActual < diaRelativo + 2) {
+                    diaActual++;
+                    horaActual = java.time.LocalTime.of(0, 0);
+                    log.trace("Pedido {}: intentando día {} para {} paquetes restantes", 
+                             pedido.getId(), diaActual, cantidadRestante);
+                } else {
+                    log.warn("❌ Pedido {}: no se pudo asignar {} paquetes restantes después de {} divisiones", 
+                            pedido.getId(), cantidadRestante, divisiones);
+                    break;
+                }
+            }
+        }
+        
+        // Log del resultado final
+        if (!subrutas.isEmpty()) {
+            int totalAsignado = subrutas.stream().mapToInt(SubRuta::getCantidad).sum();
+            log.info("✅ Pedido {} dividido en {} envíos: {}/{} paquetes asignados ({}%)", 
+                    pedido.getId(), subrutas.size(), totalAsignado, cantidadTotal,
+                    (totalAsignado * 100 / cantidadTotal));
+        }
+        
         return subrutas;
     }
     

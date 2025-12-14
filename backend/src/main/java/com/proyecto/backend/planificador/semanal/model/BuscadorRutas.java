@@ -12,12 +12,17 @@ import java.util.Queue;
  *
  * Encapsula la logica de busqueda de rutas con verificacion de capacidades
  * de vuelos y almacenes. Puede ser reutilizado por diferentes decodificadores.
+ * 
+ * 🆕 MEJORA: Soporta división de pedidos grandes en múltiples vuelos
  */
 @Slf4j
 public class BuscadorRutas {
 
     // Maximo numero de escalas permitidas
     private static final int MAX_ESCALAS = 3;
+    
+    // 🆕 Capacidad mínima para considerar un vuelo (evitar fragmentación excesiva)
+    private static final int CAPACIDAD_MINIMA_UTIL = 50;
 
     private final WorldTemporal worldTemporal;
     private final ControladorAlmacenes controladorAlmacenes;
@@ -71,6 +76,99 @@ public class BuscadorRutas {
         }
         
         return resultado;
+    }
+    
+    /**
+     * 🆕 Busca una ruta que pueda llevar AL MENOS una parte del pedido
+     * Retorna la cantidad máxima que puede transportar en esa ruta
+     * 
+     * Usado para dividir pedidos grandes en múltiples envíos
+     *
+     * @param origen Aeropuerto de origen (hub)
+     * @param destino Aeropuerto de destino
+     * @param cantidadDeseada Cantidad ideal de productos
+     * @param diaInicial Dia relativo inicial
+     * @param horaMinima Hora mínima de salida (puede ser null)
+     * @return ResultadoBusquedaParcial con la subruta y cantidad asignada, o null si no hay ruta
+     */
+    public ResultadoBusquedaParcial buscarRutaConCapacidadParcial(String origen, String destino, 
+            int cantidadDeseada, int diaInicial, java.time.LocalTime horaMinima) {
+        
+        // Primero intentar con la cantidad completa
+        SubRuta rutaCompleta = buscarRutaConHoraMinima(origen, destino, cantidadDeseada, diaInicial, horaMinima);
+        if (rutaCompleta != null) {
+            return new ResultadoBusquedaParcial(rutaCompleta, cantidadDeseada);
+        }
+        
+        // Si no cabe completo, buscar la máxima capacidad disponible
+        int capacidadMaxDisponible = obtenerCapacidadMaximaDisponible(origen, destino, diaInicial, horaMinima);
+        
+        if (capacidadMaxDisponible >= CAPACIDAD_MINIMA_UTIL) {
+            // Intentar con la capacidad máxima disponible
+            SubRuta rutaParcial = buscarRutaConHoraMinima(origen, destino, capacidadMaxDisponible, diaInicial, horaMinima);
+            if (rutaParcial != null) {
+                log.debug("🔀 Ruta parcial encontrada: {} → {} con {}/{} paquetes", 
+                         origen, destino, capacidadMaxDisponible, cantidadDeseada);
+                return new ResultadoBusquedaParcial(rutaParcial, capacidadMaxDisponible);
+            }
+        }
+        
+        return null;
+    }
+    
+    /**
+     * 🆕 Obtiene la capacidad máxima disponible para una ruta
+     * Busca el vuelo con más espacio libre en la ruta más corta
+     */
+    private int obtenerCapacidadMaximaDisponible(String origen, String destino, int diaInicial, java.time.LocalTime horaMinima) {
+        int maxCapacidad = 0;
+        
+        // Buscar en los próximos 2 días
+        for (int diaOffset = 0; diaOffset <= 1; diaOffset++) {
+            int dia = diaInicial + diaOffset;
+            if (dia >= worldTemporal.getNumeroDias()) break;
+            
+            List<VueloInstancia> vuelos = worldTemporal.getVuelosDesde(origen, dia);
+            
+            for (VueloInstancia vuelo : vuelos) {
+                if (!vuelo.esModificable()) continue;
+                
+                // Filtro de hora mínima para el primer día
+                if (diaOffset == 0 && horaMinima != null) {
+                    java.time.LocalTime horaSalida = vuelo.getSalidaUTC().toLocalTime();
+                    if (horaSalida.isBefore(horaMinima)) continue;
+                }
+                
+                int capacidadRestante = vuelo.getCapacidadRestante();
+                
+                // Si es vuelo directo al destino
+                if (vuelo.getDestino().equals(destino)) {
+                    maxCapacidad = Math.max(maxCapacidad, capacidadRestante);
+                } else {
+                    // Vuelo con escala - considerar la capacidad del primer tramo
+                    // (la capacidad efectiva será la mínima entre todos los tramos)
+                    maxCapacidad = Math.max(maxCapacidad, capacidadRestante);
+                }
+            }
+        }
+        
+        return maxCapacidad;
+    }
+    
+    /**
+     * 🆕 Clase para retornar resultado de búsqueda parcial
+     */
+    public static class ResultadoBusquedaParcial {
+        private final SubRuta subruta;
+        private final int cantidadAsignada;
+        
+        public ResultadoBusquedaParcial(SubRuta subruta, int cantidadAsignada) {
+            this.subruta = subruta;
+            this.cantidadAsignada = cantidadAsignada;
+        }
+        
+        public SubRuta getSubruta() { return subruta; }
+        public int getCantidadAsignada() { return cantidadAsignada; }
     }
     
     /**

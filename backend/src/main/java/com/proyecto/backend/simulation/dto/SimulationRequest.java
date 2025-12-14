@@ -15,7 +15,7 @@ import java.time.LocalTime;
  * DTO para solicitar el inicio de una simulación
  * 
  * @author Sistema Package Planner
- * @version 1.0
+ * @version 1.1 - Soporte para pedidos diarios y semanales
  */
 @Data
 public class SimulationRequest {
@@ -28,7 +28,7 @@ public class SimulationRequest {
     private LocalDate startDate;
 
     /**
-     * Hora de inicio de la simulación (formato HH:mm)
+     * Hora de inicio de la simulacion (formato HH:mm)
      * Si no se especifica, se usa 00:00 por defecto
      */
     @JsonFormat(pattern = "HH:mm")
@@ -40,7 +40,16 @@ public class SimulationRequest {
     @JsonProperty("factorK")
     private Integer factorK;
 
-    // Parámetros opcionales del Algoritmo Genético
+    /**
+     * Tipo de simulacion: "semanal" o "diario"
+     * Determina de que tabla se cargan los pedidos:
+     * - semanal: tabla pedidos_semanal (por defecto)
+     * - diario: tabla pedidos_diario
+     */
+    @JsonProperty("tipoSimulacion")
+    private String tipoSimulacion = "semanal";
+
+    // Parametros opcionales del Algoritmo Genetico
     @Min(value = 5, message = "El tamaño de población debe ser al menos 5")
     @JsonProperty("tamanioPoblacion")
     private Integer populationSize = 20;

@@ -1,10 +1,95 @@
-.pedidos-page { padding: 16px; }
+.pedidos-page { padding: 16px; position: relative; }
 .pedidos-layout { display: grid; grid-template-columns: 1.2fr 1fr; gap: 16px; }
 .form-section, .list-section { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px; }
+
+/* Contenedor de alertas */
+.alert-container {
+  position: fixed;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  min-width: 400px;
+  max-width: 600px;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
 
 .form-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .form-header h2 { margin: 0; font-size: 1.25rem; }
 .import-actions { display: flex; gap: 8px; }
+.import-actions .btn { cursor: pointer; }
+.import-actions .btn.disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* Resultado de importación */
+.import-result {
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  position: relative;
+}
+
+.import-result.success {
+  background: #d1fae5;
+  border: 1px solid #10b981;
+}
+
+.import-result.warning {
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+}
+
+.import-summary {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.import-summary .success-text { color: #059669; }
+.import-summary .error-text { color: #dc2626; }
+
+.import-errors {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(0,0,0,0.1);
+}
+
+.import-errors ul {
+  margin: 4px 0 0 0;
+  padding-left: 20px;
+  font-size: 0.85rem;
+  color: #9a3412;
+}
+
+.import-errors li {
+  margin-bottom: 2px;
+}
+
+.btn-close-result {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: #6b7280;
+  line-height: 1;
+}
+
+.btn-close-result:hover {
+  color: #374151;
+}
 
 .form-section h2, .list-section h2 { margin: 0 0 12px; font-size: 1.25rem; }
 .pedido-form .grid { display:grid; gap:12px; margin-bottom:12px; }

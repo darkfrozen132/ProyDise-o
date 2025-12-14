@@ -21,6 +21,7 @@ import MetricsPopper from '../../../components/ui/Dialog/MetricsPopper';
 import MetricsButton from '../../../components/ui/Button/MetricsButton';
 import ControlButton from '../../../components/ui/Button/ControlButton';
 import ControlPopper from '../../../components/ui/Dialog/ControlPopper';
+import ControlPopperSimple from '../../../components/ui/Dialog/ControlPopperSimple';
 
 import { IoMdAirplane } from "react-icons/io";
 import ReactDOMServer from "react-dom/server";
@@ -769,10 +770,12 @@ const SimuladorDiario = () => {
 	//const [isControlPopperOpen, setIsControlPopperOpen] = useState(false);
 	const [metricsAnchorEl, setMetricsAnchorEl] = useState(null);
 	const [controlAnchorEl, setControlAnchorEl] = useState(null);
+	const [controlSimpleAnchorEl, setControlSimpleAnchorEl] = useState(null);
 	const [hasAutoOpened, setHasAutoOpened] = useState(false);
 
 	const isControlPopperOpen = Boolean(controlAnchorEl);
 	const isMetricsPopperOpen = Boolean(metricsAnchorEl);
+	const isControlSimplePopperOpen = Boolean(controlSimpleAnchorEl);
 	
 	/* Datos de aeropuertos - se cargarán desde la API */
 	const [airports, setAirports] = useState([]);
@@ -1821,13 +1824,8 @@ const SimuladorDiario = () => {
 
 	// Callback que se ejecuta cuando el botón se monta
 	const handleControlButtonMount = (buttonElement) => {
-		// Solo abrir automáticamente la primera vez
-		if (!hasAutoOpened) {
-			setTimeout(() => {
-				setControlAnchorEl(buttonElement);
-				setHasAutoOpened(true);
-			}, 100);
-		}
+		// Ya no abrir automáticamente el panel de control completo
+		// Se abre el panel simple en su lugar
 	};
 
 	// Callback que se ejecuta cuando el botón se monta
@@ -1846,6 +1844,14 @@ const SimuladorDiario = () => {
 			setControlAnchorEl(null);
 		} else {
 			setControlAnchorEl(event.currentTarget);
+		}
+	};
+
+	const handleControlSimpleButtonClick = (event) => {
+		if (controlSimpleAnchorEl) {
+			setControlSimpleAnchorEl(null);
+		} else {
+			setControlSimpleAnchorEl(event.currentTarget);
 		}
 	};
 
@@ -3234,13 +3240,13 @@ const SimuladorDiario = () => {
 	}
 
 	/* ==================== Texto dinamico para los botones ==================== */
-	let startButtonLabel = "Iniciar";
+	let startButtonLabel = "Replanificar";
 
 	if (simulacionActiva) {
-		startButtonLabel = "Iniciar";
+		startButtonLabel = "Replanificar";
 	} else if (simClock) {
 		// hubo simulación antes y ahora está pausada
-		startButtonLabel = "Reanudar";
+		startButtonLabel = "Replanificar";
 	}
 
 	return (
@@ -3300,7 +3306,7 @@ const SimuladorDiario = () => {
 						}}>
 					</div>
 					<div className="sidebar-header">
-						<h2>Simulacion Diaria</h2>
+						<h2>Operaciones Diarias</h2>
 					</div>
 					<div className="sidebar-content" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', gap: '4px' }}>
 						{/* Material-UI Tabs */}
@@ -3945,6 +3951,42 @@ const SimuladorDiario = () => {
 							<MetricsButton onClick={handleMetricsButtonClick} onMount={handleMetricButtonMount}/>
 							{/* Botón de leyenda flotante */}
 							<LegendButton onClick={handleToggleLegend} />
+							{/* Botón de control simple (reloj UTC) - arriba del control principal */}
+							<button
+								ref={(el) => {
+									// Auto-abrir el panel simple al montar
+									if (el && !hasAutoOpened) {
+										setTimeout(() => {
+											setControlSimpleAnchorEl(el);
+											setHasAutoOpened(true);
+										}, 100);
+									}
+								}}
+								onClick={handleControlSimpleButtonClick}
+								style={{
+									position: 'absolute',
+									bottom: '95px',
+									right: '15px',
+									zIndex: 1000,
+									width: '40px',
+									height: '40px',
+									borderRadius: '8px',
+									border: 'none',
+									background: isControlSimplePopperOpen ? '#1a237e' : 'white',
+									color: isControlSimplePopperOpen ? 'white' : '#1a237e',
+									boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+									cursor: 'pointer',
+									display: 'flex',
+									alignItems: 'center',
+									justifyContent: 'center',
+									fontSize: '18px',
+									fontWeight: 'bold',
+									transition: 'all 0.2s',
+								}}
+								title="Panel de Control Rápido (UTC)"
+							>
+								🕐
+							</button>
 							{/* Controles de simulación */} 
 							<ControlButton onClick={handleControlButtonClick} onMount={handleControlButtonMount}/>
 						</div>
@@ -3977,6 +4019,16 @@ const SimuladorDiario = () => {
 				tiempoRealTranscurrido={tiempoRealTranscurrido}
 				simulacionActiva={simulacionActiva}
 				estadoPlanificacion={estadoPlanificacion}
+				handleIniciarSimulacion={handleIniciarSimulacion}
+				handleDetenerSimulacion={handleDetenerSimulacion}
+				startButtonLabel={startButtonLabel}
+				showFlightLines={showFlightLines}
+				setShowFlightLines={setShowFlightLines}
+			/>
+			<ControlPopperSimple
+				open={isControlSimplePopperOpen}
+				anchorEl={controlSimpleAnchorEl}
+				simulacionActiva={simulacionActiva}
 				handleIniciarSimulacion={handleIniciarSimulacion}
 				handleDetenerSimulacion={handleDetenerSimulacion}
 				startButtonLabel={startButtonLabel}

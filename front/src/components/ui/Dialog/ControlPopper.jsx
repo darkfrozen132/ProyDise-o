@@ -254,21 +254,6 @@ export default function ControlPopper({
                         flex: '1 1 auto',
                         justifyContent: 'center'
                     }}>
-                        {/* Indicador de estado */}
-                        <div style={{ 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            gap: '6px',
-                            padding: '6px 10px',
-                            background: '#f2f2f2ff',
-                            borderRadius: '4px'
-                        }}>
-                            <span className={`status-dot ${simulacionActiva ? "active" : "stopped"}`} />
-                            <span style={{ fontSize: '12px', fontWeight: '500', color: '#212529' }}>
-                                {simulacionActiva ? 'Activo' : 'Detenido'}
-                            </span>
-                        </div>
-
                         {/* Botones de control */}
                         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                             {/* Botón de iniciar simulación */}
@@ -317,7 +302,7 @@ export default function ControlPopper({
                                 }}
                             >
                                 <FaStop size={14} />
-                                Detener
+                                Detener Replanificación
                             </button>
                             {/* Botón para mostrar/ocultar líneas de rutas */}
                             <button

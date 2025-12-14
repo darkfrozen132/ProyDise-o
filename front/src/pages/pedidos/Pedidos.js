@@ -2,6 +2,13 @@ import React, { useEffect, useMemo, useState } from 'react';
 import './Pedidos.css';
 import PedidoDiarioService from '../../services/PedidoDiarioService';
 import Alert from '@mui/material/Alert';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogContentText from '@mui/material/DialogContentText';
+import DialogTitle from '@mui/material/DialogTitle';
+import Button from '@mui/material/Button';
+import Tooltip from '@mui/material/Tooltip';
 
 const PRODUCTOS = [
   { id: 'ELEC001', name: 'Laptop', categoria: 'Electrónica', peso: 2.5 },
@@ -22,7 +29,7 @@ const AIRPORTS = [
   { code: 'SEQM', name: 'Quito (Ecuador) - SEQM' },
   { code: 'SVMI', name: 'Caracas (Venezuela) - SVMI' },
   { code: 'SBBR', name: 'Brasilia (Brasil) - SBBR' },
-  { code: 'SPIM', name: 'Lima (Perú) - SPIM' },
+  // { code: 'SPIM', name: 'Lima (Perú) - SPIM' }, // Sede - No seleccionable
   { code: 'SLLP', name: 'La Paz (Bolivia) - SLLP' },
   { code: 'SCEL', name: 'Santiago de Chile (Chile) - SCEL' },
   { code: 'SABE', name: 'Buenos Aires (Argentina) - SABE' },
@@ -32,7 +39,7 @@ const AIRPORTS = [
   { code: 'LATI', name: 'Tirana (Albania) - LATI' },
   { code: 'EDDI', name: 'Berlín (Alemania) - EDDI' },
   { code: 'LOWW', name: 'Viena (Austria) - LOWW' },
-  { code: 'EBCI', name: 'Bruselas (Bélgica) - EBCI' },
+  // { code: 'EBCI', name: 'Bruselas (Bélgica) - EBCI' }, // Sede - No seleccionable
   { code: 'UMMS', name: 'Minsk (Bielorrusia) - UMMS' },
   { code: 'LBSF', name: 'Sofía (Bulgaria) - LBSF' },
   { code: 'LKPR', name: 'Praga (Chequia) - LKPR' },
@@ -48,7 +55,7 @@ const AIRPORTS = [
   { code: 'OOMS', name: 'Mascate (Omán) - OOMS' },
   { code: 'OYSN', name: 'Saná (Yemen) - OYSN' },
   { code: 'OPKC', name: 'Karachi (Pakistán) - OPKC' },
-  { code: 'UBBB', name: 'Bakú (Azerbaiyán) - UBBB' },
+  // { code: 'UBBB', name: 'Bakú (Azerbaiyán) - UBBB' }, // Sede - No seleccionable
   { code: 'OJAI', name: 'Amán (Jordania) - OJAI' },
 ];
 
@@ -80,6 +87,14 @@ const Pedidos = () => {
   
   // Estado para alertas
   const [alert, setAlert] = useState({ show: false, severity: 'success', message: '' });
+  
+  // Estado para paginación
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  
+  // Estado para modal de confirmación de eliminación
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // Función para mostrar alerta
   const showAlert = (severity, message) => {
@@ -102,7 +117,7 @@ const Pedidos = () => {
       // Mapear los pedidos para agregar status si no existe
       const pedidosConStatus = pedidos.map(p => ({
         ...p,
-        status: p.status || 'Pendiente'
+        status: p.status || 'PLANIFICADO'
       }));
       setOrders(pedidosConStatus);
       console.log('Pedidos cargados:', pedidosConStatus.length);
@@ -124,6 +139,35 @@ const Pedidos = () => {
       String(o.status || '').toLowerCase().includes(f)
     );
   }, [orders, filter]);
+
+  // Calcular datos paginados
+  const totalPages = Math.ceil(totalFiltrado.length / rowsPerPage);
+  const paginatedData = useMemo(() => {
+    const start = (currentPage - 1) * rowsPerPage;
+    const end = start + rowsPerPage;
+    return totalFiltrado.slice(start, end);
+  }, [totalFiltrado, currentPage, rowsPerPage]);
+
+  // Reset página cuando cambia el filtro
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filter]);
+
+  // Función para eliminar todos los pedidos
+  const handleDeleteAllPedidos = async () => {
+    setDeleting(true);
+    try {
+      await PedidoDiarioService.limpiarPedidos();
+      setOrders([]);
+      setShowDeleteModal(false);
+      showAlert('success', '¡Todos los pedidos han sido eliminados exitosamente!');
+    } catch (error) {
+      console.error('Error al eliminar pedidos:', error);
+      showAlert('error', 'Error al eliminar los pedidos. Por favor, intente nuevamente.');
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const resetForm = () => { 
     setForm(initialForm); 
@@ -307,30 +351,8 @@ const Pedidos = () => {
         // Recargar la lista de pedidos
         await cargarPedidos();
 
-        // Si está en modo diario, ejecutar planificación automática para todos los pedidos importados
-        const modoDiarioActivo = PedidoDiarioService.isModoDiarioActivo();
-        let planificacionExitosa = false;
-        
-        if (modoDiarioActivo && exitosos > 0) {
-          console.log('🔄 Modo diario activo: ejecutando planificación para pedidos importados...');
-          try {
-            await PedidoDiarioService.ejecutarPlanificacionDiaria();
-            planificacionExitosa = true;
-            console.log('✅ Planificación automática completada');
-          } catch (planError) {
-            console.warn('⚠️ Error en planificación automática:', planError);
-          }
-        }
-
-        // Mensajes según modo y resultado
         if (exitosos > 0 && fallidos === 0) {
-          if (modoDiarioActivo && planificacionExitosa) {
-            showAlert('success', `🚀 Importación completada! ${exitosos} pedidos agregados y planificados automáticamente.`);
-          } else if (modoDiarioActivo && !planificacionExitosa) {
-            showAlert('warning', `📦 ${exitosos} pedidos importados, pero la planificación automática falló.`);
-          } else {
-            showAlert('success', `📦 Importación completada! ${exitosos} pedidos agregados (modo semanal).`);
-          }
+          showAlert('success', `!Importación completada! Se agregaron ${exitosos} pedidos exitosamente.`);
         } else if (exitosos > 0 && fallidos > 0) {
           showAlert('warning', `Importación parcial: ${exitosos} pedidos agregados, ${fallidos} errores.`);
         } else {
@@ -388,36 +410,28 @@ const Pedidos = () => {
       minuto: utcMinuto
     };
 
-    // Enviar al backend con planificación automática solo si está en modo diario
-    const modoDiarioActivo = PedidoDiarioService.isModoDiarioActivo();
-    console.log(`📤 Enviando pedido al backend (Modo: ${modoDiarioActivo ? 'DIARIO - con planificación' : 'SEMANAL - sin planificación'}):`, JSON.stringify(newOrder, null, 2));
-    
+    // Enviar al backend
+    console.log('📤 Enviando pedido al backend:', JSON.stringify(newOrder, null, 2));
     try {
-      const response = await PedidoDiarioService.crearPedidoConPlanificacion(newOrder, modoDiarioActivo);
+      const response = await PedidoDiarioService.crearPedido(newOrder);
       console.log('✅ Pedido creado:', response);
       
       // Agregar a la lista local con el ID del backend
       const pedidoCreado = {
-        id: response.pedido?.pedido?.id || response.pedido?.id,
-        cliente: newOrder.clienteId,
-        origen: 'SPIM', // Lima es el origen fijo
-        destino: newOrder.aeropuertoDestinoId,
-        cantidadTotal: newOrder.cantidadProductos,
-        prioridad: 'Normal',
-        status: response.planificado ? 'Planificado' : 'Pendiente', // Estado según si se planificó
-        fechaUTC: `${utcDia}/${utcMes}/${utcAnio} ${utcHora}:${String(utcMinuto).padStart(2, '0')} UTC`
+        id: response.pedido?.id,
+        clienteId: newOrder.clienteId,
+        aeropuertoDestinoId: newOrder.aeropuertoDestinoId,
+        cantidadProductos: newOrder.cantidadProductos,
+        dia: utcDia,
+        mes: utcMes,
+        anio: utcAnio,
+        hora: utcHora,
+        minuto: utcMinuto,
+        status: 'PLANIFICADO'
       };
       setOrders(prev => [...prev, pedidoCreado]);
       resetForm();
-      
-      // Mensaje según el modo
-      if (modoDiarioActivo && response.planificado) {
-        showAlert('success', '🚀 Pedido creado y planificado automáticamente');
-      } else if (modoDiarioActivo && !response.planificado) {
-        showAlert('warning', '📦 Pedido creado, pero la planificación automática falló');
-      } else {
-        showAlert('success', '📦 Pedido creado exitosamente (modo semanal)');
-      }
+      showAlert('success', 'Pedido creado exitosamente');
     } catch (error) {
       console.error('Error al crear pedido:', error);
       showAlert('error', 'Error al crear el pedido. Por favor, intente nuevamente.');
@@ -470,8 +484,19 @@ const Pedidos = () => {
           <form className="pedido-form" onSubmit={submit}>
             <div className="grid two">
               <div className="field">
-                <label>Cliente (DNI) *</label>
-                <input name="cliente" value={form.cliente} onChange={handleChange} placeholder="Nombre o razón social" />
+                <label>
+                  Id Cliente *
+                  <Tooltip title="Ingrese solo 7 dígitos numéricos" arrow placement="top">
+                    <i className="fas fa-info-circle info-icon"></i>
+                  </Tooltip>
+                </label>
+                <input 
+                  name="cliente" 
+                  value={form.cliente} 
+                  onChange={handleChange} 
+                  placeholder="Ej: 1234567" 
+                  maxLength={7}
+                />
                 {errors.cliente && <small className="error">{errors.cliente}</small>}
               </div>
             </div>
@@ -546,7 +571,7 @@ const Pedidos = () => {
             )}
 
             <div className="actions">
-              <button type="submit" className="btn primary"><i className="fas fa-check"></i> Aceptar Pedido</button>
+              <button type="submit" className="btn primary"><i className="fas fa-check"></i> Registrar</button>
               <button type="button" className="btn" onClick={resetForm}><i className="fas fa-eraser"></i> Limpiar</button>
             </div>
           </form>
@@ -557,8 +582,16 @@ const Pedidos = () => {
             <h2><i className="fas fa-boxes"></i> Pedidos ({totalFiltrado.length})</h2>
             <div className="list-actions">
               <input className="search" placeholder="Buscar por ID, cliente, destino..." value={filter} onChange={e=>setFilter(e.target.value)} />
-              <button className="btn" onClick={cargarPedidos} disabled={loading}>
+              <button className="btn" onClick={cargarPedidos} disabled={loading} title="Recargar">
                 <i className={`fas fa-sync-alt ${loading ? 'fa-spin' : ''}`}></i>
+              </button>
+              <button 
+                className="btn danger" 
+                onClick={() => setShowDeleteModal(true)} 
+                disabled={orders.length === 0}
+                title="Eliminar todos los pedidos"
+              >
+                <i className="fas fa-trash-alt"></i>
               </button>
             </div>
           </div>
@@ -567,7 +600,7 @@ const Pedidos = () => {
               <thead>
                 <tr>
                   <th>ID</th>
-                  <th>Cliente (DNI)</th>
+                  <th>Cliente</th>
                   <th>Destino</th>
                   <th>Cantidad</th>
                   <th>Fecha (UTC)</th>
@@ -581,12 +614,12 @@ const Pedidos = () => {
                       <i className="fas fa-spinner fa-spin"></i> Cargando pedidos...
                     </td>
                   </tr>
-                ) : totalFiltrado.length === 0 ? (
+                ) : paginatedData.length === 0 ? (
                   <tr>
                     <td colSpan="6" className="empty">Sin pedidos registrados</td>
                   </tr>
                 ) : (
-                  totalFiltrado.map(o => {
+                  paginatedData.map(o => {
                     const status = o.status || 'Pendiente';
                     // Formatear fecha
                     const fecha = o.fechaUTC || `${o.dia || '-'}/${o.mes || '-'}/${o.anio || '-'} ${o.hora || '00'}:${String(o.minuto || '00').padStart(2, '0')}`;
@@ -609,8 +642,97 @@ const Pedidos = () => {
               </tbody>
             </table>
           </div>
+          
+          {/* Controles de paginación */}
+          {totalFiltrado.length > 0 && (
+            <div className="pagination-controls">
+              <div className="pagination-info">
+                Mostrando {((currentPage - 1) * rowsPerPage) + 1} - {Math.min(currentPage * rowsPerPage, totalFiltrado.length)} de {totalFiltrado.length}
+              </div>
+              <div className="pagination-actions">
+                <select 
+                  value={rowsPerPage} 
+                  onChange={(e) => {
+                    setRowsPerPage(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="rows-select"
+                >
+                  <option value={5}>5 por página</option>
+                  <option value={10}>10 por página</option>
+                  <option value={25}>25 por página</option>
+                  <option value={50}>50 por página</option>
+                </select>
+                <div className="pagination-buttons">
+                  <button 
+                    className="btn pagination-btn" 
+                    onClick={() => setCurrentPage(1)}
+                    disabled={currentPage === 1}
+                  >
+                    <i className="fas fa-angle-double-left"></i>
+                  </button>
+                  <button 
+                    className="btn pagination-btn" 
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                  >
+                    <i className="fas fa-angle-left"></i>
+                  </button>
+                  <span className="page-indicator">
+                    Página {currentPage} de {totalPages || 1}
+                  </span>
+                  <button 
+                    className="btn pagination-btn" 
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages || totalPages === 0}
+                  >
+                    <i className="fas fa-angle-right"></i>
+                  </button>
+                  <button 
+                    className="btn pagination-btn" 
+                    onClick={() => setCurrentPage(totalPages)}
+                    disabled={currentPage === totalPages || totalPages === 0}
+                  >
+                    <i className="fas fa-angle-double-right"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </section>
       </div>
+
+      {/* Modal de confirmación para eliminar todos los pedidos */}
+      <Dialog
+        open={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        aria-labelledby="delete-dialog-title"
+        aria-describedby="delete-dialog-description"
+      >
+        <DialogTitle id="delete-dialog-title">
+          <i className="fas fa-exclamation-triangle" style={{ color: '#f59e0b', marginRight: '8px' }}></i>
+          Confirmar eliminación
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="delete-dialog-description">
+            ¿Está seguro de que desea eliminar <strong>todos los pedidos</strong>? 
+            Esta acción no se puede deshacer y se eliminarán {orders.length} pedido(s) del sistema.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowDeleteModal(false)} disabled={deleting}>
+            Cancelar
+          </Button>
+          <Button 
+            onClick={handleDeleteAllPedidos} 
+            color="error" 
+            variant="contained"
+            disabled={deleting}
+          >
+            {deleting ? 'Eliminando...' : 'Sí, eliminar todos'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Modal de detalles del pedido */}
       {showOrderDetail && selectedOrder && (

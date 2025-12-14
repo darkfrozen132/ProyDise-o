@@ -44,13 +44,14 @@ const getAircraftColorByStatus = (flight) => {
 	const cargaActual = flight.currentPackages || 0;
 	const porcentajeCarga = (cargaActual / capacidad) * 100;
 
-	// Colores según porcentaje de carga
-	if (porcentajeCarga >= 80) {
-		return '#dc3545';
-	} else if (porcentajeCarga >= 50) {
-		return '#f59e0b';
+	// Colores según porcentaje de carga (nuevos umbrales)
+	// Alto: >= 30%, Medio: >= 10%, Bajo: < 10%
+	if (porcentajeCarga >= 30) {
+		return '#dc3545'; // Rojo - Alto
+	} else if (porcentajeCarga >= 10) {
+		return '#f59e0b'; // Amarillo - Medio
 	} else {
-		return '#28a745';
+		return '#28a745'; // Verde - Bajo
 	}
 };
 
@@ -180,11 +181,12 @@ const createAirportIcon = (name, saturation = 0) => {
 	if (name == "Bruselas" || name == "Lima" || name == "Baku") {
 		size = 23; color = '#4954b6ff'; borderColor = '#ffffffff'; borderWidth = 1.8; shadow = '0 2px 2px rgba(0,0,0,0.4)';
 	} else {
-		// Estilos para aeropuertos normales según saturación
+		// Estilos para aeropuertos normales según saturación (nuevos umbrales)
+		// Alto: >= 30%, Medio: >= 10%, Bajo: < 10%
 		size = 18; borderColor = '#ffffff'; borderWidth = 1.5; shadow = '0 2px 2px rgba(0,0,0,0.4)';
-		if (saturation >= 80) color = '#dc3545'; 
-		else if (saturation >= 50) color = '#f59e0b'; 
-		else color = '#28a745';
+		if (saturation >= 30) color = '#dc3545';      // Rojo - Alto
+		else if (saturation >= 10) color = '#f59e0b'; // Amarillo - Medio
+		else color = '#28a745';                        // Verde - Bajo
 	}
 	// Crear icono con estilos definidos
 	return new L.DivIcon({
@@ -206,7 +208,8 @@ const createAirportPopup = (airport) => {
 	const pedidosCount = airport.pedidosCount || 0; // 🆕 Número de pedidos (diferente a paquetes)
 	const tiempoRestante = airport.tiempoRestanteRecogida; // 🆕 Tiempo hasta próxima recogida (minutos)
 	const saturation = isUnlimited || !capacityValue ? 0 : ((packages / capacityValue) * 100);
-	const colorAirport = saturation >= 80 ? '#dc3545' : saturation >= 50 ? '#f59e0b' : '#28a745';
+	// 🎨 NUEVOS UMBRALES: Bajo 0-10%, Medio 10-30%, Alto 30%+
+	const colorAirport = saturation >= 30 ? '#dc3545' : saturation >= 10 ? '#f59e0b' : '#28a745';
 	const colorLight = lightenColor(colorAirport, 0.9);
 	
 	// Formatear tiempo restante
@@ -1122,10 +1125,35 @@ const SimuladorDiario = () => {
 
 	useEffect(() => {
 		// Buscar vuelos que acaban de completarse (status = 'completed' o 'arrived')
-		const vuelosTerminados = vuelosEnMovimiento.filter(v =>
-			(v.status === 'completed' || v.status === 'arrived' || v.progress >= 1) &&
-			!vuelosCompletadosRef.current.has(v.id) // No procesados aún
-		);
+		// 🔴 FIX: También verificar que el tiempoSimulado >= horaLlegada
+		const vuelosTerminados = vuelosEnMovimiento.filter(v => {
+			// Primero verificar estado básico
+			if (!(v.status === 'completed' || v.status === 'arrived' || v.progress >= 1)) {
+				return false;
+			}
+			
+			// Ya fue procesado?
+			if (vuelosCompletadosRef.current.has(v.id)) {
+				return false;
+			}
+			
+			// 🔴 FIX: Verificar que el tiempo simulado >= hora de llegada
+			// Solo entonces el avión realmente llegó
+			if (v.fechaFinal && typeof tiempoSimulado === 'number') {
+				let fechaStr = v.fechaFinal;
+				if (typeof fechaStr === 'string' && !fechaStr.endsWith('Z')) {
+					fechaStr = fechaStr + 'Z';
+				}
+				const horaLlegada = new Date(fechaStr).getTime();
+				
+				// Si el tiempo simulado aún no llegó a la hora de llegada, NO contar
+				if (tiempoSimulado < horaLlegada) {
+					return false;
+				}
+			}
+			
+			return true;
+		});
 
 		if (vuelosTerminados.length > 0) {
 			// Extraer pedidos de vuelos completados
@@ -1216,7 +1244,7 @@ const SimuladorDiario = () => {
 				console.log(`📦 ${nuevosPedidosCompletados.length} pedido(s) completado(s) guardado(s)`);
 			}
 		}
-	}, [vuelosEnMovimiento]);
+	}, [vuelosEnMovimiento, tiempoSimulado]);
 
 	// 🆕 EFECTO: Actualizar el contador total de pedidos en pantalla
 	useEffect(() => {
@@ -1376,6 +1404,12 @@ const SimuladorDiario = () => {
 		}
 
 		const almacenPorAeropuerto = {}; // { codigo: { paquetes: number, pedidos: Set<string> } }
+		
+		// 🔍 DEBUG: Contadores para verificar 2 horas
+		let vuelosCompletados = 0;
+		let vuelosEnAlmacen = 0;
+		let vuelosRecogidos = 0;
+		let vuelosAunNoLlegaron = 0;
 
 		vuelosEnMovimiento.forEach(vuelo => {
 			// Solo considerar vuelos que ya aterrizaron (completados)
@@ -1395,13 +1429,30 @@ const SimuladorDiario = () => {
 
 			if (!horaLlegada) return;
 
+			// 🔴 FIX: Solo contar paquetes si el tiempo simulado >= hora de llegada
+			// (El avión debe haber LLEGADO para que los paquetes estén en almacén)
+			if (tiempoSimulado < horaLlegada) {
+				vuelosAunNoLlegaron++;
+				return; // El avión aún no ha llegado según el tiempo simulado
+			}
+			
+			vuelosCompletados++;
+
 			// Calcular tiempo transcurrido desde que aterrizó
 			const tiempoDesdeAterrizaje = tiempoSimulado - horaLlegada;
+			const horasDesdeAterrizaje = tiempoDesdeAterrizaje / (60 * 60 * 1000);
 
 			// Si han pasado más de 2 horas, los paquetes ya fueron recogidos
 			if (tiempoDesdeAterrizaje >= TIEMPO_RECOGIDA_MS) {
+				vuelosRecogidos++;
+				// 🔍 DEBUG: Log cuando paquetes son recogidos
+				if (Math.random() < 0.01) { // 1% para no saturar
+					console.log(`📦 RECOGIDO: Vuelo ${vuelo.id} → ${vuelo.destination?.code} | ${horasDesdeAterrizaje.toFixed(2)}h desde aterrizaje (>= 2h)`);
+				}
 				return; // Paquetes ya recogidos, no contar
 			}
+			
+			vuelosEnAlmacen++;
 
 			// Paquetes aún en almacén (esperando recogida)
 			const codigoDestino = vuelo.destination?.code;
@@ -1443,13 +1494,29 @@ const SimuladorDiario = () => {
 			delete almacenPorAeropuerto[codigo].pedidos; // Eliminar Set, solo mantener conteo
 		});
 
+		// 🔍 DEBUG: Log resumen cada 5 segundos (reducido para no saturar)
+		if (vuelosCompletados > 0 && Math.random() < 0.05) {
+			const tiempoSimuladoDate = new Date(tiempoSimulado);
+			console.log(`\n📊 ========== ESTADO ALMACÉN (2h) ==========`);
+			console.log(`🕐 Tiempo simulado: ${tiempoSimuladoDate.toISOString()}`);
+			console.log(`✈️  Vuelos completados: ${vuelosCompletados}`);
+			console.log(`📦 En almacén (<2h): ${vuelosEnAlmacen}`);
+			console.log(`✅ Ya recogidos (>=2h): ${vuelosRecogidos}`);
+			console.log(`🏢 Aeropuertos con paquetes: ${Object.keys(almacenPorAeropuerto).length}`);
+			Object.entries(almacenPorAeropuerto).forEach(([codigo, datos]) => {
+				console.log(`   ${codigo}: ${datos.paquetes} paquetes, recogida en ${datos.tiempoRestanteMin?.toFixed(0) || '?'} min`);
+			});
+			console.log(`============================================\n`);
+		}
+
 		return almacenPorAeropuerto;
 	}, [vuelosEnMovimiento, tiempoSimulado]);
 
 	// 🆕 EFECTO: Actualizar estado de aeropuertos con paquetes calculados
+	// Este efecto es la ÚNICA fuente de verdad para packages en aeropuertos (basado en tiempo simulado)
 	useEffect(() => {
-		if (Object.keys(paquetesEnAlmacen).length === 0) return;
-
+		// 🔴 FIX: Actualizar SIEMPRE, incluso si paquetesEnAlmacen está vacío
+		// para poner en 0 los aeropuertos que ya no tienen paquetes
 		setAirports(prevAirports => {
 			let cambios = false;
 			const nuevosAirports = prevAirports.map(airport => {
@@ -2433,12 +2500,14 @@ const SimuladorDiario = () => {
 				}
 			}
 
-			// 🆕 ACTUALIZAR AEROPUERTOS con datos de ocupación del backend
+			// 🔴 DESHABILITADO: La ocupación de aeropuertos ahora se calcula localmente
+			// basándose en el tiempoSimulado (ver useMemo paquetesEnAlmacen)
+			// Esto evita que el backend sobrescriba con datos que no respetan el tiempo simulado
+			/*
 			if (datos.solucion?.aeropuertos && datos.solucion.aeropuertos.length > 0) {
 				console.log(`🏢 Actualizando ocupación de ${datos.solucion.aeropuertos.length} aeropuertos...`);
 				setAirports(prevAirports => {
 					return prevAirports.map(airport => {
-						// Buscar datos actualizados del backend por código
 						const backendData = datos.solucion.aeropuertos.find(
 							a => a.code === airport.code || a.codigo === airport.code
 						);
@@ -2446,7 +2515,6 @@ const SimuladorDiario = () => {
 							return {
 								...airport,
 								packages: backendData.packages || backendData.ocupacionActual || 0,
-								// Actualizar capacidad si viene (puede ser string "ILIMITADO" o número)
 								capacity: backendData.capacity !== undefined ? backendData.capacity : airport.capacity
 							};
 						}
@@ -2454,6 +2522,7 @@ const SimuladorDiario = () => {
 					});
 				});
 			}
+			*/
 
 		} else if (datos.type === 'PROGRESS' || datos.status === 'RUNNING') {
 			// 🆕 NUEVA ESTRUCTURA: SimulationMessage con snapshot
@@ -2477,23 +2546,21 @@ const SimuladorDiario = () => {
 					}
 				}
 
-				// 🆕 ACTUALIZAR AEROPUERTOS con datos de ocupación del snapshot
+				// 🔴 DESHABILITADO: La ocupación de aeropuertos ahora se calcula localmente
+				// basándose en el tiempoSimulado (ver useMemo paquetesEnAlmacen)
+				/*
 				if (snapshot.aeropuertos && snapshot.aeropuertos.length > 0) {
 					console.log(`🏢 [Snapshot] Actualizando ocupación de ${snapshot.aeropuertos.length} aeropuertos...`);
 					setAirports(prevAirports => {
 						return prevAirports.map(airport => {
-							// Buscar datos actualizados del snapshot por código
 							const backendData = snapshot.aeropuertos.find(
 								a => a.codigo === airport.code || a.code === airport.code
 							);
 							if (backendData) {
 								return {
 									...airport,
-									// ocupacionActual = paquetes actuales en el almacén
 									packages: backendData.ocupacionActual || backendData.packages || 0,
-									// pedidosAlmacenados = número de pedidos (diferente a cantidad de paquetes)
 									pedidosCount: backendData.pedidosAlmacenados || 0,
-									// capacidadAlmacen = capacidad total
 									capacity: backendData.capacidadAlmacen || airport.capacity
 								};
 							}
@@ -2501,6 +2568,7 @@ const SimuladorDiario = () => {
 						});
 					});
 				}
+				*/
 			}
 			// Fallback para estructura antigua
 			else if (datos.solution?.routes) {
@@ -3483,8 +3551,9 @@ const SimuladorDiario = () => {
 												const capacityValue = typeof airport.capacity === 'number' ? airport.capacity : (Number(airport.capacity) || 100);
 												const packages = airport.packages || 0;
 												const saturation = capacityValue > 0 ? (packages / capacityValue) * 100 : 0;
-												if (saturation >= 80) baseColor = '#dc3545'; // Rojo
-												else if (saturation >= 50) baseColor = '#f59e0b'; // Amarillo
+												// 🎨 NUEVOS UMBRALES: Bajo 0-10%, Medio 10-30%, Alto 30%+
+												if (saturation >= 30) baseColor = '#dc3545'; // Rojo
+												else if (saturation >= 10) baseColor = '#f59e0b'; // Amarillo
 												else baseColor = '#28a745'; // Verde
 											}
 											// Aplicar luminosidad 0.80 para color base, y más claro si está seleccionado

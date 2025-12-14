@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import './Pedidos.css';
 import PedidoDiarioService from '../../services/PedidoDiarioService';
+import Alert from '@mui/material/Alert';
 
 const PRODUCTOS = [
   { id: 'ELEC001', name: 'Laptop', categoria: 'Electrónica', peso: 2.5 },
@@ -76,6 +77,18 @@ const Pedidos = () => {
   const [showOrderDetail, setShowOrderDetail] = useState(false);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
+  
+  // Estado para alertas
+  const [alert, setAlert] = useState({ show: false, severity: 'success', message: '' });
+
+  // Función para mostrar alerta
+  const showAlert = (severity, message) => {
+    setAlert({ show: true, severity, message });
+    // Auto-ocultar después de 5 segundos
+    setTimeout(() => {
+      setAlert(prev => ({ ...prev, show: false }));
+    }, 5000);
+  };
 
   // Cargar pedidos al iniciar
   useEffect(() => {
@@ -92,9 +105,9 @@ const Pedidos = () => {
         status: p.status || 'Pendiente'
       }));
       setOrders(pedidosConStatus);
-      console.log('✅ Pedidos cargados:', pedidosConStatus.length);
+      console.log('Pedidos cargados:', pedidosConStatus.length);
     } catch (error) {
-      console.error('❌ Error al cargar pedidos:', error);
+      console.error('Error al cargar pedidos:', error);
     } finally {
       setLoading(false);
     }
@@ -180,20 +193,143 @@ const Pedidos = () => {
     URL.revokeObjectURL(url);
   };
 
-  const handleImportFile = (e) => {
+  // Estado para importación
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState(null);
+
+  /**
+   * Importar archivo CSV o TXT con pedidos
+   * Formato: id-fechaUTC-hh-mm-codedestino-cantidadSolicitada-id_cliente
+   * Ejemplo: 100000021-202512##-hh-mm-SVMI-990-0007729
+   * 
+   * Solo se usa: codedestino, cantidadSolicitada, id_cliente
+   * La fecha es la actual UTC al momento de subir
+   */
+  const handleImportFile = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
+
+    // Validar extensión
+    const extension = file.name.split('.').pop().toLowerCase();
+    if (!['csv', 'txt'].includes(extension)) {
+      alert('❌ Solo se permiten archivos CSV o TXT');
+      e.target.value = '';
+      return;
+    }
+
+    setImporting(true);
+    setImportResult(null);
+
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       try {
-        const importedOrders = JSON.parse(event.target.result);
-        if (Array.isArray(importedOrders)) {
-          setOrders(prev => [...prev, ...importedOrders]);
+        const content = event.target.result;
+        const lines = content.split('\n').filter(line => line.trim() !== '');
+        
+        // Obtener fecha actual UTC
+        const now = new Date();
+        const utcDia = now.getUTCDate();
+        const utcMes = now.getUTCMonth() + 1;
+        const utcAnio = now.getUTCFullYear();
+        const utcHora = now.getUTCHours();
+        const utcMinuto = now.getUTCMinutes();
+
+        let exitosos = 0;
+        let fallidos = 0;
+        const errores = [];
+
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (!line) continue;
+
+          try {
+            // Parsear línea: id-fechaUTC-hh-mm-codedestino-cantidadSolicitada-id_cliente
+            const parts = line.split('-');
+            
+            if (parts.length < 7) {
+              throw new Error(`Formato inválido. Se esperan 7 campos separados por '-'`);
+            }
+
+            // Extraer campos (ignorando id, fecha, hh, mm del archivo)
+            // parts[0] = id (ignorado - se genera automáticamente en BD)
+            // parts[1] = fechaUTC (ignorado - usamos fecha actual)
+            // parts[2] = hh (ignorado)
+            // parts[3] = mm (ignorado)
+            // parts[4] = codedestino
+            // parts[5] = cantidadSolicitada
+            // parts[6] = id_cliente
+            const codigoDestino = parts[4];
+            const cantidadSolicitada = parseInt(parts[5]);
+            const idCliente = parts[6];
+
+            // Validaciones
+            if (!codigoDestino || codigoDestino.length !== 4) {
+              throw new Error(`Código destino inválido: ${codigoDestino}`);
+            }
+            if (isNaN(cantidadSolicitada) || cantidadSolicitada <= 0) {
+              throw new Error(`Cantidad inválida: ${parts[5]}`);
+            }
+            if (!idCliente || idCliente.trim() === '') {
+              throw new Error(`ID cliente vacío`);
+            }
+
+            // Crear pedido (ID se genera automáticamente en la BD)
+            const pedido = {
+              clienteId: idCliente.trim(),
+              aeropuertoDestinoId: codigoDestino.toUpperCase(),
+              cantidadProductos: cantidadSolicitada,
+              dia: utcDia,
+              mes: utcMes,
+              anio: utcAnio,
+              hora: utcHora,
+              minuto: utcMinuto
+            };
+
+            // Enviar al backend
+            await PedidoDiarioService.crearPedido(pedido);
+            exitosos++;
+
+          } catch (lineError) {
+            fallidos++;
+            errores.push(`Línea ${i + 1}: ${lineError.message}`);
+            console.error(`Error en línea ${i + 1}:`, lineError);
+          }
         }
+
+        // Mostrar resultado
+        setImportResult({
+          total: lines.length,
+          exitosos,
+          fallidos,
+          errores: errores.slice(0, 5) // Mostrar solo los primeros 5 errores
+        });
+
+        // Recargar la lista de pedidos
+        await cargarPedidos();
+
+        if (exitosos > 0 && fallidos === 0) {
+          showAlert('success', `!Importación completada! Se agregaron ${exitosos} pedidos exitosamente.`);
+        } else if (exitosos > 0 && fallidos > 0) {
+          showAlert('warning', `Importación parcial: ${exitosos} pedidos agregados, ${fallidos} errores.`);
+        } else {
+          showAlert('error', `No se pudo importar ningún pedido. Se encontraron ${fallidos} errores.`);
+        }
+
       } catch (error) {
-        console.error('Error al importar pedidos:', error);
+        console.error('Error al procesar archivo:', error);
+        showAlert('error', `Error al procesar el archivo: ${error.message}`);
+      } finally {
+        setImporting(false);
+        e.target.value = ''; // Limpiar input para permitir reimportar mismo archivo
       }
     };
+
+    reader.onerror = () => {
+      showAlert('error', 'Error al leer el archivo');
+      setImporting(false);
+      e.target.value = '';
+    };
+
     reader.readAsText(file);
   };
 
@@ -249,10 +385,10 @@ const Pedidos = () => {
       };
       setOrders(prev => [...prev, pedidoCreado]);
       resetForm();
-      alert('✅ Pedido creado exitosamente');
+      showAlert('success', 'Pedido creado exitosamente');
     } catch (error) {
-      console.error('❌ Error al crear pedido:', error);
-      alert('Error al crear el pedido. Por favor, intente nuevamente.');
+      console.error('Error al crear pedido:', error);
+      showAlert('error', 'Error al crear el pedido. Por favor, intente nuevamente.');
     }
   };
 
@@ -268,10 +404,35 @@ const Pedidos = () => {
 
   return (
     <div className="pedidos-page">
+      {/* Alerta global */}
+      {alert.show && (
+        <div className="alert-container">
+          <Alert 
+            severity={alert.severity} 
+            onClose={() => setAlert(prev => ({ ...prev, show: false }))}
+          >
+            {alert.message}
+          </Alert>
+        </div>
+      )}
+
       <div className="pedidos-layout">
         <section className="form-section">
           <div className="form-header">
             <h2><i className="fas fa-clipboard-list"></i> Ingresar Pedido</h2>
+            <div className="import-actions">
+              <label className={`btn secondary ${importing ? 'disabled' : ''}`}>
+                <i className={`fas ${importing ? 'fa-spinner fa-spin' : 'fa-file-import'}`}></i>
+                {importing ? ' Importando...' : ' Importar'}
+                <input 
+                  type="file" 
+                  accept=".csv,.txt" 
+                  onChange={handleImportFile}
+                  disabled={importing}
+                  style={{ display: 'none' }}
+                />
+              </label>
+            </div>
           </div>
           
           <form className="pedido-form" onSubmit={submit}>

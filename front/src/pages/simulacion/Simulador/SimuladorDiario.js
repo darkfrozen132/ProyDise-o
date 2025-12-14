@@ -3107,6 +3107,24 @@ const SimuladorDiario = () => {
 		console.log(`📊 Vuelos en el aire (sidebar logic): ${enAire}`);
 	}, [vuelosEnMovimiento]);
 
+
+	/* 🆕 Función: Calcular saturación de carga de los vuelos en aire */
+	const getCargoSaturation = useCallback(() => {
+		const vuelosEnAire = (vuelosEnMovimiento || []).filter(f => 
+			f.status === 'active' || (f.progress && f.progress > 0 && f.progress < 100)
+		);
+
+		if (vuelosEnAire.length === 0) return 0;
+
+		const totalCurrentPackages = vuelosEnAire.reduce((sum, f) => sum + (f.currentPackages || 0), 0);
+		const totalPackageCapacity = vuelosEnAire.reduce((sum, f) => sum + (f.packageCapacity || 0), 0);
+
+		if (totalPackageCapacity === 0) return 0;
+
+		return ((totalCurrentPackages / totalPackageCapacity) * 100).toFixed(1);
+	}, [vuelosEnMovimiento]);
+
+
 	/* Efecto: Actualizar la cantidad de pedidos */
 	const [ordersCount, setOrdersCount] = useState(0);
 
@@ -3944,6 +3962,7 @@ const SimuladorDiario = () => {
 				anchorEl={metricsAnchorEl}
 				flightsInAirCount={flightsInAirCount}
 				orderCount={ordersCount}
+				getCargoSaturation={getCargoSaturation}
 				flights={flightsInMovement}
 				getSaturation={getSaturation}
 			/>

@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Simulación Semanal - SSE</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .input-group {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            flex: 1;
+            min-width: 120px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(245, 87, 108, 0.4);
+        }
+
+        .btn-info {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+
+        .btn-info:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(79, 172, 254, 0.4);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
+        .status.connected {
+            background: #d4edda;
+            color: #155724;
+            border: 2px solid #c3e6cb;
+        }
+
+        .status.disconnected {
+            background: #f8d7da;
+            color: #721c24;
+            border: 2px solid #f5c6cb;
+        }
+
+        .status.connecting {
+            background: #fff3cd;
+            color: #856404;
+            border: 2px solid #ffeeba;
+        }
+
+        .progress-container {
+            margin: 20px 0;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #e0e0e0;
+            border-radius: 15px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .log-container {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 10px;
+            height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .log-entry {
+            margin-bottom: 8px;
+            padding: 5px;
+            border-radius: 3px;
+        }
+
+        .log-entry.info {
+            color: #4fc3f7;
+        }
+
+        .log-entry.success {
+            color: #81c784;
+        }
+
+        .log-entry.warning {
+            color: #ffb74d;
+        }
+
+        .log-entry.error {
+            color: #e57373;
+        }
+
+        .log-entry .timestamp {
+            color: #888;
+            margin-right: 10px;
+        }
+
+        .clear-logs {
+            margin-top: 10px;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Test Simulación Semanal - SSE</h1>
+
+        <div class="card">
+            <h2 style="margin-bottom: 20px;">⚙️ Configuración</h2>
+            
+            <div class="controls">
+                <div class="input-group">
+                    <label for="fecha">Fecha de Inicio:</label>
+                    <input type="date" id="fecha" value="2025-01-17">
+                </div>
+                
+                <div class="input-group">
+                    <label for="saltoMinutos">Salto (minutos):</label>
+                    <input type="number" id="saltoMinutos" value="5" min="1">
+                </div>
+            </div>
+
+            <div class="button-group">
+                <button class="btn-primary" onclick="iniciarSimulacion()">▶️ Iniciar Simulación</button>
+                <button class="btn-danger" onclick="detenerSimulacion()">⏹️ Detener Simulación</button>
+                <button class="btn-info" onclick="conectarSSE()">📡 Conectar SSE</button>
+                <button class="btn-info" onclick="desconectarSSE()">🔌 Desconectar SSE</button>
+                <button class="btn-info" onclick="obtenerEstado()">📊 Ver Estado</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div id="statusDiv" class="status disconnected">
+                🔴 Desconectado del stream SSE
+            </div>
+
+            <div class="progress-container">
+                <h3 style="margin-bottom: 10px;">Progreso de Simulación</h3>
+                <div class="progress-bar">
+                    <div id="progressFill" class="progress-fill" style="width: 0%">0%</div>
+                </div>
+            </div>
+
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-label">Tick Actual</div>
+                    <div class="stat-value" id="tickActual">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Minuto Actual</div>
+                    <div class="stat-value" id="minutoActual">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Clientes SSE</div>
+                    <div class="stat-value" id="clientesConectados">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Eventos Recibidos</div>
+                    <div class="stat-value" id="eventosRecibidos">0</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3 style="margin-bottom: 15px;">📝 Logs de Eventos</h3>
+            <div id="logContainer" class="log-container"></div>
+            <button class="btn-info clear-logs" onclick="limpiarLogs()">🗑️ Limpiar Logs</button>
+        </div>
+    </div>
+
+    <script>
+        let eventSource = null;
+        let eventCount = 0;
+        const API_BASE = 'http://localhost:8000/api/simulacion';
+
+        function log(message, type = 'info') {
+            const container = document.getElementById('logContainer');
+            const timestamp = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.innerHTML = `<span class="timestamp">[${timestamp}]</span> ${message}`;
+            container.appendChild(entry);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function limpiarLogs() {
+            document.getElementById('logContainer').innerHTML = '';
+            eventCount = 0;
+            document.getElementById('eventosRecibidos').textContent = '0';
+            log('Logs limpiados', 'info');
+        }
+
+        async function iniciarSimulacion() {
+            const fecha = document.getElementById('fecha').value;
+            const saltoMinutos = parseInt(document.getElementById('saltoMinutos').value);
+
+            log(`Iniciando simulación: fecha=${fecha}, salto=${saltoMinutos}min`, 'info');
+
+            try {
+                const response = await fetch(`${API_BASE}/iniciar`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ fecha, saltoMinutos })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    log('✅ Simulación iniciada exitosamente', 'success');
+                    log(`📅 Fecha: ${data.fecha}, ⏱️ Salto: ${data.saltoMinutos}min`, 'info');
+                    log(data.instrucciones, 'warning');
+                } else {
+                    log(`❌ Error: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Error al iniciar simulación: ${error.message}`, 'error');
+            }
+        }
+
+        async function detenerSimulacion() {
+            log('Deteniendo simulación...', 'info');
+
+            try {
+                const response = await fetch(`${API_BASE}/detener`, { method: 'POST' });
+                const data = await response.json();
+                
+                if (data.success) {
+                    log('✅ Simulación detenida', 'success');
+                } else {
+                    log(`⚠️ ${data.mensaje}`, 'warning');
+                }
+            } catch (error) {
+                log(`❌ Error al detener simulación: ${error.message}`, 'error');
+            }
+        }
+
+        async function obtenerEstado() {
+            log('Consultando estado...', 'info');
+
+            try {
+                const response = await fetch(`${API_BASE}/estado`);
+                const estado = await response.json();
+                
+                log('📊 Estado actual:', 'info');
+                log(`  - Activa: ${estado.activa}`, 'info');
+                log(`  - Fecha inicio: ${estado.fechaInicio}`, 'info');
+                log(`  - Minuto actual: ${estado.minutoActual} / ${estado.limiteMinutos}`, 'info');
+                log(`  - Progreso: ${(estado.progreso * 100).toFixed(2)}%`, 'info');
+                log(`  - Clientes conectados: ${estado.clientesConectados}`, 'info');
+
+                actualizarStats(estado);
+            } catch (error) {
+                log(`❌ Error al obtener estado: ${error.message}`, 'error');
+            }
+        }
+
+        function conectarSSE() {
+            if (eventSource) {
+                log('⚠️ Ya hay una conexión SSE activa', 'warning');
+                return;
+            }
+
+            log('📡 Conectando a stream SSE...', 'info');
+            document.getElementById('statusDiv').className = 'status connecting pulse';
+            document.getElementById('statusDiv').textContent = '🟡 Conectando al stream SSE...';
+
+            eventSource = new EventSource(`${API_BASE}/stream`);
+
+            eventSource.onopen = () => {
+                log('✅ Conexión SSE establecida', 'success');
+                document.getElementById('statusDiv').className = 'status connected';
+                document.getElementById('statusDiv').textContent = '🟢 Conectado al stream SSE';
+            };
+
+            eventSource.addEventListener('estado', (event) => {
+                eventCount++;
+                document.getElementById('eventosRecibidos').textContent = eventCount;
+                
+                const data = JSON.parse(event.data);
+                log(`📊 Evento: ESTADO INICIAL`, 'success');
+                log(`  - Activa: ${data.activa}`, 'info');
+                actualizarStats(data);
+            });
+
+            eventSource.addEventListener('tick', (event) => {
+                eventCount++;
+                document.getElementById('eventosRecibidos').textContent = eventCount;
+                
+                const data = JSON.parse(event.data);
+                log(`⏱️ Evento: TICK ${data.tick}`, 'success');
+                log(`  - Progreso: ${(data.progreso * 100).toFixed(2)}%`, 'info');
+                log(`  - Vuelos: ${data.planificacion?.vuelos?.length || 0}`, 'info');
+                log(`  - Rutas: ${data.planificacion?.rutas?.length || 0}`, 'info');
+                
+                actualizarStats(data);
+                actualizarProgreso(data.progreso);
+            });
+
+            eventSource.addEventListener('finalizado', (event) => {
+                eventCount++;
+                document.getElementById('eventosRecibidos').textContent = eventCount;
+                
+                log('🎉 Evento: SIMULACIÓN FINALIZADA', 'success');
+                desconectarSSE();
+            });
+
+            eventSource.onerror = (error) => {
+                log('❌ Error en conexión SSE', 'error');
+                document.getElementById('statusDiv').className = 'status disconnected';
+                document.getElementById('statusDiv').textContent = '🔴 Error en conexión SSE';
+            };
+        }
+
+        function desconectarSSE() {
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+                log('🔌 Desconectado del stream SSE', 'info');
+                document.getElementById('statusDiv').className = 'status disconnected';
+                document.getElementById('statusDiv').textContent = '🔴 Desconectado del stream SSE';
+            }
+        }
+
+        function actualizarStats(data) {
+            if (data.tickActual !== undefined) {
+                document.getElementById('tickActual').textContent = data.tickActual || data.tick || '-';
+            }
+            if (data.minutoActual !== undefined) {
+                document.getElementById('minutoActual').textContent = data.minutoActual;
+            }
+            if (data.clientesConectados !== undefined) {
+                document.getElementById('clientesConectados').textContent = data.clientesConectados;
+            }
+            if (data.progreso !== undefined) {
+                actualizarProgreso(data.progreso);
+            }
+        }
+
+        function actualizarProgreso(progreso) {
+            const percent = Math.round(progreso * 100);
+            const fill = document.getElementById('progressFill');
+            fill.style.width = `${percent}%`;
+            fill.textContent = `${percent}%`;
+        }
+
+        // Limpiar al cerrar la página
+        window.addEventListener('beforeunload', () => {
+            desconectarSSE();
+        });
+
+        // Log inicial
+        log('🚀 Aplicación de prueba cargada', 'success');
+        log('👉 Configura los parámetros y presiona "Iniciar Simulación"', 'info');
+    </script>
+</body>
+</html>

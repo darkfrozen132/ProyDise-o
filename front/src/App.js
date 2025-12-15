@@ -1,12 +1,13 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, Outlet } from 'react-router-dom';
 import Header from './components/layout/Header/Header';
-import Navigation from './components/layout/Navigation/Navigation';
 import Login from './pages/login/Login';
 import Configuracion from './pages/configuracion/Configuracion';
 import Usuarios from './pages/usuarios/Usuarios';
 import Simulador from './pages/simulacion/Monitoreo/Simulador';
 import SimuladorSemanal from './pages/simulacion/Simulador/SimuladorSemanal';
+import SimuladorDiario from './pages/simulacion/Simulador/SimuladorDiario';
+import SimuladorSimple from './components/SimuladorSimple';
 import SimuladorColapso from './pages/simulacion/Simulador/SimuladorColapso';
 import Clientes from './pages/clientes/Clientes';
 import Pedidos from './pages/pedidos/Pedidos';
@@ -18,7 +19,6 @@ function AppLayout() {
   return (
     <div className="app-container">
       <Header />
-      <Navigation />
       <main className="main-content">
         <Outlet />
       </main>
@@ -35,7 +35,6 @@ function AppContent() {
     <div className="app-container">
       {/*Retirar despues de las pruebas*/}
       <Header />
-      <Navigation />
       <main className={`main-content ${isLoginPage ? 'simulador-mode' : ''}`}>
         <Routes>
           {/* LOGIN sin Header/Nav */}
@@ -53,8 +52,10 @@ function AppContent() {
             {/* Rutas privadas - Operaciones */}
             <Route path="/operaciones">
               <Route index element={<Seleccion />} />
-              <Route path="monitoreo" element={<Simulador />} />
+              <Route path="monitoreo" element={<SimuladorDiario />} />
               <Route path="simulador-semanal" element={<SimuladorSemanal />} />
+              <Route path="simulador-diario" element={<SimuladorDiario />} />
+              <Route path="simulador-simple" element={<SimuladorSimple />} />
               <Route path="simulador-colapso" element={<SimuladorColapso />} />
             </Route>
           </Route>

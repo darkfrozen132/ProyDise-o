@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Monitor SkyRoute - Final</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.1/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; padding: 20px; background-color: #f4f4f9; }
+        .controls { margin-bottom: 20px; padding: 15px; background: white; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        button { padding: 10px 20px; font-weight: bold; cursor: pointer; border: none; border-radius: 4px; color: white; margin-right: 10px; }
+        .btn-con { background: #2196F3; } .btn-start { background: #4CAF50; } .btn-stop { background: #F44336; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        
+        #console { 
+            background: #1e1e1e; color: #33ff00; 
+            font-family: 'Consolas', monospace; 
+            height: 500px; overflow-y: scroll; 
+            padding: 15px; border-radius: 5px; 
+            border: 1px solid #333;
+        }
+        .log-line { margin-bottom: 4px; border-bottom: 1px solid #333; word-wrap: break-word; }
+        .log-time { color: #888; margin-right: 10px; }
+        .log-err { color: #ff5252; }
+        .log-succ { color: #69f0ae; }
+        .log-warn { color: #ffd740; }
+        .json-dump { color: #ce9178; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+
+    <h2>✈️ SkyRoute Monitor (Tiempo Real)</h2>
+    
+    <div class="controls">
+        <div id="status" style="margin-bottom:10px; font-weight:bold; color:#555;">Estado: Desconectado</div>
+        <button onclick="conectar()" class="btn-con" id="btnConnect">1. Conectar</button>
+        <button onclick="iniciarSimulacion()" class="btn-start" id="btnStart" disabled>2. Iniciar Simulación</button>
+        <button onclick="detenerSimulacion()" class="btn-stop" id="btnStop" disabled>3. Detener</button>
+        <button onclick="limpiar()" style="background:#607d8b; float:right;">Limpiar Log</button>
+    </div>
+
+    <div id="console"></div>
+
+    <script>
+        // CONFIGURACIÓN
+        const BASE_URL = 'http://localhost:8000';
+        var stompClient = null;
+        var currentSimId = null;
+
+        function log(msg, type = 'info') {
+            const div = document.getElementById('console');
+            const time = new Date().toLocaleTimeString();
+            let colorClass = '';
+            if(type === 'error') colorClass = 'log-err';
+            if(type === 'success') colorClass = 'log-succ';
+            if(type === 'warn') colorClass = 'log-warn';
+            
+            div.innerHTML += `<div class="log-line ${colorClass}"><span class="log-time">[${time}]</span> ${msg}</div>`;
+            div.scrollTop = div.scrollHeight;
+        }
+
+        // 1. CONEXIÓN
+        function conectar() {
+            log("🔌 Conectando al WebSocket...", 'warn');
+            const socket = new SockJS(BASE_URL + '/ws');
+            stompClient = Stomp.over(socket);
+            stompClient.debug = null; // Desactivar ruido en consola del navegador
+
+            stompClient.connect({}, function (frame) {
+                log("✅ CONECTADO AL SERVIDOR", 'success');
+                document.getElementById('status').innerText = 'Estado: Conectado (Listo para iniciar)';
+                document.getElementById('status').style.color = 'green';
+                document.getElementById('btnStart').disabled = false;
+                document.getElementById('btnConnect').disabled = true;
+            }, function (error) {
+                log("❌ Error de conexión: " + error, 'error');
+            });
+        }
+
+        // 2. INICIAR SIMULACIÓN (CON AUTO-DETECCIÓN DE ID)
+        function iniciarSimulacion() {
+            log("🚀 Enviando orden de inicio...", 'info');
+
+            fetch(BASE_URL + '/api/simulations/start', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    accion: "iniciar",
+                    fecha: "2025-01-02",
+                    factorK: 5,
+                    tamanioPoblacion: 10,
+                    maxGeneraciones: 10,
+                    limiteGeneracionesSinMejora: 5
+                })
+            })
+            .then(async response => {
+                if (!response.ok) {
+                    const errText = await response.text();
+                    let errMsg = errText;
+                    try { errMsg = JSON.parse(errText).message || JSON.parse(errText).error; } catch(e){}
+                    throw new Error(`Server Error (${response.status}): ${errMsg}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log("Respuesta RAW del servidor:", data); // Mirar F12 si falla
+                console.log("Tipo de data:", typeof data);
+                console.log("sessionId extraído:", data.sessionId);
+
+                // El backend devuelve SimulationResponse con campo "sessionId"
+                currentSimId = data.sessionId;
+
+                if (!currentSimId) {
+                    log("⚠️ El servidor respondió OK, pero no encuentro el sessionId en el JSON. Revisa la consola (F12).", 'error');
+                    log("JSON recibido: " + JSON.stringify(data), 'warn');
+                    return;
+                }
+
+                log(`✅ Simulación creada con ID: ${currentSimId}`, 'success');
+                
+                // Suscribirse al canal específico de este ID
+                suscribirse(currentSimId);
+                
+                document.getElementById('btnStart').disabled = true;
+                document.getElementById('btnStop').disabled = false;
+            })
+            .catch(err => {
+                log("❌ FALLÓ EL INICIO: " + err.message, 'error');
+            });
+        }
+
+        // 3. SUSCRIPCIÓN Y RECEPCIÓN DE DATOS
+        function suscribirse(id) {
+            const topic = '/topic/simulations/' + id;
+            log(`📡 Suscribiéndose al canal: ${topic}...`, 'warn');
+
+            stompClient.subscribe(topic, function (mensaje) {
+                const body = JSON.parse(mensaje.body);
+                
+                // Si es un mensaje de progreso RUNNING
+                if (body.status === 'RUNNING' && body.currentFitness) {
+                     const pedidos = `${body.processedCount || 0}/${body.totalOrders || '?'}`;
+                     const fitness = body.currentFitness?.toFixed(2) || '?';
+                     const iter = body.ejecucionNumero || '?';
+                     const tiempo = body.tiempoSimulacionActual || '?';
+                     const duracion = body.duracionRealMs ? `${(body.duracionRealMs/1000).toFixed(1)}s` : '?';
+                     
+                     log(`📦 <strong>Iter #${iter}</strong> | Pedidos: ${pedidos} | Fitness: ${fitness} | Tiempo sim: ${tiempo} | Duración: ${duracion}`);
+                } 
+                // Si es mensaje de fin
+                else if (body.status === 'COMPLETED') {
+                    log(`🎉 <strong>SIMULACIÓN COMPLETADA</strong> | Total pedidos: ${body.processedCount || 0} | Fitness final: ${body.currentFitness?.toFixed(2) || '?'}`, 'success');
+                    document.getElementById('btnStart').disabled = false;
+                    document.getElementById('btnStop').disabled = true;
+                }
+                else if (body.status === 'CANCELLED') {
+                    log(`🛑 <strong>SIMULACIÓN CANCELADA</strong>`, 'warn');
+                    document.getElementById('btnStart').disabled = false;
+                    document.getElementById('btnStop').disabled = true;
+                }
+                else if (body.status === 'ERROR') {
+                    log(`❌ <strong>ERROR EN SIMULACIÓN:</strong> ${body.message || 'Error desconocido'}`, 'error');
+                    document.getElementById('btnStart').disabled = false;
+                    document.getElementById('btnStop').disabled = true;
+                }
+                // Cualquier otro mensaje
+                else {
+                    log(`📥 DATA: <span class="json-dump">${JSON.stringify(body).substring(0, 150)}...</span>`);
+                }
+            });
+        }
+
+        // 4. DETENER
+        function detenerSimulacion() {
+            if(!currentSimId) return;
+            log("🛑 Enviando orden de detención...", 'warn');
+            // Nota: ajusta la URL si tu endpoint de cancelar es diferente
+            fetch(BASE_URL + `/api/simulations/${currentSimId}/cancel`, { method: 'POST' })
+            .then(res => {
+                if(res.ok) log("Orden de cancelación recibida por el servidor.", 'success');
+                else log("Error al cancelar", 'error');
+            });
+        }
+
+        function limpiar() {
+            document.getElementById('console').innerHTML = '';
+        }
+    </script>
+</body>
+</html>

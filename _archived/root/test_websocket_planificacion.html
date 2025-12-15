@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test WebSocket Planificación</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+        .control-panel {
+            background: #ecf0f1;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .input-group {
+            margin: 15px 0;
+        }
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #34495e;
+        }
+        input, select {
+            padding: 10px;
+            border: 2px solid #bdc3c7;
+            border-radius: 5px;
+            font-size: 14px;
+            width: 100%;
+            max-width: 300px;
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        .btn-connect {
+            background: #27ae60;
+            color: white;
+        }
+        .btn-disconnect {
+            background: #e74c3c;
+            color: white;
+        }
+        .btn-start {
+            background: #3498db;
+            color: white;
+        }
+        .btn-clear {
+            background: #95a5a6;
+            color: white;
+        }
+        button:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .status {
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        .status.connected {
+            background: #d5f4e6;
+            color: #27ae60;
+            border-left: 5px solid #27ae60;
+        }
+        .status.disconnected {
+            background: #fadbd8;
+            color: #e74c3c;
+            border-left: 5px solid #e74c3c;
+        }
+        .status.running {
+            background: #d6eaf8;
+            color: #3498db;
+            border-left: 5px solid #3498db;
+        }
+        .log-container {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            border-radius: 8px;
+            height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            margin: 20px 0;
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+            border-left: 3px solid transparent;
+        }
+        .log-info {
+            border-left-color: #3498db;
+        }
+        .log-success {
+            border-left-color: #27ae60;
+        }
+        .log-warning {
+            border-left-color: #f39c12;
+        }
+        .log-error {
+            border-left-color: #e74c3c;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+        }
+        .stat-label {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-top: 5px;
+        }
+        .vuelos-list {
+            max-height: 300px;
+            overflow-y: auto;
+            background: #ecf0f1;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        .vuelo-item {
+            background: white;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+            border-left: 4px solid #3498db;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test WebSocket de Planificación</h1>
+        
+        <div class="control-panel">
+            <h2>Control Panel</h2>
+            
+            <div class="input-group">
+                <label for="wsUrl">URL WebSocket:</label>
+                <input type="text" id="wsUrl" value="ws://localhost:8000/ws/planificacion" />
+            </div>
+            
+            <div class="input-group">
+                <label for="fecha">Fecha de Inicio:</label>
+                <input type="date" id="fecha" value="2025-01-15" />
+            </div>
+            
+            <div class="input-group">
+                <label for="factorK">Factor K:</label>
+                <input type="number" id="factorK" value="5" min="1" max="100" />
+            </div>
+            
+            <div class="button-group">
+                <button class="btn-connect" onclick="conectar()">🔌 Conectar</button>
+                <button class="btn-disconnect" onclick="desconectar()" disabled id="btnDisconnect">🔌 Desconectar</button>
+                <button class="btn-start" onclick="iniciarPlanificacion()" disabled id="btnStart">🚀 Iniciar Planificación</button>
+                <button class="btn-clear" onclick="limpiarLogs()">🧹 Limpiar Logs</button>
+            </div>
+            
+            <div id="statusContainer"></div>
+        </div>
+        
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-value" id="iteracionesCount">0</div>
+                <div class="stat-label">Iteraciones</div>
+            </div>
+            <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                <div class="stat-value" id="vuelosCount">0</div>
+                <div class="stat-label">Vuelos Recibidos</div>
+            </div>
+            <div class="stat-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                <div class="stat-value" id="pedidosCount">0</div>
+                <div class="stat-label">Pedidos</div>
+            </div>
+            <div class="stat-card" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+                <div class="stat-value" id="tiempoReal">0s</div>
+                <div class="stat-label">Tiempo Real</div>
+            </div>
+        </div>
+        
+        <h2>📊 Logs de Conexión</h2>
+        <div class="log-container" id="logContainer"></div>
+        
+        <h2>✈️ Vuelos Recibidos (últimos 10)</h2>
+        <div class="vuelos-list" id="vuelosList">
+            <p style="color: #7f8c8d;">No hay vuelos aún...</p>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let iteraciones = 0;
+        let vuelosTotal = 0;
+        let pedidosTotal = 0;
+        let tiempoInicio = null;
+        let intervalTiempo = null;
+        let vuelosRecibidos = [];
+
+        function log(mensaje, tipo = 'info') {
+            const container = document.getElementById('logContainer');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${tipo}`;
+            const timestamp = new Date().toLocaleTimeString();
+            entry.textContent = `[${timestamp}] ${mensaje}`;
+            container.appendChild(entry);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function actualizarEstado(texto, tipo) {
+            const container = document.getElementById('statusContainer');
+            container.innerHTML = `<div class="status ${tipo}">${texto}</div>`;
+        }
+
+        function actualizarStats() {
+            document.getElementById('iteracionesCount').textContent = iteraciones;
+            document.getElementById('vuelosCount').textContent = vuelosTotal;
+            document.getElementById('pedidosCount').textContent = pedidosTotal;
+        }
+
+        function actualizarVuelos() {
+            const lista = document.getElementById('vuelosList');
+            if (vuelosRecibidos.length === 0) {
+                lista.innerHTML = '<p style="color: #7f8c8d;">No hay vuelos aún...</p>';
+                return;
+            }
+            
+            lista.innerHTML = vuelosRecibidos.slice(-10).reverse().map(v => `
+                <div class="vuelo-item">
+                    <strong>${v.origenCodigoICAO} → ${v.destinoCodigoICAO}</strong><br>
+                    📅 ${v.fechaInicial} → ${v.fechaFinal}<br>
+                    📦 ${v.totalPaquetes || 0} paquetes
+                </div>
+            `).join('');
+        }
+
+        function conectar() {
+            const url = document.getElementById('wsUrl').value;
+            log(`Conectando a ${url}...`, 'info');
+            
+            try {
+                ws = new WebSocket(url);
+                
+                ws.onopen = () => {
+                    log('✅ WebSocket conectado exitosamente', 'success');
+                    actualizarEstado('🟢 Conectado', 'connected');
+                    document.getElementById('btnDisconnect').disabled = false;
+                    document.getElementById('btnStart').disabled = false;
+                };
+                
+                ws.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        log(`📩 Mensaje recibido: ${data.tipo}`, 'info');
+                        
+                        switch(data.tipo) {
+                            case 'conectado':
+                                log(`✅ ${data.mensaje}`, 'success');
+                                break;
+                                
+                            case 'progreso':
+                                log(`📊 Progreso - Iteración #${data.datos?.ejecucionNumero || '?'}`, 'info');
+                                break;
+                                
+                            case 'completado':
+                                iteraciones++;
+                                log(`🎉 Iteración #${data.datos?.ejecucionNumero} completada`, 'success');
+                                
+                                if (data.datos?.tiempoSimulacionActual) {
+                                    log(`⏰ Tiempo simulación: ${data.datos.tiempoSimulacionActual}`, 'info');
+                                }
+                                
+                                if (data.solucion?.vuelos) {
+                                    const numVuelos = data.solucion.vuelos.length;
+                                    vuelosTotal += numVuelos;
+                                    vuelosRecibidos.push(...data.solucion.vuelos);
+                                    
+                                    const numPedidos = data.solucion.vuelos.reduce((sum, v) => 
+                                        sum + (v.pedidos?.length || 0), 0);
+                                    pedidosTotal += numPedidos;
+                                    
+                                    log(`✈️ ${numVuelos} vuelos, ${numPedidos} pedidos`, 'success');
+                                    actualizarVuelos();
+                                }
+                                
+                                actualizarStats();
+                                actualizarEstado(`🔵 Planificación en curso (${iteraciones} iteraciones)`, 'running');
+                                break;
+                                
+                            case 'error':
+                                log(`❌ Error: ${data.mensaje}`, 'error');
+                                break;
+                        }
+                    } catch (e) {
+                        log(`❌ Error parseando mensaje: ${e.message}`, 'error');
+                    }
+                };
+                
+                ws.onerror = (error) => {
+                    log(`❌ Error en WebSocket: ${error}`, 'error');
+                    actualizarEstado('🔴 Error de conexión', 'disconnected');
+                };
+                
+                ws.onclose = (event) => {
+                    log(`🔌 WebSocket desconectado. Código: ${event.code}`, 'warning');
+                    actualizarEstado('🔴 Desconectado', 'disconnected');
+                    document.getElementById('btnDisconnect').disabled = true;
+                    document.getElementById('btnStart').disabled = true;
+                    
+                    if (intervalTiempo) {
+                        clearInterval(intervalTiempo);
+                        intervalTiempo = null;
+                    }
+                };
+                
+            } catch (e) {
+                log(`❌ Error al crear WebSocket: ${e.message}`, 'error');
+            }
+        }
+
+        function desconectar() {
+            if (ws) {
+                ws.close();
+                ws = null;
+                log('🔌 Cerrando conexión...', 'info');
+                
+                if (intervalTiempo) {
+                    clearInterval(intervalTiempo);
+                    intervalTiempo = null;
+                }
+            }
+        }
+
+        function iniciarPlanificacion() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                log('⚠️ WebSocket no está conectado', 'warning');
+                return;
+            }
+            
+            const fecha = document.getElementById('fecha').value;
+            const factorK = parseInt(document.getElementById('factorK').value);
+            
+            if (!fecha) {
+                log('⚠️ Por favor selecciona una fecha', 'warning');
+                return;
+            }
+            
+            const request = {
+                accion: "iniciar",
+                fecha: fecha,
+                factorK: factorK,
+                tamanioPoblacion: 20,
+                maxGeneraciones: 20,
+                limiteGeneracionesSinMejora: 10
+            };
+            
+            ws.send(JSON.stringify(request));
+            log(`📤 Planificación iniciada: ${fecha}, K=${factorK}`, 'success');
+            
+            // Iniciar cronómetro
+            tiempoInicio = Date.now();
+            if (intervalTiempo) clearInterval(intervalTiempo);
+            intervalTiempo = setInterval(() => {
+                const segundos = Math.floor((Date.now() - tiempoInicio) / 1000);
+                document.getElementById('tiempoReal').textContent = `${segundos}s`;
+            }, 1000);
+            
+            // Resetear contadores
+            iteraciones = 0;
+            vuelosTotal = 0;
+            pedidosTotal = 0;
+            vuelosRecibidos = [];
+            actualizarStats();
+            actualizarVuelos();
+        }
+
+        function limpiarLogs() {
+            document.getElementById('logContainer').innerHTML = '';
+            log('🧹 Logs limpiados', 'info');
+        }
+    </script>
+</body>
+</html>

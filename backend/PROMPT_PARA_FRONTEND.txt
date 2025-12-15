@@ -1,0 +1,191 @@
+Eres un desarrollador frontend experto. Necesito que implementes la integración de un sistema de simulación logística en tiempo real que usa WebSocket STOMP.
+
+CONTEXTO:
+El backend está en Spring Boot y expone una API REST para controlar simulaciones y un WebSocket STOMP para recibir actualizaciones en tiempo real. El sistema simula la planificación de rutas logísticas usando un algoritmo genético.
+
+ARQUITECTURA DEL BACKEND:
+
+1. REST API - Control de Simulación:
+   - POST http://localhost:8000/api/simulations/start
+     Body: {"fecha": "2025-01-02", "factorK": 5}
+     Response: {"sessionId": "uuid", "mensaje": "...", "topicUrl": "/topic/simulations/{uuid}"}
+   
+   - POST http://localhost:8000/api/simulations/{sessionId}/cancel
+   - POST http://localhost:8000/api/simulations/{sessionId}/pause
+   - POST http://localhost:8000/api/simulations/{sessionId}/resume
+
+2. WebSocket STOMP - Actualizaciones en Tiempo Real:
+   - URL: ws://localhost:8000/ws
+   - Protocolo: STOMP sobre SockJS
+   - Topic: /topic/simulations/{sessionId}
+   - Dependencias: sockjs-client, @stomp/stompjs
+
+TIPOS DE MENSAJES QUE RECIBIRÁS POR WEBSOCKET:
+
+IMPORTANTE: El backend ahora usa el ALGORITMO GENÉTICO REAL, así que recibirás dos tipos de mensajes:
+
+A) Progreso del Algoritmo Genético (cada generación completada) - TIPO PRINCIPAL:
+```json
+{
+  "sessionId": "uuid",
+  "tipo": "PROGRESO_AG",
+  "generacion": 15,
+  "maxGeneraciones": 20,
+  "progreso": 75.0,
+  "mejorFitness": 1245.67,
+  "fitnessPromedio": 890.23,
+  "solucion": {
+    "rutas": [
+      {
+        "pedidoId": 123,
+        "origen": "KJFK",
+        "destino": "EGLL",
+        "subRutas": [
+          {
+            "origen": "KJFK",
+            "destino": "LFPG",
+            "vuelo": "AF001",
+            "horaSalida": "2025-01-02T10:00:00",
+            "horaLlegada": "2025-01-02T22:00:00"
+          }
+        ]
+      }
+    ],
+    "metricas": {
+      "totalRutas": 150,
+      "totalVuelos": 320,
+      "costoTotal": 45000.0,
+      "tiempoPromedioEntrega": 48.5
+    }
+  },
+  "fechaSimulada": "2025-01-02T14:30:00",
+  "timestamp": "2025-11-26T06:33:45.123",
+  "pedidosProcesados": 150,
+  "pedidosTotales": 4440,
+  "mensaje": "Generación 15 completada"
+}
+```
+
+B) Snapshot de Simulación (cada N segundos) - TIPO SECUNDARIO:
+```json
+{
+  "sessionId": "uuid",
+  "status": "RUNNING",
+  "iteration": 42,
+  "simulatedTime": "2025-01-02T14:30:00",
+  "processedOrders": 150,
+  "totalOrders": 4440,
+  "timestamp": "2025-11-26T06:33:45.123",
+  "message": "Procesando pedidos...",
+  "solution": {
+    "routes": [...],
+    "metadata": {
+      "totalFlights": 320,
+      "totalOrders": 150,
+      "fitness": 1245.67
+    }
+  }
+}
+```
+
+C) Simulación Completada:
+```json
+{
+  "sessionId": "uuid",
+  "status": "COMPLETED",
+  "iteration": 888,
+  "processedOrders": 4440,
+  "totalOrders": 4440,
+  "message": "Simulación completada exitosamente"
+}
+```
+
+D) Error:
+```json
+{
+  "sessionId": "uuid",
+  "tipo": "ERROR",
+  "mensaje": "Error al procesar pedidos: ...",
+  "timestamp": "2025-11-26T06:35:00.000"
+}
+```
+
+REQUISITOS DE LA INTERFAZ:
+
+1. Panel de Control:
+   - Input para fecha (date picker) - ÚNICO CAMPO QUE DEBE INGRESAR EL USUARIO
+   - Factor K se envía automáticamente con valor 5 (NO mostrar en UI)
+   - Botón "Iniciar Simulación"
+   - Botón "Cancelar Simulación" (solo activo durante simulación)
+
+2. Panel de Progreso:
+   - Barra de progreso visual (0-100%)
+   - Mostrar: Generación actual / Total generaciones
+   - Mostrar: Mejor fitness encontrado
+   - Mostrar: Pedidos procesados / Total pedidos
+   - Mostrar: Tiempo simulado actual
+
+3. Panel de Visualización (opcional pero recomendado):
+   - Lista de rutas generadas
+   - Información de vuelos en cada ruta
+   - Métricas de la solución (costos, tiempos, etc.)
+
+4. Panel de Logs:
+   - Consola de mensajes en tiempo real
+   - Mostrar cada generación completada
+   - Mostrar eventos importantes (inicio, fin, errores)
+
+FLUJO DE TRABAJO:
+
+1. Usuario ingresa SOLO la fecha (el factor K es siempre 5, no lo pidas al usuario)
+2. Usuario hace clic en "Iniciar Simulación"
+3. Frontend envía POST a /api/simulations/start con {fecha: "valor-ingresado", factorK: 5}
+4. Backend responde con sessionId y topicUrl
+5. Frontend conecta WebSocket y se suscribe al topic
+6. Frontend recibe mensajes en tiempo real y actualiza UI
+7. Cuando status === 'COMPLETED', desconectar WebSocket
+8. Si usuario cancela, enviar POST a /api/simulations/{sessionId}/cancel
+
+NOTAS IMPORTANTES:
+
+- TODOS los campos JSON están en ESPAÑOL (fecha, factorK, generacion, mensaje, etc.)
+- El Factor K SIEMPRE es 5 - NO pidas este valor al usuario, envíalo automáticamente
+- Solo pide al usuario la FECHA de inicio de la simulación
+- El WebSocket usa SockJS como fallback para compatibilidad
+- El ALGORITMO GENÉTICO REAL está activo: cada iteración ejecuta 20 generaciones completas
+- La simulación tardará VARIOS MINUTOS (5-10 minutos para 4440 pedidos)
+- Recibirás mensajes de progreso del AG (tipo PROGRESO_AG) con las rutas reales generadas
+- También recibirás snapshots de simulación (status: RUNNING/COMPLETED)
+- Implementa reconexión automática del WebSocket
+- Maneja errores de conexión y timeouts
+- Muestra AMBOS tipos de progreso: generaciones del AG + iteraciones de la simulación
+
+TECNOLOGÍAS A USAR:
+
+- React/Vue/Angular (tú decides)
+- sockjs-client
+- @stomp/stompjs
+- Librerías de UI que prefieras (Material-UI, Ant Design, TailwindCSS, etc.)
+
+EJEMPLO DE CÓDIGO BASE (JavaScript/TypeScript):
+
+El cliente debe:
+1. Hacer POST a /api/simulations/start con {fecha: valorIngresado, factorK: 5}
+2. Extraer sessionId de la respuesta
+3. Crear SockJS: new SockJS('http://localhost:8000/ws')
+4. Crear cliente STOMP sobre SockJS
+5. En onConnect, suscribirse a /topic/simulations/{sessionId}
+6. En cada mensaje, parsear JSON y actualizar UI según el campo 'tipo' o 'status'
+7. Implementar botón de cancelación que llame a POST /api/simulations/{sessionId}/cancel
+
+SALIDA ESPERADA:
+
+Genera el código completo funcional de la interfaz web con:
+- Componentes bien organizados
+- Gestión de estado (useState/Redux/Vuex según framework)
+- Estilos CSS/SCSS/TailwindCSS
+- Manejo de errores robusto
+- Logs en consola para debugging
+- Comentarios explicativos en el código
+
+¿Estás listo? Genera el código completo de la interfaz web para integrar este sistema de simulación logística en tiempo real.

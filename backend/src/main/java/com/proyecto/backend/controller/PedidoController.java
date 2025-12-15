@@ -1,6 +1,6 @@
 package com.proyecto.backend.controller;
 
-import com.proyecto.backend.model.Pedido;
+import com.proyecto.backend.model.PedidoSemanal;
 import com.proyecto.backend.service.PedidoService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -21,16 +21,16 @@ public class PedidoController {
     private final PedidoService pedidoService;
 
     /**
-     * Obtiene todos los pedidos
+     * Obtiene todos los pedidos semanales
      * GET /api/pedidos
      */
     @GetMapping
-    public ResponseEntity<List<Pedido>> obtenerTodos() {
+    public ResponseEntity<List<PedidoSemanal>> obtenerTodos() {
         return ResponseEntity.ok(pedidoService.obtenerTodos());
     }
 
     /**
-     * Carga pedidos desde el archivo de texto
+     * Carga pedidos desde el archivo de texto a la tabla pedidos_semanal
      * IMPORTANTE: Limpia la BD antes de cargar automáticamente
      * POST /api/pedidos/cargar
      * NOTA: Debe estar ANTES de /{id} para evitar conflictos de rutas
@@ -38,11 +38,12 @@ public class PedidoController {
     @PostMapping("/cargar")
     public ResponseEntity<Map<String, Object>> cargarPedidos() {
         try {
-            List<Pedido> pedidos = pedidoService.cargarDesdeArchivo();
+            List<PedidoSemanal> pedidos = pedidoService.cargarDesdeArchivo();
 
             Map<String, Object> response = new HashMap<>();
-            response.put("mensaje", "Pedidos cargados exitosamente (BD limpiada automáticamente)");
+            response.put("mensaje", "Pedidos semanales cargados exitosamente (BD limpiada automáticamente)");
             response.put("cantidad", pedidos.size());
+            response.put("tabla", "pedidos_semanal");
 
             return ResponseEntity.ok(response);
 
@@ -56,7 +57,7 @@ public class PedidoController {
     }
 
     /**
-     * Limpia todos los pedidos de la BD
+     * Limpia todos los pedidos semanales de la BD
      * DELETE /api/pedidos/limpiar
      * NOTA: Debe estar ANTES de /{id} para evitar conflictos de rutas
      */
@@ -66,7 +67,7 @@ public class PedidoController {
             pedidoService.limpiarPedidos();
 
             Map<String, Object> response = new HashMap<>();
-            response.put("mensaje", "Todos los pedidos han sido eliminados de la base de datos");
+            response.put("mensaje", "Todos los pedidos semanales han sido eliminados de la base de datos");
 
             return ResponseEntity.ok(response);
 
@@ -89,20 +90,11 @@ public class PedidoController {
     }
 
     /**
-     * Busca pedidos por estado
-     * GET /api/pedidos/estado/{estado}
-     */
-    @GetMapping("/estado/{estado}")
-    public ResponseEntity<List<Pedido>> buscarPorEstado(@PathVariable String estado) {
-        return ResponseEntity.ok(pedidoService.buscarPorEstado(estado));
-    }
-
-    /**
      * Busca pedidos por aeropuerto destino
      * GET /api/pedidos/destino/{aeropuertoId}
      */
     @GetMapping("/destino/{aeropuertoId}")
-    public ResponseEntity<List<Pedido>> buscarPorDestino(@PathVariable String aeropuertoId) {
+    public ResponseEntity<List<PedidoSemanal>> buscarPorDestino(@PathVariable String aeropuertoId) {
         return ResponseEntity.ok(pedidoService.buscarPorAeropuertoDestino(aeropuertoId));
     }
 
@@ -111,7 +103,7 @@ public class PedidoController {
      * GET /api/pedidos/cliente/{clienteId}
      */
     @GetMapping("/cliente/{clienteId}")
-    public ResponseEntity<List<Pedido>> buscarPorCliente(@PathVariable String clienteId) {
+    public ResponseEntity<List<PedidoSemanal>> buscarPorCliente(@PathVariable String clienteId) {
         return ResponseEntity.ok(pedidoService.buscarPorCliente(clienteId));
     }
 
@@ -120,18 +112,18 @@ public class PedidoController {
      * GET /api/pedidos/dia/{dia}
      */
     @GetMapping("/dia/{dia}")
-    public ResponseEntity<List<Pedido>> buscarPorDia(@PathVariable int dia) {
+    public ResponseEntity<List<PedidoSemanal>> buscarPorDia(@PathVariable int dia) {
         return ResponseEntity.ok(pedidoService.buscarPorDia(dia));
     }
 
     /**
-     * Crea un nuevo pedido
+     * Crea un nuevo pedido semanal
      * POST /api/pedidos
      */
     @PostMapping
-    public ResponseEntity<Pedido> crear(@Valid @RequestBody Pedido pedido) {
+    public ResponseEntity<PedidoSemanal> crear(@Valid @RequestBody PedidoSemanal pedido) {
         try {
-            Pedido creado = pedidoService.crear(pedido);
+            PedidoSemanal creado = pedidoService.crear(pedido);
             return ResponseEntity.status(HttpStatus.CREATED).body(creado);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
@@ -143,32 +135,11 @@ public class PedidoController {
      * PUT /api/pedidos/{id}
      */
     @PutMapping("/{id}")
-    public ResponseEntity<Pedido> actualizar(
+    public ResponseEntity<PedidoSemanal> actualizar(
             @PathVariable Long id,
-            @Valid @RequestBody Pedido pedido) {
+            @Valid @RequestBody PedidoSemanal pedido) {
         try {
-            Pedido actualizado = pedidoService.actualizar(id, pedido);
-            return ResponseEntity.ok(actualizado);
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
-    }
-
-    /**
-     * Actualiza el estado de un pedido
-     * PATCH /api/pedidos/{id}/estado
-     */
-    @PatchMapping("/{id}/estado")
-    public ResponseEntity<Pedido> actualizarEstado(
-            @PathVariable Long id,
-            @RequestBody Map<String, String> body) {
-        try {
-            String nuevoEstado = body.get("estado");
-            if (nuevoEstado == null || nuevoEstado.isEmpty()) {
-                return ResponseEntity.badRequest().build();
-            }
-            
-            Pedido actualizado = pedidoService.actualizarEstado(id, nuevoEstado);
+            PedidoSemanal actualizado = pedidoService.actualizar(id, pedido);
             return ResponseEntity.ok(actualizado);
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
@@ -200,9 +171,9 @@ public class PedidoController {
      * NOTA: Debe estar AL FINAL para que las rutas específicas se evalúen primero
      */
     @GetMapping("/{id}")
-    public ResponseEntity<Pedido> buscarPorId(@PathVariable Long id) {
+    public ResponseEntity<PedidoSemanal> buscarPorId(@PathVariable Long id) {
         try {
-            Pedido pedido = pedidoService.buscarPorId(id);
+            PedidoSemanal pedido = pedidoService.buscarPorId(id);
             return ResponseEntity.ok(pedido);
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();

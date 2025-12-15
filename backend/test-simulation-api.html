@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test API - Simulation + WebSocket STOMP</title>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1.6.1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #fff;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #00d9ff;
+            margin-bottom: 30px;
+        }
+        
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        @media (max-width: 900px) {
+            .grid-2 { grid-template-columns: 1fr; }
+        }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .card h2 {
+            margin-top: 0;
+            color: #00d9ff;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding-bottom: 10px;
+            font-size: 18px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #aaa;
+            font-size: 13px;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.3);
+            color: #fff;
+            font-size: 14px;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: #00d9ff;
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin-right: 8px;
+            margin-bottom: 8px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #00d9ff, #0099cc);
+            color: #000;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0, 217, 255, 0.4);
+        }
+        
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #ff4757, #cc0000);
+            color: #fff;
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #2ed573, #009432);
+            color: #fff;
+        }
+        
+        .response-container {
+            background: #0a0a0a;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .response-container pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-size: 12px;
+            color: #00ff88;
+        }
+        
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        
+        .status-success { background: rgba(46, 213, 115, 0.2); color: #2ed573; }
+        .status-error { background: rgba(255, 71, 87, 0.2); color: #ff4757; }
+        .status-pending { background: rgba(255, 193, 7, 0.2); color: #ffc107; }
+        .status-connected { background: rgba(0, 217, 255, 0.2); color: #00d9ff; }
+        
+        .endpoint-info {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-family: monospace;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 12px;
+        }
+        
+        .method {
+            background: #00d9ff;
+            color: #000;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 11px;
+        }
+        
+        .method-ws { background: #9b59b6; color: #fff; }
+        
+        .log-entry {
+            padding: 6px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 12px;
+        }
+        
+        .log-time { color: #666; margin-right: 8px; }
+        .log-success { color: #2ed573; }
+        .log-error { color: #ff4757; }
+        .log-info { color: #00d9ff; }
+        .log-ws { color: #9b59b6; }
+        
+        .ws-messages {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .ws-message {
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-left: 3px solid #9b59b6;
+        }
+        
+        .ws-message-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 11px;
+            color: #888;
+        }
+        
+        .ws-message pre {
+            margin: 0;
+            font-size: 11px;
+            color: #00ff88;
+            white-space: pre-wrap;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .stat-box {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #00d9ff;
+        }
+        
+        .stat-label {
+            font-size: 11px;
+            color: #888;
+        }
+
+        .required { color: #ff4757; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🛫 Test API - Simulación + WebSocket STOMP</h1>
+        
+        <div class="grid-2">
+            <!-- COLUMNA IZQUIERDA -->
+            <div>
+                <!-- Configuración -->
+                <div class="card">
+                    <h2>⚙️ Configuración</h2>
+                    <div class="form-group">
+                        <label>URL Base del Backend</label>
+                        <input type="text" id="baseUrl" value="http://localhost:8080">
+                    </div>
+                    <button class="btn btn-secondary" onclick="checkHealth()">🔍 Verificar</button>
+                    <span id="serverStatus" class="status status-pending">Sin verificar</span>
+                </div>
+
+                <!-- Iniciar Simulación -->
+                <div class="card">
+                    <h2>🚀 Iniciar Simulación</h2>
+                    <div class="endpoint-info">
+                        <span class="method">POST</span>
+                        <span>/api/simulations/start</span>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Fecha <span class="required">*</span></label>
+                            <input type="date" id="startDate" value="2025-01-02">
+                        </div>
+                        <div class="form-group">
+                            <label>Hora Inicio <span class="required">*</span></label>
+                            <input type="time" id="startTime" value="06:00">
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Factor K <span class="required">*</span></label>
+                            <input type="number" id="factorK" value="5" min="1" max="20">
+                        </div>
+                    </div>
+                    
+                    <details>
+                        <summary style="cursor: pointer; color: #00d9ff; font-size: 13px;">⚙️ Parámetros AG</summary>
+                        <div class="form-row" style="margin-top: 10px;">
+                            <div class="form-group">
+                                <label>Población</label>
+                                <input type="number" id="tamanioPoblacion" value="20" min="5">
+                            </div>
+                            <div class="form-group">
+                                <label>Generaciones</label>
+                                <input type="number" id="maxGeneraciones" value="20" min="5">
+                            </div>
+                        </div>
+                    </details>
+                    
+                    <div style="margin-top: 15px;">
+                        <button class="btn btn-primary" onclick="startSimulation()">▶️ Iniciar</button>
+                        <button class="btn btn-danger" onclick="cancelSimulation()">⏹️ Cancelar</button>
+                    </div>
+                    
+                    <div class="response-container" id="startResponse" style="display: none;">
+                        <pre id="startResponseText"></pre>
+                    </div>
+                </div>
+
+                <!-- WebSocket -->
+                <div class="card">
+                    <h2>📡 WebSocket STOMP</h2>
+                    <div class="endpoint-info">
+                        <span class="method method-ws">WS</span>
+                        <span>/ws → /topic/simulations/{sessionId}</span>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Session ID para suscribirse</label>
+                        <input type="text" id="sessionIdInput" placeholder="UUID de la sesión">
+                    </div>
+                    
+                    <button class="btn btn-success" onclick="connectWebSocket()">🔌 Conectar</button>
+                    <button class="btn btn-secondary" onclick="subscribeToTopic()">📥 Suscribirse</button>
+                    <button class="btn btn-danger" onclick="disconnectWebSocket()">❌ Desconectar</button>
+                    <span id="wsStatus" class="status status-pending">Desconectado</span>
+                </div>
+
+                <!-- Log -->
+                <div class="card">
+                    <h2>📋 Log</h2>
+                    <button class="btn btn-secondary" onclick="clearLog()">🗑️ Limpiar</button>
+                    <div class="response-container" id="activityLog" style="max-height: 200px;">
+                        <div class="log-entry log-info">Esperando acciones...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- COLUMNA DERECHA -->
+            <div>
+                <!-- Estadísticas -->
+                <div class="card">
+                    <h2>📊 Estadísticas de Simulación</h2>
+                    <div class="stats-grid">
+                        <div class="stat-box">
+                            <div class="stat-value" id="statMensajes">0</div>
+                            <div class="stat-label">Mensajes</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value" id="statGeneracion">-</div>
+                            <div class="stat-label">Generación</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value" id="statFitness">-</div>
+                            <div class="stat-label">Fitness</div>
+                        </div>
+                    </div>
+                    <div class="stats-grid">
+                        <div class="stat-box">
+                            <div class="stat-value" id="statVuelos">-</div>
+                            <div class="stat-label">Vuelos</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value" id="statPedidos">-</div>
+                            <div class="stat-label">Pedidos</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value" id="statStatus">-</div>
+                            <div class="stat-label">Estado</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mensajes WebSocket -->
+                <div class="card">
+                    <h2>📨 Mensajes WebSocket (JSON)</h2>
+                    <button class="btn btn-secondary" onclick="clearWsMessages()">🗑️ Limpiar</button>
+                    <div class="ws-messages" id="wsMessages">
+                        <div style="color: #666; text-align: center; padding: 30px;">
+                            Esperando mensajes WebSocket...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Último mensaje completo -->
+                <div class="card">
+                    <h2>📄 Último JSON Completo</h2>
+                    <div class="response-container" id="lastJsonContainer" style="max-height: 400px;">
+                        <pre id="lastJsonContent">Sin mensajes aún...</pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============ VARIABLES GLOBALES ============
+        let stompClient = null;
+        let subscription = null;
+        let messageCount = 0;
+        let currentSessionId = null;
+
+        function getBaseUrl() {
+            return document.getElementById('baseUrl').value.replace(/\/$/, '');
+        }
+
+        function log(message, type = 'info') {
+            const logContainer = document.getElementById('activityLog');
+            const time = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.innerHTML = `<span class="log-time">[${time}]</span> ${message}`;
+            logContainer.insertBefore(entry, logContainer.firstChild);
+        }
+
+        function clearLog() {
+            document.getElementById('activityLog').innerHTML = '';
+        }
+
+        function showResponse(containerId, textId, data) {
+            document.getElementById(containerId).style.display = 'block';
+            document.getElementById(textId).textContent = JSON.stringify(data, null, 2);
+        }
+
+        // ============ REST API ============
+        async function checkHealth() {
+            const statusEl = document.getElementById('serverStatus');
+            statusEl.className = 'status status-pending';
+            statusEl.textContent = 'Verificando...';
+            
+            try {
+                const response = await fetch(`${getBaseUrl()}/api/aeropuertos`);
+                if (response.ok) {
+                    statusEl.className = 'status status-success';
+                    statusEl.textContent = '✅ Conectado';
+                    log('Servidor conectado', 'success');
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                statusEl.className = 'status status-error';
+                statusEl.textContent = '❌ Error';
+                log(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function startSimulation() {
+            const requestBody = {
+                fecha: document.getElementById('startDate').value,
+                hora: document.getElementById('startTime').value,
+                factorK: parseInt(document.getElementById('factorK').value),
+                tamanioPoblacion: parseInt(document.getElementById('tamanioPoblacion').value),
+                maxGeneraciones: parseInt(document.getElementById('maxGeneraciones').value),
+                accion: 'iniciar'
+            };
+
+            log(`POST /api/simulations/start`, 'info');
+            log(`Body: ${JSON.stringify(requestBody)}`, 'info');
+            
+            try {
+                const response = await fetch(`${getBaseUrl()}/api/simulations/start`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestBody)
+                });
+
+                const data = await response.json();
+                showResponse('startResponse', 'startResponseText', data);
+
+                if (response.ok) {
+                    currentSessionId = data.sessionId;
+                    document.getElementById('sessionIdInput').value = data.sessionId || '';
+                    
+                    log(`✅ Session ID: ${data.sessionId}`, 'success');
+                    log(`📡 Topic: ${data.topicUrl}`, 'ws');
+                    
+                    // Auto-conectar y suscribirse
+                    if (data.sessionId) {
+                        connectWebSocket();
+                    }
+                } else {
+                    log(`❌ Error: ${data.mensaje || response.statusText}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function cancelSimulation() {
+            const sessionId = document.getElementById('sessionIdInput').value || currentSessionId;
+            if (!sessionId) {
+                log('No hay Session ID', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${getBaseUrl()}/api/simulations/${sessionId}/cancel`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                if (response.ok) {
+                    log('✅ Simulación cancelada', 'success');
+                } else {
+                    log(`❌ Error al cancelar`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        // ============ WEBSOCKET STOMP ============
+        function connectWebSocket() {
+            const wsStatusEl = document.getElementById('wsStatus');
+            
+            if (stompClient && stompClient.connected) {
+                log('Ya conectado a WebSocket', 'ws');
+                return;
+            }
+            
+            wsStatusEl.className = 'status status-pending';
+            wsStatusEl.textContent = 'Conectando...';
+            
+            const wsUrl = `${getBaseUrl()}/ws`;
+            log(`🔌 Conectando a ${wsUrl}`, 'ws');
+            
+            const socket = new SockJS(wsUrl);
+            stompClient = Stomp.over(socket);
+            
+            // Silenciar logs de debug de STOMP
+            stompClient.debug = null;
+            
+            stompClient.connect({}, 
+                function(frame) {
+                    wsStatusEl.className = 'status status-connected';
+                    wsStatusEl.textContent = '🟢 Conectado';
+                    log('✅ WebSocket conectado', 'success');
+                    
+                    // Auto-suscribirse si hay sessionId
+                    const sessionId = document.getElementById('sessionIdInput').value;
+                    if (sessionId) {
+                        subscribeToTopic();
+                    }
+                },
+                function(error) {
+                    wsStatusEl.className = 'status status-error';
+                    wsStatusEl.textContent = '❌ Error';
+                    log(`❌ Error WebSocket: ${error}`, 'error');
+                }
+            );
+        }
+
+        function subscribeToTopic() {
+            const sessionId = document.getElementById('sessionIdInput').value;
+            if (!sessionId) {
+                log('Ingresa un Session ID', 'error');
+                return;
+            }
+            
+            if (!stompClient || !stompClient.connected) {
+                log('WebSocket no conectado', 'error');
+                return;
+            }
+            
+            // Cancelar suscripción anterior
+            if (subscription) {
+                subscription.unsubscribe();
+            }
+            
+            const topic = `/topic/simulations/${sessionId}`;
+            log(`📥 Suscribiéndose a: ${topic}`, 'ws');
+            
+            subscription = stompClient.subscribe(topic, function(message) {
+                onMessageReceived(message);
+            });
+            
+            log(`✅ Suscrito a ${topic}`, 'success');
+        }
+
+        function disconnectWebSocket() {
+            if (subscription) {
+                subscription.unsubscribe();
+                subscription = null;
+            }
+            
+            if (stompClient) {
+                stompClient.disconnect();
+                stompClient = null;
+            }
+            
+            document.getElementById('wsStatus').className = 'status status-pending';
+            document.getElementById('wsStatus').textContent = 'Desconectado';
+            log('❌ WebSocket desconectado', 'info');
+        }
+
+        function onMessageReceived(message) {
+            messageCount++;
+            document.getElementById('statMensajes').textContent = messageCount;
+            
+            try {
+                const data = JSON.parse(message.body);
+                
+                // Actualizar estadísticas
+                updateStats(data);
+                
+                // Agregar mensaje a la lista
+                addWsMessage(data);
+                
+                // Mostrar JSON completo
+                document.getElementById('lastJsonContent').textContent = JSON.stringify(data, null, 2);
+                
+                log(`📨 Mensaje #${messageCount} recibido`, 'ws');
+                
+            } catch (e) {
+                log(`❌ Error parseando mensaje: ${e.message}`, 'error');
+            }
+        }
+
+        function updateStats(data) {
+            // Diferentes formatos de mensaje
+            if (data.generacion !== undefined) {
+                document.getElementById('statGeneracion').textContent = 
+                    `${data.generacion}/${data.maxGeneraciones || '?'}`;
+            }
+            
+            if (data.mejorFitness !== undefined) {
+                document.getElementById('statFitness').textContent = 
+                    data.mejorFitness.toFixed(2);
+            } else if (data.currentFitness !== undefined) {
+                document.getElementById('statFitness').textContent = 
+                    data.currentFitness.toFixed(2);
+            }
+            
+            if (data.solucion && data.solucion.vuelos) {
+                document.getElementById('statVuelos').textContent = 
+                    data.solucion.vuelos.length;
+                    
+                // Contar pedidos totales
+                let totalPedidos = 0;
+                data.solucion.vuelos.forEach(v => {
+                    if (v.pedidos) totalPedidos += v.pedidos.length;
+                });
+                document.getElementById('statPedidos').textContent = totalPedidos;
+            }
+            
+            if (data.tipo) {
+                document.getElementById('statStatus').textContent = data.tipo;
+            } else if (data.status) {
+                document.getElementById('statStatus').textContent = data.status;
+            }
+        }
+
+        function addWsMessage(data) {
+            const container = document.getElementById('wsMessages');
+            
+            // Limpiar mensaje inicial
+            if (messageCount === 1) {
+                container.innerHTML = '';
+            }
+            
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'ws-message';
+            
+            const time = new Date().toLocaleTimeString();
+            const tipo = data.tipo || data.status || 'MENSAJE';
+            
+            // Resumen del mensaje
+            let summary = '';
+            if (data.generacion !== undefined) {
+                summary = `Gen: ${data.generacion}, Fitness: ${data.mejorFitness?.toFixed(2) || '-'}`;
+            }
+            if (data.solucion && data.solucion.vuelos) {
+                summary += ` | Vuelos: ${data.solucion.vuelos.length}`;
+            }
+            
+            msgDiv.innerHTML = `
+                <div class="ws-message-header">
+                    <span><strong>#${messageCount}</strong> - ${tipo}</span>
+                    <span>${time}</span>
+                </div>
+                <div style="color: #aaa; font-size: 11px; margin-bottom: 5px;">${summary}</div>
+                <details>
+                    <summary style="cursor: pointer; color: #00d9ff; font-size: 11px;">Ver JSON</summary>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                </details>
+            `;
+            
+            container.insertBefore(msgDiv, container.firstChild);
+            
+            // Limitar a 50 mensajes
+            while (container.children.length > 50) {
+                container.removeChild(container.lastChild);
+            }
+        }
+
+        function clearWsMessages() {
+            document.getElementById('wsMessages').innerHTML = 
+                '<div style="color: #666; text-align: center; padding: 30px;">Esperando mensajes WebSocket...</div>';
+            messageCount = 0;
+            document.getElementById('statMensajes').textContent = '0';
+        }
+
+        // ============ INICIALIZACIÓN ============
+        window.onload = function() {
+            log('Página cargada', 'info');
+            checkHealth();
+        };
+    </script>
+</body>
+</html>

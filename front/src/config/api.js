@@ -1,11 +1,23 @@
 import axios from 'axios';
 
+// ==================== CONFIGURACIÓN CENTRALIZADA ====================
+// 🔧 CAMBIAR AQUÍ LA URL DEL BACKEND
+// Para desarrollo local: http://localhost:8000
+// Para servidor remoto: http://200.16.7.181
+const API_BASE_URL = process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
+// URL para REST API
+const REST_API_URL = `${API_BASE_URL}/api`;
+
+// URL para WebSocket (STOMP + SockJS)
+const WS_URL = `${API_BASE_URL}/ws`;
+
+// Exportar URLs para uso en otros archivos
+export { API_BASE_URL, REST_API_URL, WS_URL };
 
 const api = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 10000,
+  baseURL: REST_API_URL,
+  timeout: 300000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -51,17 +63,24 @@ api.interceptors.response.use(
 export const transformAirportData = (backendAirport) => {
   console.log('Transformando aeropuerto:', backendAirport);
   
+  // Determinar si es una sede/hub (capacidad ilimitada)
+  const HUBS = ['EBCI', 'SPIM', 'UBBB'];
+  const isHub = HUBS.includes(backendAirport.codigoICAO);
+  
   const transformed = {
     name: `${backendAirport.ciudad}`,
     code: backendAirport.codigoICAO,
     lat: backendAirport.latitud,
     lng: backendAirport.longitud,
-    capacity: backendAirport.capacidadAlmacen,
-    packages: backendAirport.capacidadAlmacen - backendAirport.capacidadDisponible,
-    isSede: false, // Ajustar según lógica de negocio
+    capacity: isHub ? 'ILIMITADO' : backendAirport.capacidadAlmacen,
+    // 🆕 Los aeropuertos SIEMPRE empiezan vacíos (0 paquetes)
+    // Se llenan conforme aterrizan los aviones durante la simulación
+    packages: 0,
+    pedidosCount: 0,
+    isSede: isHub,
     region: backendAirport.continente,
     country: backendAirport.pais,
-    operationType: 'Aeropuerto Regional', // Ajustar según lógica de negocio
+    operationType: isHub ? 'Sede Principal - Hub' : 'Aeropuerto Regional',
     timezone: backendAirport.husoHorario
   };
   
@@ -72,14 +91,14 @@ export const transformAirportData = (backendAirport) => {
 // Función para obtener aeropuertos transformados
 export const getAirports = async () => {
   try {
-    console.log('Solicitando aeropuertos a:', API_BASE_URL + '/aeropuertos/listar');
+    console.log('Solicitando aeropuertos a:', REST_API_URL + '/aeropuertos/listar');
     const response = await api.get('/aeropuertos/listar');
-    console.log('Respuesta recibida:', response.data);
+    console.log('✅ Respuesta recibida:', response.data.length, 'aeropuertos');
     const transformed = response.data.map(transformAirportData);
-    console.log('Aeropuertos transformados:', transformed);
+    console.log('✅ Aeropuertos transformados:', transformed.length, 'aeropuertos');
     return transformed;
   } catch (error) {
-    console.error('Error al obtener aeropuertos:', error);
+    console.error('❌ Error al obtener aeropuertos:', error);
     throw error;
   }
 };
@@ -154,8 +173,8 @@ export const transformFlightData = (backendFlight, airports) => {
 // Función para obtener vuelos transformados
 export const getFlights = async (airports) => {
   try {
-    console.log('Solicitando vuelos a:', API_BASE_URL + '/vuelos/listar');
-    const response = await api.get('/vuelos/listar');
+    console.log('Solicitando vuelos a:', API_BASE_URL + '/api/vuelos/listar');
+    const response = await api.get('/api/vuelos/listar');
     console.log('Respuesta de vuelos recibida:', response.data);
     
     if (!response.data || !response.data.vuelos) {
@@ -181,7 +200,7 @@ export const getFlights = async (airports) => {
 export const iniciarSimulacion = async () => {
   try {
     console.log('🚀 Iniciando simulación...');
-    const response = await api.post('/simulacion/iniciar');
+    const response = await api.post('/api/simulacion/iniciar');
     console.log('✅ Simulación iniciada:', response.data);
     return response.data;
   } catch (error) {
@@ -194,7 +213,7 @@ export const iniciarSimulacion = async () => {
 export const pausarSimulacion = async () => {
   try {
     console.log('⏸️ Pausando simulación...');
-    const response = await api.post('/simulacion/pausar');
+    const response = await api.post('/api/simulacion/pausar');
     console.log('✅ Simulación pausada:', response.data);
     return response.data;
   } catch (error) {
@@ -207,7 +226,7 @@ export const pausarSimulacion = async () => {
 export const reanudarSimulacion = async () => {
   try {
     console.log('▶️ Reanudando simulación...');
-    const response = await api.post('/simulacion/reanudar');
+    const response = await api.post('/api/simulacion/reanudar');
     console.log('✅ Simulación reanudada:', response.data);
     return response.data;
   } catch (error) {
@@ -220,7 +239,7 @@ export const reanudarSimulacion = async () => {
 export const detenerSimulacion = async () => {
   try {
     console.log('⏹️ Deteniendo simulación...');
-    const response = await api.post('/simulacion/detener');
+    const response = await api.post('/api/simulacion/detener');
     console.log('✅ Simulación detenida:', response.data);
     return response.data;
   } catch (error) {
@@ -232,7 +251,7 @@ export const detenerSimulacion = async () => {
 // Obtener estado actual de la simulación (sin stream)
 export const obtenerEstadoSimulacion = async () => {
   try {
-    const response = await api.get('/simulacion/estado');
+    const response = await api.get('/api/simulacion/estado');
     return response.data;
   } catch (error) {
     console.error('❌ Error al obtener estado de simulación:', error);
@@ -240,9 +259,9 @@ export const obtenerEstadoSimulacion = async () => {
   }
 };
 
-// Conectar al stream SSE de la simulación
+// Conectar al stream SSE de la simulación (EventSource)
 export const conectarStreamSimulacion = (onMessage, onError) => {
-  const eventSource = new EventSource(`${API_BASE_URL}/simulacion/stream`);
+  const eventSource = new EventSource(`${API_BASE_URL}/api/simulacion/stream`);
   
   eventSource.onmessage = (event) => {
     try {
@@ -262,5 +281,71 @@ export const conectarStreamSimulacion = (onMessage, onError) => {
   return eventSource;
 };
 
+// ==================== FUNCIONES PARA WEBSOCKET ====================
+
+// Consultar estado del WebSocket
+export const consultarEstadoWebSocket = async () => {
+  try {
+    console.log('🔍 Consultando estado WebSocket...');
+    const response = await api.get('/api/websocket/estado');
+    console.log('✅ Estado WebSocket:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error al consultar estado WebSocket:', error);
+    throw error;
+  }
+};
+
+// Activar WebSocket
+export const activarWebSocket = async () => {
+  try {
+    console.log('✅ Activando WebSocket...');
+    const response = await api.get('/api/websocket/activar');
+    console.log('✅ WebSocket activado:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error al activar WebSocket:', error);
+    throw error;
+  }
+};
+
+// Desactivar WebSocket
+export const desactivarWebSocket = async () => {
+  try {
+    console.log('🛑 Desactivando WebSocket...');
+    const response = await api.get('/api/websocket/desactivar');
+    console.log('✅ WebSocket desactivado:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error al desactivar WebSocket:', error);
+    throw error;
+  }
+};
+
+// Enviar mensaje de prueba
+export const enviarMensajePruebaWS = async (mensaje) => {
+  try {
+    console.log('📤 Enviando mensaje de prueba:', mensaje);
+    const response = await api.get(`/api/websocket/test?mensaje=${encodeURIComponent(mensaje)}`);
+    console.log('✅ Respuesta:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error al enviar mensaje:', error);
+    throw error;
+  }
+};
+
+/* Apis de planificación de rutas */
+export const getPlanificacionSemanal = async (fecha, factorK) => {
+  const body = { fecha, factorK };
+  const { data } = await api.post('/planificacion/semanal', body);
+  return data; // { vuelos, totalPedidos, totalVuelos }
+};
+
+/* Pedidos diarios*/
+export async function createPedidoDiario(payload) {
+  const { data } = await api.post('/pedidos-diarios', payload);
+  return data;
+}
+
 export default api;
-export { API_BASE_URL };  

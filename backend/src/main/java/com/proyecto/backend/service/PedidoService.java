@@ -1,10 +1,13 @@
 package com.proyecto.backend.service;
 
-import com.proyecto.backend.model.Pedido;
-import com.proyecto.backend.repository.PedidoRepository;
+import com.proyecto.backend.model.PedidoSemanal;
+import com.proyecto.backend.repository.PedidoSemanalRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,69 +17,55 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.sql.PreparedStatement;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class PedidoService {
 
-    private final PedidoRepository pedidoRepository;
+    private final PedidoSemanalRepository pedidoSemanalRepository;
+    private final JdbcTemplate jdbcTemplate;
 
     /**
-     * Obtiene todos los pedidos
+     * Obtiene todos los pedidos semanales
      */
     @Transactional(readOnly = true)
-    public List<Pedido> obtenerTodos() {
-        return pedidoRepository.findAll();
+    public List<PedidoSemanal> obtenerTodos() {
+        return pedidoSemanalRepository.findAll();
     }
 
     /**
      * Busca un pedido por ID
      */
     @Transactional(readOnly = true)
-    public Pedido buscarPorId(Long id) {
-        return pedidoRepository.findById(id)
+    public PedidoSemanal buscarPorId(Long id) {
+        return pedidoSemanalRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Pedido no encontrado: " + id));
-    }
-
-    /**
-     * Busca pedidos por estado
-     */
-    @Transactional(readOnly = true)
-    public List<Pedido> buscarPorEstado(String estado) {
-        return pedidoRepository.findByEstado(estado);
     }
 
     /**
      * Busca pedidos por aeropuerto destino
      */
     @Transactional(readOnly = true)
-    public List<Pedido> buscarPorAeropuertoDestino(String aeropuertoDestinoId) {
-        return pedidoRepository.findByAeropuertoDestinoId(aeropuertoDestinoId);
+    public List<PedidoSemanal> buscarPorAeropuertoDestino(String aeropuertoDestinoId) {
+        return pedidoSemanalRepository.findByAeropuertoDestinoId(aeropuertoDestinoId);
     }
 
     /**
      * Busca pedidos por cliente
      */
     @Transactional(readOnly = true)
-    public List<Pedido> buscarPorCliente(String clienteId) {
-        return pedidoRepository.findByClienteId(clienteId);
+    public List<PedidoSemanal> buscarPorCliente(String clienteId) {
+        return pedidoSemanalRepository.findByClienteId(clienteId);
     }
 
     /**
      * Busca pedidos por día
      */
     @Transactional(readOnly = true)
-    public List<Pedido> buscarPorDia(int dia) {
-        return pedidoRepository.findByDia(dia);
-    }
-
-    /**
-     * Busca pedidos por estado y aeropuerto destino
-     */
-    @Transactional(readOnly = true)
-    public List<Pedido> buscarPorEstadoYDestino(String estado, String aeropuertoDestinoId) {
-        return pedidoRepository.findByEstadoAndAeropuertoDestinoId(estado, aeropuertoDestinoId);
+    public List<PedidoSemanal> buscarPorDia(int dia) {
+        return pedidoSemanalRepository.findByDia(dia);
     }
 
     /**
@@ -84,15 +73,10 @@ public class PedidoService {
      */
     @Transactional(readOnly = true)
     public Map<String, Long> obtenerEstadisticas() {
-        List<Pedido> pedidos = pedidoRepository.findAll();
+        List<PedidoSemanal> pedidos = pedidoSemanalRepository.findAll();
         
         return Map.of(
-            "total", (long) pedidos.size(),
-            "pendientes", pedidoRepository.countByEstado("PENDIENTE"),
-            "asignados", pedidoRepository.countByEstado("ASIGNADO"),
-            "enRuta", pedidoRepository.countByEstado("EN_RUTA"),
-            "entregados", pedidoRepository.countByEstado("ENTREGADO"),
-            "cancelados", pedidoRepository.countByEstado("CANCELADO")
+            "total", (long) pedidos.size()
         );
     }
 
@@ -100,42 +84,30 @@ public class PedidoService {
      * Crea un nuevo pedido
      */
     @Transactional
-    public Pedido crear(Pedido pedido) {
+    public PedidoSemanal crear(PedidoSemanal pedido) {
         log.info("Creando pedido para cliente: {} con destino: {}", 
             pedido.getClienteId(), pedido.getAeropuertoDestinoId());
-        return pedidoRepository.save(pedido);
+        return pedidoSemanalRepository.save(pedido);
     }
 
     /**
      * Actualiza un pedido existente
      */
     @Transactional
-    public Pedido actualizar(Long id, Pedido pedido) {
-        Pedido existente = buscarPorId(id);
+    public PedidoSemanal actualizar(Long id, PedidoSemanal pedido) {
+        PedidoSemanal existente = buscarPorId(id);
 
+        existente.setAnio(pedido.getAnio());
+        existente.setMes(pedido.getMes());
         existente.setDia(pedido.getDia());
         existente.setHora(pedido.getHora());
         existente.setMinuto(pedido.getMinuto());
         existente.setAeropuertoDestinoId(pedido.getAeropuertoDestinoId());
         existente.setCantidadProductos(pedido.getCantidadProductos());
         existente.setClienteId(pedido.getClienteId());
-        existente.setEstado(pedido.getEstado());
 
         log.info("Actualizando pedido ID: {}", id);
-        return pedidoRepository.save(existente);
-    }
-
-    /**
-     * Actualiza el estado de un pedido
-     */
-    @Transactional
-    public Pedido actualizarEstado(Long id, String nuevoEstado) {
-        Pedido pedido = buscarPorId(id);
-        String estadoAnterior = pedido.getEstado();
-        pedido.setEstado(nuevoEstado);
-        
-        log.info("Actualizando estado del pedido ID: {} de {} a {}", id, estadoAnterior, nuevoEstado);
-        return pedidoRepository.save(pedido);
+        return pedidoSemanalRepository.save(existente);
     }
 
     /**
@@ -143,8 +115,8 @@ public class PedidoService {
      */
     @Transactional
     public void eliminar(Long id) {
-        Pedido pedido = buscarPorId(id);
-        pedidoRepository.delete(pedido);
+        PedidoSemanal pedido = buscarPorId(id);
+        pedidoSemanalRepository.delete(pedido);
         log.info("Pedido eliminado: ID {}", id);
     }
 
@@ -153,121 +125,191 @@ public class PedidoService {
      */
     @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public void limpiarPedidos() {
-        long count = pedidoRepository.count();
-        pedidoRepository.deleteAllNative();
-        log.info("Se eliminaron {} pedidos de la base de datos (DELETE nativo)", count);
+        long count = pedidoSemanalRepository.count();
+        pedidoSemanalRepository.deleteAllNative();
+        log.info("Se eliminaron {} pedidos semanales de la base de datos (DELETE nativo)", count);
     }
 
     /**
-     * Carga pedidos desde el archivo de texto
+     * Carga pedidos desde el archivo Pedidos.txt a la tabla pedidos_semanal
+     * OPTIMIZADO: Lectura + batch insert grande
      * IMPORTANTE: Limpia la BD antes de cargar para evitar duplicados
-     * Formato: dd-hh-mm-dest-###-IdClien
-     * Ejemplo: 30-09-15-SEQM-145-0054321
+     * Formato: id_pedido-aaaammdd-hh-mm-dest-###-IdClien
+     * Ejemplo: 000000001-20250102-00-54-LOWW-002-0000068
      * @return Lista de pedidos cargados
      */
     @Transactional
-    public List<Pedido> cargarDesdeArchivo() {
+    public List<PedidoSemanal> cargarDesdeArchivo() {
         // Limpiar la base de datos antes de cargar
-        log.info("Limpiando pedidos existentes...");
+        log.info("Limpiando pedidos semanales existentes...");
         limpiarPedidos();
-        
-        List<Pedido> pedidosParaGuardar = new ArrayList<>();
 
         try {
-            log.info("Iniciando lectura de archivo de pedidos...");
+            log.info("📦 Cargando pedidos desde Pedidos.txt a tabla pedidos_semanal...");
+            
             ClassPathResource resource = new ClassPathResource("datos/Pedidos.txt");
-
-            // PASO 1: Leer TODO el archivo primero
+            List<PedidoSemanal> pedidos = new ArrayList<>();
+            
+            long inicioLectura = System.currentTimeMillis();
+            
             try (BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(resource.getInputStream(), "UTF-8"))) {
-
+                    new InputStreamReader(resource.getInputStream()))) {
+                
                 String linea;
                 int lineaNumero = 0;
-
+                
                 while ((linea = reader.readLine()) != null) {
                     lineaNumero++;
-
-                    // Saltar líneas vacías
+                    
                     if (linea.trim().isEmpty()) {
                         continue;
                     }
-
+                    
                     try {
-                        Pedido pedido = parsearLineaPedido(linea);
-                        if (pedido != null) {
-                            pedidosParaGuardar.add(pedido);
+                        // Formato: ID-YYYYMMDD-HH-MM-AEROPUERTO-CANTIDAD-CLIENTE
+                        // Ejemplo: 000000001-20250102-01-02-EDDI-002-0029360
+                        String[] partes = linea.split("-");
+                        
+                        if (partes.length != 7) {
+                            log.warn("Línea {} tiene formato incorrecto (esperado 7 partes): {}", lineaNumero, linea);
+                            continue;
                         }
+                        
+                        // Parsear fecha YYYYMMDD
+                        String fecha = partes[1];
+                        int anio = Integer.parseInt(fecha.substring(0, 4));
+                        int mes = Integer.parseInt(fecha.substring(4, 6));
+                        int dia = Integer.parseInt(fecha.substring(6, 8));
+                        
+                        PedidoSemanal pedido = new PedidoSemanal();
+                        pedido.setAnio(anio);
+                        pedido.setMes(mes);
+                        pedido.setDia(dia);
+                        pedido.setHora(Integer.parseInt(partes[2]));
+                        pedido.setMinuto(Integer.parseInt(partes[3]));
+                        pedido.setAeropuertoDestinoId(partes[4]);
+                        pedido.setCantidadProductos(Integer.parseInt(partes[5]));
+                        pedido.setClienteId(partes[6]);
+                        
+                        pedidos.add(pedido);
+                        
                     } catch (Exception e) {
-                        log.warn("Error parseando línea {}: {} - Error: {}", 
-                            lineaNumero, linea, e.getMessage());
+                        log.warn("Error parseando línea {}: {} - {}", lineaNumero, linea, e.getMessage());
                     }
                 }
-
-                log.info("Lectura completada. {} pedidos parseados", pedidosParaGuardar.size());
             }
-
-            // PASO 2: Guardar todos en lotes
-            if (!pedidosParaGuardar.isEmpty()) {
-                log.info("Guardando {} pedidos en la base de datos...", pedidosParaGuardar.size());
+            
+            long finLectura = System.currentTimeMillis();
+            log.info("✓ Lectura completada en {} ms: {} pedidos", (finLectura - inicioLectura), pedidos.size());
+            
+            // Guardar con JDBC batch insert
+            if (!pedidos.isEmpty()) {
+                log.info("💾 Guardando {} pedidos semanales en la base de datos...", pedidos.size());
                 
-                int batchSize = 2000;
-                for (int i = 0; i < pedidosParaGuardar.size(); i += batchSize) {
-                    int end = Math.min(i + batchSize, pedidosParaGuardar.size());
-                    List<Pedido> batch = pedidosParaGuardar.subList(i, end);
-                    guardarBatch(batch);
-                    log.info("Guardados {}/{} pedidos", end, pedidosParaGuardar.size());
-                }
-
-                log.info("✓ Total de pedidos guardados: {}", pedidosParaGuardar.size());
-                return pedidosParaGuardar;
-            } else {
-                log.info("No hay pedidos para guardar");
-                return new ArrayList<>();
+                long inicioGuardado = System.currentTimeMillis();
+                guardarConJdbcBatch(pedidos);
+                long finGuardado = System.currentTimeMillis();
+                
+                long tiempoTotal = finGuardado - inicioLectura;
+                log.info("✅ COMPLETADO: {} pedidos semanales cargados en {} ms total", pedidos.size(), tiempoTotal);
+                log.info("   📊 Lectura: {} ms | Inserción BD: {} ms", 
+                        (finLectura - inicioLectura), (finGuardado - inicioGuardado));
             }
-
+            
+            return pedidos;
+            
         } catch (IOException e) {
-            log.error("Error leyendo archivo de pedidos: {}", e.getMessage());
-            throw new RuntimeException("No se pudo cargar el archivo de pedidos", e);
+            log.error("Error leyendo archivo Pedidos.txt: {}", e.getMessage());
+            throw new RuntimeException("No se pudo cargar el archivo Pedidos.txt", e);
         }
     }
 
     /**
-     * Guarda un lote de pedidos en una transacción separada
+     * Guarda un lote de pedidos utilizando JDBC batch OPTIMIZADO con progress tracking
+     * La BD genera IDs automáticamente (auto_increment) - NO se incluye ID en el INSERT
+     * Muestra progreso cada 50,000 pedidos insertados
      */
     @Transactional
-    private void guardarBatch(List<Pedido> pedidos) {
-        pedidoRepository.saveAll(pedidos);
+    private void guardarConJdbcBatch(List<PedidoSemanal> pedidos) {
+        String sql = "INSERT INTO pedidos_semanal (anio, mes, dia, hora, minuto, aeropuerto_destino_id, cantidad_productos, cliente_id) " +
+                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+
+        int batchSize = 1000;
+        int totalPedidos = pedidos.size();
+        int procesados = 0;
+        int progressInterval = 50_000; // Mostrar progreso cada 50k pedidos
+        long inicioBatch = System.currentTimeMillis();
+        
+        // Dividir en chunks y procesar con progress tracking
+        for (int i = 0; i < totalPedidos; i += batchSize) {
+            int end = Math.min(i + batchSize, totalPedidos);
+            List<PedidoSemanal> chunk = pedidos.subList(i, end);
+            
+            // Ejecutar batch insert
+            jdbcTemplate.batchUpdate(sql, chunk, batchSize, (PreparedStatement ps, PedidoSemanal pedido) -> {
+                ps.setInt(1, pedido.getAnio());
+                ps.setInt(2, pedido.getMes());
+                ps.setInt(3, pedido.getDia());
+                ps.setInt(4, pedido.getHora());
+                ps.setInt(5, pedido.getMinuto());
+                ps.setString(6, pedido.getAeropuertoDestinoId());
+                ps.setInt(7, pedido.getCantidadProductos());
+                ps.setString(8, pedido.getClienteId());
+            });
+            
+            procesados = end;
+            
+            // Mostrar progreso cada X pedidos
+            if (procesados % progressInterval == 0 || procesados == totalPedidos) {
+                long tiempoTranscurrido = System.currentTimeMillis() - inicioBatch;
+                double porcentaje = (procesados * 100.0) / totalPedidos;
+                long velocidad = (procesados * 1000L) / Math.max(1, tiempoTranscurrido);
+                long tiempoRestanteMs = ((totalPedidos - procesados) * 1000L) / Math.max(1, velocidad);
+                
+                log.info("   💾 Insertados: {}/{} pedidos ({:.1f}%) - {} pedidos/seg - ETA: {} seg", 
+                    procesados, totalPedidos, porcentaje, velocidad, (tiempoRestanteMs / 1000));
+            }
+        }
     }
 
     /**
-     * Parsea una línea del archivo y crea un objeto Pedido
-     * Formato: dd-hh-mm-dest-###-IdClien
-     * Ejemplo: 30-09-15-SEQM-145-0054321
+     * Parsea una línea del archivo y crea un objeto PedidoSemanal
+     * El ID del archivo se IGNORA porque algunos se repiten - la BD genera su propio ID
+     * Formato: id_pedido-aaaammdd-hh-mm-dest-###-IdClien
+     * Ejemplo: 000000001-20250102-00-54-LOWW-002-0000068
      */
-    private Pedido parsearLineaPedido(String linea) {
+    private PedidoSemanal parsearLineaPedido(String linea) {
         if (linea == null || linea.trim().isEmpty()) {
             return null;
         }
 
         String[] partes = linea.trim().split("-");
         
-        if (partes.length != 6) {
-            log.warn("Formato de línea inválido (esperaba 6 partes): {}", linea);
+        if (partes.length != 7) {
+            log.warn("Formato de línea inválido (esperaba 7 partes): {}", linea);
             return null;
         }
 
         try {
-            int dia = Integer.parseInt(partes[0].trim());
-            int hora = Integer.parseInt(partes[1].trim());
-            int minuto = Integer.parseInt(partes[2].trim());
-            String aeropuertoDestino = partes[3].trim();
-            int cantidadProductos = Integer.parseInt(partes[4].trim());
-            String clienteId = partes[5].trim();
+            // Formato: id_pedido-aaaammdd-hh-mm-dest-###-IdClien
+            String fechaStr = partes[1].trim();  // aaaammdd
+            
+            // Extraer año, mes, día de la fecha
+            int anio = Integer.parseInt(fechaStr.substring(0, 4));   // aaaa
+            int mes = Integer.parseInt(fechaStr.substring(4, 6));    // mm
+            int dia = Integer.parseInt(fechaStr.substring(6, 8));    // dd
+            
+            int hora = Integer.parseInt(partes[2].trim());
+            int minuto = Integer.parseInt(partes[3].trim());
+            String aeropuertoDestino = partes[4].trim();
+            int cantidadProductos = Integer.parseInt(partes[5].trim());
+            String clienteId = partes[6].trim();
 
-            return new Pedido(dia, hora, minuto, aeropuertoDestino, cantidadProductos, clienteId);
+            // Crear pedido SIN ID - la BD generará uno automáticamente
+            return new PedidoSemanal(anio, mes, dia, hora, minuto, aeropuertoDestino, cantidadProductos, clienteId);
 
-        } catch (NumberFormatException e) {
-            log.warn("Error parseando números en línea: {} - Error: {}", linea, e.getMessage());
+        } catch (NumberFormatException | StringIndexOutOfBoundsException e) {
+            log.warn("Error parseando línea: {} - Error: {}", linea, e.getMessage());
             return null;
         }
     }

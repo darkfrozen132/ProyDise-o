@@ -71,6 +71,7 @@ body { overflow-y: auto; }
   font-size: 1.2rem;
   color: var(--morapack-primary);
   margin-bottom: 20px;
+  padding-top: 20px;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -305,7 +306,7 @@ body { overflow-y: auto; }
 }
 
 .time-section, .stats-section, .airport-section, .system-alerts {
-  padding: 20px;
+  padding: 10px;
   border-bottom: 1px solid var(--border-color);
 }
 
@@ -313,6 +314,7 @@ body { overflow-y: auto; }
   display: flex;
   flex-direction: column;
   gap: 15px;
+  margin-top: -20px;
 }
 
 .current-time, .elapsed-time {
@@ -336,7 +338,7 @@ body { overflow-y: auto; }
 .stats-section h4 {
   font-size: 1.1rem;
   color: var(--morapack-primary);
-  margin-top: 0;
+  margin-top: -30px;
   font-weight: 600;
   display: flex;
   align-items: center;
@@ -463,12 +465,13 @@ body { overflow-y: auto; }
 .airport-section h4 {
   font-size: 1.1rem;
   color: var(--morapack-primary);
-  margin-top: 0;
+  margin-top: -30px;
+  margin-bottom: -5px;
   font-weight: 600;
 }
 
 .airport-info {
-  margin-top: 15px;
+  margin-top: -30px;
   padding: 15px;
   background-color: var(--morapack-light);
   border-radius: 12px;

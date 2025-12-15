@@ -5,12 +5,14 @@ import com.proyecto.backend.repository.PlanDeVueloRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.sql.PreparedStatement;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,6 +23,7 @@ import java.util.List;
 public class PlanDeVueloService {
 
     private final PlanDeVueloRepository planDeVueloRepository;
+    private final JdbcTemplate jdbcTemplate;
 
     /**
      * Obtiene todos los planes de vuelo
@@ -158,27 +161,15 @@ public class PlanDeVueloService {
                 log.info("✓ Lectura completada: {} planes parseados de {} líneas", planesParaGuardar.size(), lineaNumero);
             }
 
-            // PASO 2: Guardar en batches con transacciones separadas (evita timeout)
+            // PASO 2: Guardar con JDBC batch insert DIRECTO (mucho más rápido que JPA)
             if (!planesParaGuardar.isEmpty()) {
-                log.info("Guardando {} planes de vuelo...", planesParaGuardar.size());
+                log.info("Guardando {} planes de vuelo con JDBC batch insert...", planesParaGuardar.size());
                 
-                int batchSize = 2000; // Batches grandes para máxima velocidad
-                int totalGuardados = 0;
-                int totalBatches = (planesParaGuardar.size() + batchSize - 1) / batchSize;
+                long inicio = System.currentTimeMillis();
+                guardarConJdbcBatch(planesParaGuardar);
+                long fin = System.currentTimeMillis();
                 
-                for (int i = 0; i < planesParaGuardar.size(); i += batchSize) {
-                    int end = Math.min(i + batchSize, planesParaGuardar.size());
-                    List<PlanDeVuelo> batch = planesParaGuardar.subList(i, end);
-                    
-                    guardarBatch(batch);
-                    totalGuardados += batch.size();
-                    
-                    int batchNum = (i / batchSize) + 1;
-                    log.info("Batch {}/{}: {} planes guardados (total: {})", 
-                        batchNum, totalBatches, batch.size(), totalGuardados);
-                }
-                
-                log.info("✓ Carga completada: {} planes de vuelo guardados", totalGuardados);
+                log.info("✓ {} planes de vuelo guardados en {} ms", planesParaGuardar.size(), (fin - inicio));
                 return planesParaGuardar;
             } else {
                 log.info("No hay planes de vuelo para guardar");
@@ -198,6 +189,24 @@ public class PlanDeVueloService {
     @Transactional
     private void guardarBatch(List<PlanDeVuelo> batch) {
         planDeVueloRepository.saveAll(batch);
+    }
+
+    /**
+     * Guarda planes de vuelo usando JDBC batch insert directo (más rápido que JPA)
+     * MySQL con rewriteBatchedStatements=true convierte múltiples INSERT en uno solo
+     */
+    @Transactional
+    private void guardarConJdbcBatch(List<PlanDeVuelo> planes) {
+        String sql = "INSERT INTO planesdevuelo (aeropuerto_origen, aeropuerto_destino, hora_salida, hora_llegada, capacidad_maxima) " +
+                     "VALUES (?, ?, ?, ?, ?)";
+        
+        jdbcTemplate.batchUpdate(sql, planes, 500, (PreparedStatement ps, PlanDeVuelo plan) -> {
+            ps.setString(1, plan.getAeropuertoOrigen());
+            ps.setString(2, plan.getAeropuertoDestino());
+            ps.setObject(3, plan.getHoraSalida());
+            ps.setObject(4, plan.getHoraLlegada());
+            ps.setInt(5, plan.getCapacidadMaxima());
+        });
     }
 
     /**

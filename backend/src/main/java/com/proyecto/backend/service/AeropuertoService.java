@@ -1,6 +1,7 @@
 package com.proyecto.backend.service;
 
 import com.proyecto.backend.model.Aeropuerto;
+import com.proyecto.backend.planificador.semanal.service.WorldCacheService;
 import com.proyecto.backend.repository.AeropuertoRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,6 +23,7 @@ import java.util.regex.Pattern;
 public class AeropuertoService {
 
     private final AeropuertoRepository aeropuertoRepository;
+    private final WorldCacheService worldCacheService;
 
     // Patron regex para parsear lineas de aeropuerto
     private static final Pattern AEROPUERTO_PATTERN = Pattern.compile(
@@ -30,12 +32,12 @@ public class AeropuertoService {
 
     // Patron para extraer grados, minutos, segundos de latitud
     private static final Pattern LAT_PATTERN = Pattern.compile(
-        "(?<d>\\d{1,2})[°º]\\s*(?<m>\\d{1,2})['']\\s*(?<s>\\d{1,2})[\"\"]\\s*(?<hem>[NS])"
+        "(?<d>\\d{1,2})[°º]\\s*(?<m>\\d{1,2})['''']\\s*(?<s>\\d{1,2})[\"\"\"']\\s*(?<hem>[NS])"
     );
 
     // Patron para extraer grados, minutos, segundos de longitud
     private static final Pattern LON_PATTERN = Pattern.compile(
-        "(?<d>\\d{1,3})[°º]\\s*(?<m>\\d{1,2})['']\\s*(?<s>\\d{1,2})[\"\"]\\s*(?<hem>[EW])"
+        "(?<d>\\d{1,3})[°º]\\s*(?<m>\\d{1,2})['''']\\s*(?<s>\\d{1,2})[\"\"\"']\\s*(?<hem>[EW])"
     );
 
     /**
@@ -103,6 +105,15 @@ public class AeropuertoService {
                 log.info("Guardando {} aeropuertos en la base de datos...", aeropuertosParaGuardar.size());
                 List<Aeropuerto> guardados = guardarAeropuertos(aeropuertosParaGuardar);
                 log.info("✓ Total de aeropuertos guardados: {}", guardados.size());
+                
+                // Recargar World cache automáticamente
+                try {
+                    log.info("Refrescando World cache con nuevos aeropuertos...");
+                    worldCacheService.refrescar();
+                } catch (Exception e) {
+                    log.warn("No se pudo refrescar World cache (puede que falten planes de vuelo): {}", e.getMessage());
+                }
+                
                 return guardados;
             } else {
                 log.info("No hay aeropuertos para guardar");

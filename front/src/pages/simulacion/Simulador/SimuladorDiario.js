@@ -817,6 +817,173 @@ const SimuladorDiario = () => {
 		}
 	}, [modoPanel]);
 
+	// ===================== RUTAS PLANIFICADAS (MODO DIARIO - LOCALSTORAGE) ====================
+	const [rutasDiarias, setRutasDiarias] = useState([]);
+	const [vuelosDiarios, setVuelosDiarios] = useState([]); // 🆕 Vuelos con info detallada para mostrar rutas
+	const [cargandoRutas, setCargandoRutas] = useState(false);
+
+	// Cargar rutas y vuelos de localStorage cuando cambia a modo diario
+	useEffect(() => {
+		if (modoPanel === 'diario') {
+			try {
+				// Cargar rutas
+				const rutasGuardadas = localStorage.getItem('rutasPlanificadas');
+				if (rutasGuardadas) {
+					const rutas = JSON.parse(rutasGuardadas);
+					console.log(`📍 Rutas cargadas de localStorage:`, rutas);
+					setRutasDiarias(Array.isArray(rutas) ? rutas : [rutas]);
+				} else {
+					console.log('📍 No hay rutas guardadas en localStorage');
+					setRutasDiarias([]);
+				}
+				
+				// 🆕 Cargar vuelos planificados (con info detallada de pedidos)
+				const vuelosGuardados = localStorage.getItem('vuelosPlanificados');
+				if (vuelosGuardados) {
+					const vuelos = JSON.parse(vuelosGuardados);
+					console.log(`✈️ Vuelos cargados de localStorage: ${vuelos.length}`);
+					setVuelosDiarios(Array.isArray(vuelos) ? vuelos : []);
+				} else {
+					console.log('✈️ No hay vuelos guardados en localStorage');
+					setVuelosDiarios([]);
+				}
+			} catch (error) {
+				console.error('Error al leer datos de localStorage:', error);
+				setRutasDiarias([]);
+				setVuelosDiarios([]);
+			}
+		}
+	}, [modoPanel]);
+
+	// Función para ejecutar replanificación (reset + ejecutar AG con todos los pedidos)
+	const handleReplanificarDiario = useCallback(async () => {
+		if (modoPanel !== 'diario') return;
+		
+		setCargandoRutas(true);
+		try {
+			console.log('🔄 REPLANIFICACIÓN: Ejecutando algoritmo genético con todos los pedidos...');
+			
+			// Limpiar rutas anteriores y vuelos del mapa
+			localStorage.removeItem('rutasPlanificadas');
+			localStorage.removeItem('vuelosPlanificados'); // 🆕 Limpiar vuelos guardados
+			setRutasDiarias([]);
+			setVuelosDiarios([]); // 🆕 Limpiar vuelos del estado
+			setFlights([]); // 🆕 Limpiar vuelos del mapa
+			setFlightsInAir(0);
+			
+			// Ejecutar planificación
+			const resultado = await PedidoDiarioService.ejecutarPlanificacionDiaria();
+			console.log('✅ Replanificación completada:', resultado);
+			
+			// Guardar nuevas rutas (resumen)
+			if (resultado) {
+				const rutas = resultado.rutas || resultado;
+				localStorage.setItem('rutasPlanificadas', JSON.stringify(rutas));
+				setRutasDiarias(Array.isArray(rutas) ? rutas : [rutas]);
+				console.log(`💾 ${Array.isArray(rutas) ? rutas.length : 1} rutas guardadas`);
+				
+				// 🆕 PROCESAR VUELOS DETALLADOS para visualización en mapa
+				if (resultado.vuelos && resultado.vuelos.length > 0) {
+					console.log(`✈️ Procesando ${resultado.vuelos.length} vuelos para el mapa...`);
+					
+					const currentAirports = airportsRef.current;
+					const vuelosParaMapa = resultado.vuelos.map((vuelo, index) => {
+						// Buscar aeropuertos
+						const origen = currentAirports.find(a =>
+							String(a.code).toUpperCase() === String(vuelo.origenCodigoICAO).toUpperCase()
+						);
+						const destino = currentAirports.find(a =>
+							String(a.code).toUpperCase() === String(vuelo.destinoCodigoICAO).toUpperCase()
+						);
+						
+						if (!origen || !destino) {
+							console.warn(`⚠️ Aeropuertos no encontrados: ${vuelo.origenCodigoICAO} o ${vuelo.destinoCodigoICAO}`);
+							return null;
+						}
+						
+						// Calcular progreso inicial (0 = en origen)
+						const progress = 0;
+						const currentLat = origen.lat;
+						const currentLng = origen.lng;
+						
+						// Calcular rotación
+						const brg = bearingDegrees(origen.lat, origen.lng, destino.lat, destino.lng);
+						const rotation = brg;
+						
+						// ID único
+						const uniqueId = `DAILY-${vuelo.vueloId || `${vuelo.origenCodigoICAO}-${vuelo.destinoCodigoICAO}-${index}`}`;
+						
+						return {
+							id: uniqueId,
+							flightId: vuelo.flightId || vuelo.vueloId,
+							origin: {
+								code: vuelo.origenCodigoICAO,
+								lat: origen.lat,
+								lng: origen.lng,
+								region: origen.region
+							},
+							destination: {
+								code: vuelo.destinoCodigoICAO,
+								lat: destino.lat,
+								lng: destino.lng,
+								region: destino.region
+							},
+							fechaInicial: vuelo.departureUtc || vuelo.fechaInicial,
+							fechaFinal: vuelo.arrivalUtc || vuelo.fechaFinal,
+							progress,
+							currentLat,
+							currentLng,
+							rotation,
+							status: 'active',
+							altitude: 35000,
+							speed: 850,
+							aircraftColor: (vuelo.slackMinutes || 0) <= 0 ? '#ef4444' : '#22c55e', // Rojo si retrasado, verde si ok
+							packageCapacity: vuelo.capacidadMaxima || vuelo.quantity || 1,
+							currentPackages: vuelo.quantity || 1,
+							packageType: 'DAILY',
+							isSameContinentFlight: origen.region === destino.region,
+							pedidos: vuelo.pedidos || [],
+							slackMinutes: vuelo.slackMinutes || 0
+						};
+					}).filter(v => v !== null);
+					
+					if (vuelosParaMapa.length > 0) {
+						console.log(`🗺️ ${vuelosParaMapa.length} vuelos listos para visualizar`);
+						setFlights(vuelosParaMapa);
+						setFlightsInAir(vuelosParaMapa.length);
+						
+						// 🆕 Guardar vuelos en localStorage para mostrar rutas en panel de pedidos
+						localStorage.setItem('vuelosPlanificados', JSON.stringify(resultado.vuelos));
+						setVuelosDiarios(resultado.vuelos);
+						console.log(`💾 ${resultado.vuelos.length} vuelos guardados en localStorage`);
+						
+						// 🕐 Establecer tiempo simulado basado en el primer vuelo
+						const primerVuelo = vuelosParaMapa.find(v => v.fechaInicial);
+						if (primerVuelo) {
+							const timestampInicio = new Date(primerVuelo.fechaInicial).getTime();
+							setTiempoSimuladoBackend(timestampInicio);
+							setTiempoSimulado(timestampInicio);
+							tiempoSimuladoBackendRef.current = timestampInicio;
+							setTiempoSimulacionActual(primerVuelo.fechaInicial);
+							setUltimaActualizacionReal(Date.now());
+							console.log(`🕐 Tiempo simulado establecido: ${primerVuelo.fechaInicial}`);
+						}
+					}
+				} else {
+					console.log('⚠️ No hay vuelos en la respuesta');
+				}
+			}
+			
+			// Recargar pedidos también
+			await recargarPedidosDiarios();
+			
+		} catch (error) {
+			console.error('❌ Error en replanificación:', error);
+		} finally {
+			setCargandoRutas(false);
+		}
+	}, [modoPanel, recargarPedidosDiarios]);
+
 	// ===================== ESTADO BOTONES FLOTANTES ==================== 
 	const controlButtonRef = useRef(null);
 
@@ -3665,7 +3832,7 @@ const SimuladorDiario = () => {
 
 								{sidebarTab === 'orders' && (
 									<Box>
-										{/* ===== MODO DIARIO: Mostrar pedidos del backend ===== */}
+										{/* ===== MODO DIARIO: Mostrar pedidos del backend CON RUTAS ===== */}
 										{modoPanel === 'diario' ? (
 											<>
 												{cargandoPedidosDiarios ? (
@@ -3681,7 +3848,16 @@ const SimuladorDiario = () => {
 															String(p.clienteId || '').toLowerCase().includes(q) ||
 															String(p.aeropuertoDestinoId || '').toLowerCase().includes(q)
 														);
-													}).map(pedido => (
+													}).map(pedido => {
+														// 🆕 Buscar vuelos que contienen este pedido
+														const vuelosDelPedido = (vuelosDiarios || []).filter(vuelo =>
+															vuelo.pedidos && vuelo.pedidos.some(p => 
+																p.idPedido === pedido.id || p.id === pedido.id
+															)
+														);
+														const tieneRuta = vuelosDelPedido.length > 0;
+														
+														return (
 														<Box
 															key={pedido.id}
 															sx={{
@@ -3689,7 +3865,7 @@ const SimuladorDiario = () => {
 																padding: '10px',
 																borderRadius: '8px',
 																marginBottom: '10px',
-																background: '#f0f9ff',
+																background: tieneRuta ? '#f0fff4' : '#f0f9ff', // Verde claro si tiene ruta
 																cursor: 'default',
 																transition: 'all 0.2s ease',
 																'&:hover': { borderColor: '#2c4a6b', boxShadow: '0 2px 8px rgba(44, 74, 107, 0.15)' }
@@ -3697,30 +3873,65 @@ const SimuladorDiario = () => {
 															<Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
 																<Box sx={{ fontWeight: 700, fontSize: '0.95rem', color: '#2c4a6b' }}>📦 Pedido #{pedido.id}</Box>
 																<Box sx={{
-																	background: '#10b981',
+																	background: tieneRuta ? '#10b981' : '#6b7280',
 																	color: '#fff',
 																	padding: '2px 8px',
 																	borderRadius: '12px',
 																	fontSize: '0.75rem',
 																	fontWeight: 600
 																}}>
-																	Planificado
+																	{tieneRuta ? 'Con ruta' : 'Sin ruta'}
 																</Box>
 															</Box>
 															<Box sx={{ fontSize: '0.85rem', color: '#6c757d', marginTop: '4px' }}>
-																SPIM → {pedido.aeropuertoDestinoId || '?'}
+																🎯 SPIM → {pedido.aeropuertoDestinoId || '?'}
 															</Box>
 															<Box sx={{ fontSize: '0.85rem', color: '#495057', marginTop: '4px' }}>
 																📦 {pedido.cantidadProductos} productos
 															</Box>
 															<Box sx={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '4px' }}>
-																Cliente: {pedido.clienteId}
+																👤 Cliente: {pedido.clienteId}
 															</Box>
 															<Box sx={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '2px' }}>
-																📅 {pedido.dia}/{pedido.mes}/{pedido.anio} {String(pedido.hora).padStart(2,'0')}:{String(pedido.minuto).padStart(2,'0')} UTC
+																📅 Deadline: {pedido.dia}/{pedido.mes}/{pedido.anio} {String(pedido.hora).padStart(2,'0')}:{String(pedido.minuto).padStart(2,'0')} UTC
 															</Box>
+															
+															{/* 🆕 MOSTRAR RUTA/VUELOS SI EXISTEN */}
+															{tieneRuta && (
+																<Box sx={{ 
+																	marginTop: '8px', 
+																	paddingTop: '8px', 
+																	borderTop: '1px dashed #d1d5db',
+																	background: '#f8fafc',
+																	borderRadius: '4px',
+																	padding: '8px'
+																}}>
+																	<Box sx={{ fontSize: '0.8rem', fontWeight: 600, color: '#1e40af', marginBottom: '4px' }}>
+																		✈️ Ruta planificada ({vuelosDelPedido.length} vuelo{vuelosDelPedido.length > 1 ? 's' : ''}):
+																	</Box>
+																	{vuelosDelPedido.map((vuelo, idx) => (
+																		<Box key={idx} sx={{ 
+																			fontSize: '0.75rem', 
+																			color: '#374151',
+																			marginBottom: '4px',
+																			paddingLeft: '8px',
+																			borderLeft: '2px solid #3b82f6'
+																		}}>
+																			<Box sx={{ fontWeight: 500 }}>
+																				{idx + 1}. {vuelo.origenCodigoICAO} → {vuelo.destinoCodigoICAO}
+																			</Box>
+																			<Box sx={{ color: '#6b7280', fontSize: '0.7rem' }}>
+																				🛫 {vuelo.fechaInicial || vuelo.departureUtc || 'N/A'}
+																			</Box>
+																			<Box sx={{ color: '#6b7280', fontSize: '0.7rem' }}>
+																				🛬 {vuelo.fechaFinal || vuelo.arrivalUtc || 'N/A'}
+																			</Box>
+																		</Box>
+																	))}
+																</Box>
+															)}
 														</Box>
-													))
+													)})
 												) : (
 													<Box sx={{ color: '#6c757d', fontSize: '0.9rem', textAlign: 'center', padding: '20px 10px' }}>
 														Sin pedidos diarios. Crea pedidos desde la página de Pedidos.
@@ -4220,6 +4431,7 @@ const SimuladorDiario = () => {
 									// Auto-abrir el panel al montar
 									if (el && !hasAutoOpened) {
 										setTimeout(() => {
+											console.log(`🔧 Auto-open panel: modoPanel = ${modoPanel}`);
 											if (modoPanel === 'diario') {
 												setControlSimpleAnchorEl(el);
 											} else {
@@ -4231,9 +4443,12 @@ const SimuladorDiario = () => {
 								}}
 								onClick={(event) => {
 									// Abrir el panel correspondiente al modo
+									console.log(`🔧 Click en botón control: modoPanel = ${modoPanel}`);
 									if (modoPanel === 'diario') {
+										console.log('🔧 Abriendo ControlPopperSimple');
 										handleControlSimpleButtonClick(event);
 									} else {
+										console.log('🔧 Abriendo ControlPopper (completo)');
 										handleControlButtonClick(event);
 									}
 								}}
@@ -4303,6 +4518,8 @@ const SimuladorDiario = () => {
 				simulacionActiva={simulacionActiva}
 				handleIniciarSimulacion={handleIniciarSimulacion}
 				handleDetenerSimulacion={handleDetenerSimulacion}
+				handleReplanificarDiario={handleReplanificarDiario}
+				cargandoRutas={cargandoRutas}
 				startButtonLabel={startButtonLabel}
 				showFlightLines={showFlightLines}
 				setShowFlightLines={setShowFlightLines}

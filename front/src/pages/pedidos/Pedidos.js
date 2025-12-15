@@ -24,39 +24,33 @@ const PRODUCTOS = [
 ];
 
 const AIRPORTS = [
-  // América del Sur
-  { code: 'SKBO', name: 'Bogotá (Colombia) - SKBO' },
-  { code: 'SEQM', name: 'Quito (Ecuador) - SEQM' },
-  { code: 'SVMI', name: 'Caracas (Venezuela) - SVMI' },
-  { code: 'SBBR', name: 'Brasilia (Brasil) - SBBR' },
-  // { code: 'SPIM', name: 'Lima (Perú) - SPIM' }, // Sede - No seleccionable
-  { code: 'SLLP', name: 'La Paz (Bolivia) - SLLP' },
-  { code: 'SCEL', name: 'Santiago de Chile (Chile) - SCEL' },
-  { code: 'SABE', name: 'Buenos Aires (Argentina) - SABE' },
-  { code: 'SGAS', name: 'Asunción (Paraguay) - SGAS' },
-  { code: 'SUAA', name: 'Montevideo (Uruguay) - SUAA' },
-  // Europa
-  { code: 'LATI', name: 'Tirana (Albania) - LATI' },
-  { code: 'EDDI', name: 'Berlín (Alemania) - EDDI' },
-  { code: 'LOWW', name: 'Viena (Austria) - LOWW' },
-  // { code: 'EBCI', name: 'Bruselas (Bélgica) - EBCI' }, // Sede - No seleccionable
-  { code: 'UMMS', name: 'Minsk (Bielorrusia) - UMMS' },
-  { code: 'LBSF', name: 'Sofía (Bulgaria) - LBSF' },
-  { code: 'LKPR', name: 'Praga (Chequia) - LKPR' },
-  { code: 'LDZA', name: 'Zagreb (Croacia) - LDZA' },
-  { code: 'EKCH', name: 'Copenhague (Dinamarca) - EKCH' },
-  { code: 'EHAM', name: 'Ámsterdam (Países Bajos) - EHAM' },
-  // Asia
-  { code: 'VIDP', name: 'Delhi (India) - VIDP' },
-  { code: 'OSDI', name: 'Damasco (Siria) - OSDI' },
-  { code: 'OERK', name: 'Riad (Arabia Saudita) - OERK' },
-  { code: 'OMDB', name: 'Dubái (EAU) - OMDB' },
-  { code: 'OAKB', name: 'Kabul (Afganistán) - OAKB' },
-  { code: 'OOMS', name: 'Mascate (Omán) - OOMS' },
-  { code: 'OYSN', name: 'Saná (Yemen) - OYSN' },
-  { code: 'OPKC', name: 'Karachi (Pakistán) - OPKC' },
-  // { code: 'UBBB', name: 'Bakú (Azerbaiyán) - UBBB' }, // Sede - No seleccionable
-  { code: 'OJAI', name: 'Amán (Jordania) - OJAI' },
+  { code: 'EDDI', name: 'EDDI - Berlín (Alemania)' },
+  { code: 'EHAM', name: 'EHAM - Ámsterdam (Países Bajos)' },
+  { code: 'EKCH', name: 'EKCH - Copenhague (Dinamarca)' },
+  { code: 'LATI', name: 'LATI - Tirana (Albania)' },
+  { code: 'LBSF', name: 'LBSF - Sofía (Bulgaria)' },
+  { code: 'LDZA', name: 'LDZA - Zagreb (Croacia)' },
+  { code: 'LKPR', name: 'LKPR - Praga (Chequia)' },
+  { code: 'LOWW', name: 'LOWW - Viena (Austria)' },
+  { code: 'OAKB', name: 'OAKB - Kabul (Afganistán)' },
+  { code: 'OERK', name: 'OERK - Riad (Arabia Saudita)' },
+  { code: 'OJAI', name: 'OJAI - Amán (Jordania)' },
+  { code: 'OMDB', name: 'OMDB - Dubái (EAU)' },
+  { code: 'OOMS', name: 'OOMS - Mascate (Omán)' },
+  { code: 'OPKC', name: 'OPKC - Karachi (Pakistán)' },
+  { code: 'OSDI', name: 'OSDI - Damasco (Siria)' },
+  { code: 'OYSN', name: 'OYSN - Saná (Yemen)' },
+  { code: 'SABE', name: 'SABE - Buenos Aires (Argentina)' },
+  { code: 'SBBR', name: 'SBBR - Brasilia (Brasil)' },
+  { code: 'SCEL', name: 'SCEL - Santiago de Chile (Chile)' },
+  { code: 'SEQM', name: 'SEQM - Quito (Ecuador)' },
+  { code: 'SGAS', name: 'SGAS - Asunción (Paraguay)' },
+  { code: 'SKBO', name: 'SKBO - Bogotá (Colombia)' },
+  { code: 'SLLP', name: 'SLLP - La Paz (Bolivia)' },
+  { code: 'SUAA', name: 'SUAA - Montevideo (Uruguay)' },
+  { code: 'SVMI', name: 'SVMI - Caracas (Venezuela)' },
+  { code: 'UMMS', name: 'UMMS - Minsk (Bielorrusia)' },
+  { code: 'VIDP', name: 'VIDP - Delhi (India)' },
 ];
 
 const initialForm = {
@@ -64,7 +58,7 @@ const initialForm = {
   email: '',
   telefono: '',
   origen: 'SPIM',
-  destino: 'SKBO',
+  destino: '',
   productos: [], // Array de productos con sus cantidades
   prioridad: 'Normal',
   notas: ''
@@ -95,6 +89,9 @@ const Pedidos = () => {
   // Estado para modal de confirmación de eliminación
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  
+  // Estado para evitar múltiples envíos
+  const [submitting, setSubmitting] = useState(false);
 
   // Función para mostrar alerta
   const showAlert = (severity, message) => {
@@ -389,6 +386,9 @@ const Pedidos = () => {
   const submit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
+    if (submitting) return; // Evitar múltiples envíos
+    
+    setSubmitting(true);
 
     // Obtener fecha actual en UTC
     const now = new Date();
@@ -435,6 +435,8 @@ const Pedidos = () => {
     } catch (error) {
       console.error('Error al crear pedido:', error);
       showAlert('error', 'Error al crear el pedido. Por favor, intente nuevamente.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -505,6 +507,7 @@ const Pedidos = () => {
               <div className="field">
                 <label>Destino *</label>
                 <select name="destino" value={form.destino} onChange={handleChange}>
+                  <option value="" disabled>-- Seleccione destino --</option>
                   {AIRPORTS.map(a => <option key={a.code} value={a.code}>{a.name}</option>)}
                 </select>
                 {errors.destino && <small className="error">{errors.destino}</small>}
@@ -571,8 +574,13 @@ const Pedidos = () => {
             )}
 
             <div className="actions">
-              <button type="submit" className="btn primary"><i className="fas fa-check"></i> Registrar</button>
-              <button type="button" className="btn" onClick={resetForm}><i className="fas fa-eraser"></i> Limpiar</button>
+              <button type="submit" className="btn primary" disabled={submitting}>
+                <i className={`fas ${submitting ? 'fa-spinner fa-spin' : 'fa-check'}`}></i> 
+                {submitting ? 'Registrando...' : 'Registrar'}
+              </button>
+              <button type="button" className="btn" onClick={resetForm} disabled={submitting}>
+                <i className="fas fa-eraser"></i> Limpiar
+              </button>
             </div>
           </form>
         </section>

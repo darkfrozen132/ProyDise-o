@@ -22,6 +22,7 @@ import MetricsButton from '../../../components/ui/Button/MetricsButton';
 import ControlButton from '../../../components/ui/Button/ControlButton';
 import ControlPopper from '../../../components/ui/Dialog/ControlPopper';
 import ControlPopperSimple from '../../../components/ui/Dialog/ControlPopperSimple';
+import PedidoDiarioService from '../../../services/PedidoDiarioService';
 
 import { IoMdAirplane } from "react-icons/io";
 import ReactDOMServer from "react-dom/server";
@@ -761,6 +762,60 @@ const SimuladorDiario = () => {
 	const [showRoutes, setShowRoutes] = useState(true);
 	const [showLegend, setShowLegend] = useState(false);
 	const [showFlightLines, setShowFlightLines] = useState(true); // Toggle para lineas dinamicas de vuelos
+	
+	// ===================== MODO DE PANEL DE CONTROL ====================
+	// 'semanal' = Panel completo (igual al simulador semanal) con fecha/hora de inicio
+	// 'diario' = Panel simple con reloj UTC en tiempo real
+	// Inicializar desde localStorage si existe, sino 'diario' por defecto
+	const [modoPanel, setModoPanel] = useState(() => {
+		const savedMode = localStorage.getItem('modoPanel');
+		return savedMode || 'diario';
+	});
+	
+	// Guardar modo en localStorage cuando cambia (para que Pedidos.js pueda leerlo)
+	useEffect(() => {
+		localStorage.setItem('modoPanel', modoPanel);
+		console.log(`📌 Modo panel guardado en localStorage: ${modoPanel}`);
+	}, [modoPanel]);
+
+	// ===================== PEDIDOS DIARIOS (MODO DIARIO) ====================
+	// Estado para almacenar los pedidos cargados del backend cuando está en modo diario
+	const [pedidosDiarios, setPedidosDiarios] = useState([]);
+	const [cargandoPedidosDiarios, setCargandoPedidosDiarios] = useState(false);
+
+	// Cargar pedidos del backend cuando cambia a modo diario
+	useEffect(() => {
+		const cargarPedidosDiarios = async () => {
+			if (modoPanel === 'diario') {
+				setCargandoPedidosDiarios(true);
+				try {
+					console.log('📦 Cargando pedidos diarios del backend...');
+					const pedidos = await PedidoDiarioService.obtenerTodos();
+					console.log(`✅ Se cargaron ${pedidos.length} pedidos diarios`);
+					setPedidosDiarios(pedidos);
+				} catch (error) {
+					console.error('❌ Error al cargar pedidos diarios:', error);
+					setPedidosDiarios([]);
+				} finally {
+					setCargandoPedidosDiarios(false);
+				}
+			}
+		};
+		cargarPedidosDiarios();
+	}, [modoPanel]);
+
+	// Función para recargar pedidos diarios (útil después de crear uno nuevo)
+	const recargarPedidosDiarios = useCallback(async () => {
+		if (modoPanel === 'diario') {
+			try {
+				const pedidos = await PedidoDiarioService.obtenerTodos();
+				setPedidosDiarios(pedidos);
+				console.log(`🔄 Pedidos diarios recargados: ${pedidos.length}`);
+			} catch (error) {
+				console.error('Error al recargar pedidos:', error);
+			}
+		}
+	}, [modoPanel]);
 
 	// ===================== ESTADO BOTONES FLOTANTES ==================== 
 	const controlButtonRef = useRef(null);
@@ -1921,6 +1976,13 @@ const SimuladorDiario = () => {
 			setControlSimpleAnchorEl(event.currentTarget);
 		}
 	};
+
+	// 🔄 Efecto para cerrar paneles al cambiar de modo
+	useEffect(() => {
+		// Cerrar ambos paneles al cambiar de modo
+		setControlAnchorEl(null);
+		setControlSimpleAnchorEl(null);
+	}, [modoPanel]);
 
 	const handleMetricsButtonClick = (event) => {
 		if (metricsAnchorEl) {
@@ -3603,7 +3665,72 @@ const SimuladorDiario = () => {
 
 								{sidebarTab === 'orders' && (
 									<Box>
-										{(() => {
+										{/* ===== MODO DIARIO: Mostrar pedidos del backend ===== */}
+										{modoPanel === 'diario' ? (
+											<>
+												{cargandoPedidosDiarios ? (
+													<Box sx={{ color: '#6c757d', fontSize: '0.9rem', textAlign: 'center', padding: '20px 10px' }}>
+														⏳ Cargando pedidos...
+													</Box>
+												) : pedidosDiarios.length > 0 ? (
+													pedidosDiarios.filter(p => {
+														const q = searchOrders.trim().toLowerCase();
+														if (!q) return true;
+														return (
+															String(p.id || '').toLowerCase().includes(q) ||
+															String(p.clienteId || '').toLowerCase().includes(q) ||
+															String(p.aeropuertoDestinoId || '').toLowerCase().includes(q)
+														);
+													}).map(pedido => (
+														<Box
+															key={pedido.id}
+															sx={{
+																border: '1px solid #dee2e6',
+																padding: '10px',
+																borderRadius: '8px',
+																marginBottom: '10px',
+																background: '#f0f9ff',
+																cursor: 'default',
+																transition: 'all 0.2s ease',
+																'&:hover': { borderColor: '#2c4a6b', boxShadow: '0 2px 8px rgba(44, 74, 107, 0.15)' }
+															}}>
+															<Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+																<Box sx={{ fontWeight: 700, fontSize: '0.95rem', color: '#2c4a6b' }}>📦 Pedido #{pedido.id}</Box>
+																<Box sx={{
+																	background: '#10b981',
+																	color: '#fff',
+																	padding: '2px 8px',
+																	borderRadius: '12px',
+																	fontSize: '0.75rem',
+																	fontWeight: 600
+																}}>
+																	Planificado
+																</Box>
+															</Box>
+															<Box sx={{ fontSize: '0.85rem', color: '#6c757d', marginTop: '4px' }}>
+																SPIM → {pedido.aeropuertoDestinoId || '?'}
+															</Box>
+															<Box sx={{ fontSize: '0.85rem', color: '#495057', marginTop: '4px' }}>
+																📦 {pedido.cantidadProductos} productos
+															</Box>
+															<Box sx={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '4px' }}>
+																Cliente: {pedido.clienteId}
+															</Box>
+															<Box sx={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '2px' }}>
+																📅 {pedido.dia}/{pedido.mes}/{pedido.anio} {String(pedido.hora).padStart(2,'0')}:{String(pedido.minuto).padStart(2,'0')} UTC
+															</Box>
+														</Box>
+													))
+												) : (
+													<Box sx={{ color: '#6c757d', fontSize: '0.9rem', textAlign: 'center', padding: '20px 10px' }}>
+														Sin pedidos diarios. Crea pedidos desde la página de Pedidos.
+													</Box>
+												)}
+											</>
+										) : (
+											/* ===== MODO SEMANAL: Mostrar pedidos de vuelos (comportamiento original) ===== */
+											<>
+												{(() => {
 											const list = [];
 											// Usar `vuelosEnMovimiento` (estado interpolado) para obtener status y progreso real
 											(vuelosEnMovimiento || []).forEach(f => {
@@ -3784,6 +3911,8 @@ const SimuladorDiario = () => {
 											if (!anyOrders) return <Box sx={{ color: '#6c757d', fontSize: '0.9rem', textAlign: 'center', padding: '20px 10px' }}>Sin pedidos disponibles</Box>;
 											return null;
 										})()}
+											</>
+										)}
 									</Box>
 								)}
 							</Box>
@@ -4020,18 +4149,94 @@ const SimuladorDiario = () => {
 							<MetricsButton onClick={handleMetricsButtonClick} onMount={handleMetricButtonMount}/>
 							{/* Botón de leyenda flotante */}
 							<LegendButton onClick={handleToggleLegend} />
-							{/* Botón de control simple (reloj UTC) - arriba del control principal */}
+							
+							{/* 🔄 Toggle para cambiar entre Modo Semanal y Modo Diario */}
+							<div
+								style={{
+									position: 'absolute',
+									bottom: '140px',
+									right: '15px',
+									zIndex: 1000,
+									display: 'flex',
+									flexDirection: 'column',
+									alignItems: 'center',
+									gap: '4px',
+								}}
+							>
+								<span style={{
+									fontSize: '9px',
+									fontWeight: '600',
+									color: '#495057',
+									textTransform: 'uppercase',
+									letterSpacing: '0.5px',
+								}}>
+									Modo
+								</span>
+								<div
+									onClick={() => setModoPanel(modoPanel === 'diario' ? 'semanal' : 'diario')}
+									style={{
+										width: '44px',
+										height: '24px',
+										borderRadius: '12px',
+										background: modoPanel === 'diario' ? '#1a237e' : '#6c757d',
+										cursor: 'pointer',
+										position: 'relative',
+										transition: 'all 0.3s ease',
+										boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+									}}
+									title={modoPanel === 'diario' ? 'Modo Diario (UTC) - Click para cambiar a Semanal' : 'Modo Semanal - Click para cambiar a Diario'}
+								>
+									<div
+										style={{
+											width: '20px',
+											height: '20px',
+											borderRadius: '50%',
+											background: 'white',
+											position: 'absolute',
+											top: '2px',
+											left: modoPanel === 'diario' ? '22px' : '2px',
+											transition: 'all 0.3s ease',
+											display: 'flex',
+											alignItems: 'center',
+											justifyContent: 'center',
+											fontSize: '10px',
+										}}
+									>
+										{modoPanel === 'diario' ? '🕐' : '📅'}
+									</div>
+								</div>
+								<span style={{
+									fontSize: '8px',
+									fontWeight: '500',
+									color: modoPanel === 'diario' ? '#1a237e' : '#6c757d',
+								}}>
+									{modoPanel === 'diario' ? 'Diario' : 'Semanal'}
+								</span>
+							</div>
+							
+							{/* Botón de control - abre el panel según el modo */}
 							<button
 								ref={(el) => {
-									// Auto-abrir el panel simple al montar
+									// Auto-abrir el panel al montar
 									if (el && !hasAutoOpened) {
 										setTimeout(() => {
-											setControlSimpleAnchorEl(el);
+											if (modoPanel === 'diario') {
+												setControlSimpleAnchorEl(el);
+											} else {
+												setControlAnchorEl(el);
+											}
 											setHasAutoOpened(true);
 										}, 100);
 									}
 								}}
-								onClick={handleControlSimpleButtonClick}
+								onClick={(event) => {
+									// Abrir el panel correspondiente al modo
+									if (modoPanel === 'diario') {
+										handleControlSimpleButtonClick(event);
+									} else {
+										handleControlButtonClick(event);
+									}
+								}}
 								style={{
 									position: 'absolute',
 									bottom: '95px',
@@ -4041,8 +4246,8 @@ const SimuladorDiario = () => {
 									height: '40px',
 									borderRadius: '8px',
 									border: 'none',
-									background: isControlSimplePopperOpen ? '#1a237e' : 'white',
-									color: isControlSimplePopperOpen ? 'white' : '#1a237e',
+									background: (modoPanel === 'diario' ? isControlSimplePopperOpen : isControlPopperOpen) ? '#1a237e' : 'white',
+									color: (modoPanel === 'diario' ? isControlSimplePopperOpen : isControlPopperOpen) ? 'white' : '#1a237e',
 									boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
 									cursor: 'pointer',
 									display: 'flex',
@@ -4052,12 +4257,10 @@ const SimuladorDiario = () => {
 									fontWeight: 'bold',
 									transition: 'all 0.2s',
 								}}
-								title="Panel de Control Rápido (UTC)"
+								title={modoPanel === 'diario' ? 'Panel de Control (Modo Diario - UTC)' : 'Panel de Control (Modo Semanal)'}
 							>
-								🕐
+								{modoPanel === 'diario' ? '🕐' : '⚙️'}
 							</button>
-							{/* Controles de simulación */} 
-							<ControlButton onClick={handleControlButtonClick} onMount={handleControlButtonMount}/>
 						</div>
 					</div>
 				</div>

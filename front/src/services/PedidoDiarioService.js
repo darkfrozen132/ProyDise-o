@@ -23,6 +23,7 @@ const apiClient = axios.create({
 });
 
 const PEDIDOS_ENDPOINT = '/api/pedidos-diarios';
+const DAILY_RUN_ENDPOINT = '/api/daily/run';
 
 /**
  * Clase PedidoDiario - Representa un pedido diario
@@ -265,6 +266,56 @@ const PedidoDiarioService = {
   },
 
   /**
+   * ==================== PLANIFICACIÓN AUTOMÁTICA ====================
+   * Ejecuta la planificación diaria (genera rutas para pedidos pendientes)
+   * POST /api/daily/run
+   * 
+   * @returns {Promise<Object>} Resultado con rutas planificadas
+   */
+  async ejecutarPlanificacionDiaria() {
+    try {
+      console.log('🚀 Ejecutando planificación diaria automática...');
+      const response = await apiClient.post('/api/daily/run');
+      
+      console.log('✅ Planificación completada:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error al ejecutar planificación diaria:', error);
+      throw this._handleError(error);
+    }
+  },
+
+  /**
+   * Crea un pedido y ejecuta planificación automática
+   * Combina crearPedido + ejecutarPlanificacionDiaria
+   * 
+   * @param {Object} pedidoData - Datos del pedido
+   * @returns {Promise<Object>} Resultado con pedido creado y rutas planificadas
+   */
+  async crearPedidoConPlanificacion(pedidoData) {
+    try {
+      console.log('📦🚀 Creando pedido con planificación automática...');
+      
+      // 1. Crear el pedido
+      const pedidoCreado = await this.crearPedido(pedidoData);
+      
+      // 2. Ejecutar planificación automática
+      const planificacion = await this.ejecutarPlanificacionDiaria();
+      
+      console.log('✅ Pedido creado y planificado:', { pedidoCreado, planificacion });
+      
+      return {
+        pedido: pedidoCreado,
+        planificacion: planificacion,
+        exito: true
+      };
+    } catch (error) {
+      console.error('❌ Error en crear pedido con planificación:', error);
+      throw this._handleError(error);
+    }
+  },
+
+  /**
    * Maneja errores de las peticiones HTTP
    * @private
    */
@@ -292,6 +343,84 @@ const PedidoDiarioService = {
         detalle: error.message
       };
     }
+  },
+
+  // ==================== PLANIFICACIÓN AUTOMÁTICA (MODO DIARIO) ====================
+
+  /**
+   * Ejecuta la planificación diaria automática
+   * POST /api/daily/run
+   * 
+   * Este endpoint ejecuta el algoritmo genético para planificar
+   * las rutas de todos los pedidos pendientes.
+   * 
+   * @returns {Promise<Object>} Resultado de la planificación con rutas generadas
+   */
+  async ejecutarPlanificacionDiaria() {
+    try {
+      console.log('🚀 Ejecutando planificación diaria automática...');
+      const response = await apiClient.post(DAILY_RUN_ENDPOINT);
+      
+      console.log('✅ Planificación diaria completada:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error en planificación diaria:', error);
+      throw this._handleError(error);
+    }
+  },
+
+  /**
+   * Crea un pedido y ejecuta planificación automática si está en modo diario
+   * 
+   * @param {Object} pedidoData - Datos del pedido
+   * @param {boolean} modoDiarioActivo - Si true, ejecuta planificación automática
+   * @returns {Promise<Object>} Pedido creado y opcionalmente rutas planificadas
+   */
+  async crearPedidoConPlanificacion(pedidoData, modoDiarioActivo = false) {
+    try {
+      // 1. Crear el pedido
+      const pedidoCreado = await this.crearPedido(pedidoData);
+      
+      // 2. Si está en modo diario, ejecutar planificación automática
+      if (modoDiarioActivo) {
+        console.log('🔄 Modo diario activo: ejecutando planificación automática...');
+        try {
+          const planificacion = await this.ejecutarPlanificacionDiaria();
+          return {
+            pedido: pedidoCreado,
+            planificacion: planificacion,
+            planificado: true
+          };
+        } catch (planError) {
+          console.warn('⚠️ Planificación automática falló, pero el pedido se creó:', planError);
+          return {
+            pedido: pedidoCreado,
+            planificacion: null,
+            planificado: false,
+            errorPlanificacion: planError
+          };
+        }
+      }
+      
+      // 3. Modo semanal: solo retornar el pedido sin planificar
+      return {
+        pedido: pedidoCreado,
+        planificacion: null,
+        planificado: false
+      };
+    } catch (error) {
+      console.error('❌ Error al crear pedido con planificación:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Verifica si el modo diario está activo (lee de localStorage)
+   * @returns {boolean} true si está en modo diario
+   */
+  isModoDiarioActivo() {
+    const modo = localStorage.getItem('modoPanel');
+    return modo === 'diario';
   }
 };
 

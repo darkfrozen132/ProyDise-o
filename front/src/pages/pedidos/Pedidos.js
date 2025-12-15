@@ -376,7 +376,7 @@ const Pedidos = () => {
 
   const validate = () => {
     const v = {};
-    if (!form.cliente.trim()) v.cliente = 'DNI del cliente es requerido';
+    if (!form.cliente.trim()) v.cliente = 'ID del cliente es requerido';
     if (!form.destino) v.destino = 'Destino es requerido';
     if (currentProduct.cantidad < 1) v.cantidad = 'Cantidad debe ser al menos 1';
     setErrors(v);

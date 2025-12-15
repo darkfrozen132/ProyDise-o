@@ -202,7 +202,7 @@ const createAirportIcon = (name, saturation = 0) => {
 };
 
 /* Crear popup detallado para un aeropuerto (HTML string) */
-const createAirportPopup = (airport) => {
+const createAirportPopup = (airport, capacidadSaliente = null) => {
 	const isUnlimited = airport.capacity === 'ILIMITADO';
 	const capacityValue = isUnlimited ? null : (typeof airport.capacity === 'number' ? airport.capacity : (Number(airport.capacity) || null));
 	const packages = airport.packages || 0;
@@ -260,23 +260,31 @@ const createAirportPopup = (airport) => {
 			${recogidaInfo}
 		</div>`;
 
-	// 🆕 Para sedes con capacidad ilimitada
+	// 🆕 Para sedes con capacidad ilimitada - mostrar capacidad saliente
+	const vuelosSalientes = capacidadSaliente?.vuelos || 0;
+	const paquetesSalientes = capacidadSaliente?.paquetes || 0;
+	
 	const unlimitedSection = isUnlimited ? `
 		<div style="margin-top:12px; padding-top:12px; border-top: 1px solid #e5e7eb;">
 			<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-				<span style="font-size:12px; font-weight:600; color:#374151;">📦 Almacén</span>
-				<span style="font-size:13px; font-weight:700; color:#6b7280;">ILIMITADO</span>
+				<span style="font-size:12px; font-weight:600; color:#374151;">✈️ Capacidad Saliente</span>
+				<span style="font-size:13px; font-weight:700; color:#2563eb;">SEDE</span>
 			</div>
-			<div style="background:#f8fafc; padding:10px; border-radius:6px; text-align:center; margin-top:8px;">
-				<div style="font-size:20px; font-weight:700; color:#1f2937;">${packages.toLocaleString()}</div>
-				<div style="font-size:11px; color:#6b7280;">Paquetes actuales</div>
+			<div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-top:8px;">
+				<div style="background:#dbeafe; padding:10px; border-radius:6px; text-align:center;">
+					<div style="font-size:20px; font-weight:700; color:#1e40af;">${vuelosSalientes.toLocaleString()}</div>
+					<div style="font-size:11px; color:#1e40af; font-weight:500;">Vuelos salientes</div>
+				</div>
+				<div style="background:#fef3c7; padding:10px; border-radius:6px; text-align:center;">
+					<div style="font-size:20px; font-weight:700; color:#92400e;">${paquetesSalientes.toLocaleString()}</div>
+					<div style="font-size:11px; color:#92400e; font-weight:500;">Productos enviados</div>
+				</div>
 			</div>
 			${pedidosCount > 0 ? `
 				<div style="margin-top:8px; font-size:12px; color:#6b7280; text-align:center;">
-					📋 ${pedidosCount} pedidos en almacén
+					📋 ${pedidosCount} pedidos planificados
 				</div>
 			` : ''}
-			${recogidaInfo}
 		</div>
 	` : '';
 
@@ -317,7 +325,7 @@ const calculateBearing = (from, to) => {
 
 
 /* ======= Componente para manejar marcadores y líneas dinámicas ======= */
-function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMovimiento, showFlightLines, setSelectedAirport, setSidebarTab, setOpen, setSelectedFlight }) {
+function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMovimiento, showFlightLines, setSelectedAirport, setSidebarTab, setOpen, setSelectedFlight, vuelosAcumulados }) {
 	const map = (0, require('react-leaflet').useMap)();
 	const markersRef = React.useRef({});
 	const airportMarkersRef = React.useRef({});
@@ -345,7 +353,14 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMov
 			// Añadir código al set actual
 			currentAirportCodes.add(airport.code);
 			const existingMarker = airportMarkersRef.current[airport.code];
-			const html = createAirportPopup(airport);
+			const airportCode = String(airport.code || '').toUpperCase();
+			// 🆕 Calcular capacidad saliente directamente desde vuelosAcumulados (mismo cálculo que la pestaña)
+			const vuelosSalientes = (vuelosAcumulados || []).filter(f => String(f.origin?.code || '').toUpperCase() === airportCode);
+			const capacidadSaliente = {
+				vuelos: vuelosSalientes.length,
+				paquetes: vuelosSalientes.reduce((sum, v) => sum + (v.currentPackages || v.pedidos?.length || 1), 0)
+			};
+			const html = createAirportPopup(airport, capacidadSaliente);
 
 			// Actualizar o crear marcador
 			if (existingMarker) {
@@ -3395,9 +3410,9 @@ const SimuladorDiario = () => {
 	const mostSaturatedAirport = getMostSaturatedAirport();
 	const getFlightsByAltitude = () => flightsInAir;
 
-	/* 🆕 Filtrar vuelos en movimiento (progress > 0 y progress < 1) para métricas */
+	/* 🆕 Filtrar vuelos en movimiento (progress > 0 y progress < 100) para métricas */
 	const flightsInMovement = useMemo(() => {
-		return flights.filter(f => f.progress && f.progress > 0 && f.progress < 1);
+		return flights.filter(f => f.progress && f.progress > 0 && f.progress < 100);
 	}, [flights]);
 
 	/* 🆕 Estado para actualizar métricas en tiempo real */
@@ -3405,9 +3420,8 @@ const SimuladorDiario = () => {
 
 	/* 🆕 Efecto: Actualizar contador de vuelos en el aire con la MISMA LÓGICA que el sidebar */
 	useEffect(() => {
-		const enAire = (vuelosEnMovimiento || []).filter(f => (f.status === 'active' || (f.progress && f.progress > 0 && f.progress < 1))).length;
+		const enAire = (vuelosEnMovimiento || []).filter(f => (f.status === 'active' && f.progress > 0 && f.progress < 100)).length;
 		setFlightsInAirCount(enAire);
-		console.log(`📊 Vuelos en el aire (sidebar logic): ${enAire}`);
 	}, [vuelosEnMovimiento]);
 
 
@@ -3627,7 +3641,7 @@ const SimuladorDiario = () => {
 							>
 								<Tab label=" Vuelos" />
 								<Tab label=" Aeropuertos" />
-								<Tab label={` Pedidos ${contadorPedidosTotal > 0 ? `(${contadorPedidosTotal})` : ''}`} />
+								<Tab label=" Pedidos" />
 							</Tabs>
 						</Box>
 
@@ -3840,32 +3854,117 @@ const SimuladorDiario = () => {
 														⏳ Cargando pedidos...
 													</Box>
 												) : pedidosDiarios.length > 0 ? (
-													pedidosDiarios.filter(p => {
-														const q = searchOrders.trim().toLowerCase();
-														if (!q) return true;
-														return (
-															String(p.id || '').toLowerCase().includes(q) ||
-															String(p.clienteId || '').toLowerCase().includes(q) ||
-															String(p.aeropuertoDestinoId || '').toLowerCase().includes(q)
-														);
-													}).map(pedido => {
-														// 🆕 Buscar vuelos que contienen este pedido
-														const vuelosDelPedido = (vuelosDiarios || []).filter(vuelo =>
-															vuelo.pedidos && vuelo.pedidos.some(p => 
-																p.idPedido === pedido.id || p.id === pedido.id
-															)
-														);
-														const tieneRuta = vuelosDelPedido.length > 0;
-														
-														return (
+														// Eliminar duplicados por ID antes de renderizar (usar String para key consistente)
+														[...new Map(pedidosDiarios.map(p => [String(p.id), p])).values()].filter(pedido => {
+															// Filtro por texto de búsqueda - convertir todo a string para comparación segura
+															const q = searchOrders.trim().toLowerCase();
+															const pedidoIdStr = String(pedido.id ?? '').toLowerCase();
+															const clienteIdStr = String(pedido.clienteId ?? '').toLowerCase();
+															const destinoIdStr = String(pedido.aeropuertoDestinoId ?? '').toLowerCase();
+															
+															const matchesSearch = !q || 
+																pedidoIdStr.includes(q) ||
+																clienteIdStr.includes(q) ||
+																destinoIdStr.includes(q);
+															
+															// Filtro por estado - usar vuelosEnMovimiento para estado actualizado
+															let matchesStatus = true;
+															if (orderStatusFilter !== 'todos') {
+																const pedidoIdNum = Number(pedido.id);
+																const pedidoIdString = String(pedido.id);
+																
+																// Buscar en vuelosEnMovimiento (estado actual)
+																const vueloActivo = (vuelosEnMovimiento || []).find(vuelo => {
+																	if (!vuelo.pedidos || !Array.isArray(vuelo.pedidos)) return false;
+																	return vuelo.pedidos.some(p => {
+																		// Comparar todos los campos posibles de ID
+																		const pIdPedido = p.idPedido;
+																		const pId = p.id;
+																		const pPedidoId = p.pedidoId;
+																		return String(pIdPedido) === pedidoIdString || 
+																			   String(pId) === pedidoIdString ||
+																			   String(pPedidoId) === pedidoIdString ||
+																			   Number(pIdPedido) === pedidoIdNum ||
+																			   Number(pId) === pedidoIdNum ||
+																			   Number(pPedidoId) === pedidoIdNum;
+																	});
+																});
+																
+																// Determinar estado visible basado en el vuelo actual
+																let visibleStatus = 'Planificado';
+																if (vueloActivo) {
+																	const prog = vueloActivo.progress ?? 0;
+																	const stat = vueloActivo.status;
+																	if ((stat === 'active' || stat === 'en_vuelo') && prog > 0 && prog < 100) {
+																		visibleStatus = 'En vuelo';
+																	} else if (stat === 'completed' || stat === 'arrived' || prog >= 100) {
+																		visibleStatus = 'Entregado';
+																	} else if (stat === 'waiting' || prog === 0) {
+																		visibleStatus = 'Planificado';
+																	}
+																}
+																matchesStatus = visibleStatus === orderStatusFilter;
+															}
+															
+															return matchesSearch && matchesStatus;
+														}).map(pedido => {
+															// Buscar vuelo activo para este pedido (usando vuelosEnMovimiento)
+															const pedidoIdNum = Number(pedido.id);
+															const pedidoIdString = String(pedido.id);
+															
+															const vueloActivo = (vuelosEnMovimiento || []).find(vuelo => {
+																if (!vuelo.pedidos || !Array.isArray(vuelo.pedidos)) return false;
+																return vuelo.pedidos.some(p => {
+																	const pIdPedido = p.idPedido;
+																	const pId = p.id;
+																	const pPedidoId = p.pedidoId;
+																	return String(pIdPedido) === pedidoIdString || 
+																		   String(pId) === pedidoIdString ||
+																		   String(pPedidoId) === pedidoIdString ||
+																		   Number(pIdPedido) === pedidoIdNum ||
+																		   Number(pId) === pedidoIdNum ||
+																		   Number(pPedidoId) === pedidoIdNum;
+																});
+															});
+															
+															// También buscar en vuelosDiarios para info de ruta
+															const vuelosDelPedido = (vuelosDiarios || []).filter(vuelo => {
+																if (!vuelo.pedidos || !Array.isArray(vuelo.pedidos)) return false;
+																return vuelo.pedidos.some(p => {
+																	const pIdPedido = p.idPedido;
+																	const pId = p.id;
+																	const pPedidoId = p.pedidoId;
+																	return String(pIdPedido) === pedidoIdString || 
+																		   String(pId) === pedidoIdString ||
+																		   String(pPedidoId) === pedidoIdString ||
+																		   Number(pIdPedido) === pedidoIdNum ||
+																		   Number(pId) === pedidoIdNum ||
+																		   Number(pPedidoId) === pedidoIdNum;
+																});
+															});
+															const tieneRuta = vuelosDelPedido.length > 0 || vueloActivo;
+															
+															// Determinar estado actual del pedido
+															let estadoPedido = 'Planificado';
+															if (vueloActivo) {
+																const prog = vueloActivo.progress ?? 0;
+																const stat = vueloActivo.status;
+																if ((stat === 'active' || stat === 'en_vuelo') && prog > 0 && prog < 100) {
+																	estadoPedido = 'En vuelo';
+																} else if (stat === 'completed' || stat === 'arrived' || prog >= 100) {
+																	estadoPedido = 'Entregado';
+																}
+															}
+															
+															return (
 														<Box
-															key={pedido.id}
+															key={`pedido-diario-${pedido.id}`}
 															sx={{
 																border: '1px solid #dee2e6',
 																padding: '10px',
 																borderRadius: '8px',
 																marginBottom: '10px',
-																background: tieneRuta ? '#f0fff4' : '#f0f9ff', // Verde claro si tiene ruta
+																background: estadoPedido === 'En vuelo' ? '#ecfdf5' : estadoPedido === 'Entregado' ? '#fef3c7' : '#f0f9ff',
 																cursor: 'default',
 																transition: 'all 0.2s ease',
 																'&:hover': { borderColor: '#2c4a6b', boxShadow: '0 2px 8px rgba(44, 74, 107, 0.15)' }
@@ -3873,14 +3972,14 @@ const SimuladorDiario = () => {
 															<Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
 																<Box sx={{ fontWeight: 700, fontSize: '0.95rem', color: '#2c4a6b' }}>📦 Pedido #{pedido.id}</Box>
 																<Box sx={{
-																	background: tieneRuta ? '#10b981' : '#6b7280',
+																	background: estadoPedido === 'En vuelo' ? '#22c55e' : estadoPedido === 'Entregado' ? '#f59e0b' : tieneRuta ? '#3b82f6' : '#6b7280',
 																	color: '#fff',
 																	padding: '2px 8px',
 																	borderRadius: '12px',
 																	fontSize: '0.75rem',
 																	fontWeight: 600
 																}}>
-																	{tieneRuta ? 'Con ruta' : 'Sin ruta'}
+																	{estadoPedido === 'En vuelo' ? '✈️ En vuelo' : estadoPedido === 'Entregado' ? '✅ Entregado' : tieneRuta ? '📋 Planificado' : 'Sin ruta'}
 																</Box>
 															</Box>
 															<Box sx={{ fontSize: '0.85rem', color: '#6c757d', marginTop: '4px' }}>
@@ -4021,9 +4120,9 @@ const SimuladorDiario = () => {
 												}
 												return matchesSearch && matchesStatus;
 											});
-										})().map(order => (
+										})().map((order, idx) => (
 											<Box
-												key={order.idPedido || order.id || `${order.flightId}-${order.origin}-${order.destination}-${Math.random()}`}
+												key={`order-semanal-${order.idPedido || order.id || idx}-${order.flightId || idx}`}
 												onClick={() => order.flightData && setSelectedFlight(order.flightData)}
 												sx={{
 													border: '1px solid #dee2e6',
@@ -4192,7 +4291,7 @@ const SimuladorDiario = () => {
 																{departures.length > 0 ? (
 																	departures.map(f => (
 																		<Box key={f.id} sx={{ padding: '6px 8px', borderRadius: '4px', border: '1px solid #dee2e6', marginBottom: '6px', fontSize: '0.85rem', background: '#fff', color: '#495057' }}>
-																			✈️ {f.id} • {f.origin?.code || '?'} → {f.destination?.code || '?'} {f.progress !== undefined ? `• ${Math.round((f.progress||0)*100)}%` : ''}
+																			✈️ {f.id} • {f.origin?.code || '?'} → {f.destination?.code || '?'}
 																		</Box>
 																	))
 																) : (
@@ -4354,6 +4453,7 @@ const SimuladorDiario = () => {
 									setSidebarTab={setSidebarTab}
 									setOpen={setOpen}
 									setSelectedFlight={setSelectedFlight}
+									vuelosAcumulados={vuelosAcumulados}
 								/>
 							</MapContainer>
 							{/* Botón de Metricas */}

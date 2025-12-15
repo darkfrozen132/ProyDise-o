@@ -351,8 +351,34 @@ const Pedidos = () => {
         // Recargar la lista de pedidos
         await cargarPedidos();
 
+        // Si está en modo diario y hubo pedidos exitosos, ejecutar planificación automática
+        const modoDiarioActivo = PedidoDiarioService.isModoDiarioActivo();
+        if (modoDiarioActivo && exitosos > 0) {
+          try {
+            console.log('🔄 Modo diario: ejecutando planificación automática tras importar archivo...');
+            const planResult = await PedidoDiarioService.ejecutarPlanificacionDiaria();
+            console.log('✅ Planificación completada:', planResult);
+            
+            // Guardar vuelos en localStorage
+            if (planResult && planResult.vuelos) {
+              localStorage.setItem('vuelosPlanificados', JSON.stringify(planResult.vuelos));
+              console.log(`💾 ${planResult.vuelos.length} vuelos guardados en localStorage`);
+            }
+            
+            // Guardar rutas en localStorage (compatibilidad)
+            if (planResult && planResult.rutas) {
+              localStorage.setItem('rutasPlanificadas', JSON.stringify(planResult.rutas));
+            }
+          } catch (planError) {
+            console.warn('⚠️ Error en planificación automática:', planError);
+          }
+        }
+
         if (exitosos > 0 && fallidos === 0) {
-          showAlert('success', `!Importación completada! Se agregaron ${exitosos} pedidos exitosamente.`);
+          const msg = modoDiarioActivo 
+            ? `🚀 Importación completada! Se agregaron ${exitosos} pedidos y se planificaron rutas automáticamente.`
+            : `✅ Importación completada! Se agregaron ${exitosos} pedidos exitosamente.`;
+          showAlert('success', msg);
         } else if (exitosos > 0 && fallidos > 0) {
           showAlert('warning', `Importación parcial: ${exitosos} pedidos agregados, ${fallidos} errores.`);
         } else {
@@ -410,13 +436,42 @@ const Pedidos = () => {
       minuto: utcMinuto
     };
 
-    // Enviar al backend
-    console.log('📤 Enviando pedido al backend:', JSON.stringify(newOrder, null, 2));
+    // Verificar si está en modo diario para planificación automática
+    const modoDiarioActivo = PedidoDiarioService.isModoDiarioActivo();
+    console.log(`📤 Enviando pedido al backend (Modo: ${modoDiarioActivo ? 'DIARIO' : 'SEMANAL'}):`, JSON.stringify(newOrder, null, 2));
+    
     try {
+      // 1. Crear el pedido
       const response = await PedidoDiarioService.crearPedido(newOrder);
       console.log('✅ Pedido creado:', response);
       
-      // Agregar a la lista local con el ID del backend
+      // 2. Si está en modo diario, ejecutar planificación y guardar en localStorage
+      let planificacionExitosa = false;
+      if (modoDiarioActivo) {
+        try {
+          console.log('🔄 Modo diario: ejecutando planificación automática...');
+          const planResult = await PedidoDiarioService.ejecutarPlanificacionDiaria();
+          console.log('✅ Planificación completada:', planResult);
+          
+          // Guardar vuelos en localStorage para que SimuladorDiario las lea
+          if (planResult && planResult.vuelos) {
+            localStorage.setItem('vuelosPlanificados', JSON.stringify(planResult.vuelos));
+            console.log(`💾 ${planResult.vuelos.length} vuelos guardados en localStorage`);
+          }
+          
+          // Guardar rutas en localStorage (compatibilidad)
+          if (planResult && planResult.rutas) {
+            localStorage.setItem('rutasPlanificadas', JSON.stringify(planResult.rutas));
+            console.log(`💾 ${planResult.rutas.length} rutas guardadas en localStorage`);
+          }
+          
+          planificacionExitosa = true;
+        } catch (planError) {
+          console.warn('⚠️ Error en planificación automática:', planError);
+        }
+      }
+      
+      // 3. Agregar a la lista local con el ID del backend
       const pedidoCreado = {
         id: response.pedido?.id,
         clienteId: newOrder.clienteId,
@@ -427,11 +482,19 @@ const Pedidos = () => {
         anio: utcAnio,
         hora: utcHora,
         minuto: utcMinuto,
-        status: 'PLANIFICADO'
+        status: planificacionExitosa ? 'PLANIFICADO' : 'PENDIENTE'
       };
       setOrders(prev => [...prev, pedidoCreado]);
       resetForm();
-      showAlert('success', 'Pedido creado exitosamente');
+      
+      // Mensaje según resultado
+      if (modoDiarioActivo && planificacionExitosa) {
+        showAlert('success', '🚀 Pedido creado y rutas planificadas automáticamente');
+      } else if (modoDiarioActivo && !planificacionExitosa) {
+        showAlert('warning', '📦 Pedido creado, pero la planificación falló');
+      } else {
+        showAlert('success', '📦 Pedido creado exitosamente');
+      }
     } catch (error) {
       console.error('Error al crear pedido:', error);
       showAlert('error', 'Error al crear el pedido. Por favor, intente nuevamente.');

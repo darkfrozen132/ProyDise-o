@@ -1837,14 +1837,17 @@
         public final int pedidosSinRuta;
         public final double mejorFitness;
         public final long tiempoProcesamiento;
+        public final WorldTemporal worldTemporal; // 🆕 Para convertir a vuelos detallados
         
         public ResultadoPlanificacionDiaria(Solution solucion, int pedidosAsignados, 
-                int pedidosSinRuta, double mejorFitness, long tiempoProcesamiento) {
+                int pedidosSinRuta, double mejorFitness, long tiempoProcesamiento,
+                WorldTemporal worldTemporal) {
             this.solucion = solucion;
             this.pedidosAsignados = pedidosAsignados;
             this.pedidosSinRuta = pedidosSinRuta;
             this.mejorFitness = mejorFitness;
             this.tiempoProcesamiento = tiempoProcesamiento;
+            this.worldTemporal = worldTemporal;
         }
     }
 
@@ -1877,7 +1880,7 @@
 
         if (pedidos.isEmpty()) {
             log.warn("⚠️ [DIARIO-SYNC] No hay pedidos para procesar");
-            return new ResultadoPlanificacionDiaria(null, 0, 0, 0.0, 0);
+            return new ResultadoPlanificacionDiaria(null, 0, 0, 0.0, 0, null);
         }
 
         // Configurar parámetros del AG
@@ -1927,7 +1930,7 @@
                     pedidosAsignados, pedidosSinRuta, mejorFitness, tiempoProcesamiento);
 
             return new ResultadoPlanificacionDiaria(solucion, pedidosAsignados, pedidosSinRuta, 
-                    mejorFitness, tiempoProcesamiento);
+                    mejorFitness, tiempoProcesamiento, worldTemporal);
 
         } catch (Exception e) {
             log.error("❌ [DIARIO-SYNC] Error: {}", e.getMessage(), e);

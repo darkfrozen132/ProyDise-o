@@ -91,7 +91,7 @@ export default function LegendDialog({ anchorEl, open, onClose }) {
                                         marginRight: 10,
                                     }}
                                 />
-                                <span style={{ fontSize: "12px" }}>Baja (0 - 49%)</span>
+                                <span style={{ fontSize: "12px" }}>Baja (0 - 10%)</span>
                             </div>
                             <div style={{ display: "flex", alignItems: "center", marginBottom: 6 }}>
                                 <div
@@ -103,7 +103,7 @@ export default function LegendDialog({ anchorEl, open, onClose }) {
                                         marginRight: 10,
                                     }}
                                 />
-                                <span style={{ fontSize: "12px" }}>Media (50 - 79%)</span>
+                                <span style={{ fontSize: "12px" }}>Media (10 - 30%)</span>
                             </div>
                             <div style={{ display: "flex", alignItems: "center" }}>
                                 <div
@@ -115,7 +115,7 @@ export default function LegendDialog({ anchorEl, open, onClose }) {
                                         marginRight: 10,
                                     }}
                                 />
-                                <span style={{ fontSize: "12px" }}>Alta (80% +)</span>
+                                <span style={{ fontSize: "12px" }}>Alta (30% +)</span>
                             </div>
                         </div>
                     </section>

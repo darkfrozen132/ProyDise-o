@@ -128,10 +128,10 @@ const Header = () => {
       {mobileOpen && (
         <div className="mobile-nav-overlay">
           <nav className="mobile-nav">
-            <NavLink to="/configuracion" className="nav-item" onClick={handleToggleMobile}><i className="fas fa-cog"></i>Configuración</NavLink>
+            {/*<NavLink to="/configuracion" className="nav-item" onClick={handleToggleMobile}><i className="fas fa-cog"></i>Configuración</NavLink>*/}
             <NavLink to="/usuarios" className="nav-item" onClick={handleToggleMobile}><i className="fas fa-users"></i>Usuarios</NavLink>
             <NavLink to="/operaciones" className="nav-item" onClick={handleToggleMobile}><i className="fas fa-plane"></i>Operaciones</NavLink>
-            <NavLink to="/clientes" className="nav-item" onClick={handleToggleMobile}><i className="fas fa-box"></i>Clientes</NavLink>
+            {/*<NavLink to="/clientes" className="nav-item" onClick={handleToggleMobile}><i className="fas fa-box"></i>Clientes</NavLink>*/}
             <NavLink to="/pedidos" className="nav-item" onClick={handleToggleMobile}><i className="fas fa-clipboard-list"></i>Pedidos</NavLink>
           </nav>
         </div>

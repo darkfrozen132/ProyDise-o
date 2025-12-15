@@ -1,6 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import './Pedidos.css';
 import PedidoDiarioService from '../../services/PedidoDiarioService';
+import Alert from '@mui/material/Alert';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogContentText from '@mui/material/DialogContentText';
+import DialogTitle from '@mui/material/DialogTitle';
+import Button from '@mui/material/Button';
+import Tooltip from '@mui/material/Tooltip';
 
 const PRODUCTOS = [
   { id: 'ELEC001', name: 'Laptop', categoria: 'Electrónica', peso: 2.5 },
@@ -16,39 +24,33 @@ const PRODUCTOS = [
 ];
 
 const AIRPORTS = [
-  // América del Sur
-  { code: 'SKBO', name: 'Bogotá (Colombia) - SKBO' },
-  { code: 'SEQM', name: 'Quito (Ecuador) - SEQM' },
-  { code: 'SVMI', name: 'Caracas (Venezuela) - SVMI' },
-  { code: 'SBBR', name: 'Brasilia (Brasil) - SBBR' },
-  { code: 'SPIM', name: 'Lima (Perú) - SPIM' },
-  { code: 'SLLP', name: 'La Paz (Bolivia) - SLLP' },
-  { code: 'SCEL', name: 'Santiago de Chile (Chile) - SCEL' },
-  { code: 'SABE', name: 'Buenos Aires (Argentina) - SABE' },
-  { code: 'SGAS', name: 'Asunción (Paraguay) - SGAS' },
-  { code: 'SUAA', name: 'Montevideo (Uruguay) - SUAA' },
-  // Europa
-  { code: 'LATI', name: 'Tirana (Albania) - LATI' },
-  { code: 'EDDI', name: 'Berlín (Alemania) - EDDI' },
-  { code: 'LOWW', name: 'Viena (Austria) - LOWW' },
-  { code: 'EBCI', name: 'Bruselas (Bélgica) - EBCI' },
-  { code: 'UMMS', name: 'Minsk (Bielorrusia) - UMMS' },
-  { code: 'LBSF', name: 'Sofía (Bulgaria) - LBSF' },
-  { code: 'LKPR', name: 'Praga (Chequia) - LKPR' },
-  { code: 'LDZA', name: 'Zagreb (Croacia) - LDZA' },
-  { code: 'EKCH', name: 'Copenhague (Dinamarca) - EKCH' },
-  { code: 'EHAM', name: 'Ámsterdam (Países Bajos) - EHAM' },
-  // Asia
-  { code: 'VIDP', name: 'Delhi (India) - VIDP' },
-  { code: 'OSDI', name: 'Damasco (Siria) - OSDI' },
-  { code: 'OERK', name: 'Riad (Arabia Saudita) - OERK' },
-  { code: 'OMDB', name: 'Dubái (EAU) - OMDB' },
-  { code: 'OAKB', name: 'Kabul (Afganistán) - OAKB' },
-  { code: 'OOMS', name: 'Mascate (Omán) - OOMS' },
-  { code: 'OYSN', name: 'Saná (Yemen) - OYSN' },
-  { code: 'OPKC', name: 'Karachi (Pakistán) - OPKC' },
-  { code: 'UBBB', name: 'Bakú (Azerbaiyán) - UBBB' },
-  { code: 'OJAI', name: 'Amán (Jordania) - OJAI' },
+  { code: 'EDDI', name: 'EDDI - Berlín (Alemania)' },
+  { code: 'EHAM', name: 'EHAM - Ámsterdam (Países Bajos)' },
+  { code: 'EKCH', name: 'EKCH - Copenhague (Dinamarca)' },
+  { code: 'LATI', name: 'LATI - Tirana (Albania)' },
+  { code: 'LBSF', name: 'LBSF - Sofía (Bulgaria)' },
+  { code: 'LDZA', name: 'LDZA - Zagreb (Croacia)' },
+  { code: 'LKPR', name: 'LKPR - Praga (Chequia)' },
+  { code: 'LOWW', name: 'LOWW - Viena (Austria)' },
+  { code: 'OAKB', name: 'OAKB - Kabul (Afganistán)' },
+  { code: 'OERK', name: 'OERK - Riad (Arabia Saudita)' },
+  { code: 'OJAI', name: 'OJAI - Amán (Jordania)' },
+  { code: 'OMDB', name: 'OMDB - Dubái (EAU)' },
+  { code: 'OOMS', name: 'OOMS - Mascate (Omán)' },
+  { code: 'OPKC', name: 'OPKC - Karachi (Pakistán)' },
+  { code: 'OSDI', name: 'OSDI - Damasco (Siria)' },
+  { code: 'OYSN', name: 'OYSN - Saná (Yemen)' },
+  { code: 'SABE', name: 'SABE - Buenos Aires (Argentina)' },
+  { code: 'SBBR', name: 'SBBR - Brasilia (Brasil)' },
+  { code: 'SCEL', name: 'SCEL - Santiago de Chile (Chile)' },
+  { code: 'SEQM', name: 'SEQM - Quito (Ecuador)' },
+  { code: 'SGAS', name: 'SGAS - Asunción (Paraguay)' },
+  { code: 'SKBO', name: 'SKBO - Bogotá (Colombia)' },
+  { code: 'SLLP', name: 'SLLP - La Paz (Bolivia)' },
+  { code: 'SUAA', name: 'SUAA - Montevideo (Uruguay)' },
+  { code: 'SVMI', name: 'SVMI - Caracas (Venezuela)' },
+  { code: 'UMMS', name: 'UMMS - Minsk (Bielorrusia)' },
+  { code: 'VIDP', name: 'VIDP - Delhi (India)' },
 ];
 
 const initialForm = {
@@ -56,7 +58,7 @@ const initialForm = {
   email: '',
   telefono: '',
   origen: 'SPIM',
-  destino: 'SKBO',
+  destino: '',
   productos: [], // Array de productos con sus cantidades
   prioridad: 'Normal',
   notas: ''
@@ -76,6 +78,29 @@ const Pedidos = () => {
   const [showOrderDetail, setShowOrderDetail] = useState(false);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
+  
+  // Estado para alertas
+  const [alert, setAlert] = useState({ show: false, severity: 'success', message: '' });
+  
+  // Estado para paginación
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  
+  // Estado para modal de confirmación de eliminación
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  
+  // Estado para evitar múltiples envíos
+  const [submitting, setSubmitting] = useState(false);
+
+  // Función para mostrar alerta
+  const showAlert = (severity, message) => {
+    setAlert({ show: true, severity, message });
+    // Auto-ocultar después de 5 segundos
+    setTimeout(() => {
+      setAlert(prev => ({ ...prev, show: false }));
+    }, 5000);
+  };
 
   // Cargar pedidos al iniciar
   useEffect(() => {
@@ -89,12 +114,12 @@ const Pedidos = () => {
       // Mapear los pedidos para agregar status si no existe
       const pedidosConStatus = pedidos.map(p => ({
         ...p,
-        status: p.status || 'Pendiente'
+        status: p.status || 'PLANIFICADO'
       }));
       setOrders(pedidosConStatus);
-      console.log('✅ Pedidos cargados:', pedidosConStatus.length);
+      console.log('Pedidos cargados:', pedidosConStatus.length);
     } catch (error) {
-      console.error('❌ Error al cargar pedidos:', error);
+      console.error('Error al cargar pedidos:', error);
     } finally {
       setLoading(false);
     }
@@ -111,6 +136,35 @@ const Pedidos = () => {
       String(o.status || '').toLowerCase().includes(f)
     );
   }, [orders, filter]);
+
+  // Calcular datos paginados
+  const totalPages = Math.ceil(totalFiltrado.length / rowsPerPage);
+  const paginatedData = useMemo(() => {
+    const start = (currentPage - 1) * rowsPerPage;
+    const end = start + rowsPerPage;
+    return totalFiltrado.slice(start, end);
+  }, [totalFiltrado, currentPage, rowsPerPage]);
+
+  // Reset página cuando cambia el filtro
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filter]);
+
+  // Función para eliminar todos los pedidos
+  const handleDeleteAllPedidos = async () => {
+    setDeleting(true);
+    try {
+      await PedidoDiarioService.limpiarPedidos();
+      setOrders([]);
+      setShowDeleteModal(false);
+      showAlert('success', '¡Todos los pedidos han sido eliminados exitosamente!');
+    } catch (error) {
+      console.error('Error al eliminar pedidos:', error);
+      showAlert('error', 'Error al eliminar los pedidos. Por favor, intente nuevamente.');
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const resetForm = () => { 
     setForm(initialForm); 
@@ -180,26 +234,175 @@ const Pedidos = () => {
     URL.revokeObjectURL(url);
   };
 
-  const handleImportFile = (e) => {
+  // Estado para importación
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState(null);
+
+  /**
+   * Importar archivo CSV o TXT con pedidos
+   * Formato: id-fechaUTC-hh-mm-codedestino-cantidadSolicitada-id_cliente
+   * Ejemplo: 100000021-202512##-hh-mm-SVMI-990-0007729
+   * 
+   * Solo se usa: codedestino, cantidadSolicitada, id_cliente
+   * La fecha es la actual UTC al momento de subir
+   */
+  const handleImportFile = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
+
+    // Validar extensión
+    const extension = file.name.split('.').pop().toLowerCase();
+    if (!['csv', 'txt'].includes(extension)) {
+      alert('❌ Solo se permiten archivos CSV o TXT');
+      e.target.value = '';
+      return;
+    }
+
+    setImporting(true);
+    setImportResult(null);
+
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       try {
-        const importedOrders = JSON.parse(event.target.result);
-        if (Array.isArray(importedOrders)) {
-          setOrders(prev => [...prev, ...importedOrders]);
+        const content = event.target.result;
+        const lines = content.split('\n').filter(line => line.trim() !== '');
+        
+        // Obtener fecha actual UTC
+        const now = new Date();
+        const utcDia = now.getUTCDate();
+        const utcMes = now.getUTCMonth() + 1;
+        const utcAnio = now.getUTCFullYear();
+        const utcHora = now.getUTCHours();
+        const utcMinuto = now.getUTCMinutes();
+
+        let exitosos = 0;
+        let fallidos = 0;
+        const errores = [];
+
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (!line) continue;
+
+          try {
+            // Parsear línea: id-fechaUTC-hh-mm-codedestino-cantidadSolicitada-id_cliente
+            const parts = line.split('-');
+            
+            if (parts.length < 7) {
+              throw new Error(`Formato inválido. Se esperan 7 campos separados por '-'`);
+            }
+
+            // Extraer campos (ignorando id, fecha, hh, mm del archivo)
+            // parts[0] = id (ignorado - se genera automáticamente en BD)
+            // parts[1] = fechaUTC (ignorado - usamos fecha actual)
+            // parts[2] = hh (ignorado)
+            // parts[3] = mm (ignorado)
+            // parts[4] = codedestino
+            // parts[5] = cantidadSolicitada
+            // parts[6] = id_cliente
+            const codigoDestino = parts[4];
+            const cantidadSolicitada = parseInt(parts[5]);
+            const idCliente = parts[6];
+
+            // Validaciones
+            if (!codigoDestino || codigoDestino.length !== 4) {
+              throw new Error(`Código destino inválido: ${codigoDestino}`);
+            }
+            if (isNaN(cantidadSolicitada) || cantidadSolicitada <= 0) {
+              throw new Error(`Cantidad inválida: ${parts[5]}`);
+            }
+            if (!idCliente || idCliente.trim() === '') {
+              throw new Error(`ID cliente vacío`);
+            }
+
+            // Crear pedido (ID se genera automáticamente en la BD)
+            const pedido = {
+              clienteId: idCliente.trim(),
+              aeropuertoDestinoId: codigoDestino.toUpperCase(),
+              cantidadProductos: cantidadSolicitada,
+              dia: utcDia,
+              mes: utcMes,
+              anio: utcAnio,
+              hora: utcHora,
+              minuto: utcMinuto
+            };
+
+            // Enviar al backend
+            await PedidoDiarioService.crearPedido(pedido);
+            exitosos++;
+
+          } catch (lineError) {
+            fallidos++;
+            errores.push(`Línea ${i + 1}: ${lineError.message}`);
+            console.error(`Error en línea ${i + 1}:`, lineError);
+          }
         }
+
+        // Mostrar resultado
+        setImportResult({
+          total: lines.length,
+          exitosos,
+          fallidos,
+          errores: errores.slice(0, 5) // Mostrar solo los primeros 5 errores
+        });
+
+        // Recargar la lista de pedidos
+        await cargarPedidos();
+
+        // Si está en modo diario y hubo pedidos exitosos, ejecutar planificación automática
+        const modoDiarioActivo = PedidoDiarioService.isModoDiarioActivo();
+        if (modoDiarioActivo && exitosos > 0) {
+          try {
+            console.log('🔄 Modo diario: ejecutando planificación automática tras importar archivo...');
+            const planResult = await PedidoDiarioService.ejecutarPlanificacionDiaria();
+            console.log('✅ Planificación completada:', planResult);
+            
+            // Guardar vuelos en localStorage
+            if (planResult && planResult.vuelos) {
+              localStorage.setItem('vuelosPlanificados', JSON.stringify(planResult.vuelos));
+              console.log(`💾 ${planResult.vuelos.length} vuelos guardados en localStorage`);
+            }
+            
+            // Guardar rutas en localStorage (compatibilidad)
+            if (planResult && planResult.rutas) {
+              localStorage.setItem('rutasPlanificadas', JSON.stringify(planResult.rutas));
+            }
+          } catch (planError) {
+            console.warn('⚠️ Error en planificación automática:', planError);
+          }
+        }
+
+        if (exitosos > 0 && fallidos === 0) {
+          const msg = modoDiarioActivo 
+            ? `🚀 Importación completada! Se agregaron ${exitosos} pedidos y se planificaron rutas automáticamente.`
+            : `✅ Importación completada! Se agregaron ${exitosos} pedidos exitosamente.`;
+          showAlert('success', msg);
+        } else if (exitosos > 0 && fallidos > 0) {
+          showAlert('warning', `Importación parcial: ${exitosos} pedidos agregados, ${fallidos} errores.`);
+        } else {
+          showAlert('error', `No se pudo importar ningún pedido. Se encontraron ${fallidos} errores.`);
+        }
+
       } catch (error) {
-        console.error('Error al importar pedidos:', error);
+        console.error('Error al procesar archivo:', error);
+        showAlert('error', `Error al procesar el archivo: ${error.message}`);
+      } finally {
+        setImporting(false);
+        e.target.value = ''; // Limpiar input para permitir reimportar mismo archivo
       }
     };
+
+    reader.onerror = () => {
+      showAlert('error', 'Error al leer el archivo');
+      setImporting(false);
+      e.target.value = '';
+    };
+
     reader.readAsText(file);
   };
 
   const validate = () => {
     const v = {};
-    if (!form.cliente.trim()) v.cliente = 'DNI del cliente es requerido';
+    if (!form.cliente.trim()) v.cliente = 'ID del cliente es requerido';
     if (!form.destino) v.destino = 'Destino es requerido';
     if (currentProduct.cantidad < 1) v.cantidad = 'Cantidad debe ser al menos 1';
     setErrors(v);
@@ -209,6 +412,9 @@ const Pedidos = () => {
   const submit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
+    if (submitting) return; // Evitar múltiples envíos
+    
+    setSubmitting(true);
 
     // Obtener fecha actual en UTC
     const now = new Date();
@@ -230,29 +436,70 @@ const Pedidos = () => {
       minuto: utcMinuto
     };
 
-    // Enviar al backend
-    console.log('📤 Enviando pedido al backend:', JSON.stringify(newOrder, null, 2));
+    // Verificar si está en modo diario para planificación automática
+    const modoDiarioActivo = PedidoDiarioService.isModoDiarioActivo();
+    console.log(`📤 Enviando pedido al backend (Modo: ${modoDiarioActivo ? 'DIARIO' : 'SEMANAL'}):`, JSON.stringify(newOrder, null, 2));
+    
     try {
+      // 1. Crear el pedido
       const response = await PedidoDiarioService.crearPedido(newOrder);
       console.log('✅ Pedido creado:', response);
       
-      // Agregar a la lista local con el ID del backend
+      // 2. Si está en modo diario, ejecutar planificación y guardar en localStorage
+      let planificacionExitosa = false;
+      if (modoDiarioActivo) {
+        try {
+          console.log('🔄 Modo diario: ejecutando planificación automática...');
+          const planResult = await PedidoDiarioService.ejecutarPlanificacionDiaria();
+          console.log('✅ Planificación completada:', planResult);
+          
+          // Guardar vuelos en localStorage para que SimuladorDiario las lea
+          if (planResult && planResult.vuelos) {
+            localStorage.setItem('vuelosPlanificados', JSON.stringify(planResult.vuelos));
+            console.log(`💾 ${planResult.vuelos.length} vuelos guardados en localStorage`);
+          }
+          
+          // Guardar rutas en localStorage (compatibilidad)
+          if (planResult && planResult.rutas) {
+            localStorage.setItem('rutasPlanificadas', JSON.stringify(planResult.rutas));
+            console.log(`💾 ${planResult.rutas.length} rutas guardadas en localStorage`);
+          }
+          
+          planificacionExitosa = true;
+        } catch (planError) {
+          console.warn('⚠️ Error en planificación automática:', planError);
+        }
+      }
+      
+      // 3. Agregar a la lista local con el ID del backend
       const pedidoCreado = {
         id: response.pedido?.id,
-        cliente: newOrder.clienteId,
-        origen: 'SPIM', // Lima es el origen fijo
-        destino: newOrder.aeropuertoDestinoId,
-        cantidadTotal: newOrder.cantidadProductos,
-        prioridad: 'Normal',
-        status: 'Pendiente',
-        fechaUTC: `${utcDia}/${utcMes}/${utcAnio} ${utcHora}:${String(utcMinuto).padStart(2, '0')} UTC`
+        clienteId: newOrder.clienteId,
+        aeropuertoDestinoId: newOrder.aeropuertoDestinoId,
+        cantidadProductos: newOrder.cantidadProductos,
+        dia: utcDia,
+        mes: utcMes,
+        anio: utcAnio,
+        hora: utcHora,
+        minuto: utcMinuto,
+        status: planificacionExitosa ? 'PLANIFICADO' : 'PENDIENTE'
       };
       setOrders(prev => [...prev, pedidoCreado]);
       resetForm();
-      alert('✅ Pedido creado exitosamente');
+      
+      // Mensaje según resultado
+      if (modoDiarioActivo && planificacionExitosa) {
+        showAlert('success', '🚀 Pedido creado y rutas planificadas automáticamente');
+      } else if (modoDiarioActivo && !planificacionExitosa) {
+        showAlert('warning', '📦 Pedido creado, pero la planificación falló');
+      } else {
+        showAlert('success', '📦 Pedido creado exitosamente');
+      }
     } catch (error) {
-      console.error('❌ Error al crear pedido:', error);
-      alert('Error al crear el pedido. Por favor, intente nuevamente.');
+      console.error('Error al crear pedido:', error);
+      showAlert('error', 'Error al crear el pedido. Por favor, intente nuevamente.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -268,17 +515,53 @@ const Pedidos = () => {
 
   return (
     <div className="pedidos-page">
+      {/* Alerta global */}
+      {alert.show && (
+        <div className="alert-container">
+          <Alert 
+            severity={alert.severity} 
+            onClose={() => setAlert(prev => ({ ...prev, show: false }))}
+          >
+            {alert.message}
+          </Alert>
+        </div>
+      )}
+
       <div className="pedidos-layout">
         <section className="form-section">
           <div className="form-header">
             <h2><i className="fas fa-clipboard-list"></i> Ingresar Pedido</h2>
+            <div className="import-actions">
+              <label className={`btn secondary ${importing ? 'disabled' : ''}`}>
+                <i className={`fas ${importing ? 'fa-spinner fa-spin' : 'fa-file-import'}`}></i>
+                {importing ? ' Importando...' : ' Importar'}
+                <input 
+                  type="file" 
+                  accept=".csv,.txt" 
+                  onChange={handleImportFile}
+                  disabled={importing}
+                  style={{ display: 'none' }}
+                />
+              </label>
+            </div>
           </div>
           
           <form className="pedido-form" onSubmit={submit}>
             <div className="grid two">
               <div className="field">
-                <label>Cliente (DNI) *</label>
-                <input name="cliente" value={form.cliente} onChange={handleChange} placeholder="Nombre o razón social" />
+                <label>
+                  Id Cliente *
+                  <Tooltip title="Ingrese solo 7 dígitos numéricos" arrow placement="top">
+                    <i className="fas fa-info-circle info-icon"></i>
+                  </Tooltip>
+                </label>
+                <input 
+                  name="cliente" 
+                  value={form.cliente} 
+                  onChange={handleChange} 
+                  placeholder="Ej: 1234567" 
+                  maxLength={7}
+                />
                 {errors.cliente && <small className="error">{errors.cliente}</small>}
               </div>
             </div>
@@ -287,6 +570,7 @@ const Pedidos = () => {
               <div className="field">
                 <label>Destino *</label>
                 <select name="destino" value={form.destino} onChange={handleChange}>
+                  <option value="" disabled>-- Seleccione destino --</option>
                   {AIRPORTS.map(a => <option key={a.code} value={a.code}>{a.name}</option>)}
                 </select>
                 {errors.destino && <small className="error">{errors.destino}</small>}
@@ -353,8 +637,13 @@ const Pedidos = () => {
             )}
 
             <div className="actions">
-              <button type="submit" className="btn primary"><i className="fas fa-check"></i> Aceptar Pedido</button>
-              <button type="button" className="btn" onClick={resetForm}><i className="fas fa-eraser"></i> Limpiar</button>
+              <button type="submit" className="btn primary" disabled={submitting}>
+                <i className={`fas ${submitting ? 'fa-spinner fa-spin' : 'fa-check'}`}></i> 
+                {submitting ? 'Registrando...' : 'Registrar'}
+              </button>
+              <button type="button" className="btn" onClick={resetForm} disabled={submitting}>
+                <i className="fas fa-eraser"></i> Limpiar
+              </button>
             </div>
           </form>
         </section>
@@ -364,8 +653,16 @@ const Pedidos = () => {
             <h2><i className="fas fa-boxes"></i> Pedidos ({totalFiltrado.length})</h2>
             <div className="list-actions">
               <input className="search" placeholder="Buscar por ID, cliente, destino..." value={filter} onChange={e=>setFilter(e.target.value)} />
-              <button className="btn" onClick={cargarPedidos} disabled={loading}>
+              <button className="btn" onClick={cargarPedidos} disabled={loading} title="Recargar">
                 <i className={`fas fa-sync-alt ${loading ? 'fa-spin' : ''}`}></i>
+              </button>
+              <button 
+                className="btn danger" 
+                onClick={() => setShowDeleteModal(true)} 
+                disabled={orders.length === 0}
+                title="Eliminar todos los pedidos"
+              >
+                <i className="fas fa-trash-alt"></i>
               </button>
             </div>
           </div>
@@ -374,7 +671,7 @@ const Pedidos = () => {
               <thead>
                 <tr>
                   <th>ID</th>
-                  <th>Cliente (DNI)</th>
+                  <th>Cliente</th>
                   <th>Destino</th>
                   <th>Cantidad</th>
                   <th>Fecha (UTC)</th>
@@ -388,12 +685,12 @@ const Pedidos = () => {
                       <i className="fas fa-spinner fa-spin"></i> Cargando pedidos...
                     </td>
                   </tr>
-                ) : totalFiltrado.length === 0 ? (
+                ) : paginatedData.length === 0 ? (
                   <tr>
                     <td colSpan="6" className="empty">Sin pedidos registrados</td>
                   </tr>
                 ) : (
-                  totalFiltrado.map(o => {
+                  paginatedData.map(o => {
                     const status = o.status || 'Pendiente';
                     // Formatear fecha
                     const fecha = o.fechaUTC || `${o.dia || '-'}/${o.mes || '-'}/${o.anio || '-'} ${o.hora || '00'}:${String(o.minuto || '00').padStart(2, '0')}`;
@@ -416,8 +713,97 @@ const Pedidos = () => {
               </tbody>
             </table>
           </div>
+          
+          {/* Controles de paginación */}
+          {totalFiltrado.length > 0 && (
+            <div className="pagination-controls">
+              <div className="pagination-info">
+                Mostrando {((currentPage - 1) * rowsPerPage) + 1} - {Math.min(currentPage * rowsPerPage, totalFiltrado.length)} de {totalFiltrado.length}
+              </div>
+              <div className="pagination-actions">
+                <select 
+                  value={rowsPerPage} 
+                  onChange={(e) => {
+                    setRowsPerPage(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="rows-select"
+                >
+                  <option value={5}>5 por página</option>
+                  <option value={10}>10 por página</option>
+                  <option value={25}>25 por página</option>
+                  <option value={50}>50 por página</option>
+                </select>
+                <div className="pagination-buttons">
+                  <button 
+                    className="btn pagination-btn" 
+                    onClick={() => setCurrentPage(1)}
+                    disabled={currentPage === 1}
+                  >
+                    <i className="fas fa-angle-double-left"></i>
+                  </button>
+                  <button 
+                    className="btn pagination-btn" 
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                  >
+                    <i className="fas fa-angle-left"></i>
+                  </button>
+                  <span className="page-indicator">
+                    Página {currentPage} de {totalPages || 1}
+                  </span>
+                  <button 
+                    className="btn pagination-btn" 
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages || totalPages === 0}
+                  >
+                    <i className="fas fa-angle-right"></i>
+                  </button>
+                  <button 
+                    className="btn pagination-btn" 
+                    onClick={() => setCurrentPage(totalPages)}
+                    disabled={currentPage === totalPages || totalPages === 0}
+                  >
+                    <i className="fas fa-angle-double-right"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </section>
       </div>
+
+      {/* Modal de confirmación para eliminar todos los pedidos */}
+      <Dialog
+        open={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        aria-labelledby="delete-dialog-title"
+        aria-describedby="delete-dialog-description"
+      >
+        <DialogTitle id="delete-dialog-title">
+          <i className="fas fa-exclamation-triangle" style={{ color: '#f59e0b', marginRight: '8px' }}></i>
+          Confirmar eliminación
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="delete-dialog-description">
+            ¿Está seguro de que desea eliminar <strong>todos los pedidos</strong>? 
+            Esta acción no se puede deshacer y se eliminarán {orders.length} pedido(s) del sistema.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowDeleteModal(false)} disabled={deleting}>
+            Cancelar
+          </Button>
+          <Button 
+            onClick={handleDeleteAllPedidos} 
+            color="error" 
+            variant="contained"
+            disabled={deleting}
+          >
+            {deleting ? 'Eliminando...' : 'Sí, eliminar todos'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Modal de detalles del pedido */}
       {showOrderDetail && selectedOrder && (

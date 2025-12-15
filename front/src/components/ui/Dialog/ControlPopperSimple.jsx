@@ -11,9 +11,11 @@ export default function ControlPopperSimple({
     simulacionActiva,
     handleIniciarSimulacion,
     handleDetenerSimulacion,
+    handleReplanificarDiario, // Nueva prop para modo diario
     startButtonLabel,
     showFlightLines,
     setShowFlightLines,
+    cargandoRutas, // Para mostrar estado de carga
 }) {
     const [utcTime, setUtcTime] = useState(new Date());
 
@@ -107,29 +109,29 @@ export default function ControlPopperSimple({
 
                     {/* Botones de control */}
                     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                        {/* Botón Replanificar */}
+                        {/* Botón Replanificar - Usa handleReplanificarDiario si está disponible */}
                         <button
-                            onClick={handleIniciarSimulacion}
-                            disabled={simulacionActiva}
+                            onClick={handleReplanificarDiario || handleIniciarSimulacion}
+                            disabled={simulacionActiva || cargandoRutas}
                             style={{
                                 padding: '8px 14px',
                                 borderRadius: '6px',
-                                border: simulacionActiva ? '1px solid #e9ecef' : '1px solid #28a745',
-                                background: simulacionActiva ? '#e9ecef' : '#28a745',
-                                color: simulacionActiva ? '#6c757d' : 'white',
+                                border: (simulacionActiva || cargandoRutas) ? '1px solid #e9ecef' : '1px solid #28a745',
+                                background: (simulacionActiva || cargandoRutas) ? '#e9ecef' : '#28a745',
+                                color: (simulacionActiva || cargandoRutas) ? '#6c757d' : 'white',
                                 fontSize: '13px',
                                 fontWeight: '600',
-                                cursor: simulacionActiva ? 'not-allowed' : 'pointer',
+                                cursor: (simulacionActiva || cargandoRutas) ? 'not-allowed' : 'pointer',
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: '6px',
                                 transition: 'all 0.2s',
-                                boxShadow: simulacionActiva ? 'none' : '0 2px 6px rgba(40, 167, 69, 0.3)',
+                                boxShadow: (simulacionActiva || cargandoRutas) ? 'none' : '0 2px 6px rgba(40, 167, 69, 0.3)',
                                 whiteSpace: 'nowrap'
                             }}
                         >
                             <FaPlay size={12} />
-                            {startButtonLabel}
+                            {cargandoRutas ? '⏳ Planificando...' : startButtonLabel}
                         </button>
 
                         {/* Botón Detener Replanificación */}

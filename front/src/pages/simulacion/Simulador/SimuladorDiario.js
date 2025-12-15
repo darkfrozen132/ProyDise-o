@@ -22,6 +22,7 @@ import MetricsButton from '../../../components/ui/Button/MetricsButton';
 import ControlButton from '../../../components/ui/Button/ControlButton';
 import ControlPopper from '../../../components/ui/Dialog/ControlPopper';
 import ControlPopperSimple from '../../../components/ui/Dialog/ControlPopperSimple';
+import PedidoDiarioService from '../../../services/PedidoDiarioService';
 
 import { IoMdAirplane } from "react-icons/io";
 import ReactDOMServer from "react-dom/server";
@@ -44,13 +45,14 @@ const getAircraftColorByStatus = (flight) => {
 	const cargaActual = flight.currentPackages || 0;
 	const porcentajeCarga = (cargaActual / capacidad) * 100;
 
-	// Colores según porcentaje de carga
-	if (porcentajeCarga >= 80) {
-		return '#dc3545';
-	} else if (porcentajeCarga >= 50) {
-		return '#f59e0b';
+	// Colores según porcentaje de carga (nuevos umbrales)
+	// Alto: >= 30%, Medio: >= 10%, Bajo: < 10%
+	if (porcentajeCarga >= 30) {
+		return '#dc3545'; // Rojo - Alto
+	} else if (porcentajeCarga >= 10) {
+		return '#f59e0b'; // Amarillo - Medio
 	} else {
-		return '#28a745';
+		return '#28a745'; // Verde - Bajo
 	}
 };
 
@@ -180,11 +182,12 @@ const createAirportIcon = (name, saturation = 0) => {
 	if (name == "Bruselas" || name == "Lima" || name == "Baku") {
 		size = 23; color = '#4954b6ff'; borderColor = '#ffffffff'; borderWidth = 1.8; shadow = '0 2px 2px rgba(0,0,0,0.4)';
 	} else {
-		// Estilos para aeropuertos normales según saturación
+		// Estilos para aeropuertos normales según saturación (nuevos umbrales)
+		// Alto: >= 30%, Medio: >= 10%, Bajo: < 10%
 		size = 18; borderColor = '#ffffff'; borderWidth = 1.5; shadow = '0 2px 2px rgba(0,0,0,0.4)';
-		if (saturation >= 80) color = '#dc3545'; 
-		else if (saturation >= 50) color = '#f59e0b'; 
-		else color = '#28a745';
+		if (saturation >= 30) color = '#dc3545';      // Rojo - Alto
+		else if (saturation >= 10) color = '#f59e0b'; // Amarillo - Medio
+		else color = '#28a745';                        // Verde - Bajo
 	}
 	// Crear icono con estilos definidos
 	return new L.DivIcon({
@@ -199,14 +202,15 @@ const createAirportIcon = (name, saturation = 0) => {
 };
 
 /* Crear popup detallado para un aeropuerto (HTML string) */
-const createAirportPopup = (airport) => {
+const createAirportPopup = (airport, capacidadSaliente = null) => {
 	const isUnlimited = airport.capacity === 'ILIMITADO';
 	const capacityValue = isUnlimited ? null : (typeof airport.capacity === 'number' ? airport.capacity : (Number(airport.capacity) || null));
 	const packages = airport.packages || 0;
 	const pedidosCount = airport.pedidosCount || 0; // 🆕 Número de pedidos (diferente a paquetes)
 	const tiempoRestante = airport.tiempoRestanteRecogida; // 🆕 Tiempo hasta próxima recogida (minutos)
 	const saturation = isUnlimited || !capacityValue ? 0 : ((packages / capacityValue) * 100);
-	const colorAirport = saturation >= 80 ? '#dc3545' : saturation >= 50 ? '#f59e0b' : '#28a745';
+	// 🎨 NUEVOS UMBRALES: Bajo 0-10%, Medio 10-30%, Alto 30%+
+	const colorAirport = saturation >= 30 ? '#dc3545' : saturation >= 10 ? '#f59e0b' : '#28a745';
 	const colorLight = lightenColor(colorAirport, 0.9);
 	
 	// Formatear tiempo restante
@@ -256,23 +260,31 @@ const createAirportPopup = (airport) => {
 			${recogidaInfo}
 		</div>`;
 
-	// 🆕 Para sedes con capacidad ilimitada
+	// 🆕 Para sedes con capacidad ilimitada - mostrar capacidad saliente
+	const vuelosSalientes = capacidadSaliente?.vuelos || 0;
+	const paquetesSalientes = capacidadSaliente?.paquetes || 0;
+	
 	const unlimitedSection = isUnlimited ? `
 		<div style="margin-top:12px; padding-top:12px; border-top: 1px solid #e5e7eb;">
 			<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-				<span style="font-size:12px; font-weight:600; color:#374151;">📦 Almacén</span>
-				<span style="font-size:13px; font-weight:700; color:#6b7280;">ILIMITADO</span>
+				<span style="font-size:12px; font-weight:600; color:#374151;">✈️ Capacidad Saliente</span>
+				<span style="font-size:13px; font-weight:700; color:#2563eb;">SEDE</span>
 			</div>
-			<div style="background:#f8fafc; padding:10px; border-radius:6px; text-align:center; margin-top:8px;">
-				<div style="font-size:20px; font-weight:700; color:#1f2937;">${packages.toLocaleString()}</div>
-				<div style="font-size:11px; color:#6b7280;">Paquetes actuales</div>
+			<div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-top:8px;">
+				<div style="background:#dbeafe; padding:10px; border-radius:6px; text-align:center;">
+					<div style="font-size:20px; font-weight:700; color:#1e40af;">${vuelosSalientes.toLocaleString()}</div>
+					<div style="font-size:11px; color:#1e40af; font-weight:500;">Vuelos salientes</div>
+				</div>
+				<div style="background:#fef3c7; padding:10px; border-radius:6px; text-align:center;">
+					<div style="font-size:20px; font-weight:700; color:#92400e;">${paquetesSalientes.toLocaleString()}</div>
+					<div style="font-size:11px; color:#92400e; font-weight:500;">Productos enviados</div>
+				</div>
 			</div>
 			${pedidosCount > 0 ? `
 				<div style="margin-top:8px; font-size:12px; color:#6b7280; text-align:center;">
-					📋 ${pedidosCount} pedidos en almacén
+					📋 ${pedidosCount} pedidos planificados
 				</div>
 			` : ''}
-			${recogidaInfo}
 		</div>
 	` : '';
 
@@ -313,7 +325,7 @@ const calculateBearing = (from, to) => {
 
 
 /* ======= Componente para manejar marcadores y líneas dinámicas ======= */
-function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMovimiento, showFlightLines, setSelectedAirport, setSidebarTab, setOpen, setSelectedFlight }) {
+function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMovimiento, showFlightLines, setSelectedAirport, setSidebarTab, setOpen, setSelectedFlight, vuelosAcumulados }) {
 	const map = (0, require('react-leaflet').useMap)();
 	const markersRef = React.useRef({});
 	const airportMarkersRef = React.useRef({});
@@ -341,7 +353,14 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMov
 			// Añadir código al set actual
 			currentAirportCodes.add(airport.code);
 			const existingMarker = airportMarkersRef.current[airport.code];
-			const html = createAirportPopup(airport);
+			const airportCode = String(airport.code || '').toUpperCase();
+			// 🆕 Calcular capacidad saliente directamente desde vuelosAcumulados (mismo cálculo que la pestaña)
+			const vuelosSalientes = (vuelosAcumulados || []).filter(f => String(f.origin?.code || '').toUpperCase() === airportCode);
+			const capacidadSaliente = {
+				vuelos: vuelosSalientes.length,
+				paquetes: vuelosSalientes.reduce((sum, v) => sum + (v.currentPackages || v.pedidos?.length || 1), 0)
+			};
+			const html = createAirportPopup(airport, capacidadSaliente);
 
 			// Actualizar o crear marcador
 			if (existingMarker) {
@@ -758,6 +777,227 @@ const SimuladorDiario = () => {
 	const [showRoutes, setShowRoutes] = useState(true);
 	const [showLegend, setShowLegend] = useState(false);
 	const [showFlightLines, setShowFlightLines] = useState(true); // Toggle para lineas dinamicas de vuelos
+	
+	// ===================== MODO DE PANEL DE CONTROL ====================
+	// 'semanal' = Panel completo (igual al simulador semanal) con fecha/hora de inicio
+	// 'diario' = Panel simple con reloj UTC en tiempo real
+	// Inicializar desde localStorage si existe, sino 'diario' por defecto
+	const [modoPanel, setModoPanel] = useState(() => {
+		const savedMode = localStorage.getItem('modoPanel');
+		return savedMode || 'diario';
+	});
+	
+	// Guardar modo en localStorage cuando cambia (para que Pedidos.js pueda leerlo)
+	useEffect(() => {
+		localStorage.setItem('modoPanel', modoPanel);
+		console.log(`📌 Modo panel guardado en localStorage: ${modoPanel}`);
+	}, [modoPanel]);
+
+	// ===================== PEDIDOS DIARIOS (MODO DIARIO) ====================
+	// Estado para almacenar los pedidos cargados del backend cuando está en modo diario
+	const [pedidosDiarios, setPedidosDiarios] = useState([]);
+	const [cargandoPedidosDiarios, setCargandoPedidosDiarios] = useState(false);
+
+	// Cargar pedidos del backend cuando cambia a modo diario
+	useEffect(() => {
+		const cargarPedidosDiarios = async () => {
+			if (modoPanel === 'diario') {
+				setCargandoPedidosDiarios(true);
+				try {
+					console.log('📦 Cargando pedidos diarios del backend...');
+					const pedidos = await PedidoDiarioService.obtenerTodos();
+					console.log(`✅ Se cargaron ${pedidos.length} pedidos diarios`);
+					setPedidosDiarios(pedidos);
+				} catch (error) {
+					console.error('❌ Error al cargar pedidos diarios:', error);
+					setPedidosDiarios([]);
+				} finally {
+					setCargandoPedidosDiarios(false);
+				}
+			}
+		};
+		cargarPedidosDiarios();
+	}, [modoPanel]);
+
+	// Función para recargar pedidos diarios (útil después de crear uno nuevo)
+	const recargarPedidosDiarios = useCallback(async () => {
+		if (modoPanel === 'diario') {
+			try {
+				const pedidos = await PedidoDiarioService.obtenerTodos();
+				setPedidosDiarios(pedidos);
+				console.log(`🔄 Pedidos diarios recargados: ${pedidos.length}`);
+			} catch (error) {
+				console.error('Error al recargar pedidos:', error);
+			}
+		}
+	}, [modoPanel]);
+
+	// ===================== RUTAS PLANIFICADAS (MODO DIARIO - LOCALSTORAGE) ====================
+	const [rutasDiarias, setRutasDiarias] = useState([]);
+	const [vuelosDiarios, setVuelosDiarios] = useState([]); // 🆕 Vuelos con info detallada para mostrar rutas
+	const [cargandoRutas, setCargandoRutas] = useState(false);
+
+	// Cargar rutas y vuelos de localStorage cuando cambia a modo diario
+	useEffect(() => {
+		if (modoPanel === 'diario') {
+			try {
+				// Cargar rutas
+				const rutasGuardadas = localStorage.getItem('rutasPlanificadas');
+				if (rutasGuardadas) {
+					const rutas = JSON.parse(rutasGuardadas);
+					console.log(`📍 Rutas cargadas de localStorage:`, rutas);
+					setRutasDiarias(Array.isArray(rutas) ? rutas : [rutas]);
+				} else {
+					console.log('📍 No hay rutas guardadas en localStorage');
+					setRutasDiarias([]);
+				}
+				
+				// 🆕 Cargar vuelos planificados (con info detallada de pedidos)
+				const vuelosGuardados = localStorage.getItem('vuelosPlanificados');
+				if (vuelosGuardados) {
+					const vuelos = JSON.parse(vuelosGuardados);
+					console.log(`✈️ Vuelos cargados de localStorage: ${vuelos.length}`);
+					setVuelosDiarios(Array.isArray(vuelos) ? vuelos : []);
+				} else {
+					console.log('✈️ No hay vuelos guardados en localStorage');
+					setVuelosDiarios([]);
+				}
+			} catch (error) {
+				console.error('Error al leer datos de localStorage:', error);
+				setRutasDiarias([]);
+				setVuelosDiarios([]);
+			}
+		}
+	}, [modoPanel]);
+
+	// Función para ejecutar replanificación (reset + ejecutar AG con todos los pedidos)
+	const handleReplanificarDiario = useCallback(async () => {
+		if (modoPanel !== 'diario') return;
+		
+		setCargandoRutas(true);
+		try {
+			console.log('🔄 REPLANIFICACIÓN: Ejecutando algoritmo genético con todos los pedidos...');
+			
+			// Limpiar rutas anteriores y vuelos del mapa
+			localStorage.removeItem('rutasPlanificadas');
+			localStorage.removeItem('vuelosPlanificados'); // 🆕 Limpiar vuelos guardados
+			setRutasDiarias([]);
+			setVuelosDiarios([]); // 🆕 Limpiar vuelos del estado
+			setFlights([]); // 🆕 Limpiar vuelos del mapa
+			setFlightsInAir(0);
+			
+			// Ejecutar planificación
+			const resultado = await PedidoDiarioService.ejecutarPlanificacionDiaria();
+			console.log('✅ Replanificación completada:', resultado);
+			
+			// Guardar nuevas rutas (resumen)
+			if (resultado) {
+				const rutas = resultado.rutas || resultado;
+				localStorage.setItem('rutasPlanificadas', JSON.stringify(rutas));
+				setRutasDiarias(Array.isArray(rutas) ? rutas : [rutas]);
+				console.log(`💾 ${Array.isArray(rutas) ? rutas.length : 1} rutas guardadas`);
+				
+				// 🆕 PROCESAR VUELOS DETALLADOS para visualización en mapa
+				if (resultado.vuelos && resultado.vuelos.length > 0) {
+					console.log(`✈️ Procesando ${resultado.vuelos.length} vuelos para el mapa...`);
+					
+					const currentAirports = airportsRef.current;
+					const vuelosParaMapa = resultado.vuelos.map((vuelo, index) => {
+						// Buscar aeropuertos
+						const origen = currentAirports.find(a =>
+							String(a.code).toUpperCase() === String(vuelo.origenCodigoICAO).toUpperCase()
+						);
+						const destino = currentAirports.find(a =>
+							String(a.code).toUpperCase() === String(vuelo.destinoCodigoICAO).toUpperCase()
+						);
+						
+						if (!origen || !destino) {
+							console.warn(`⚠️ Aeropuertos no encontrados: ${vuelo.origenCodigoICAO} o ${vuelo.destinoCodigoICAO}`);
+							return null;
+						}
+						
+						// Calcular progreso inicial (0 = en origen)
+						const progress = 0;
+						const currentLat = origen.lat;
+						const currentLng = origen.lng;
+						
+						// Calcular rotación
+						const brg = bearingDegrees(origen.lat, origen.lng, destino.lat, destino.lng);
+						const rotation = brg;
+						
+						// ID único
+						const uniqueId = `DAILY-${vuelo.vueloId || `${vuelo.origenCodigoICAO}-${vuelo.destinoCodigoICAO}-${index}`}`;
+						
+						return {
+							id: uniqueId,
+							flightId: vuelo.flightId || vuelo.vueloId,
+							origin: {
+								code: vuelo.origenCodigoICAO,
+								lat: origen.lat,
+								lng: origen.lng,
+								region: origen.region
+							},
+							destination: {
+								code: vuelo.destinoCodigoICAO,
+								lat: destino.lat,
+								lng: destino.lng,
+								region: destino.region
+							},
+							fechaInicial: vuelo.departureUtc || vuelo.fechaInicial,
+							fechaFinal: vuelo.arrivalUtc || vuelo.fechaFinal,
+							progress,
+							currentLat,
+							currentLng,
+							rotation,
+							status: 'active',
+							altitude: 35000,
+							speed: 850,
+							aircraftColor: (vuelo.slackMinutes || 0) <= 0 ? '#ef4444' : '#22c55e', // Rojo si retrasado, verde si ok
+							packageCapacity: vuelo.capacidadMaxima || vuelo.quantity || 1,
+							currentPackages: vuelo.quantity || 1,
+							packageType: 'DAILY',
+							isSameContinentFlight: origen.region === destino.region,
+							pedidos: vuelo.pedidos || [],
+							slackMinutes: vuelo.slackMinutes || 0
+						};
+					}).filter(v => v !== null);
+					
+					if (vuelosParaMapa.length > 0) {
+						console.log(`🗺️ ${vuelosParaMapa.length} vuelos listos para visualizar`);
+						setFlights(vuelosParaMapa);
+						setFlightsInAir(vuelosParaMapa.length);
+						
+						// 🆕 Guardar vuelos en localStorage para mostrar rutas en panel de pedidos
+						localStorage.setItem('vuelosPlanificados', JSON.stringify(resultado.vuelos));
+						setVuelosDiarios(resultado.vuelos);
+						console.log(`💾 ${resultado.vuelos.length} vuelos guardados en localStorage`);
+						
+						// 🕐 Establecer tiempo simulado basado en el primer vuelo
+						const primerVuelo = vuelosParaMapa.find(v => v.fechaInicial);
+						if (primerVuelo) {
+							const timestampInicio = new Date(primerVuelo.fechaInicial).getTime();
+							setTiempoSimuladoBackend(timestampInicio);
+							setTiempoSimulado(timestampInicio);
+							tiempoSimuladoBackendRef.current = timestampInicio;
+							setTiempoSimulacionActual(primerVuelo.fechaInicial);
+							setUltimaActualizacionReal(Date.now());
+							console.log(`🕐 Tiempo simulado establecido: ${primerVuelo.fechaInicial}`);
+						}
+					}
+				} else {
+					console.log('⚠️ No hay vuelos en la respuesta');
+				}
+			}
+			
+			// Recargar pedidos también
+			await recargarPedidosDiarios();
+			
+		} catch (error) {
+			console.error('❌ Error en replanificación:', error);
+		} finally {
+			setCargandoRutas(false);
+		}
+	}, [modoPanel, recargarPedidosDiarios]);
 
 	// ===================== ESTADO BOTONES FLOTANTES ==================== 
 	const controlButtonRef = useRef(null);
@@ -1122,10 +1362,35 @@ const SimuladorDiario = () => {
 
 	useEffect(() => {
 		// Buscar vuelos que acaban de completarse (status = 'completed' o 'arrived')
-		const vuelosTerminados = vuelosEnMovimiento.filter(v =>
-			(v.status === 'completed' || v.status === 'arrived' || v.progress >= 1) &&
-			!vuelosCompletadosRef.current.has(v.id) // No procesados aún
-		);
+		// 🔴 FIX: También verificar que el tiempoSimulado >= horaLlegada
+		const vuelosTerminados = vuelosEnMovimiento.filter(v => {
+			// Primero verificar estado básico
+			if (!(v.status === 'completed' || v.status === 'arrived' || v.progress >= 1)) {
+				return false;
+			}
+			
+			// Ya fue procesado?
+			if (vuelosCompletadosRef.current.has(v.id)) {
+				return false;
+			}
+			
+			// 🔴 FIX: Verificar que el tiempo simulado >= hora de llegada
+			// Solo entonces el avión realmente llegó
+			if (v.fechaFinal && typeof tiempoSimulado === 'number') {
+				let fechaStr = v.fechaFinal;
+				if (typeof fechaStr === 'string' && !fechaStr.endsWith('Z')) {
+					fechaStr = fechaStr + 'Z';
+				}
+				const horaLlegada = new Date(fechaStr).getTime();
+				
+				// Si el tiempo simulado aún no llegó a la hora de llegada, NO contar
+				if (tiempoSimulado < horaLlegada) {
+					return false;
+				}
+			}
+			
+			return true;
+		});
 
 		if (vuelosTerminados.length > 0) {
 			// Extraer pedidos de vuelos completados
@@ -1216,7 +1481,7 @@ const SimuladorDiario = () => {
 				console.log(`📦 ${nuevosPedidosCompletados.length} pedido(s) completado(s) guardado(s)`);
 			}
 		}
-	}, [vuelosEnMovimiento]);
+	}, [vuelosEnMovimiento, tiempoSimulado]);
 
 	// 🆕 EFECTO: Actualizar el contador total de pedidos en pantalla
 	useEffect(() => {
@@ -1376,6 +1641,12 @@ const SimuladorDiario = () => {
 		}
 
 		const almacenPorAeropuerto = {}; // { codigo: { paquetes: number, pedidos: Set<string> } }
+		
+		// 🔍 DEBUG: Contadores para verificar 2 horas
+		let vuelosCompletados = 0;
+		let vuelosEnAlmacen = 0;
+		let vuelosRecogidos = 0;
+		let vuelosAunNoLlegaron = 0;
 
 		vuelosEnMovimiento.forEach(vuelo => {
 			// Solo considerar vuelos que ya aterrizaron (completados)
@@ -1395,13 +1666,30 @@ const SimuladorDiario = () => {
 
 			if (!horaLlegada) return;
 
+			// 🔴 FIX: Solo contar paquetes si el tiempo simulado >= hora de llegada
+			// (El avión debe haber LLEGADO para que los paquetes estén en almacén)
+			if (tiempoSimulado < horaLlegada) {
+				vuelosAunNoLlegaron++;
+				return; // El avión aún no ha llegado según el tiempo simulado
+			}
+			
+			vuelosCompletados++;
+
 			// Calcular tiempo transcurrido desde que aterrizó
 			const tiempoDesdeAterrizaje = tiempoSimulado - horaLlegada;
+			const horasDesdeAterrizaje = tiempoDesdeAterrizaje / (60 * 60 * 1000);
 
 			// Si han pasado más de 2 horas, los paquetes ya fueron recogidos
 			if (tiempoDesdeAterrizaje >= TIEMPO_RECOGIDA_MS) {
+				vuelosRecogidos++;
+				// 🔍 DEBUG: Log cuando paquetes son recogidos
+				if (Math.random() < 0.01) { // 1% para no saturar
+					console.log(`📦 RECOGIDO: Vuelo ${vuelo.id} → ${vuelo.destination?.code} | ${horasDesdeAterrizaje.toFixed(2)}h desde aterrizaje (>= 2h)`);
+				}
 				return; // Paquetes ya recogidos, no contar
 			}
+			
+			vuelosEnAlmacen++;
 
 			// Paquetes aún en almacén (esperando recogida)
 			const codigoDestino = vuelo.destination?.code;
@@ -1443,13 +1731,29 @@ const SimuladorDiario = () => {
 			delete almacenPorAeropuerto[codigo].pedidos; // Eliminar Set, solo mantener conteo
 		});
 
+		// 🔍 DEBUG: Log resumen cada 5 segundos (reducido para no saturar)
+		if (vuelosCompletados > 0 && Math.random() < 0.05) {
+			const tiempoSimuladoDate = new Date(tiempoSimulado);
+			console.log(`\n📊 ========== ESTADO ALMACÉN (2h) ==========`);
+			console.log(`🕐 Tiempo simulado: ${tiempoSimuladoDate.toISOString()}`);
+			console.log(`✈️  Vuelos completados: ${vuelosCompletados}`);
+			console.log(`📦 En almacén (<2h): ${vuelosEnAlmacen}`);
+			console.log(`✅ Ya recogidos (>=2h): ${vuelosRecogidos}`);
+			console.log(`🏢 Aeropuertos con paquetes: ${Object.keys(almacenPorAeropuerto).length}`);
+			Object.entries(almacenPorAeropuerto).forEach(([codigo, datos]) => {
+				console.log(`   ${codigo}: ${datos.paquetes} paquetes, recogida en ${datos.tiempoRestanteMin?.toFixed(0) || '?'} min`);
+			});
+			console.log(`============================================\n`);
+		}
+
 		return almacenPorAeropuerto;
 	}, [vuelosEnMovimiento, tiempoSimulado]);
 
 	// 🆕 EFECTO: Actualizar estado de aeropuertos con paquetes calculados
+	// Este efecto es la ÚNICA fuente de verdad para packages en aeropuertos (basado en tiempo simulado)
 	useEffect(() => {
-		if (Object.keys(paquetesEnAlmacen).length === 0) return;
-
+		// 🔴 FIX: Actualizar SIEMPRE, incluso si paquetesEnAlmacen está vacío
+		// para poner en 0 los aeropuertos que ya no tienen paquetes
 		setAirports(prevAirports => {
 			let cambios = false;
 			const nuevosAirports = prevAirports.map(airport => {
@@ -1854,6 +2158,13 @@ const SimuladorDiario = () => {
 			setControlSimpleAnchorEl(event.currentTarget);
 		}
 	};
+
+	// 🔄 Efecto para cerrar paneles al cambiar de modo
+	useEffect(() => {
+		// Cerrar ambos paneles al cambiar de modo
+		setControlAnchorEl(null);
+		setControlSimpleAnchorEl(null);
+	}, [modoPanel]);
 
 	const handleMetricsButtonClick = (event) => {
 		if (metricsAnchorEl) {
@@ -2433,12 +2744,14 @@ const SimuladorDiario = () => {
 				}
 			}
 
-			// 🆕 ACTUALIZAR AEROPUERTOS con datos de ocupación del backend
+			// 🔴 DESHABILITADO: La ocupación de aeropuertos ahora se calcula localmente
+			// basándose en el tiempoSimulado (ver useMemo paquetesEnAlmacen)
+			// Esto evita que el backend sobrescriba con datos que no respetan el tiempo simulado
+			/*
 			if (datos.solucion?.aeropuertos && datos.solucion.aeropuertos.length > 0) {
 				console.log(`🏢 Actualizando ocupación de ${datos.solucion.aeropuertos.length} aeropuertos...`);
 				setAirports(prevAirports => {
 					return prevAirports.map(airport => {
-						// Buscar datos actualizados del backend por código
 						const backendData = datos.solucion.aeropuertos.find(
 							a => a.code === airport.code || a.codigo === airport.code
 						);
@@ -2446,7 +2759,6 @@ const SimuladorDiario = () => {
 							return {
 								...airport,
 								packages: backendData.packages || backendData.ocupacionActual || 0,
-								// Actualizar capacidad si viene (puede ser string "ILIMITADO" o número)
 								capacity: backendData.capacity !== undefined ? backendData.capacity : airport.capacity
 							};
 						}
@@ -2454,6 +2766,7 @@ const SimuladorDiario = () => {
 					});
 				});
 			}
+			*/
 
 		} else if (datos.type === 'PROGRESS' || datos.status === 'RUNNING') {
 			// 🆕 NUEVA ESTRUCTURA: SimulationMessage con snapshot
@@ -2477,23 +2790,21 @@ const SimuladorDiario = () => {
 					}
 				}
 
-				// 🆕 ACTUALIZAR AEROPUERTOS con datos de ocupación del snapshot
+				// 🔴 DESHABILITADO: La ocupación de aeropuertos ahora se calcula localmente
+				// basándose en el tiempoSimulado (ver useMemo paquetesEnAlmacen)
+				/*
 				if (snapshot.aeropuertos && snapshot.aeropuertos.length > 0) {
 					console.log(`🏢 [Snapshot] Actualizando ocupación de ${snapshot.aeropuertos.length} aeropuertos...`);
 					setAirports(prevAirports => {
 						return prevAirports.map(airport => {
-							// Buscar datos actualizados del snapshot por código
 							const backendData = snapshot.aeropuertos.find(
 								a => a.codigo === airport.code || a.code === airport.code
 							);
 							if (backendData) {
 								return {
 									...airport,
-									// ocupacionActual = paquetes actuales en el almacén
 									packages: backendData.ocupacionActual || backendData.packages || 0,
-									// pedidosAlmacenados = número de pedidos (diferente a cantidad de paquetes)
 									pedidosCount: backendData.pedidosAlmacenados || 0,
-									// capacidadAlmacen = capacidad total
 									capacity: backendData.capacidadAlmacen || airport.capacity
 								};
 							}
@@ -2501,6 +2812,7 @@ const SimuladorDiario = () => {
 						});
 					});
 				}
+				*/
 			}
 			// Fallback para estructura antigua
 			else if (datos.solution?.routes) {
@@ -3098,9 +3410,9 @@ const SimuladorDiario = () => {
 	const mostSaturatedAirport = getMostSaturatedAirport();
 	const getFlightsByAltitude = () => flightsInAir;
 
-	/* 🆕 Filtrar vuelos en movimiento (progress > 0 y progress < 1) para métricas */
+	/* 🆕 Filtrar vuelos en movimiento (progress > 0 y progress < 100) para métricas */
 	const flightsInMovement = useMemo(() => {
-		return flights.filter(f => f.progress && f.progress > 0 && f.progress < 1);
+		return flights.filter(f => f.progress && f.progress > 0 && f.progress < 100);
 	}, [flights]);
 
 	/* 🆕 Estado para actualizar métricas en tiempo real */
@@ -3108,9 +3420,8 @@ const SimuladorDiario = () => {
 
 	/* 🆕 Efecto: Actualizar contador de vuelos en el aire con la MISMA LÓGICA que el sidebar */
 	useEffect(() => {
-		const enAire = (vuelosEnMovimiento || []).filter(f => (f.status === 'active' || (f.progress && f.progress > 0 && f.progress < 1))).length;
+		const enAire = (vuelosEnMovimiento || []).filter(f => (f.status === 'active' && f.progress > 0 && f.progress < 100)).length;
 		setFlightsInAirCount(enAire);
-		console.log(`📊 Vuelos en el aire (sidebar logic): ${enAire}`);
 	}, [vuelosEnMovimiento]);
 
 
@@ -3330,7 +3641,7 @@ const SimuladorDiario = () => {
 							>
 								<Tab label=" Vuelos" />
 								<Tab label=" Aeropuertos" />
-								<Tab label={` Pedidos ${contadorPedidosTotal > 0 ? `(${contadorPedidosTotal})` : ''}`} />
+								<Tab label=" Pedidos" />
 							</Tabs>
 						</Box>
 
@@ -3483,8 +3794,9 @@ const SimuladorDiario = () => {
 												const capacityValue = typeof airport.capacity === 'number' ? airport.capacity : (Number(airport.capacity) || 100);
 												const packages = airport.packages || 0;
 												const saturation = capacityValue > 0 ? (packages / capacityValue) * 100 : 0;
-												if (saturation >= 80) baseColor = '#dc3545'; // Rojo
-												else if (saturation >= 50) baseColor = '#f59e0b'; // Amarillo
+												// 🎨 NUEVOS UMBRALES: Bajo 0-10%, Medio 10-30%, Alto 30%+
+												if (saturation >= 30) baseColor = '#dc3545'; // Rojo
+												else if (saturation >= 10) baseColor = '#f59e0b'; // Amarillo
 												else baseColor = '#28a745'; // Verde
 											}
 											// Aplicar luminosidad 0.80 para color base, y más claro si está seleccionado
@@ -3534,7 +3846,201 @@ const SimuladorDiario = () => {
 
 								{sidebarTab === 'orders' && (
 									<Box>
-										{(() => {
+										{/* ===== MODO DIARIO: Mostrar pedidos del backend CON RUTAS ===== */}
+										{modoPanel === 'diario' ? (
+											<>
+												{cargandoPedidosDiarios ? (
+													<Box sx={{ color: '#6c757d', fontSize: '0.9rem', textAlign: 'center', padding: '20px 10px' }}>
+														⏳ Cargando pedidos...
+													</Box>
+												) : pedidosDiarios.length > 0 ? (
+														// Eliminar duplicados por ID antes de renderizar (usar String para key consistente)
+														[...new Map(pedidosDiarios.map(p => [String(p.id), p])).values()].filter(pedido => {
+															// Filtro por texto de búsqueda - convertir todo a string para comparación segura
+															const q = searchOrders.trim().toLowerCase();
+															const pedidoIdStr = String(pedido.id ?? '').toLowerCase();
+															const clienteIdStr = String(pedido.clienteId ?? '').toLowerCase();
+															const destinoIdStr = String(pedido.aeropuertoDestinoId ?? '').toLowerCase();
+															
+															const matchesSearch = !q || 
+																pedidoIdStr.includes(q) ||
+																clienteIdStr.includes(q) ||
+																destinoIdStr.includes(q);
+															
+															// Filtro por estado - usar vuelosEnMovimiento para estado actualizado
+															let matchesStatus = true;
+															if (orderStatusFilter !== 'todos') {
+																const pedidoIdNum = Number(pedido.id);
+																const pedidoIdString = String(pedido.id);
+																
+																// Buscar en vuelosEnMovimiento (estado actual)
+																const vueloActivo = (vuelosEnMovimiento || []).find(vuelo => {
+																	if (!vuelo.pedidos || !Array.isArray(vuelo.pedidos)) return false;
+																	return vuelo.pedidos.some(p => {
+																		// Comparar todos los campos posibles de ID
+																		const pIdPedido = p.idPedido;
+																		const pId = p.id;
+																		const pPedidoId = p.pedidoId;
+																		return String(pIdPedido) === pedidoIdString || 
+																			   String(pId) === pedidoIdString ||
+																			   String(pPedidoId) === pedidoIdString ||
+																			   Number(pIdPedido) === pedidoIdNum ||
+																			   Number(pId) === pedidoIdNum ||
+																			   Number(pPedidoId) === pedidoIdNum;
+																	});
+																});
+																
+																// Determinar estado visible basado en el vuelo actual
+																let visibleStatus = 'Planificado';
+																if (vueloActivo) {
+																	const prog = vueloActivo.progress ?? 0;
+																	const stat = vueloActivo.status;
+																	if ((stat === 'active' || stat === 'en_vuelo') && prog > 0 && prog < 100) {
+																		visibleStatus = 'En vuelo';
+																	} else if (stat === 'completed' || stat === 'arrived' || prog >= 100) {
+																		visibleStatus = 'Entregado';
+																	} else if (stat === 'waiting' || prog === 0) {
+																		visibleStatus = 'Planificado';
+																	}
+																}
+																matchesStatus = visibleStatus === orderStatusFilter;
+															}
+															
+															return matchesSearch && matchesStatus;
+														}).map(pedido => {
+															// Buscar vuelo activo para este pedido (usando vuelosEnMovimiento)
+															const pedidoIdNum = Number(pedido.id);
+															const pedidoIdString = String(pedido.id);
+															
+															const vueloActivo = (vuelosEnMovimiento || []).find(vuelo => {
+																if (!vuelo.pedidos || !Array.isArray(vuelo.pedidos)) return false;
+																return vuelo.pedidos.some(p => {
+																	const pIdPedido = p.idPedido;
+																	const pId = p.id;
+																	const pPedidoId = p.pedidoId;
+																	return String(pIdPedido) === pedidoIdString || 
+																		   String(pId) === pedidoIdString ||
+																		   String(pPedidoId) === pedidoIdString ||
+																		   Number(pIdPedido) === pedidoIdNum ||
+																		   Number(pId) === pedidoIdNum ||
+																		   Number(pPedidoId) === pedidoIdNum;
+																});
+															});
+															
+															// También buscar en vuelosDiarios para info de ruta
+															const vuelosDelPedido = (vuelosDiarios || []).filter(vuelo => {
+																if (!vuelo.pedidos || !Array.isArray(vuelo.pedidos)) return false;
+																return vuelo.pedidos.some(p => {
+																	const pIdPedido = p.idPedido;
+																	const pId = p.id;
+																	const pPedidoId = p.pedidoId;
+																	return String(pIdPedido) === pedidoIdString || 
+																		   String(pId) === pedidoIdString ||
+																		   String(pPedidoId) === pedidoIdString ||
+																		   Number(pIdPedido) === pedidoIdNum ||
+																		   Number(pId) === pedidoIdNum ||
+																		   Number(pPedidoId) === pedidoIdNum;
+																});
+															});
+															const tieneRuta = vuelosDelPedido.length > 0 || vueloActivo;
+															
+															// Determinar estado actual del pedido
+															let estadoPedido = 'Planificado';
+															if (vueloActivo) {
+																const prog = vueloActivo.progress ?? 0;
+																const stat = vueloActivo.status;
+																if ((stat === 'active' || stat === 'en_vuelo') && prog > 0 && prog < 100) {
+																	estadoPedido = 'En vuelo';
+																} else if (stat === 'completed' || stat === 'arrived' || prog >= 100) {
+																	estadoPedido = 'Entregado';
+																}
+															}
+															
+															return (
+														<Box
+															key={`pedido-diario-${pedido.id}`}
+															sx={{
+																border: '1px solid #dee2e6',
+																padding: '10px',
+																borderRadius: '8px',
+																marginBottom: '10px',
+																background: estadoPedido === 'En vuelo' ? '#ecfdf5' : estadoPedido === 'Entregado' ? '#fef3c7' : '#f0f9ff',
+																cursor: 'default',
+																transition: 'all 0.2s ease',
+																'&:hover': { borderColor: '#2c4a6b', boxShadow: '0 2px 8px rgba(44, 74, 107, 0.15)' }
+															}}>
+															<Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+																<Box sx={{ fontWeight: 700, fontSize: '0.95rem', color: '#2c4a6b' }}>📦 Pedido #{pedido.id}</Box>
+																<Box sx={{
+																	background: estadoPedido === 'En vuelo' ? '#22c55e' : estadoPedido === 'Entregado' ? '#f59e0b' : tieneRuta ? '#3b82f6' : '#6b7280',
+																	color: '#fff',
+																	padding: '2px 8px',
+																	borderRadius: '12px',
+																	fontSize: '0.75rem',
+																	fontWeight: 600
+																}}>
+																	{estadoPedido === 'En vuelo' ? '✈️ En vuelo' : estadoPedido === 'Entregado' ? '✅ Entregado' : tieneRuta ? '📋 Planificado' : 'Sin ruta'}
+																</Box>
+															</Box>
+															<Box sx={{ fontSize: '0.85rem', color: '#6c757d', marginTop: '4px' }}>
+																🎯 SPIM → {pedido.aeropuertoDestinoId || '?'}
+															</Box>
+															<Box sx={{ fontSize: '0.85rem', color: '#495057', marginTop: '4px' }}>
+																📦 {pedido.cantidadProductos} productos
+															</Box>
+															<Box sx={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '4px' }}>
+																👤 Cliente: {pedido.clienteId}
+															</Box>
+															<Box sx={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '2px' }}>
+																📅 Deadline: {pedido.dia}/{pedido.mes}/{pedido.anio} {String(pedido.hora).padStart(2,'0')}:{String(pedido.minuto).padStart(2,'0')} UTC
+															</Box>
+															
+															{/* 🆕 MOSTRAR RUTA/VUELOS SI EXISTEN */}
+															{tieneRuta && (
+																<Box sx={{ 
+																	marginTop: '8px', 
+																	paddingTop: '8px', 
+																	borderTop: '1px dashed #d1d5db',
+																	background: '#f8fafc',
+																	borderRadius: '4px',
+																	padding: '8px'
+																}}>
+																	<Box sx={{ fontSize: '0.8rem', fontWeight: 600, color: '#1e40af', marginBottom: '4px' }}>
+																		✈️ Ruta planificada ({vuelosDelPedido.length} vuelo{vuelosDelPedido.length > 1 ? 's' : ''}):
+																	</Box>
+																	{vuelosDelPedido.map((vuelo, idx) => (
+																		<Box key={idx} sx={{ 
+																			fontSize: '0.75rem', 
+																			color: '#374151',
+																			marginBottom: '4px',
+																			paddingLeft: '8px',
+																			borderLeft: '2px solid #3b82f6'
+																		}}>
+																			<Box sx={{ fontWeight: 500 }}>
+																				{idx + 1}. {vuelo.origenCodigoICAO} → {vuelo.destinoCodigoICAO}
+																			</Box>
+																			<Box sx={{ color: '#6b7280', fontSize: '0.7rem' }}>
+																				🛫 {vuelo.fechaInicial || vuelo.departureUtc || 'N/A'}
+																			</Box>
+																			<Box sx={{ color: '#6b7280', fontSize: '0.7rem' }}>
+																				🛬 {vuelo.fechaFinal || vuelo.arrivalUtc || 'N/A'}
+																			</Box>
+																		</Box>
+																	))}
+																</Box>
+															)}
+														</Box>
+													)})
+												) : (
+													<Box sx={{ color: '#6c757d', fontSize: '0.9rem', textAlign: 'center', padding: '20px 10px' }}>
+														Sin pedidos diarios. Crea pedidos desde la página de Pedidos.
+													</Box>
+												)}
+											</>
+										) : (
+											/* ===== MODO SEMANAL: Mostrar pedidos de vuelos (comportamiento original) ===== */
+											<>
+												{(() => {
 											const list = [];
 											// Usar `vuelosEnMovimiento` (estado interpolado) para obtener status y progreso real
 											(vuelosEnMovimiento || []).forEach(f => {
@@ -3614,9 +4120,9 @@ const SimuladorDiario = () => {
 												}
 												return matchesSearch && matchesStatus;
 											});
-										})().map(order => (
+										})().map((order, idx) => (
 											<Box
-												key={order.idPedido || order.id || `${order.flightId}-${order.origin}-${order.destination}-${Math.random()}`}
+												key={`order-semanal-${order.idPedido || order.id || idx}-${order.flightId || idx}`}
 												onClick={() => order.flightData && setSelectedFlight(order.flightData)}
 												sx={{
 													border: '1px solid #dee2e6',
@@ -3715,6 +4221,8 @@ const SimuladorDiario = () => {
 											if (!anyOrders) return <Box sx={{ color: '#6c757d', fontSize: '0.9rem', textAlign: 'center', padding: '20px 10px' }}>Sin pedidos disponibles</Box>;
 											return null;
 										})()}
+											</>
+										)}
 									</Box>
 								)}
 							</Box>
@@ -3783,7 +4291,7 @@ const SimuladorDiario = () => {
 																{departures.length > 0 ? (
 																	departures.map(f => (
 																		<Box key={f.id} sx={{ padding: '6px 8px', borderRadius: '4px', border: '1px solid #dee2e6', marginBottom: '6px', fontSize: '0.85rem', background: '#fff', color: '#495057' }}>
-																			✈️ {f.id} • {f.origin?.code || '?'} → {f.destination?.code || '?'} {f.progress !== undefined ? `• ${Math.round((f.progress||0)*100)}%` : ''}
+																			✈️ {f.id} • {f.origin?.code || '?'} → {f.destination?.code || '?'}
 																		</Box>
 																	))
 																) : (
@@ -3945,24 +4453,105 @@ const SimuladorDiario = () => {
 									setSidebarTab={setSidebarTab}
 									setOpen={setOpen}
 									setSelectedFlight={setSelectedFlight}
+									vuelosAcumulados={vuelosAcumulados}
 								/>
 							</MapContainer>
 							{/* Botón de Metricas */}
 							<MetricsButton onClick={handleMetricsButtonClick} onMount={handleMetricButtonMount}/>
 							{/* Botón de leyenda flotante */}
 							<LegendButton onClick={handleToggleLegend} />
-							{/* Botón de control simple (reloj UTC) - arriba del control principal */}
+							
+							{/* 🔄 Toggle para cambiar entre Modo Semanal y Modo Diario */}
+							<div
+								style={{
+									position: 'absolute',
+									bottom: '140px',
+									right: '15px',
+									zIndex: 1000,
+									display: 'flex',
+									flexDirection: 'column',
+									alignItems: 'center',
+									gap: '4px',
+								}}
+							>
+								<span style={{
+									fontSize: '9px',
+									fontWeight: '600',
+									color: '#495057',
+									textTransform: 'uppercase',
+									letterSpacing: '0.5px',
+								}}>
+									Modo
+								</span>
+								<div
+									onClick={() => setModoPanel(modoPanel === 'diario' ? 'semanal' : 'diario')}
+									style={{
+										width: '44px',
+										height: '24px',
+										borderRadius: '12px',
+										background: modoPanel === 'diario' ? '#1a237e' : '#6c757d',
+										cursor: 'pointer',
+										position: 'relative',
+										transition: 'all 0.3s ease',
+										boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+									}}
+									title={modoPanel === 'diario' ? 'Modo Diario (UTC) - Click para cambiar a Semanal' : 'Modo Semanal - Click para cambiar a Diario'}
+								>
+									<div
+										style={{
+											width: '20px',
+											height: '20px',
+											borderRadius: '50%',
+											background: 'white',
+											position: 'absolute',
+											top: '2px',
+											left: modoPanel === 'diario' ? '22px' : '2px',
+											transition: 'all 0.3s ease',
+											display: 'flex',
+											alignItems: 'center',
+											justifyContent: 'center',
+											fontSize: '10px',
+										}}
+									>
+										{modoPanel === 'diario' ? '🕐' : '📅'}
+									</div>
+								</div>
+								<span style={{
+									fontSize: '8px',
+									fontWeight: '500',
+									color: modoPanel === 'diario' ? '#1a237e' : '#6c757d',
+								}}>
+									{modoPanel === 'diario' ? 'Diario' : 'Semanal'}
+								</span>
+							</div>
+							
+							{/* Botón de control - abre el panel según el modo */}
 							<button
 								ref={(el) => {
-									// Auto-abrir el panel simple al montar
+									// Auto-abrir el panel al montar
 									if (el && !hasAutoOpened) {
 										setTimeout(() => {
-											setControlSimpleAnchorEl(el);
+											console.log(`🔧 Auto-open panel: modoPanel = ${modoPanel}`);
+											if (modoPanel === 'diario') {
+												setControlSimpleAnchorEl(el);
+											} else {
+												setControlAnchorEl(el);
+											}
 											setHasAutoOpened(true);
 										}, 100);
 									}
 								}}
-								onClick={handleControlSimpleButtonClick}
+								onClick={(event) => {
+									// Abrir el panel correspondiente al modo
+									console.log(`🔧 Click en botón control: modoPanel = ${modoPanel}`);
+									if (modoPanel === 'diario') {
+										console.log('🔧 Abriendo ControlPopperSimple');
+										handleControlSimpleButtonClick(event);
+									} else {
+										console.log('🔧 Abriendo ControlPopper (completo)');
+										handleControlButtonClick(event);
+									}
+								}}
 								style={{
 									position: 'absolute',
 									bottom: '95px',
@@ -3972,8 +4561,8 @@ const SimuladorDiario = () => {
 									height: '40px',
 									borderRadius: '8px',
 									border: 'none',
-									background: isControlSimplePopperOpen ? '#1a237e' : 'white',
-									color: isControlSimplePopperOpen ? 'white' : '#1a237e',
+									background: (modoPanel === 'diario' ? isControlSimplePopperOpen : isControlPopperOpen) ? '#1a237e' : 'white',
+									color: (modoPanel === 'diario' ? isControlSimplePopperOpen : isControlPopperOpen) ? 'white' : '#1a237e',
 									boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
 									cursor: 'pointer',
 									display: 'flex',
@@ -3983,12 +4572,10 @@ const SimuladorDiario = () => {
 									fontWeight: 'bold',
 									transition: 'all 0.2s',
 								}}
-								title="Panel de Control Rápido (UTC)"
+								title={modoPanel === 'diario' ? 'Panel de Control (Modo Diario - UTC)' : 'Panel de Control (Modo Semanal)'}
 							>
-								🕐
+								{modoPanel === 'diario' ? '🕐' : '⚙️'}
 							</button>
-							{/* Controles de simulación */} 
-							<ControlButton onClick={handleControlButtonClick} onMount={handleControlButtonMount}/>
 						</div>
 					</div>
 				</div>
@@ -4031,6 +4618,8 @@ const SimuladorDiario = () => {
 				simulacionActiva={simulacionActiva}
 				handleIniciarSimulacion={handleIniciarSimulacion}
 				handleDetenerSimulacion={handleDetenerSimulacion}
+				handleReplanificarDiario={handleReplanificarDiario}
+				cargandoRutas={cargandoRutas}
 				startButtonLabel={startButtonLabel}
 				showFlightLines={showFlightLines}
 				setShowFlightLines={setShowFlightLines}

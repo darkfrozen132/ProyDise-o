@@ -1,5 +1,6 @@
 package com.proyecto.backend.simulation.dto;
 
+import com.proyecto.backend.planificador.semanal.dto.response.VueloSimplificadoDTO;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -87,6 +88,12 @@ public class DailyOperationResponse {
      * Lista de rutas generadas (resumen)
      */
     private List<RutaResumen> rutas;
+
+    /**
+     * 🆕 Lista de vuelos detallados para visualización en mapa
+     * Cada vuelo incluye: origen, destino, fechas UTC, pedidos asignados, etc.
+     */
+    private List<VueloSimplificadoDTO> vuelos;
 
     /**
      * Resumen de una ruta generada

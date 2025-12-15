@@ -1,7 +1,8 @@
 package com.proyecto.backend.simulation.service;
 
 import com.proyecto.backend.model.PedidoDiario;
-import com.proyecto.backend.planificador.semanal.model.Solution;
+import com.proyecto.backend.planificador.semanal.dto.response.PlanificacionResponseSimple;
+import com.proyecto.backend.planificador.semanal.dto.response.VueloSimplificadoDTO;
 import com.proyecto.backend.planificador.semanal.model.SubRuta;
 import com.proyecto.backend.planificador.semanal.service.AlgoritmoGeneticoService;
 import com.proyecto.backend.model.PedidoSemanal;
@@ -14,7 +15,6 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * Servicio para Operación DIARIA
@@ -69,7 +69,13 @@ public class DailySimulationService {
 
             log.info("📦 [DAILY] Cargados {} pedidos totales de pedidos_diario", todosPedidos.size());
 
-            // 2. FILTRAR: Solo pedidos con fecha/hora >= hora actual (válidos para planificar)
+            // 2. MODO DESARROLLO: Procesar TODOS los pedidos sin filtrar por fecha
+            // En producción, descomentar el filtro de fecha
+            List<PedidoDiario> pedidosValidos = new ArrayList<>(todosPedidos);
+            int pedidosDescartados = 0;
+            
+            // COMENTADO PARA DESARROLLO - Descomentar para producción:
+            /*
             List<PedidoDiario> pedidosValidos = todosPedidos.stream()
                     .filter(p -> {
                         LocalDateTime fechaPedido = LocalDateTime.of(
@@ -97,9 +103,10 @@ public class DailySimulationService {
                         .pedidosSinRuta(pedidosDescartados)
                         .build();
             }
+            */
 
-            log.info("✅ [DAILY] {} pedidos válidos para procesar (descartados: {})", 
-                    pedidosValidos.size(), pedidosDescartados);
+            log.info("✅ [DAILY] {} pedidos para procesar (modo desarrollo: sin filtro de fecha)", 
+                    pedidosValidos.size());
 
             // 3. Calcular rango de fechas de los pedidos VÁLIDOS
             LocalDateTime fechaMin = calcularFechaMinima(pedidosValidos);
@@ -157,28 +164,42 @@ public class DailySimulationService {
                 }
             }
 
+            // 🆕 CONVERTIR A VUELOS DETALLADOS para visualización en mapa
+            List<VueloSimplificadoDTO> vuelosDetallados = new ArrayList<>();
+            if (resultado.solucion != null && resultado.worldTemporal != null) {
+                try {
+                    PlanificacionResponseSimple responseSimple = 
+                        algoritmoGeneticoService.convertirAResponseSimple(resultado.solucion, resultado.worldTemporal);
+                    vuelosDetallados = responseSimple.getVuelos();
+                    log.info("✈️ [DAILY] Convertidos {} vuelos detallados para visualización", vuelosDetallados.size());
+                } catch (Exception e) {
+                    log.warn("⚠️ [DAILY] No se pudieron convertir vuelos detallados: {}", e.getMessage());
+                }
+            }
+
             long tiempoTotal = System.currentTimeMillis() - inicioTotal;
 
-            log.info("✅ [DAILY] Operación completada en {}ms: {} válidos → {} rutas (descartados: {})", 
-                    tiempoTotal, pedidosValidos.size(), rutasResumen.size(), pedidosDescartados);
+            log.info("✅ [DAILY] Operación completada en {}ms: {} válidos → {} rutas, {} vuelos (descartados: {})", 
+                    tiempoTotal, pedidosValidos.size(), rutasResumen.size(), vuelosDetallados.size(), pedidosDescartados);
 
             return DailyOperationResponse.builder()
                     .success(true)
                     .mensaje(String.format(
-                            "Operación completada: %d pedidos válidos procesados, %d rutas generadas, %d descartados por fecha pasada", 
-                            pedidosValidos.size(), rutasResumen.size(), pedidosDescartados))
+                            "Operación completada: %d pedidos válidos procesados, %d rutas generadas, %d vuelos, %d descartados por fecha pasada", 
+                            pedidosValidos.size(), rutasResumen.size(), vuelosDetallados.size(), pedidosDescartados))
                     .totalPedidos(todosPedidos.size())
                     .pedidosValidos(pedidosValidos.size())
                     .pedidosDescartados(pedidosDescartados)
                     .pedidosAsignados(resultado.pedidosAsignados)
                     .pedidosSinRuta(resultado.pedidosSinRuta)
-                    .totalVuelos(rutasResumen.size())
+                    .totalVuelos(vuelosDetallados.size())
                     .mejorFitness(resultado.mejorFitness)
                     .tiempoProcesamiento(tiempoTotal)
                     .horaServidorUsada(horaActualServidor)
                     .fechaInicioPedidos(fechaMin)
                     .fechaFinPedidos(fechaMax)
                     .rutas(rutasResumen)
+                    .vuelos(vuelosDetallados)
                     .build();
 
         } catch (Exception e) {

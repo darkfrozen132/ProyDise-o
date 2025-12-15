@@ -1392,6 +1392,12 @@ const SimuladorSemanal = () => {
 
 			if (!horaLlegada) return;
 
+			// 🔴 FIX: Solo contar paquetes si el tiempo simulado >= hora de llegada
+			// (El avión debe haber LLEGADO para que los paquetes estén en almacén)
+			if (tiempoSimulado < horaLlegada) {
+				return; // El avión aún no ha llegado según el tiempo simulado
+			}
+
 			// Calcular tiempo transcurrido desde que aterrizó
 			const tiempoDesdeAterrizaje = tiempoSimulado - horaLlegada;
 

@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
+import java.util.Set;
 
 /**
  * Buscador de rutas usando BFS (Breadth-First Search)
@@ -23,6 +24,8 @@ public class BuscadorRutas {
     
     // 🆕 Capacidad mínima para considerar un vuelo (evitar fragmentación excesiva)
     private static final int CAPACIDAD_MINIMA_UTIL = 50;
+
+    private static final Set<String> SEDES_HUBS = Set.of("SPIM", "EBCI", "UBBB");
 
     private final WorldTemporal worldTemporal;
     private final ControladorAlmacenes controladorAlmacenes;
@@ -245,7 +248,10 @@ public class BuscadorRutas {
                 if (!vuelo.esModificable()) {
                     continue; // Vuelo EN_VUELO o ATERRIZADO → NO se puede reasignar
                 }
-                
+                if (SEDES_HUBS.contains(vuelo.getDestino()) && !vuelo.getDestino().equals(destinoFinal)) {
+                    continue; // Vuelo hacia sede como escala intermedia → NO permitido
+                }
+
                 // 🆕 FILTRO DE HORA MÍNIMA: Solo para el primer vuelo
                 if (rutaActual.vuelosAcumulados.isEmpty() && rutaActual.horaMinima != null) {
                     java.time.LocalTime horaSalidaVuelo = vuelo.getSalidaUTC().toLocalTime();

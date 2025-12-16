@@ -260,24 +260,22 @@ const createAirportPopup = (airport, capacidadSaliente = null) => {
 			${recogidaInfo}
 		</div>`;
 
-	// 🆕 Para sedes con capacidad ilimitada - mostrar capacidad saliente
+	// 🆕 Para sedes con capacidad ilimitada - mostrar info de sede
 	const vuelosSalientes = capacidadSaliente?.vuelos || 0;
-	const paquetesSalientes = capacidadSaliente?.paquetes || 0;
 	
 	const unlimitedSection = isUnlimited ? `
 		<div style="margin-top:12px; padding-top:12px; border-top: 1px solid #e5e7eb;">
 			<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-				<span style="font-size:12px; font-weight:600; color:#374151;">✈️ Capacidad Saliente</span>
-				<span style="font-size:13px; font-weight:700; color:#2563eb;">SEDE</span>
+				<span style="font-size:12px; font-weight:600; color:#374151;">🏢 Información de Sede</span>
 			</div>
 			<div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-top:8px;">
 				<div style="background:#dbeafe; padding:10px; border-radius:6px; text-align:center;">
 					<div style="font-size:20px; font-weight:700; color:#1e40af;">${vuelosSalientes.toLocaleString()}</div>
 					<div style="font-size:11px; color:#1e40af; font-weight:500;">Vuelos salientes</div>
 				</div>
-				<div style="background:#fef3c7; padding:10px; border-radius:6px; text-align:center;">
-					<div style="font-size:20px; font-weight:700; color:#92400e;">${paquetesSalientes.toLocaleString()}</div>
-					<div style="font-size:11px; color:#92400e; font-weight:500;">Productos enviados</div>
+				<div style="background:#f8fafc; padding:10px; border-radius:6px; text-align:center;">
+					<div style="font-size:20px; font-weight:700; color:#6b7280;">∞</div>
+					<div style="font-size:11px; color:#6b7280; font-weight:500;">Capacidad ilimitada</div>
 				</div>
 			</div>
 			${pedidosCount > 0 ? `

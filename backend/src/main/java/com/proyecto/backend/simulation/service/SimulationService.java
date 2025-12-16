@@ -63,8 +63,12 @@ public class SimulationService {
     private final ExecutorService virtualThreadExecutor = Executors.newVirtualThreadPerTaskExecutor();
 
     // ============ CONSTANTES ============
-    private static final int SALTO_ALGORITMO_MINUTOS = 5; // Sa = 5 minutos (fijo)
+    private static final int SALTO_ALGORITMO_MINUTOS = 5;
     private static final String TOPIC_PREFIX = "/topic/simulations/";
+    
+    // ============ CONFIGURACIÓN DE DÍAS POR TIPO DE SIMULACIÓN ============
+    private static final int DIAS_SIMULACION_DIARIA = 7;
+    private static final int DIAS_SIMULACION_SEMANAL = 7;
 
     // ============ MÉTODOS PRINCIPALES ============
 
@@ -216,11 +220,10 @@ public class SimulationService {
             
             log.info("📊 Sesión {} iniciada. Total pedidos a procesar: {}", sessionId, totalPedidos);
             
-            // Determinar si es simulacion diaria o semanal
             String tipoSimulacion = session.getConfiguration().getTipoSimulacion();
             boolean esDiario = "diario".equalsIgnoreCase(tipoSimulacion);
-            int diasSimulacion = esDiario ? 3 : 7;
-            String tipoTexto = esDiario ? "DIARIO (3 dias)" : "SEMANAL (7 dias)";
+            int diasSimulacion = esDiario ? DIAS_SIMULACION_DIARIA : DIAS_SIMULACION_SEMANAL;
+            String tipoTexto = esDiario ? "DIARIO (" + DIAS_SIMULACION_DIARIA + " dias)" : "SEMANAL (" + DIAS_SIMULACION_SEMANAL + " dias)";
             
             // PRE-PROCESAR el periodo completo al inicio
             log.info("═══════════════════════════════════════════════════════════════");
@@ -436,7 +439,7 @@ public class SimulationService {
         String tipoSimulacion = request.getTipoSimulacion();
         boolean esDiario = "diario".equalsIgnoreCase(tipoSimulacion);
         
-        int diasSimulacion = esDiario ? 3 : 7;
+        int diasSimulacion = esDiario ? DIAS_SIMULACION_DIARIA : DIAS_SIMULACION_SEMANAL;
         String tablaNombre = esDiario ? "pedidos_diario" : "pedidos_semanal";
         
         log.info("Cargando snapshot del mundo ({} dias) desde tabla {}...", diasSimulacion, tablaNombre);

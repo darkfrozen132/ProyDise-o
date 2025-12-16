@@ -27,9 +27,9 @@ import PedidoDiarioService from '../../../services/PedidoDiarioService';
 import { IoMdAirplane } from "react-icons/io";
 import ReactDOMServer from "react-dom/server";
 
-/* Constantes de configuracion de tiempo de simulacion */
-const DESIRED_TIME_SCALE = 300; // Valor de K
-const TIEMPO_RECOGIDA_MS = 2 * 60 * 60 * 1000; // 2 horas en milisegundos - tiempo para recoger paquetes del almacén
+const DIAS_SIMULACION = 7;
+const DESIRED_TIME_SCALE = 300;
+const TIEMPO_RECOGIDA_MS = 2 * 60 * 60 * 1000;
 
 /* Reparar iconos por defecto de Leaflet */
 delete L.Icon.Default.prototype._getIconUrl;
@@ -1786,42 +1786,33 @@ const SimuladorDiario = () => {
 		flightsInAirRef.current = flightsInAir;
 	}, [flightsInAir]);
 
-	// CONSTANTE: Duracion de la simulacion diaria (3 dias en milisegundos)
-	const DURACION_SIMULACION_MS = 3 * 24 * 60 * 60 * 1000; // 259,200,000 ms = 3 dias
+	const DURACION_SIMULACION_MS = DIAS_SIMULACION * 24 * 60 * 60 * 1000;
 
 	useEffect(() => {
 		if (!simulacionLocalActiva || !relojLocalRef.current || !simStartRef.current) return;
 
-		// VELOCIDAD CONSTANTE: Siempre usa K=300 (DESIRED_TIME_SCALE)
-		// Sin adaptacion basada en aviones visibles
-		const K_CONSTANTE = DESIRED_TIME_SCALE; // 300x
+		const K_CONSTANTE = DESIRED_TIME_SCALE;
 
 		const interval = setInterval(() => {
-			// Calcular milisegundos simulados por tick
-			// Formula: msSimulados = (TICK_REAL_MS / 1000) * K * 1000 = TICK_REAL_MS * K
 			const msSimulados = TICK_REAL_MS * K_CONSTANTE;
 
-			// Avanzar el reloj local
 			const nuevoTiempo = new Date(relojLocalRef.current.getTime() + msSimulados);
 
-			// VERIFICAR LIMITE DE 3 DIAS
 			const tiempoTranscurridoSimulado = nuevoTiempo.getTime() - simStartRef.current.getTime();
 			if (tiempoTranscurridoSimulado >= DURACION_SIMULACION_MS) {
-				console.log('SIMULACION DIARIA COMPLETADA - 3 dias simulados');
+				console.log(`SIMULACION DIARIA COMPLETADA - ${DIAS_SIMULACION} dias simulados`);
 				console.log(`   Inicio: ${simStartRef.current.toISOString()}`);
 				console.log(`   Fin: ${nuevoTiempo.toISOString()}`);
 
-				// Detener la simulacion local
 				setSimulacionLocalActiva(false);
 				setSimulacionActiva(false);
 
-				// Limpiar intervalo de tiempo real
 				if (intervalTiempoRealRef.current) {
 					clearInterval(intervalTiempoRealRef.current);
 					intervalTiempoRealRef.current = null;
 				}
 
-				alert('Simulacion diaria completada (3 dias)');
+				alert(`Simulacion diaria completada (${DIAS_SIMULACION} dias)`);
 				return;
 			}
 
@@ -1830,14 +1821,12 @@ const SimuladorDiario = () => {
 			setSimClock(nuevoTiempo);
 			setTiempoSimulacionActual(nuevoTiempo.toISOString());
 
-			// IMPORTANTE: Actualizar tiempoSimulado para la interpolacion de vuelos
 			setTiempoSimulado(nuevoTiempo.getTime());
 
-			// Debug cada 20 segundos aproximadamente (80 ticks @ 250ms)
 			if (Math.random() < 0.0125) {
 				const avionesEnPantalla = flightsInAirRef.current;
 				const diasTranscurridos = (tiempoTranscurridoSimulado / (24 * 60 * 60 * 1000)).toFixed(2);
-				console.log(`⏰ Reloj: ${nuevoTiempo.toISOString().slice(11, 19)} | Día ${diasTranscurridos}/3 | K=${K_CONSTANTE} | Aviones=${avionesEnPantalla}`);
+				console.log(`⏰ Reloj: ${nuevoTiempo.toISOString().slice(11, 19)} | Día ${diasTranscurridos}/${DIAS_SIMULACION} | K=${K_CONSTANTE} | Aviones=${avionesEnPantalla}`);
 			}
 		}, TICK_REAL_MS);
 

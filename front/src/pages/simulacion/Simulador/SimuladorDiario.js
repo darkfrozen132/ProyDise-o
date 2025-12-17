@@ -27,9 +27,9 @@ import PedidoDiarioService from '../../../services/PedidoDiarioService';
 import { IoMdAirplane } from "react-icons/io";
 import ReactDOMServer from "react-dom/server";
 
-/* Constantes de configuracion de tiempo de simulacion */
-const DESIRED_TIME_SCALE = 300; // Valor de K
-const TIEMPO_RECOGIDA_MS = 2 * 60 * 60 * 1000; // 2 horas en milisegundos - tiempo para recoger paquetes del almacén
+const DIAS_SIMULACION = 7;
+const DESIRED_TIME_SCALE = 300;
+const TIEMPO_RECOGIDA_MS = 2 * 60 * 60 * 1000;
 
 /* Reparar iconos por defecto de Leaflet */
 delete L.Icon.Default.prototype._getIconUrl;
@@ -202,7 +202,7 @@ const createAirportIcon = (name, saturation = 0) => {
 };
 
 /* Crear popup detallado para un aeropuerto (HTML string) */
-const createAirportPopup = (airport) => {
+const createAirportPopup = (airport, capacidadSaliente = null) => {
 	const isUnlimited = airport.capacity === 'ILIMITADO';
 	const capacityValue = isUnlimited ? null : (typeof airport.capacity === 'number' ? airport.capacity : (Number(airport.capacity) || null));
 	const packages = airport.packages || 0;
@@ -260,23 +260,29 @@ const createAirportPopup = (airport) => {
 			${recogidaInfo}
 		</div>`;
 
-	// 🆕 Para sedes con capacidad ilimitada
+	// 🆕 Para sedes con capacidad ilimitada - mostrar info de sede
+	const vuelosSalientes = capacidadSaliente?.vuelos || 0;
+	
 	const unlimitedSection = isUnlimited ? `
 		<div style="margin-top:12px; padding-top:12px; border-top: 1px solid #e5e7eb;">
 			<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-				<span style="font-size:12px; font-weight:600; color:#374151;">📦 Almacén</span>
-				<span style="font-size:13px; font-weight:700; color:#6b7280;">ILIMITADO</span>
+				<span style="font-size:12px; font-weight:600; color:#374151;">🏢 Información de Sede</span>
 			</div>
-			<div style="background:#f8fafc; padding:10px; border-radius:6px; text-align:center; margin-top:8px;">
-				<div style="font-size:20px; font-weight:700; color:#1f2937;">${packages.toLocaleString()}</div>
-				<div style="font-size:11px; color:#6b7280;">Paquetes actuales</div>
+			<div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-top:8px;">
+				<div style="background:#dbeafe; padding:10px; border-radius:6px; text-align:center;">
+					<div style="font-size:20px; font-weight:700; color:#1e40af;">${vuelosSalientes.toLocaleString()}</div>
+					<div style="font-size:11px; color:#1e40af; font-weight:500;">Vuelos salientes</div>
+				</div>
+				<div style="background:#f8fafc; padding:10px; border-radius:6px; text-align:center;">
+					<div style="font-size:20px; font-weight:700; color:#6b7280;">∞</div>
+					<div style="font-size:11px; color:#6b7280; font-weight:500;">Capacidad ilimitada</div>
+				</div>
 			</div>
 			${pedidosCount > 0 ? `
 				<div style="margin-top:8px; font-size:12px; color:#6b7280; text-align:center;">
-					📋 ${pedidosCount} pedidos en almacén
+					📋 ${pedidosCount} pedidos planificados
 				</div>
 			` : ''}
-			${recogidaInfo}
 		</div>
 	` : '';
 
@@ -317,7 +323,7 @@ const calculateBearing = (from, to) => {
 
 
 /* ======= Componente para manejar marcadores y líneas dinámicas ======= */
-function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMovimiento, showFlightLines, setSelectedAirport, setSidebarTab, setOpen, setSelectedFlight }) {
+function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMovimiento, showFlightLines, setSelectedAirport, setSidebarTab, setOpen, setSelectedFlight, vuelosAcumulados }) {
 	const map = (0, require('react-leaflet').useMap)();
 	const markersRef = React.useRef({});
 	const airportMarkersRef = React.useRef({});
@@ -345,7 +351,14 @@ function DynamicMarkers({ flights, airports, activeView, showRoutes, vuelosEnMov
 			// Añadir código al set actual
 			currentAirportCodes.add(airport.code);
 			const existingMarker = airportMarkersRef.current[airport.code];
-			const html = createAirportPopup(airport);
+			const airportCode = String(airport.code || '').toUpperCase();
+			// 🆕 Calcular capacidad saliente directamente desde vuelosAcumulados (mismo cálculo que la pestaña)
+			const vuelosSalientes = (vuelosAcumulados || []).filter(f => String(f.origin?.code || '').toUpperCase() === airportCode);
+			const capacidadSaliente = {
+				vuelos: vuelosSalientes.length,
+				paquetes: vuelosSalientes.reduce((sum, v) => sum + (v.currentPackages || v.pedidos?.length || 1), 0)
+			};
+			const html = createAirportPopup(airport, capacidadSaliente);
 
 			// Actualizar o crear marcador
 			if (existingMarker) {
@@ -942,7 +955,18 @@ const SimuladorDiario = () => {
 							currentPackages: vuelo.quantity || 1,
 							packageType: 'DAILY',
 							isSameContinentFlight: origen.region === destino.region,
-							pedidos: vuelo.pedidos || [],
+							// � DEBUG: Ver estructura real de pedidos del AG
+							...(vuelo.pedidos && vuelo.pedidos.length > 0 && console.log(`🔍 ESTRUCTURA PEDIDO (AG) - Vuelo ${vuelo.origenCodigoICAO}→${vuelo.destinoCodigoICAO}:`, JSON.stringify(vuelo.pedidos[0], null, 2), `🔑 Campos:`, Object.keys(vuelo.pedidos[0]))),
+							// �🔴 FIX: Mapear pedidos preservando destino final
+							pedidos: (vuelo.pedidos || []).map(p => ({
+								...p,
+								idPedido: p.idPedido || p.orderId || p.id,
+								cantidad: p.cantidad || p.quantity || 1,
+								destinoVueloActual: vuelo.destinoCodigoICAO,
+								destinoFinalPedido: p.destinoFinal || p.aeropuertoDestinoId || p.destino,
+								aeropuertoDestinoId: p.aeropuertoDestinoId || p.destinoFinal || p.destino,
+								origen: p.origen || vuelo.origenCodigoICAO
+							})),
 							slackMinutes: vuelo.slackMinutes || 0
 						};
 					}).filter(v => v !== null);
@@ -1620,26 +1644,97 @@ const SimuladorDiario = () => {
 	// ==================== 🆕 CÁLCULO DE PAQUETES EN ALMACÉN POR AEROPUERTO ====================
 	// Los paquetes en almacén = vuelos que aterrizaron hace menos de 2 horas
 	// Después de 2 horas, los paquetes se "recogen" y se eliminan del almacén
+	// 🔴 FIX VUELOS INTERMEDIOS: Solo quitar después de 2h si llegó al destino FINAL del pedido
+	
+	// 🆕 FUNCIÓN: Buscar destino final de un pedido usando MÚLTIPLES fuentes
+	const buscarDestinoFinalPedido = useCallback((idPedido, vuelosParaBuscar = []) => {
+		if (!idPedido) return null;
+		
+		const idString = String(idPedido);
+		const idNum = Number(idPedido);
+		
+		// FUENTE 1: Buscar en pedidosDiarios (backend)
+		if (pedidosDiarios.length > 0) {
+			const pedidoEncontrado = pedidosDiarios.find(p => 
+				String(p.id) === idString || Number(p.id) === idNum
+			);
+			if (pedidoEncontrado && pedidoEncontrado.aeropuertoDestinoId) {
+				return (pedidoEncontrado.aeropuertoDestinoId || '').toString().toUpperCase();
+			}
+		}
+		
+		// FUENTE 2: Buscar en vuelosDiarios (localStorage) - el último tramo del pedido
+		if (vuelosDiarios.length > 0) {
+			const vuelosDelPedido = vuelosDiarios.filter(v => {
+				const pedidosVuelo = v.pedidos || [];
+				return pedidosVuelo.some(p => 
+					String(p.idPedido || p.id) === idString || 
+					Number(p.idPedido || p.id) === idNum
+				) || String(v.pedidoId) === idString || Number(v.pedidoId) === idNum;
+			});
+			
+			if (vuelosDelPedido.length > 0) {
+				// Ordenar por fecha de llegada y tomar el último (destino final)
+				const ultimoVuelo = vuelosDelPedido.sort((a, b) => {
+					const fechaA = new Date(a.fechaFinal || a.horaLlegada || 0).getTime();
+					const fechaB = new Date(b.fechaFinal || b.horaLlegada || 0).getTime();
+					return fechaB - fechaA;
+				})[0];
+				
+				if (ultimoVuelo?.destination?.code) {
+					return (ultimoVuelo.destination.code || '').toUpperCase();
+				}
+			}
+		}
+		
+		// FUENTE 3: Buscar en vuelosEnMovimiento pasados como parámetro
+		if (vuelosParaBuscar.length > 0) {
+			const vuelosDelPedido = vuelosParaBuscar.filter(v => {
+				const pedidosVuelo = v.pedidos || [];
+				return pedidosVuelo.some(p => 
+					String(p.idPedido || p.id) === idString || 
+					Number(p.idPedido || p.id) === idNum
+				) || String(v.pedidoId) === idString || Number(v.pedidoId) === idNum;
+			});
+			
+			if (vuelosDelPedido.length > 0) {
+				// Ordenar por fecha de llegada y tomar el último (destino final)
+				const ultimoVuelo = vuelosDelPedido.sort((a, b) => {
+					const fechaA = new Date(a.fechaFinal || 0).getTime();
+					const fechaB = new Date(b.fechaFinal || 0).getTime();
+					return fechaB - fechaA;
+				})[0];
+				
+				if (ultimoVuelo?.destination?.code) {
+					return (ultimoVuelo.destination.code || '').toUpperCase();
+				}
+			}
+		}
+		
+		// 🔍 DEBUG: Si no se encontró en ninguna fuente
+		if (Math.random() < 0.02) {
+			console.log(`⚠️ buscarDestinoFinalPedido(${idPedido}): NO ENCONTRADO en ninguna fuente`);
+			console.log(`   - pedidosDiarios: ${pedidosDiarios.length} items`);
+			console.log(`   - vuelosDiarios: ${vuelosDiarios.length} items`);
+			console.log(`   - vuelosParaBuscar: ${vuelosParaBuscar.length} items`);
+		}
+		
+		return null;
+	}, [pedidosDiarios, vuelosDiarios]);
+	
 	const paquetesEnAlmacen = useMemo(() => {
 		if (!tiempoSimulado || vuelosEnMovimiento.length === 0) {
-			return {}; // Objeto vacío: { codigoAeropuerto: { paquetes, pedidos } }
+			return {};
 		}
 
-		const almacenPorAeropuerto = {}; // { codigo: { paquetes: number, pedidos: Set<string> } }
+		const almacenPorAeropuerto = {};
 		
-		// 🔍 DEBUG: Contadores para verificar 2 horas
-		let vuelosCompletados = 0;
-		let vuelosEnAlmacen = 0;
-		let vuelosRecogidos = 0;
-		let vuelosAunNoLlegaron = 0;
-
+		// ==================== PASO 1: AGREGAR PAQUETES DE VUELOS QUE LLEGARON ====================
 		vuelosEnMovimiento.forEach(vuelo => {
-			// Solo considerar vuelos que ya aterrizaron (completados)
-			if (vuelo.status !== 'completed' || vuelo.progress < 100) {
-				return;
-			}
+			// Solo vuelos completados (ya aterrizaron)
+			if (vuelo.status !== 'completed' || vuelo.progress < 100) return;
 
-			// Obtener hora de llegada del vuelo
+			// Obtener hora de llegada
 			let horaLlegada = null;
 			if (vuelo.fechaFinal) {
 				let fechaStr = vuelo.fechaFinal;
@@ -1648,91 +1743,128 @@ const SimuladorDiario = () => {
 				}
 				horaLlegada = new Date(fechaStr).getTime();
 			}
+			if (!horaLlegada || tiempoSimulado < horaLlegada) return;
 
-			if (!horaLlegada) return;
-
-			// 🔴 FIX: Solo contar paquetes si el tiempo simulado >= hora de llegada
-			// (El avión debe haber LLEGADO para que los paquetes estén en almacén)
-			if (tiempoSimulado < horaLlegada) {
-				vuelosAunNoLlegaron++;
-				return; // El avión aún no ha llegado según el tiempo simulado
-			}
-			
-			vuelosCompletados++;
-
-			// Calcular tiempo transcurrido desde que aterrizó
-			const tiempoDesdeAterrizaje = tiempoSimulado - horaLlegada;
-			const horasDesdeAterrizaje = tiempoDesdeAterrizaje / (60 * 60 * 1000);
-
-			// Si han pasado más de 2 horas, los paquetes ya fueron recogidos
-			if (tiempoDesdeAterrizaje >= TIEMPO_RECOGIDA_MS) {
-				vuelosRecogidos++;
-				// 🔍 DEBUG: Log cuando paquetes son recogidos
-				if (Math.random() < 0.01) { // 1% para no saturar
-					console.log(`📦 RECOGIDO: Vuelo ${vuelo.id} → ${vuelo.destination?.code} | ${horasDesdeAterrizaje.toFixed(2)}h desde aterrizaje (>= 2h)`);
-				}
-				return; // Paquetes ya recogidos, no contar
-			}
-			
-			vuelosEnAlmacen++;
-
-			// Paquetes aún en almacén (esperando recogida)
-			const codigoDestino = vuelo.destination?.code;
+			const codigoDestino = (vuelo.destination?.code || '').toUpperCase();
 			if (!codigoDestino) return;
 
-			// Inicializar si no existe
-			if (!almacenPorAeropuerto[codigoDestino]) {
-				almacenPorAeropuerto[codigoDestino] = {
-					paquetes: 0,
-					pedidos: new Set(),
-					tiempoRestanteMin: Infinity // Tiempo mínimo para la próxima recogida
-				};
+			const tiempoDesdeAterrizaje = tiempoSimulado - horaLlegada;
+
+			// Procesar cada pedido del vuelo
+			const pedidos = vuelo.pedidos || [];
+			if (pedidos.length === 0 && vuelo.pedidoId) {
+				// Vuelo con pedidoId único
+				pedidos.push({ idPedido: vuelo.pedidoId, cantidad: vuelo.currentPackages || 1 });
 			}
 
-			// Sumar paquetes de este vuelo
-			const cantidadPaquetes = vuelo.currentPackages || vuelo.pedidos?.reduce((sum, p) => sum + (p.cantidad || 0), 0) || 0;
-			almacenPorAeropuerto[codigoDestino].paquetes += cantidadPaquetes;
-
-			// Agregar IDs de pedidos
-			if (vuelo.pedidoId) {
-				almacenPorAeropuerto[codigoDestino].pedidos.add(vuelo.pedidoId);
-			}
-			if (vuelo.pedidos) {
-				vuelo.pedidos.forEach(p => {
-					if (p.idPedido) almacenPorAeropuerto[codigoDestino].pedidos.add(p.idPedido);
-				});
-			}
-
-			// Calcular tiempo restante para recogida (en minutos)
-			const tiempoRestante = (TIEMPO_RECOGIDA_MS - tiempoDesdeAterrizaje) / 60000;
-			if (tiempoRestante < almacenPorAeropuerto[codigoDestino].tiempoRestanteMin) {
-				almacenPorAeropuerto[codigoDestino].tiempoRestanteMin = tiempoRestante;
-			}
-		});
-
-		// Convertir Sets a conteo
-		Object.keys(almacenPorAeropuerto).forEach(codigo => {
-			almacenPorAeropuerto[codigo].pedidosCount = almacenPorAeropuerto[codigo].pedidos.size;
-			delete almacenPorAeropuerto[codigo].pedidos; // Eliminar Set, solo mantener conteo
-		});
-
-		// 🔍 DEBUG: Log resumen cada 5 segundos (reducido para no saturar)
-		if (vuelosCompletados > 0 && Math.random() < 0.05) {
-			const tiempoSimuladoDate = new Date(tiempoSimulado);
-			console.log(`\n📊 ========== ESTADO ALMACÉN (2h) ==========`);
-			console.log(`🕐 Tiempo simulado: ${tiempoSimuladoDate.toISOString()}`);
-			console.log(`✈️  Vuelos completados: ${vuelosCompletados}`);
-			console.log(`📦 En almacén (<2h): ${vuelosEnAlmacen}`);
-			console.log(`✅ Ya recogidos (>=2h): ${vuelosRecogidos}`);
-			console.log(`🏢 Aeropuertos con paquetes: ${Object.keys(almacenPorAeropuerto).length}`);
-			Object.entries(almacenPorAeropuerto).forEach(([codigo, datos]) => {
-				console.log(`   ${codigo}: ${datos.paquetes} paquetes, recogida en ${datos.tiempoRestanteMin?.toFixed(0) || '?'} min`);
+			pedidos.forEach(p => {
+				const idPedido = p.idPedido || p.id || p.pedidoId;
+				const cantidad = p.cantidad || 1;
+				
+				// Buscar destino final del pedido (en múltiples fuentes)
+				const destinoFinalPedido = buscarDestinoFinalPedido(idPedido, vuelosEnMovimiento);
+				
+				// Determinar si es destino final o escala
+				const esDestinoFinal = !destinoFinalPedido || destinoFinalPedido === codigoDestino;
+				
+				// 🔍 DEBUG: Mostrar clasificación (5% de probabilidad)
+				if (Math.random() < 0.05) {
+					const tiempoHoras = (tiempoDesdeAterrizaje / (60 * 60 * 1000)).toFixed(2);
+					console.log(`📦 Pedido ${idPedido} en ${codigoDestino}:`);
+					console.log(`   - Destino final buscado: "${destinoFinalPedido || 'NO ENCONTRADO'}"`);
+					console.log(`   - Destino vuelo actual: "${codigoDestino}"`);
+					console.log(`   - ¿Es destino final?: ${esDestinoFinal ? '✅ SÍ' : '❌ NO (escala)'}`);
+					console.log(`   - Tiempo desde aterrizaje: ${tiempoHoras}h`);
+					if (esDestinoFinal) {
+						console.log(`   - Acción: ${tiempoDesdeAterrizaje >= TIEMPO_RECOGIDA_MS ? '🗑️ REMOVIDO (>=2h)' : '⏳ EN ALMACÉN (<2h)'}`);
+					} else {
+						console.log(`   - Acción: 🔄 EN TRÁNSITO (esperando siguiente vuelo)`);
+					}
+				}
+				
+				// Inicializar aeropuerto si no existe
+				if (!almacenPorAeropuerto[codigoDestino]) {
+					almacenPorAeropuerto[codigoDestino] = {
+						paquetes: 0,
+						pedidos: new Set(),
+						pedidosEnTransito: new Set(),
+						tiempoRestanteMin: Infinity
+					};
+				}
+				
+				if (esDestinoFinal) {
+					// DESTINO FINAL: Aplicar regla de 2 horas
+					if (tiempoDesdeAterrizaje >= TIEMPO_RECOGIDA_MS) {
+						// Ya pasaron 2h → NO agregar (ya recogido)
+						return;
+					}
+					// Menos de 2h → Agregar al almacén
+					almacenPorAeropuerto[codigoDestino].paquetes += cantidad;
+					if (idPedido) almacenPorAeropuerto[codigoDestino].pedidos.add(idPedido);
+					
+					// Calcular tiempo restante
+					const tiempoRestante = (TIEMPO_RECOGIDA_MS - tiempoDesdeAterrizaje) / 60000;
+					if (tiempoRestante < almacenPorAeropuerto[codigoDestino].tiempoRestanteMin) {
+						almacenPorAeropuerto[codigoDestino].tiempoRestanteMin = tiempoRestante;
+					}
+				} else {
+					// ESCALA: Agregar como tránsito (sin límite de tiempo)
+					almacenPorAeropuerto[codigoDestino].paquetes += cantidad;
+					if (idPedido) {
+						almacenPorAeropuerto[codigoDestino].pedidos.add(idPedido);
+						almacenPorAeropuerto[codigoDestino].pedidosEnTransito.add(idPedido);
+					}
+				}
 			});
-			console.log(`============================================\n`);
-		}
+		});
+
+		// ==================== PASO 2: RESTAR PAQUETES CUANDO VUELOS SALEN ====================
+		// Cuando un vuelo sale de una escala, se lleva los paquetes en tránsito
+		vuelosEnMovimiento.forEach(vuelo => {
+			if (vuelo.progress <= 0) return; // No ha salido aún
+			
+			let horaSalida = null;
+			if (vuelo.fechaInicial) {
+				let fechaStr = vuelo.fechaInicial;
+				if (typeof fechaStr === 'string' && !fechaStr.endsWith('Z')) {
+					fechaStr = fechaStr + 'Z';
+				}
+				horaSalida = new Date(fechaStr).getTime();
+			}
+			if (!horaSalida || tiempoSimulado < horaSalida) return;
+			
+			const codigoOrigen = (vuelo.origin?.code || '').toUpperCase();
+			if (!codigoOrigen || !almacenPorAeropuerto[codigoOrigen]) return;
+			
+			// Restar paquetes en tránsito que este vuelo se lleva
+			const pedidos = vuelo.pedidos || [];
+			pedidos.forEach(p => {
+				const idPedido = p.idPedido || p.id || p.pedidoId;
+				const cantidad = p.cantidad || 1;
+				
+				if (almacenPorAeropuerto[codigoOrigen].pedidosEnTransito?.has(idPedido)) {
+					almacenPorAeropuerto[codigoOrigen].paquetes -= cantidad;
+					almacenPorAeropuerto[codigoOrigen].pedidos.delete(idPedido);
+					almacenPorAeropuerto[codigoOrigen].pedidosEnTransito.delete(idPedido);
+				}
+			});
+			
+			// Asegurar no negativo
+			if (almacenPorAeropuerto[codigoOrigen].paquetes < 0) {
+				almacenPorAeropuerto[codigoOrigen].paquetes = 0;
+			}
+		});
+
+		// ==================== PASO 3: CONVERTIR SETS A CONTEO ====================
+		Object.keys(almacenPorAeropuerto).forEach(codigo => {
+			almacenPorAeropuerto[codigo].pedidosCount = almacenPorAeropuerto[codigo].pedidos?.size || 0;
+			almacenPorAeropuerto[codigo].pedidosEnTransitoCount = almacenPorAeropuerto[codigo].pedidosEnTransito?.size || 0;
+			delete almacenPorAeropuerto[codigo].pedidos;
+			delete almacenPorAeropuerto[codigo].pedidosEnTransito;
+		});
 
 		return almacenPorAeropuerto;
-	}, [vuelosEnMovimiento, tiempoSimulado]);
+	}, [vuelosEnMovimiento, tiempoSimulado, buscarDestinoFinalPedido]);
 
 	// 🆕 EFECTO: Actualizar estado de aeropuertos con paquetes calculados
 	// Este efecto es la ÚNICA fuente de verdad para packages en aeropuertos (basado en tiempo simulado)
@@ -1773,42 +1905,33 @@ const SimuladorDiario = () => {
 		flightsInAirRef.current = flightsInAir;
 	}, [flightsInAir]);
 
-	// CONSTANTE: Duracion de la simulacion diaria (3 dias en milisegundos)
-	const DURACION_SIMULACION_MS = 3 * 24 * 60 * 60 * 1000; // 259,200,000 ms = 3 dias
+	const DURACION_SIMULACION_MS = DIAS_SIMULACION * 24 * 60 * 60 * 1000;
 
 	useEffect(() => {
 		if (!simulacionLocalActiva || !relojLocalRef.current || !simStartRef.current) return;
 
-		// VELOCIDAD CONSTANTE: Siempre usa K=300 (DESIRED_TIME_SCALE)
-		// Sin adaptacion basada en aviones visibles
-		const K_CONSTANTE = DESIRED_TIME_SCALE; // 300x
+		const K_CONSTANTE = DESIRED_TIME_SCALE;
 
 		const interval = setInterval(() => {
-			// Calcular milisegundos simulados por tick
-			// Formula: msSimulados = (TICK_REAL_MS / 1000) * K * 1000 = TICK_REAL_MS * K
 			const msSimulados = TICK_REAL_MS * K_CONSTANTE;
 
-			// Avanzar el reloj local
 			const nuevoTiempo = new Date(relojLocalRef.current.getTime() + msSimulados);
 
-			// VERIFICAR LIMITE DE 3 DIAS
 			const tiempoTranscurridoSimulado = nuevoTiempo.getTime() - simStartRef.current.getTime();
 			if (tiempoTranscurridoSimulado >= DURACION_SIMULACION_MS) {
-				console.log('SIMULACION DIARIA COMPLETADA - 3 dias simulados');
+				console.log(`SIMULACION DIARIA COMPLETADA - ${DIAS_SIMULACION} dias simulados`);
 				console.log(`   Inicio: ${simStartRef.current.toISOString()}`);
 				console.log(`   Fin: ${nuevoTiempo.toISOString()}`);
 
-				// Detener la simulacion local
 				setSimulacionLocalActiva(false);
 				setSimulacionActiva(false);
 
-				// Limpiar intervalo de tiempo real
 				if (intervalTiempoRealRef.current) {
 					clearInterval(intervalTiempoRealRef.current);
 					intervalTiempoRealRef.current = null;
 				}
 
-				alert('Simulacion diaria completada (3 dias)');
+				alert(`Simulacion diaria completada (${DIAS_SIMULACION} dias)`);
 				return;
 			}
 
@@ -1817,14 +1940,12 @@ const SimuladorDiario = () => {
 			setSimClock(nuevoTiempo);
 			setTiempoSimulacionActual(nuevoTiempo.toISOString());
 
-			// IMPORTANTE: Actualizar tiempoSimulado para la interpolacion de vuelos
 			setTiempoSimulado(nuevoTiempo.getTime());
 
-			// Debug cada 20 segundos aproximadamente (80 ticks @ 250ms)
 			if (Math.random() < 0.0125) {
 				const avionesEnPantalla = flightsInAirRef.current;
 				const diasTranscurridos = (tiempoTranscurridoSimulado / (24 * 60 * 60 * 1000)).toFixed(2);
-				console.log(`⏰ Reloj: ${nuevoTiempo.toISOString().slice(11, 19)} | Día ${diasTranscurridos}/3 | K=${K_CONSTANTE} | Aviones=${avionesEnPantalla}`);
+				console.log(`⏰ Reloj: ${nuevoTiempo.toISOString().slice(11, 19)} | Día ${diasTranscurridos}/${DIAS_SIMULACION} | K=${K_CONSTANTE} | Aviones=${avionesEnPantalla}`);
 			}
 		}, TICK_REAL_MS);
 
@@ -2247,7 +2368,16 @@ const SimuladorDiario = () => {
 			// Datos adicionales de planificación
 			fechaInicial: vuelo.fechaInicial,
 			fechaFinal: vuelo.fechaFinal,
-			pedidos: vuelo.pedidos || []
+			// 🔴 FIX: Mapear pedidos preservando destino final
+			pedidos: (vuelo.pedidos || []).map(p => ({
+				...p,
+				idPedido: p.idPedido || p.orderId || p.id,
+				cantidad: p.cantidad || p.quantity || 1,
+				destinoVueloActual: vuelo.destinoCodigoICAO,
+				destinoFinalPedido: p.destinoFinal || p.aeropuertoDestinoId || p.destino,
+				aeropuertoDestinoId: p.aeropuertoDestinoId || p.destinoFinal || p.destino,
+				origen: p.origen || vuelo.origenCodigoICAO
+			}))
 		};
 	};
 
@@ -3120,10 +3250,24 @@ const SimuladorDiario = () => {
 			const uniqueId = `WS-${vueloKey}`;
 
 			// 🆕 MAPEAR PEDIDOS: Normalizar estructura de pedidos del backend
+			// 🔴 FIX: Preservar el destino FINAL del pedido (aeropuertoDestinoId/destinoFinal)
+			// NO usar destinoCodigoICAO del vuelo como fallback - eso es el destino del VUELO, no del PEDIDO
+			
+			// 🐛 DEBUG: Ver estructura REAL de pedidos del backend
+			if (vuelo.pedidos && vuelo.pedidos.length > 0) {
+				console.log(`🔍 ESTRUCTURA PEDIDO (WebSocket) - Vuelo ${vuelo.origenCodigoICAO}→${vuelo.destinoCodigoICAO}:`);
+				console.log(`   📋 Pedido RAW:`, JSON.stringify(vuelo.pedidos[0], null, 2));
+				console.log(`   🔑 Campos disponibles:`, Object.keys(vuelo.pedidos[0]));
+			}
+			
 			const pedidosMapeados = (vuelo.pedidos || []).map(p => ({
 				idPedido: p.idPedido || p.orderId || p.id,
 				cantidad: p.cantidad || p.quantity || 1,
-				destino: p.destino || vuelo.destinoCodigoICAO,
+				// 🔴 FIX: Separar destino del VUELO actual vs destino FINAL del pedido
+				destinoVueloActual: vuelo.destinoCodigoICAO, // A dónde va ESTE vuelo
+				destinoFinalPedido: p.destinoFinal || p.aeropuertoDestinoId || p.destino, // A dónde debe llegar el pedido FINALMENTE
+				destino: p.destinoFinal || p.aeropuertoDestinoId || p.destino, // Mantener compatibilidad
+				aeropuertoDestinoId: p.aeropuertoDestinoId || p.destinoFinal || p.destino,
 				origen: p.origen || vuelo.origenCodigoICAO
 			}));
 
@@ -3395,9 +3539,9 @@ const SimuladorDiario = () => {
 	const mostSaturatedAirport = getMostSaturatedAirport();
 	const getFlightsByAltitude = () => flightsInAir;
 
-	/* 🆕 Filtrar vuelos en movimiento (progress > 0 y progress < 1) para métricas */
+	/* 🆕 Filtrar vuelos en movimiento (progress > 0 y progress < 100) para métricas */
 	const flightsInMovement = useMemo(() => {
-		return flights.filter(f => f.progress && f.progress > 0 && f.progress < 1);
+		return flights.filter(f => f.progress && f.progress > 0 && f.progress < 100);
 	}, [flights]);
 
 	/* 🆕 Estado para actualizar métricas en tiempo real */
@@ -3405,9 +3549,8 @@ const SimuladorDiario = () => {
 
 	/* 🆕 Efecto: Actualizar contador de vuelos en el aire con la MISMA LÓGICA que el sidebar */
 	useEffect(() => {
-		const enAire = (vuelosEnMovimiento || []).filter(f => (f.status === 'active' || (f.progress && f.progress > 0 && f.progress < 1))).length;
+		const enAire = (vuelosEnMovimiento || []).filter(f => (f.status === 'active' && f.progress > 0 && f.progress < 100)).length;
 		setFlightsInAirCount(enAire);
-		console.log(`📊 Vuelos en el aire (sidebar logic): ${enAire}`);
 	}, [vuelosEnMovimiento]);
 
 
@@ -3627,7 +3770,7 @@ const SimuladorDiario = () => {
 							>
 								<Tab label=" Vuelos" />
 								<Tab label=" Aeropuertos" />
-								<Tab label={` Pedidos ${contadorPedidosTotal > 0 ? `(${contadorPedidosTotal})` : ''}`} />
+								<Tab label=" Pedidos" />
 							</Tabs>
 						</Box>
 
@@ -3840,32 +3983,141 @@ const SimuladorDiario = () => {
 														⏳ Cargando pedidos...
 													</Box>
 												) : pedidosDiarios.length > 0 ? (
-													pedidosDiarios.filter(p => {
-														const q = searchOrders.trim().toLowerCase();
-														if (!q) return true;
-														return (
-															String(p.id || '').toLowerCase().includes(q) ||
-															String(p.clienteId || '').toLowerCase().includes(q) ||
-															String(p.aeropuertoDestinoId || '').toLowerCase().includes(q)
-														);
-													}).map(pedido => {
-														// 🆕 Buscar vuelos que contienen este pedido
-														const vuelosDelPedido = (vuelosDiarios || []).filter(vuelo =>
-															vuelo.pedidos && vuelo.pedidos.some(p => 
-																p.idPedido === pedido.id || p.id === pedido.id
-															)
-														);
-														const tieneRuta = vuelosDelPedido.length > 0;
-														
-														return (
+														// Eliminar duplicados por ID antes de renderizar (usar String para key consistente)
+														[...new Map(pedidosDiarios.map(p => [String(p.id), p])).values()].filter(pedido => {
+															// Filtro por texto de búsqueda - convertir todo a string para comparación segura
+															const q = searchOrders.trim().toLowerCase();
+															const pedidoIdStr = String(pedido.id ?? '').toLowerCase();
+															const clienteIdStr = String(pedido.clienteId ?? '').toLowerCase();
+															const destinoIdStr = String(pedido.aeropuertoDestinoId ?? '').toLowerCase();
+															
+															const matchesSearch = !q || 
+																pedidoIdStr.includes(q) ||
+																clienteIdStr.includes(q) ||
+																destinoIdStr.includes(q);
+															
+															// Filtro por estado - usar vuelosEnMovimiento para estado actualizado
+															let matchesStatus = true;
+															if (orderStatusFilter !== 'todos') {
+																const pedidoIdNum = Number(pedido.id);
+																const pedidoIdString = String(pedido.id);
+																const destinoFinalPedido = (pedido.aeropuertoDestinoId || '').toString().toUpperCase();
+																
+																// Buscar en vuelosEnMovimiento (estado actual)
+																const vueloActivo = (vuelosEnMovimiento || []).find(vuelo => {
+																	if (!vuelo.pedidos || !Array.isArray(vuelo.pedidos)) return false;
+																	return vuelo.pedidos.some(p => {
+																		// Comparar todos los campos posibles de ID
+																		const pIdPedido = p.idPedido;
+																		const pId = p.id;
+																		const pPedidoId = p.pedidoId;
+																		return String(pIdPedido) === pedidoIdString || 
+																			   String(pId) === pedidoIdString ||
+																			   String(pPedidoId) === pedidoIdString ||
+																			   Number(pIdPedido) === pedidoIdNum ||
+																			   Number(pId) === pedidoIdNum ||
+																			   Number(pPedidoId) === pedidoIdNum;
+																	});
+																});
+																
+																// Determinar estado visible basado en el vuelo actual
+																let visibleStatus = 'Planificado';
+																if (vueloActivo) {
+																	const prog = vueloActivo.progress ?? 0;
+																	const stat = vueloActivo.status;
+																	const destinoVuelo = (vueloActivo.destination?.code || vueloActivo.destinoCodigoICAO || '').toString().toUpperCase();
+																	const esDestinoFinal = destinoFinalPedido === destinoVuelo;
+																	
+																	if ((stat === 'active' || stat === 'en_vuelo') && prog > 0 && prog < 100) {
+																		visibleStatus = 'En vuelo';
+																	} else if (stat === 'completed' || stat === 'arrived' || prog >= 100) {
+																		// 🆕 FIX: Distinguir entre Entregado y En tránsito
+																		visibleStatus = esDestinoFinal ? 'Entregado' : 'En tránsito';
+																	} else if (stat === 'waiting' || prog === 0) {
+																		visibleStatus = 'Planificado';
+																	}
+																}
+																matchesStatus = visibleStatus === orderStatusFilter;
+															}
+															
+															return matchesSearch && matchesStatus;
+														}).map(pedido => {
+															// Buscar vuelo activo para este pedido (usando vuelosEnMovimiento)
+															const pedidoIdNum = Number(pedido.id);
+															const pedidoIdString = String(pedido.id);
+															
+															const vueloActivo = (vuelosEnMovimiento || []).find(vuelo => {
+																if (!vuelo.pedidos || !Array.isArray(vuelo.pedidos)) return false;
+																return vuelo.pedidos.some(p => {
+																	const pIdPedido = p.idPedido;
+																	const pId = p.id;
+																	const pPedidoId = p.pedidoId;
+																	return String(pIdPedido) === pedidoIdString || 
+																		   String(pId) === pedidoIdString ||
+																		   String(pPedidoId) === pedidoIdString ||
+																		   Number(pIdPedido) === pedidoIdNum ||
+																		   Number(pId) === pedidoIdNum ||
+																		   Number(pPedidoId) === pedidoIdNum;
+																});
+															});
+															
+															// También buscar en vuelosDiarios para info de ruta
+															const vuelosDelPedido = (vuelosDiarios || []).filter(vuelo => {
+																if (!vuelo.pedidos || !Array.isArray(vuelo.pedidos)) return false;
+																return vuelo.pedidos.some(p => {
+																	const pIdPedido = p.idPedido;
+																	const pId = p.id;
+																	const pPedidoId = p.pedidoId;
+																	return String(pIdPedido) === pedidoIdString || 
+																		   String(pId) === pedidoIdString ||
+																		   String(pPedidoId) === pedidoIdString ||
+																		   Number(pIdPedido) === pedidoIdNum ||
+																		   Number(pId) === pedidoIdNum ||
+																		   Number(pPedidoId) === pedidoIdNum;
+																});
+															});
+															const tieneRuta = vuelosDelPedido.length > 0 || vueloActivo;
+															
+															// 🆕 FIX VUELOS INTERMEDIOS: Determinar si el pedido llegó a su destino final
+															// El destino final del pedido es el aeropuertoDestinoId
+															const destinoFinalPedido = (pedido.aeropuertoDestinoId || '').toString().toUpperCase();
+															
+															// Encontrar el último vuelo de la ruta (el que va al destino final)
+															const ultimoVueloDeLaRuta = vuelosDelPedido.length > 0 
+																? vuelosDelPedido[vuelosDelPedido.length - 1] 
+																: null;
+															
+															// Verificar si el vuelo activo es el último vuelo (hacia destino final)
+															const vueloActivoEsUltimo = vueloActivo && 
+																(vueloActivo.destination?.code || vueloActivo.destinoCodigoICAO || '').toString().toUpperCase() === destinoFinalPedido;
+															
+															// Determinar estado actual del pedido
+															let estadoPedido = 'Planificado';
+															if (vueloActivo) {
+																const prog = vueloActivo.progress ?? 0;
+																const stat = vueloActivo.status;
+																if ((stat === 'active' || stat === 'en_vuelo') && prog > 0 && prog < 100) {
+																	estadoPedido = 'En vuelo';
+																} else if (stat === 'completed' || stat === 'arrived' || prog >= 100) {
+																	// Solo marcar como "Entregado" si es el último vuelo (destino final)
+																	if (vueloActivoEsUltimo) {
+																		estadoPedido = 'Entregado';
+																	} else {
+																		// Vuelo intermedio completado - en tránsito
+																		estadoPedido = 'En tránsito';
+																	}
+																}
+															}
+															
+															return (
 														<Box
-															key={pedido.id}
+															key={`pedido-diario-${pedido.id}`}
 															sx={{
 																border: '1px solid #dee2e6',
 																padding: '10px',
 																borderRadius: '8px',
 																marginBottom: '10px',
-																background: tieneRuta ? '#f0fff4' : '#f0f9ff', // Verde claro si tiene ruta
+																background: estadoPedido === 'En vuelo' ? '#ecfdf5' : estadoPedido === 'Entregado' ? '#fef3c7' : estadoPedido === 'En tránsito' ? '#f3e8ff' : '#f0f9ff',
 																cursor: 'default',
 																transition: 'all 0.2s ease',
 																'&:hover': { borderColor: '#2c4a6b', boxShadow: '0 2px 8px rgba(44, 74, 107, 0.15)' }
@@ -3873,14 +4125,14 @@ const SimuladorDiario = () => {
 															<Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
 																<Box sx={{ fontWeight: 700, fontSize: '0.95rem', color: '#2c4a6b' }}>📦 Pedido #{pedido.id}</Box>
 																<Box sx={{
-																	background: tieneRuta ? '#10b981' : '#6b7280',
+																	background: estadoPedido === 'En vuelo' ? '#22c55e' : estadoPedido === 'Entregado' ? '#f59e0b' : estadoPedido === 'En tránsito' ? '#8b5cf6' : tieneRuta ? '#3b82f6' : '#6b7280',
 																	color: '#fff',
 																	padding: '2px 8px',
 																	borderRadius: '12px',
 																	fontSize: '0.75rem',
 																	fontWeight: 600
 																}}>
-																	{tieneRuta ? 'Con ruta' : 'Sin ruta'}
+																	{estadoPedido === 'En vuelo' ? '✈️ En vuelo' : estadoPedido === 'Entregado' ? '✅ Entregado' : estadoPedido === 'En tránsito' ? '🔄 En tránsito' : tieneRuta ? '📋 Planificado' : 'Sin ruta'}
 																</Box>
 															</Box>
 															<Box sx={{ fontSize: '0.85rem', color: '#6c757d', marginTop: '4px' }}>
@@ -3945,54 +4197,100 @@ const SimuladorDiario = () => {
 											const list = [];
 											// Usar `vuelosEnMovimiento` (estado interpolado) para obtener status y progreso real
 											(vuelosEnMovimiento || []).forEach(f => {
-												// Determinar estado del pedido basándose en el vuelo y el tiempo simulado
-												let computedStatus = f.status || 'waiting';
-
 												// Si el vuelo está completado, distinguir entre 'llegado' y 'recogido'
-												if ((f.status === 'completed' || (f.progress !== undefined && f.progress >= 100))) {
-													// Calcular hora de llegada
-													let llegadaMs = null;
-													if (f.fechaFinal) {
-														let fechaStr = f.fechaFinal;
-														if (typeof fechaStr === 'string' && !fechaStr.endsWith('Z')) fechaStr = fechaStr + 'Z';
-														llegadaMs = new Date(fechaStr).getTime();
-													}
-
+												// 🆕 FIX: Solo marcar como 'recogido' si el destino del vuelo es el destino FINAL del pedido
+												const vueloCompletado = (f.status === 'completed' || (f.progress !== undefined && f.progress >= 100));
+												
+												// Calcular hora de llegada del vuelo
+												let llegadaMs = null;
+												let tiempoDesdeAterrizaje = 0;
+												if (f.fechaFinal) {
+													let fechaStr = f.fechaFinal;
+													if (typeof fechaStr === 'string' && !fechaStr.endsWith('Z')) fechaStr = fechaStr + 'Z';
+													llegadaMs = new Date(fechaStr).getTime();
 													if (llegadaMs && typeof tiempoSimulado === 'number') {
-														const tiempoDesdeAterrizaje = tiempoSimulado - llegadaMs;
-														if (tiempoDesdeAterrizaje >= TIEMPO_RECOGIDA_MS) {
-															computedStatus = 'recogido';
-														} else {
-															computedStatus = 'llegado';
-														}
-													} else {
-														computedStatus = 'llegado';
+														tiempoDesdeAterrizaje = tiempoSimulado - llegadaMs;
 													}
-												} else if (f.status === 'active' || (f.progress && f.progress > 0 && f.progress < 100)) {
-													computedStatus = 'active';
-												} else if (f.status === 'waiting') {
-													computedStatus = 'waiting';
 												}
 
 												if (f.pedidos && Array.isArray(f.pedidos)) {
-													f.pedidos.forEach(p => list.push({
-														...(p),
-														flightId: f.id,
-														flightData: f, // referencia al vuelo interpolado
-														origin: p.origen || f.origin?.code,
-														destination: p.destino || f.destination?.code,
-														cantidad: p.cantidad || 1,
-														status: computedStatus
-													}));
+													f.pedidos.forEach(p => {
+														// 🆕 FIX VUELOS INTERMEDIOS: Determinar estado según destino final del pedido
+														let computedStatus = f.status || 'waiting';
+														
+														// 🔴 FIX: Obtener destino final del pedido - usar campos específicos
+														const destinoFinalPedido = (
+															p.destinoFinalPedido || 
+															p.aeropuertoDestinoId || 
+															p.destinoFinal || 
+															''
+														).toString().toUpperCase();
+														const destinoVuelo = (f.destination?.code || '').toString().toUpperCase();
+														
+														// Solo es destino final si hay un destino final definido Y coincide con el vuelo
+														const esDestinoFinal = destinoFinalPedido ? (destinoFinalPedido === destinoVuelo) : true;
+														
+														if (vueloCompletado) {
+															if (llegadaMs && typeof tiempoSimulado === 'number') {
+																if (tiempoDesdeAterrizaje >= TIEMPO_RECOGIDA_MS && esDestinoFinal) {
+																	// Solo marcar como recogido si es destino final Y pasaron 2h
+																	computedStatus = 'recogido';
+																} else if (esDestinoFinal) {
+																	// Llegó a destino final, esperando recogida
+																	computedStatus = 'llegado';
+																} else {
+																	// Vuelo intermedio completado - en tránsito esperando siguiente vuelo
+																	computedStatus = 'en_transito';
+																}
+															} else {
+																computedStatus = esDestinoFinal ? 'llegado' : 'en_transito';
+															}
+														} else if (f.status === 'active' || (f.progress && f.progress > 0 && f.progress < 100)) {
+															computedStatus = 'active';
+														} else if (f.status === 'waiting') {
+															computedStatus = 'waiting';
+														}
+														
+														list.push({
+															...(p),
+															flightId: f.id,
+															flightData: f,
+															origin: p.origen || f.origin?.code,
+															destination: p.destinoFinalPedido || p.aeropuertoDestinoId || p.destino || f.destination?.code,
+															cantidad: p.cantidad || 1,
+															status: computedStatus,
+															esDestinoFinal: esDestinoFinal
+														});
+													});
 												} else if (f.pedidoId) {
+													// Vuelo con pedidoId único - asumir que es destino final
+													let computedStatus = f.status || 'waiting';
+													
+													if (vueloCompletado) {
+														if (llegadaMs && typeof tiempoSimulado === 'number') {
+															if (tiempoDesdeAterrizaje >= TIEMPO_RECOGIDA_MS) {
+																computedStatus = 'recogido';
+															} else {
+																computedStatus = 'llegado';
+															}
+														} else {
+															computedStatus = 'llegado';
+														}
+													} else if (f.status === 'active' || (f.progress && f.progress > 0 && f.progress < 100)) {
+														computedStatus = 'active';
+													} else if (f.status === 'waiting') {
+														computedStatus = 'waiting';
+													}
+													
 													list.push({
 														idPedido: f.pedidoId,
 														flightId: f.id,
-														flightData: f, // referencia al vuelo interpolado
+														flightData: f,
 														origin: f.origin?.code,
 														destination: f.destination?.code,
 														cantidad: f.currentPackages || 1,
-														status: computedStatus
+														status: computedStatus,
+														esDestinoFinal: true
 													});
 												}
 											});
@@ -4016,21 +4314,22 @@ const SimuladorDiario = () => {
 													if (o.status === 'active') visibleStatus = 'En vuelo';
 													else if (o.status === 'llegado') visibleStatus = 'Entregado';
 													else if (o.status === 'recogido') visibleStatus = 'Recogido';
+													else if (o.status === 'en_transito') visibleStatus = 'En tránsito';
 													else if (o.status === 'waiting') visibleStatus = 'Planificado';
 													matchesStatus = visibleStatus === orderStatusFilter;
 												}
 												return matchesSearch && matchesStatus;
 											});
-										})().map(order => (
+										})().map((order, idx) => (
 											<Box
-												key={order.idPedido || order.id || `${order.flightId}-${order.origin}-${order.destination}-${Math.random()}`}
+												key={`order-semanal-${order.idPedido || order.id || idx}-${order.flightId || idx}`}
 												onClick={() => order.flightData && setSelectedFlight(order.flightData)}
 												sx={{
 													border: '1px solid #dee2e6',
 													padding: '10px',
 													borderRadius: '8px',
 													marginBottom: '10px',
-													background: order.status === 'active' ? '#e8f8e8' : '#f8f9fa',
+													background: order.status === 'active' ? '#e8f8e8' : order.status === 'en_transito' ? '#fef3c7' : '#f8f9fa',
 													cursor: 'pointer',
 													transition: 'all 0.2s ease',
 													'&:hover': { borderColor: '#2c4a6b', boxShadow: '0 2px 8px rgba(44, 74, 107, 0.15)' }
@@ -4107,6 +4406,19 @@ const SimuladorDiario = () => {
 															fontWeight: 600
 														}}>
 															Recogido
+														</Box>
+													)}
+
+													{order.status === 'en_transito' && (
+														<Box sx={{
+															background: '#8b5cf6',
+															color: '#fff',
+															padding: '1px 6px',
+															borderRadius: '8px',
+															fontSize: '0.7rem',
+															fontWeight: 600
+														}}>
+															🔄 En tránsito
 														</Box>
 													)}
 												</Box>
@@ -4192,7 +4504,7 @@ const SimuladorDiario = () => {
 																{departures.length > 0 ? (
 																	departures.map(f => (
 																		<Box key={f.id} sx={{ padding: '6px 8px', borderRadius: '4px', border: '1px solid #dee2e6', marginBottom: '6px', fontSize: '0.85rem', background: '#fff', color: '#495057' }}>
-																			✈️ {f.id} • {f.origin?.code || '?'} → {f.destination?.code || '?'} {f.progress !== undefined ? `• ${Math.round((f.progress||0)*100)}%` : ''}
+																			✈️ {f.id} • {f.origin?.code || '?'} → {f.destination?.code || '?'}
 																		</Box>
 																	))
 																) : (
@@ -4354,6 +4666,7 @@ const SimuladorDiario = () => {
 									setSidebarTab={setSidebarTab}
 									setOpen={setOpen}
 									setSelectedFlight={setSelectedFlight}
+									vuelosAcumulados={vuelosAcumulados}
 								/>
 							</MapContainer>
 							{/* Botón de Metricas */}

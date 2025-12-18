@@ -348,6 +348,9 @@ const Pedidos = () => {
         // Recargar la lista de pedidos
         await cargarPedidos();
 
+        // 🔴 COMENTADO: Ya no ejecutar planificación automática al importar
+        // La planificación se hace manualmente desde el botón "Replanificar" en Operaciones
+        /*
         // Si está en modo diario y hubo pedidos exitosos, ejecutar planificación automática
         const modoDiarioActivo = PedidoDiarioService.isModoDiarioActivo();
         if (modoDiarioActivo && exitosos > 0) {
@@ -370,12 +373,11 @@ const Pedidos = () => {
             console.warn('⚠️ Error en planificación automática:', planError);
           }
         }
+        */
 
         if (exitosos > 0 && fallidos === 0) {
-          const msg = modoDiarioActivo 
-            ? `🚀 Importación completada! Se agregaron ${exitosos} pedidos y se planificaron rutas automáticamente.`
-            : `✅ Importación completada! Se agregaron ${exitosos} pedidos exitosamente.`;
-          showAlert('success', msg);
+          // Mensaje simplificado sin mencionar planificación
+          showAlert('success', `✅ Importación completada! Se agregaron ${exitosos} pedidos exitosamente.`);
         } else if (exitosos > 0 && fallidos > 0) {
           showAlert('warning', `Importación parcial: ${exitosos} pedidos agregados, ${fallidos} errores.`);
         } else {

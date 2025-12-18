@@ -14,6 +14,10 @@ const Header = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
+  
+  // Estado para el menú de Operaciones
+  const [operacionesAnchorEl, setOperacionesAnchorEl] = useState(null);
+  const operacionesOpen = Boolean(operacionesAnchorEl);
 
   const handleClick = (event) => {
     setAnchorEl(event.currentTarget);
@@ -21,6 +25,20 @@ const Header = () => {
 
   const handleClose = () => {
     setAnchorEl(null);
+  };
+  
+  // Handlers para el menú de Operaciones
+  const handleOperacionesOpen = (event) => {
+    setOperacionesAnchorEl(event.currentTarget);
+  };
+  
+  const handleOperacionesClose = () => {
+    setOperacionesAnchorEl(null);
+  };
+  
+  const handleOperacionesNavigate = (path) => {
+    handleOperacionesClose();
+    navigate(path);
   };
 
   const handleToggleMobile = () => setMobileOpen(v => !v);
@@ -74,10 +92,103 @@ const Header = () => {
             <i className="fas fa-users"></i>
             Usuarios
           </NavLink>
-          <NavLink to="/operaciones" className="nav-item">
+          
+          {/* Menú desplegable de Operaciones */}
+          <div 
+            className="nav-item operaciones-dropdown"
+            onMouseEnter={handleOperacionesOpen}
+            onMouseLeave={handleOperacionesClose}
+            style={{ position: 'relative', cursor: 'pointer' }}
+          >
             <i className="fas fa-plane"></i>
             Operaciones
-          </NavLink>
+            <KeyboardArrowDownIcon sx={{ fontSize: 18, ml: 0.5 }} />
+            
+            {operacionesOpen && (
+              <div 
+                className="operaciones-menu"
+                style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  backgroundColor: 'white',
+                  borderRadius: '8px',
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+                  minWidth: '220px',
+                  zIndex: 1000,
+                  overflow: 'hidden',
+                  marginTop: '4px'
+                }}
+              >
+                <div 
+                  onClick={() => handleOperacionesNavigate('/operaciones/monitoreo')}
+                  style={{
+                    padding: '12px 16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    cursor: 'pointer',
+                    transition: 'background-color 0.2s',
+                    color: '#333'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
+                  <span style={{ fontSize: '18px' }}>📡</span>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: '14px' }}>Monitoreo en Tiempo Real</div>
+                    <div style={{ fontSize: '11px', color: '#666' }}>Control y seguimiento activo</div>
+                  </div>
+                </div>
+                
+                <div 
+                  onClick={() => handleOperacionesNavigate('/operaciones/simulador-semanal')}
+                  style={{
+                    padding: '12px 16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    cursor: 'pointer',
+                    transition: 'background-color 0.2s',
+                    color: '#333',
+                    borderTop: '1px solid #eee'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
+                  <span style={{ fontSize: '18px' }}>📅</span>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: '14px' }}>Simulación Semanal</div>
+                    <div style={{ fontSize: '11px', color: '#666' }}>Planificación operativa de 7 días</div>
+                  </div>
+                </div>
+                
+                <div 
+                  onClick={() => handleOperacionesNavigate('/operaciones/simulador-colapso')}
+                  style={{
+                    padding: '12px 16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    cursor: 'pointer',
+                    transition: 'background-color 0.2s',
+                    color: '#333',
+                    borderTop: '1px solid #eee'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
+                  <span style={{ fontSize: '18px' }}>⚠️</span>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: '14px' }}>Simulación de Colapso</div>
+                    <div style={{ fontSize: '11px', color: '#666' }}>Análisis de escenarios críticos</div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+          
           {/*<NavLink to="/clientes" className="nav-item">
             <i className="fas fa-box"></i>
             Clientes
@@ -130,7 +241,21 @@ const Header = () => {
           <nav className="mobile-nav">
             {/*<NavLink to="/configuracion" className="nav-item" onClick={handleToggleMobile}><i className="fas fa-cog"></i>Configuración</NavLink>*/}
             <NavLink to="/usuarios" className="nav-item" onClick={handleToggleMobile}><i className="fas fa-users"></i>Usuarios</NavLink>
-            <NavLink to="/operaciones" className="nav-item" onClick={handleToggleMobile}><i className="fas fa-plane"></i>Operaciones</NavLink>
+            
+            {/* Submenú de Operaciones en móvil */}
+            <div className="nav-item" style={{ cursor: 'default', fontWeight: 600, color: '#1976d2' }}>
+              <i className="fas fa-plane"></i>Operaciones
+            </div>
+            <NavLink to="/operaciones/monitoreo" className="nav-item" onClick={handleToggleMobile} style={{ paddingLeft: '32px', fontSize: '14px' }}>
+              📡 Monitoreo en Tiempo Real
+            </NavLink>
+            <NavLink to="/operaciones/simulador-semanal" className="nav-item" onClick={handleToggleMobile} style={{ paddingLeft: '32px', fontSize: '14px' }}>
+              📅 Simulación Semanal
+            </NavLink>
+            <NavLink to="/operaciones/simulador-colapso" className="nav-item" onClick={handleToggleMobile} style={{ paddingLeft: '32px', fontSize: '14px' }}>
+              ⚠️ Simulación de Colapso
+            </NavLink>
+            
             {/*<NavLink to="/clientes" className="nav-item" onClick={handleToggleMobile}><i className="fas fa-box"></i>Clientes</NavLink>*/}
             <NavLink to="/pedidos" className="nav-item" onClick={handleToggleMobile}><i className="fas fa-clipboard-list"></i>Pedidos</NavLink>
           </nav>

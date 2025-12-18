@@ -34,7 +34,7 @@ public class DailySimulationRequest {
     @Min(value = 2, message = "El tamaño de población debe ser al menos 2")
     @Max(value = 100, message = "El tamaño de población no puede ser mayor a 100")
     @Builder.Default
-    private int tamanioPoblacion = 10;
+    private int tamanioPoblacion = 5;
 
     /**
      * Número máximo de generaciones del AG (1-500)
@@ -43,7 +43,7 @@ public class DailySimulationRequest {
     @Min(value = 1, message = "Debe haber al menos 1 generación")
     @Max(value = 500, message = "No puede haber más de 500 generaciones")
     @Builder.Default
-    private int maxGeneraciones = 15;
+    private int maxGeneraciones = 10;
 
     /**
      * Límite de generaciones sin mejora antes de parar (1-100)
@@ -52,5 +52,5 @@ public class DailySimulationRequest {
     @Min(value = 1, message = "Debe haber al menos 1 generación sin mejora")
     @Max(value = 100, message = "No puede ser mayor a 100")
     @Builder.Default
-    private int limiteGeneracionesSinMejora = 5;
+    private int limiteGeneracionesSinMejora = 3;
 }

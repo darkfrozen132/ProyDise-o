@@ -786,9 +786,21 @@ const SimuladorDiario = () => {
 	});
 	
 	// Guardar modo en localStorage cuando cambia (para que Pedidos.js pueda leerlo)
+	// 🔴 También limpiar claves antiguas que podrían causar conflictos
 	useEffect(() => {
 		localStorage.setItem('modoPanel', modoPanel);
 		console.log(`📌 Modo panel guardado en localStorage: ${modoPanel}`);
+		
+		// 🧹 Limpiar claves antiguas sin prefijo que podrían causar conflictos
+		// Estas claves ya no se usan - ahora usamos _diario o _semanal como sufijo
+		if (localStorage.getItem('rutasPlanificadas')) {
+			console.log('🧹 Limpiando clave antigua: rutasPlanificadas');
+			localStorage.removeItem('rutasPlanificadas');
+		}
+		if (localStorage.getItem('vuelosPlanificados')) {
+			console.log('🧹 Limpiando clave antigua: vuelosPlanificados');
+			localStorage.removeItem('vuelosPlanificados');
+		}
 	}, [modoPanel]);
 
 	// ===================== PEDIDOS DIARIOS (MODO DIARIO) ====================
@@ -830,171 +842,95 @@ const SimuladorDiario = () => {
 		}
 	}, [modoPanel]);
 
-	// ===================== RUTAS PLANIFICADAS (MODO DIARIO - LOCALSTORAGE) ====================
+	// ===================== RUTAS PLANIFICADAS (MODO DIARIO - LOCALSTORAGE SEPARADO) ====================
+	// 🔴 IMPORTANTE: Usamos claves SEPARADAS para diario vs semanal para evitar mezclar datos
+	const STORAGE_KEY_RUTAS_DIARIO = 'rutasPlanificadas_diario';
+	const STORAGE_KEY_VUELOS_DIARIO = 'vuelosPlanificados_diario';
+	
 	const [rutasDiarias, setRutasDiarias] = useState([]);
-	const [vuelosDiarios, setVuelosDiarios] = useState([]); // 🆕 Vuelos con info detallada para mostrar rutas
+	const [vuelosDiarios, setVuelosDiarios] = useState([]); // Vuelos con info detallada para mostrar rutas en panel
 	const [cargandoRutas, setCargandoRutas] = useState(false);
 
 	// Cargar rutas y vuelos de localStorage cuando cambia a modo diario
 	useEffect(() => {
 		if (modoPanel === 'diario') {
 			try {
-				// Cargar rutas
-				const rutasGuardadas = localStorage.getItem('rutasPlanificadas');
+				// Cargar rutas (clave específica para modo diario)
+				const rutasGuardadas = localStorage.getItem(STORAGE_KEY_RUTAS_DIARIO);
 				if (rutasGuardadas) {
 					const rutas = JSON.parse(rutasGuardadas);
-					console.log(`📍 Rutas cargadas de localStorage:`, rutas);
+					console.log(`📍 [DIARIO] Rutas cargadas de localStorage:`, rutas);
 					setRutasDiarias(Array.isArray(rutas) ? rutas : [rutas]);
 				} else {
-					console.log('📍 No hay rutas guardadas en localStorage');
+					console.log('📍 [DIARIO] No hay rutas guardadas en localStorage');
 					setRutasDiarias([]);
 				}
 				
-				// 🆕 Cargar vuelos planificados (con info detallada de pedidos)
-				const vuelosGuardados = localStorage.getItem('vuelosPlanificados');
+				// Cargar vuelos planificados (clave específica para modo diario)
+				const vuelosGuardados = localStorage.getItem(STORAGE_KEY_VUELOS_DIARIO);
 				if (vuelosGuardados) {
 					const vuelos = JSON.parse(vuelosGuardados);
-					console.log(`✈️ Vuelos cargados de localStorage: ${vuelos.length}`);
+					console.log(`✈️ [DIARIO] Vuelos cargados de localStorage: ${vuelos.length}`);
 					setVuelosDiarios(Array.isArray(vuelos) ? vuelos : []);
 				} else {
-					console.log('✈️ No hay vuelos guardados en localStorage');
+					console.log('✈️ [DIARIO] No hay vuelos guardados en localStorage');
 					setVuelosDiarios([]);
 				}
 			} catch (error) {
-				console.error('Error al leer datos de localStorage:', error);
+				console.error('Error al leer datos de localStorage (diario):', error);
 				setRutasDiarias([]);
 				setVuelosDiarios([]);
 			}
+		} else if (modoPanel === 'semanal') {
+			// 🔴 Al cambiar a modo semanal, limpiar datos diarios del estado (NO del localStorage)
+			console.log('🔄 [SEMANAL] Limpiando datos diarios del estado');
+			setRutasDiarias([]);
+			setVuelosDiarios([]);
 		}
 	}, [modoPanel]);
 
 	// Función para ejecutar replanificación (reset + ejecutar AG con todos los pedidos)
+	// 🔴 IMPORTANTE: Solo actualiza el PANEL IZQUIERDO, NO el visualizador del mapa
 	const handleReplanificarDiario = useCallback(async () => {
 		if (modoPanel !== 'diario') return;
 		
 		setCargandoRutas(true);
 		try {
-			console.log('🔄 REPLANIFICACIÓN: Ejecutando algoritmo genético con todos los pedidos...');
+			console.log('🔄 [DIARIO] REPLANIFICACIÓN: Ejecutando algoritmo genético...');
 			
-			// Limpiar rutas anteriores y vuelos del mapa
-			localStorage.removeItem('rutasPlanificadas');
-			localStorage.removeItem('vuelosPlanificados'); // 🆕 Limpiar vuelos guardados
+			// Limpiar rutas anteriores del localStorage (claves específicas de modo diario)
+			localStorage.removeItem(STORAGE_KEY_RUTAS_DIARIO);
+			localStorage.removeItem(STORAGE_KEY_VUELOS_DIARIO);
+			
+			// Limpiar solo el estado del panel izquierdo, NO el mapa
 			setRutasDiarias([]);
-			setVuelosDiarios([]); // 🆕 Limpiar vuelos del estado
-			setFlights([]); // 🆕 Limpiar vuelos del mapa
-			setFlightsInAir(0);
+			setVuelosDiarios([]);
+			// 🔴 NO limpiar setFlights() ni setFlightsInAir() - eso es del visualizador
 			
 			// Ejecutar planificación
 			const resultado = await PedidoDiarioService.ejecutarPlanificacionDiaria();
-			console.log('✅ Replanificación completada:', resultado);
+			console.log('✅ [DIARIO] Replanificación completada:', resultado);
 			
-			// Guardar nuevas rutas (resumen)
+			// Guardar nuevas rutas (resumen) - usando clave específica de modo diario
 			if (resultado) {
 				const rutas = resultado.rutas || resultado;
-				localStorage.setItem('rutasPlanificadas', JSON.stringify(rutas));
+				localStorage.setItem(STORAGE_KEY_RUTAS_DIARIO, JSON.stringify(rutas));
 				setRutasDiarias(Array.isArray(rutas) ? rutas : [rutas]);
-				console.log(`💾 ${Array.isArray(rutas) ? rutas.length : 1} rutas guardadas`);
+				console.log(`💾 [DIARIO] ${Array.isArray(rutas) ? rutas.length : 1} rutas guardadas`);
 				
-				// 🆕 PROCESAR VUELOS DETALLADOS para visualización en mapa
+				// 🔴 SOLO GUARDAR EN PANEL IZQUIERDO - NO afectar el mapa
 				if (resultado.vuelos && resultado.vuelos.length > 0) {
-					console.log(`✈️ Procesando ${resultado.vuelos.length} vuelos para el mapa...`);
+					console.log(`✈️ [DIARIO] ${resultado.vuelos.length} vuelos recibidos del AG`);
 					
-					const currentAirports = airportsRef.current;
-					const vuelosParaMapa = resultado.vuelos.map((vuelo, index) => {
-						// Buscar aeropuertos
-						const origen = currentAirports.find(a =>
-							String(a.code).toUpperCase() === String(vuelo.origenCodigoICAO).toUpperCase()
-						);
-						const destino = currentAirports.find(a =>
-							String(a.code).toUpperCase() === String(vuelo.destinoCodigoICAO).toUpperCase()
-						);
-						
-						if (!origen || !destino) {
-							console.warn(`⚠️ Aeropuertos no encontrados: ${vuelo.origenCodigoICAO} o ${vuelo.destinoCodigoICAO}`);
-							return null;
-						}
-						
-						// Calcular progreso inicial (0 = en origen)
-						const progress = 0;
-						const currentLat = origen.lat;
-						const currentLng = origen.lng;
-						
-						// Calcular rotación
-						const brg = bearingDegrees(origen.lat, origen.lng, destino.lat, destino.lng);
-						const rotation = brg;
-						
-						// ID único
-						const uniqueId = `DAILY-${vuelo.vueloId || `${vuelo.origenCodigoICAO}-${vuelo.destinoCodigoICAO}-${index}`}`;
-						
-						return {
-							id: uniqueId,
-							flightId: vuelo.flightId || vuelo.vueloId,
-							origin: {
-								code: vuelo.origenCodigoICAO,
-								lat: origen.lat,
-								lng: origen.lng,
-								region: origen.region
-							},
-							destination: {
-								code: vuelo.destinoCodigoICAO,
-								lat: destino.lat,
-								lng: destino.lng,
-								region: destino.region
-							},
-							fechaInicial: vuelo.departureUtc || vuelo.fechaInicial,
-							fechaFinal: vuelo.arrivalUtc || vuelo.fechaFinal,
-							progress,
-							currentLat,
-							currentLng,
-							rotation,
-							status: 'active',
-							altitude: 35000,
-							speed: 850,
-							aircraftColor: (vuelo.slackMinutes || 0) <= 0 ? '#ef4444' : '#22c55e', // Rojo si retrasado, verde si ok
-							packageCapacity: vuelo.capacidadMaxima || vuelo.quantity || 1,
-							currentPackages: vuelo.quantity || 1,
-							packageType: 'DAILY',
-							isSameContinentFlight: origen.region === destino.region,
-							// � DEBUG: Ver estructura real de pedidos del AG
-							...(vuelo.pedidos && vuelo.pedidos.length > 0 && console.log(`🔍 ESTRUCTURA PEDIDO (AG) - Vuelo ${vuelo.origenCodigoICAO}→${vuelo.destinoCodigoICAO}:`, JSON.stringify(vuelo.pedidos[0], null, 2), `🔑 Campos:`, Object.keys(vuelo.pedidos[0]))),
-							// �🔴 FIX: Mapear pedidos preservando destino final
-							pedidos: (vuelo.pedidos || []).map(p => ({
-								...p,
-								idPedido: p.idPedido || p.orderId || p.id,
-								cantidad: p.cantidad || p.quantity || 1,
-								destinoVueloActual: vuelo.destinoCodigoICAO,
-								destinoFinalPedido: p.destinoFinal || p.aeropuertoDestinoId || p.destino,
-								aeropuertoDestinoId: p.aeropuertoDestinoId || p.destinoFinal || p.destino,
-								origen: p.origen || vuelo.origenCodigoICAO
-							})),
-							slackMinutes: vuelo.slackMinutes || 0
-						};
-					}).filter(v => v !== null);
+					// Guardar vuelos en localStorage (clave específica de modo diario)
+					localStorage.setItem(STORAGE_KEY_VUELOS_DIARIO, JSON.stringify(resultado.vuelos));
+					setVuelosDiarios(resultado.vuelos);
+					console.log(`💾 [DIARIO] ${resultado.vuelos.length} vuelos guardados para panel izquierdo`);
 					
-					if (vuelosParaMapa.length > 0) {
-						console.log(`🗺️ ${vuelosParaMapa.length} vuelos listos para visualizar`);
-						setFlights(vuelosParaMapa);
-						setFlightsInAir(vuelosParaMapa.length);
-						
-						// 🆕 Guardar vuelos en localStorage para mostrar rutas en panel de pedidos
-						localStorage.setItem('vuelosPlanificados', JSON.stringify(resultado.vuelos));
-						setVuelosDiarios(resultado.vuelos);
-						console.log(`💾 ${resultado.vuelos.length} vuelos guardados en localStorage`);
-						
-						// 🕐 Establecer tiempo simulado basado en el primer vuelo
-						const primerVuelo = vuelosParaMapa.find(v => v.fechaInicial);
-						if (primerVuelo) {
-							const timestampInicio = new Date(primerVuelo.fechaInicial).getTime();
-							setTiempoSimuladoBackend(timestampInicio);
-							setTiempoSimulado(timestampInicio);
-							tiempoSimuladoBackendRef.current = timestampInicio;
-							setTiempoSimulacionActual(primerVuelo.fechaInicial);
-							setUltimaActualizacionReal(Date.now());
-							console.log(`🕐 Tiempo simulado establecido: ${primerVuelo.fechaInicial}`);
-						}
-					}
+					// 🔴 NO actualizar setFlights() - eso afectaría el visualizador del mapa
+					// 🔴 NO actualizar tiempoSimulado - eso es para la simulación en tiempo real
 				} else {
-					console.log('⚠️ No hay vuelos en la respuesta');
+					console.log('⚠️ [DIARIO] No hay vuelos en la respuesta del AG');
 				}
 			}
 			

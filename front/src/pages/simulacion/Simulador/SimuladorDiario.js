@@ -22,12 +22,13 @@ import MetricsButton from '../../../components/ui/Button/MetricsButton';
 import ControlButton from '../../../components/ui/Button/ControlButton';
 import ControlPopper from '../../../components/ui/Dialog/ControlPopper';
 import ControlPopperSimple from '../../../components/ui/Dialog/ControlPopperSimple';
+import ReporteSimulacionModal from '../../../components/ui/Dialog/ReporteSimulacionModal';
 import PedidoDiarioService from '../../../services/PedidoDiarioService';
 
 import { IoMdAirplane } from "react-icons/io";
 import ReactDOMServer from "react-dom/server";
 
-const DIAS_SIMULACION = 7;
+const DIAS_SIMULACION = 3;
 const DESIRED_TIME_SCALE = 300;
 const TIEMPO_RECOGIDA_MS = 2 * 60 * 60 * 1000;
 
@@ -1026,22 +1027,13 @@ const SimuladorDiario = () => {
 	// Estado y ref para acumular vuelos que llegan a sedes durante la simulación
 	const [vuelosAcumulados, setVuelosAcumulados] = useState([]);
 	const vuelosVistosRef = useRef(new Set());
+	
+	// ==================== MODAL DE REPORTE ====================
+	const [mostrarReporteModal, setMostrarReporteModal] = useState(false);
+	const [fechaFinSimulacion, setFechaFinSimulacion] = useState('');
+	
 	// Estado para pestañas internas del panel de sede
 	const [selectedAirportInnerTab, setSelectedAirportInnerTab] = useState(0);
-
-	// Helper: calcular estado actual de un pedido consultando vuelos en movimiento
-	// Estados posibles: "Planificado", "En vuelo", "Entregado"
-	const computeOrderStatus = (order) => {
-		const flightId = order.flightId;
-		const f = (vuelosEnMovimiento || []).find(v => v.id === flightId) || (flights || []).find(v => v.id === flightId);
-		if (!f) return 'Planificado';
-		// Si el vuelo está activo o en progreso intermedio → En vuelo
-		if (f.status === 'active' || (f.progress !== undefined && f.progress > 0 && f.progress < 1)) return 'En vuelo';
-		// Si el vuelo está completado → Entregado
-		if (f.status === 'completed' || (f.progress !== undefined && f.progress >= 1)) return 'Entregado';
-		// Por defecto, aún no ha despegado → Planificado
-		return 'Planificado';
-	};
 
 	// Helper para pedidos que están en aeropuerto: siempre 'Entregado'
 	const computeAirportOrderStatus = (order) => {
@@ -1272,6 +1264,116 @@ const SimuladorDiario = () => {
 			};
 		});
 	}, [flights, tiempoSimulado]); // 🎯 DEPENDENCIAS REACTIVAS
+
+	// Helper: calcular estado actual de un pedido consultando vuelos en movimiento
+	// Estados posibles: "Planificado", "En vuelo", "En escala", "Entregado"
+	// 🔴 FIX: Usa el tiempoSimulado para determinar estado basado en fechas de vuelos
+	const computeOrderStatus = useCallback((order) => {
+		const idPedido = order.idPedido || order.id;
+		const destinoFinal = (order.destinoFinalPedido || order.aeropuertoDestinoId || order.destination || order.destino || '').toString().toUpperCase();
+		
+		if (!idPedido) return 'Planificado';
+		
+		// Buscar TODOS los vuelos que contienen este pedido (en todas las fuentes disponibles)
+		const todasLasFuentes = [
+			...(vuelosEnMovimiento || []), 
+			...(flights || []),
+			...(vuelosAcumulados || [])
+		];
+		
+		// Crear un Map para evitar duplicados por ID
+		const vuelosUnicos = new Map();
+		todasLasFuentes.forEach(v => {
+			if (v && v.id) {
+				// Preferir la versión más reciente (vuelosEnMovimiento tiene estado actualizado)
+				if (!vuelosUnicos.has(v.id) || v.progress !== undefined) {
+					vuelosUnicos.set(v.id, v);
+				}
+			}
+		});
+		
+		const vuelosDelPedido = Array.from(vuelosUnicos.values()).filter(v => {
+			if (!v) return false;
+			// Verificar si el pedido está en la lista de pedidos del vuelo
+			if (v.pedidos && Array.isArray(v.pedidos)) {
+				return v.pedidos.some(p => 
+					String(p.idPedido || p.id) === String(idPedido) || 
+					Number(p.idPedido || p.id) === Number(idPedido)
+				);
+			}
+			// O si el vuelo tiene un pedidoId directo
+			return String(v.pedidoId) === String(idPedido);
+		});
+		
+		if (vuelosDelPedido.length === 0) return 'Planificado';
+		
+		// Ordenar vuelos por fecha de salida para determinar la secuencia
+		const vuelosOrdenados = [...vuelosDelPedido].sort((a, b) => {
+			const fechaA = new Date(a.fechaInicial || a.departureTime || 0).getTime();
+			const fechaB = new Date(b.fechaInicial || b.departureTime || 0).getTime();
+			return fechaA - fechaB;
+		});
+		
+		// Buscar el último vuelo (el que llega al destino final)
+		const ultimoVuelo = vuelosOrdenados[vuelosOrdenados.length - 1];
+		const destinoUltimoVuelo = (ultimoVuelo?.destination?.code || '').toUpperCase();
+		
+		// Usar tiempoSimulado actual para determinar estado basado en fechas
+		const ahora = tiempoSimulado || Date.now();
+		
+		// Verificar estados de cada vuelo basándose en fechas
+		let algunoEnVuelo = false;
+		let todosCompletados = true;
+		let algunoCompletado = false;
+		
+		for (const vuelo of vuelosOrdenados) {
+			// Obtener fechas del vuelo
+			let fechaSalida = vuelo.fechaInicial || vuelo.departureTime;
+			let fechaLlegada = vuelo.fechaFinal || vuelo.arrivalTime;
+			
+			// Parsear fechas
+			if (typeof fechaSalida === 'string') {
+				if (!fechaSalida.endsWith('Z')) fechaSalida = fechaSalida + 'Z';
+				fechaSalida = new Date(fechaSalida).getTime();
+			}
+			if (typeof fechaLlegada === 'string') {
+				if (!fechaLlegada.endsWith('Z')) fechaLlegada = fechaLlegada + 'Z';
+				fechaLlegada = new Date(fechaLlegada).getTime();
+			}
+			
+			// Determinar estado del vuelo basado en tiempoSimulado
+			if (fechaLlegada && ahora >= fechaLlegada) {
+				// El vuelo ya llegó
+				algunoCompletado = true;
+			} else if (fechaSalida && ahora >= fechaSalida) {
+				// El vuelo está en el aire
+				algunoEnVuelo = true;
+				todosCompletados = false;
+			} else {
+				// El vuelo aún no despegó
+				todosCompletados = false;
+			}
+		}
+		
+		// Determinar estado final
+		if (todosCompletados && vuelosOrdenados.length > 0 && algunoCompletado) {
+			// Verificar si el último vuelo llegó al destino final del pedido
+			if (destinoFinal && destinoUltimoVuelo && destinoFinal !== destinoUltimoVuelo) {
+				return 'En escala';
+			}
+			return 'Entregado';
+		}
+		
+		if (algunoEnVuelo) {
+			return 'En vuelo';
+		}
+		
+		if (algunoCompletado && !todosCompletados) {
+			return 'En escala';
+		}
+		
+		return 'Planificado';
+	}, [vuelosEnMovimiento, flights, vuelosAcumulados, tiempoSimulado]);
 
 	// Debug: Cantidad de vuelos en el aire (🚀 log reducido para rendimiento)
 	useEffect(() => {
@@ -1867,7 +1969,10 @@ const SimuladorDiario = () => {
 					intervalTiempoRealRef.current = null;
 				}
 
-				alert(`Simulacion diaria completada (${DIAS_SIMULACION} dias)`);
+				// Guardar fecha de fin para el reporte
+				setFechaFinSimulacion(nuevoTiempo.toISOString());
+				// Mostrar modal de reporte en lugar de alert
+				setMostrarReporteModal(true);
 				return;
 			}
 
@@ -2892,6 +2997,10 @@ const SimuladorDiario = () => {
 					procesarRutasSnapshotRef.current(datos.solution.routes);
 				}
 			}
+
+			// 🆕 Mostrar modal de reporte al completar vía WebSocket
+			setFechaFinSimulacion(new Date().toISOString());
+			setMostrarReporteModal(true);
 
 			// Desuscribirse del topic
 			if (subscriptionRef.current) {
@@ -4610,6 +4719,36 @@ const SimuladorDiario = () => {
 							{/* Botón de leyenda flotante */}
 							<LegendButton onClick={handleToggleLegend} />
 							
+							{/* 📊 Botón de Reporte (visible cuando hay datos o simulación completada) */}
+							{(estadoSimulacionStomp === 'completed' || vuelosAcumulados.length > 0) && (
+								<button
+									onClick={() => setMostrarReporteModal(true)}
+									style={{
+										position: 'absolute',
+										bottom: '190px',
+										right: '15px',
+										zIndex: 1000,
+										width: '40px',
+										height: '40px',
+										borderRadius: '8px',
+										border: 'none',
+										background: 'linear-gradient(135deg, #1a237e 0%, #3949ab 100%)',
+										color: 'white',
+										boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+										cursor: 'pointer',
+										display: 'flex',
+										alignItems: 'center',
+										justifyContent: 'center',
+										fontSize: '18px',
+										fontWeight: 'bold',
+										transition: 'all 0.2s',
+									}}
+									title="Ver Reporte de Simulación"
+								>
+									📊
+								</button>
+							)}
+							
 							{/* 🔄 Toggle para cambiar entre Modo Semanal y Modo Diario */}
 							<div
 								style={{
@@ -4772,6 +4911,20 @@ const SimuladorDiario = () => {
 				startButtonLabel={startButtonLabel}
 				showFlightLines={showFlightLines}
 				setShowFlightLines={setShowFlightLines}
+			/>
+			{/* Modal de Reporte de Simulación */}
+			<ReporteSimulacionModal
+				open={mostrarReporteModal}
+				onClose={() => setMostrarReporteModal(false)}
+				pedidos={pedidosPlanificados.map(p => ({
+					...p,
+					status: computeOrderStatus(p)
+				}))}
+				vuelos={vuelosAcumulados}
+				metricas={{}}
+				fechaInicio={fechaInicioSimulacion}
+				fechaFin={fechaFinSimulacion}
+				tiempoRealTranscurrido={tiempoRealTranscurrido}
 			/>
 		</div>
 	);

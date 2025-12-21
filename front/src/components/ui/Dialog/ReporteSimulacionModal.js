@@ -120,6 +120,22 @@ const ReporteSimulacionModal = ({
         } catch { return '-'; }
     };
 
+    const formatFechaHora = (isoString) => {
+        if (!isoString) return '-';
+
+        const date = new Date(isoString);
+
+        const dd = String(date.getDate()).padStart(2, '0');
+        const mm = String(date.getMonth() + 1).padStart(2, '0');
+        const yyyy = date.getFullYear();
+
+        const hh = String(date.getHours()).padStart(2, '0');
+        const min = String(date.getMinutes()).padStart(2, '0');
+        const ss = String(date.getSeconds()).padStart(2, '0');
+
+        return `${dd}/${mm}/${yyyy} ${hh}:${min}:${ss}`;
+    };
+
     const generarContenidoPDF = () => {
         const fechaGeneracion = new Date().toLocaleString('es-PE', {
             day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
@@ -183,8 +199,8 @@ const ReporteSimulacionModal = ({
         </div>
     </div>
     <div class="info-grid">
-        <div class="info-box"><div class="label">Fecha Inicio</div><div class="value">${fechaInicio || '-'}</div></div>
-        <div class="info-box"><div class="label">Fecha Fin</div><div class="value">${fechaFin || '-'}</div></div>
+        <div class="info-box"><div class="label">Fecha Inicio</div><div class="value">${formatFechaHora(fechaInicio) || '-'}</div></div>
+        <div class="info-box"><div class="label">Fecha Fin</div><div class="value">${formatFechaHora(fechaFin) || '-'}</div></div>
         <div class="info-box"><div class="label">Duración Real</div><div class="value">${formatearTiempo(tiempoRealTranscurrido)}</div></div>
         <div class="info-box"><div class="label">Eficiencia</div><div class="value success">${metricasPedidos.porcentajeEntregados}%</div></div>
     </div>
@@ -278,6 +294,9 @@ const ReporteSimulacionModal = ({
         }
     };
 
+    
+
+
     return (
         <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth PaperProps={{ sx: { borderRadius: 2, maxHeight: '90vh' } }}>
             <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: '#2c4a6b', color: 'white', py: 2, px: 3 }}>
@@ -298,13 +317,14 @@ const ReporteSimulacionModal = ({
                         <Grid item xs={6} sm={3}>
                             <Paper elevation={0} sx={{ p: 2, textAlign: 'center', bgcolor: 'white', border: '1px solid #e9ecef' }}>
                                 <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', fontSize: 10 }}>Fecha Inicio</Typography>
-                                <Typography variant="body1" fontWeight="600">{fechaInicio || '-'}</Typography>
+                                <Typography variant="body1" fontWeight="600">{formatFechaHora(fechaInicio) || '-'}</Typography>
                             </Paper>
                         </Grid>
                         <Grid item xs={6} sm={3}>
                             <Paper elevation={0} sx={{ p: 2, textAlign: 'center', bgcolor: 'white', border: '1px solid #e9ecef' }}>
                                 <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', fontSize: 10 }}>Fecha Fin</Typography>
-                                <Typography variant="body1" fontWeight="600">{fechaFin || '-'}</Typography>
+                                <Typography variant="body1" fontWeight={600}>{formatFechaHora(fechaFin) || '-'}</Typography>
+
                             </Paper>
                         </Grid>
                         <Grid item xs={6} sm={3}>

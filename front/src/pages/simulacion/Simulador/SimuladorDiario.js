@@ -28,7 +28,7 @@ import PedidoDiarioService from '../../../services/PedidoDiarioService';
 import { IoMdAirplane } from "react-icons/io";
 import ReactDOMServer from "react-dom/server";
 
-const DIAS_SIMULACION = 3;
+const DIAS_SIMULACION = 7;
 const DESIRED_TIME_SCALE = 300;
 const TIEMPO_RECOGIDA_MS = 2 * 60 * 60 * 1000;
 
@@ -1265,34 +1265,90 @@ const SimuladorDiario = () => {
 		});
 	}, [flights, tiempoSimulado]); // 🎯 DEPENDENCIAS REACTIVAS
 
-	// Helper: calcular estado actual de un pedido consultando vuelos en movimiento
-	// Estados posibles: "Planificado", "En vuelo", "En escala", "Entregado"
-	// 🔴 FIX: Usa el tiempoSimulado para determinar estado basado en fechas de vuelos
-	const computeOrderStatus = useCallback((order) => {
-		const idPedido = order.idPedido || order.id;
-		const destinoFinal = (order.destinoFinalPedido || order.aeropuertoDestinoId || order.destination || order.destino || '').toString().toUpperCase();
+	// Helper: calcular estado actual de un vuelo basándose en tiempoSimulado
+	// Estados posibles: "waiting", "active", "completed"
+	const computeFlightStatus = useCallback((vuelo) => {
+		if (!vuelo) return { status: 'waiting', progress: 0 };
 		
-		if (!idPedido) return 'Planificado';
+		const ahora = tiempoSimulado || Date.now();
 		
-		// Buscar TODOS los vuelos que contienen este pedido (en todas las fuentes disponibles)
+		// Obtener fechas del vuelo
+		let fechaSalida = vuelo.fechaInicial || vuelo.departureTime;
+		let fechaLlegada = vuelo.fechaFinal || vuelo.arrivalTime;
+		
+		// Parsear fechas
+		if (typeof fechaSalida === 'string') {
+			if (!fechaSalida.endsWith('Z')) fechaSalida = fechaSalida + 'Z';
+			fechaSalida = new Date(fechaSalida).getTime();
+		}
+		if (typeof fechaLlegada === 'string') {
+			if (!fechaLlegada.endsWith('Z')) fechaLlegada = fechaLlegada + 'Z';
+			fechaLlegada = new Date(fechaLlegada).getTime();
+		}
+		
+		// Determinar estado y progreso basado en tiempoSimulado
+		if (fechaLlegada && ahora >= fechaLlegada) {
+			// El vuelo ya llegó
+			return { status: 'completed', progress: 100 };
+		} else if (fechaSalida && ahora >= fechaSalida) {
+			// El vuelo está en el aire - calcular progreso
+			const duracionTotal = fechaLlegada - fechaSalida;
+			const tiempoTranscurrido = ahora - fechaSalida;
+			const progreso = duracionTotal > 0 ? Math.min(100, (tiempoTranscurrido / duracionTotal) * 100) : 0;
+			return { status: 'active', progress: progreso };
+		} else {
+			// El vuelo aún no despegó
+			return { status: 'waiting', progress: 0 };
+		}
+	}, [tiempoSimulado]);
+
+	// Crear lista de vuelos con estados actualizados dinámicamente para el reporte
+	const vuelosConEstadoActualizado = useMemo(() => {
+		// Combinar todas las fuentes de vuelos
 		const todasLasFuentes = [
-			...(vuelosEnMovimiento || []), 
+			...(vuelosEnMovimiento || []),
 			...(flights || []),
 			...(vuelosAcumulados || [])
 		];
 		
-		// Crear un Map para evitar duplicados por ID
+		// Crear un Map para evitar duplicados por ID, preferir vuelosEnMovimiento
 		const vuelosUnicos = new Map();
 		todasLasFuentes.forEach(v => {
 			if (v && v.id) {
-				// Preferir la versión más reciente (vuelosEnMovimiento tiene estado actualizado)
-				if (!vuelosUnicos.has(v.id) || v.progress !== undefined) {
+				// Si ya existe, preferir el que tenga progress definido
+				const existente = vuelosUnicos.get(v.id);
+				if (!existente || (v.progress !== undefined && existente.progress === undefined)) {
 					vuelosUnicos.set(v.id, v);
 				}
 			}
 		});
 		
-		const vuelosDelPedido = Array.from(vuelosUnicos.values()).filter(v => {
+		// Actualizar estados de cada vuelo basándose en tiempoSimulado
+		return Array.from(vuelosUnicos.values()).map(vuelo => {
+			const estadoCalculado = computeFlightStatus(vuelo);
+			return {
+				...vuelo,
+				status: estadoCalculado.status,
+				progress: estadoCalculado.progress
+			};
+		}).sort((a, b) => {
+			// Ordenar por fecha de salida
+			const fechaA = new Date(a.fechaInicial || a.departureTime || 0).getTime();
+			const fechaB = new Date(b.fechaInicial || b.departureTime || 0).getTime();
+			return fechaA - fechaB;
+		});
+	}, [vuelosEnMovimiento, flights, vuelosAcumulados, computeFlightStatus]);
+
+	// Helper: calcular estado actual de un pedido consultando vuelos con estado actualizado
+	// Estados posibles: "Planificado", "En vuelo", "En escala", "Entregado"
+	// 🔴 FIX: Usa vuelosConEstadoActualizado que ya tiene estados calculados con tiempoSimulado
+	const computeOrderStatus = useCallback((order) => {
+		const idPedido = order.idPedido || order.id;
+		
+		if (!idPedido) return 'Planificado';
+		
+		// Buscar todos los vuelos que contienen este pedido (usando vuelos con estado ya actualizado)
+		const vuelosDelPedido = vuelosConEstadoActualizado.filter(v => {
 			if (!v) return false;
 			// Verificar si el pedido está en la lista de pedidos del vuelo
 			if (v.pedidos && Array.isArray(v.pedidos)) {
@@ -1314,53 +1370,27 @@ const SimuladorDiario = () => {
 			return fechaA - fechaB;
 		});
 		
-		// Buscar el último vuelo (el que llega al destino final)
-		const ultimoVuelo = vuelosOrdenados[vuelosOrdenados.length - 1];
-		const destinoUltimoVuelo = (ultimoVuelo?.destination?.code || '').toUpperCase();
-		
-		// Usar tiempoSimulado actual para determinar estado basado en fechas
-		const ahora = tiempoSimulado || Date.now();
-		
-		// Verificar estados de cada vuelo basándose en fechas
+		// Verificar estados de cada vuelo (ya están calculados en vuelosConEstadoActualizado)
 		let algunoEnVuelo = false;
 		let todosCompletados = true;
-		let algunoCompletado = false;
 		
 		for (const vuelo of vuelosOrdenados) {
-			// Obtener fechas del vuelo
-			let fechaSalida = vuelo.fechaInicial || vuelo.departureTime;
-			let fechaLlegada = vuelo.fechaFinal || vuelo.arrivalTime;
+			const status = vuelo.status;
+			const progress = vuelo.progress || 0;
 			
-			// Parsear fechas
-			if (typeof fechaSalida === 'string') {
-				if (!fechaSalida.endsWith('Z')) fechaSalida = fechaSalida + 'Z';
-				fechaSalida = new Date(fechaSalida).getTime();
-			}
-			if (typeof fechaLlegada === 'string') {
-				if (!fechaLlegada.endsWith('Z')) fechaLlegada = fechaLlegada + 'Z';
-				fechaLlegada = new Date(fechaLlegada).getTime();
-			}
-			
-			// Determinar estado del vuelo basado en tiempoSimulado
-			if (fechaLlegada && ahora >= fechaLlegada) {
-				// El vuelo ya llegó
-				algunoCompletado = true;
-			} else if (fechaSalida && ahora >= fechaSalida) {
-				// El vuelo está en el aire
+			if (status === 'completed' || progress >= 100) {
+				// Este vuelo está completado, continuar
+			} else if (status === 'active' || (progress > 0 && progress < 100)) {
 				algunoEnVuelo = true;
 				todosCompletados = false;
 			} else {
-				// El vuelo aún no despegó
+				// waiting o sin estado
 				todosCompletados = false;
 			}
 		}
 		
-		// Determinar estado final
-		if (todosCompletados && vuelosOrdenados.length > 0 && algunoCompletado) {
-			// Verificar si el último vuelo llegó al destino final del pedido
-			if (destinoFinal && destinoUltimoVuelo && destinoFinal !== destinoUltimoVuelo) {
-				return 'En escala';
-			}
+		// Determinar estado final - Si TODOS los vuelos están completados = Entregado
+		if (todosCompletados && vuelosOrdenados.length > 0) {
 			return 'Entregado';
 		}
 		
@@ -1368,12 +1398,14 @@ const SimuladorDiario = () => {
 			return 'En vuelo';
 		}
 		
+		// Algunos vuelos completados pero hay otros pendientes
+		const algunoCompletado = vuelosOrdenados.some(v => v.status === 'completed' || v.progress >= 100);
 		if (algunoCompletado && !todosCompletados) {
 			return 'En escala';
 		}
 		
 		return 'Planificado';
-	}, [vuelosEnMovimiento, flights, vuelosAcumulados, tiempoSimulado]);
+	}, [vuelosConEstadoActualizado]);
 
 	// Debug: Cantidad de vuelos en el aire (🚀 log reducido para rendimiento)
 	useEffect(() => {
@@ -4920,7 +4952,7 @@ const SimuladorDiario = () => {
 					...p,
 					status: computeOrderStatus(p)
 				}))}
-				vuelos={vuelosAcumulados}
+				vuelos={vuelosConEstadoActualizado}
 				metricas={{}}
 				fechaInicio={fechaInicioSimulacion}
 				fechaFin={fechaFinSimulacion}

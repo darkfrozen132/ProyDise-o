@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import PedidoDiarioService from '../../../services/PedidoDiarioService';
 import {
     Dialog,
     DialogTitle,
@@ -51,10 +52,30 @@ const ReporteSimulacionModal = ({
     metricas = {},
     fechaInicio = '',
     fechaFin = '',
-    tiempoRealTranscurrido = 0
+    tiempoRealTranscurrido = 0,
+    pedidosOriginales = []
 }) => {
     const [tabActual, setTabActual] = useState(0);
     const [expandedRows, setExpandedRows] = useState({});
+    const [pedidosBackend, setPedidosBackend] = useState([]);
+
+    // Cargar pedidos originales del backend al abrir el modal
+    useEffect(() => {
+        if (open) {
+            const cargarPedidosBackend = async () => {
+                try {
+                    const pedidos = await PedidoDiarioService.obtenerTodos();
+                    setPedidosBackend(pedidos);
+                } catch (error) {
+                    console.error('❌ Error al cargar pedidos del backend:', error);
+                }
+            };
+            cargarPedidosBackend();
+        }
+    }, [open]);
+
+    // Usar pedidosBackend cargados directamente, o pedidosOriginales como fallback
+    const pedidosParaBusqueda = pedidosBackend.length > 0 ? pedidosBackend : pedidosOriginales;
 
     const toggleRowExpanded = (pedidoId) => {
         setExpandedRows(prev => ({ ...prev, [pedidoId]: !prev[pedidoId] }));
@@ -80,6 +101,70 @@ const ReporteSimulacionModal = ({
             const fechaB = new Date(b.fechaInicial || b.departureTime || 0).getTime();
             return fechaA - fechaB;
         });
+    };
+
+    // Obtener la cantidad de productos de un pedido específico en un vuelo
+    const getCantidadEnVuelo = (vuelo, pedido) => {
+        const idPedido = pedido.idPedido || pedido.id;
+        if (vuelo.pedidos && Array.isArray(vuelo.pedidos)) {
+            const pedidoEnVuelo = vuelo.pedidos.find(p => 
+                String(p.idPedido || p.id) === String(idPedido) || 
+                Number(p.idPedido || p.id) === Number(idPedido)
+            );
+            if (pedidoEnVuelo) {
+                return pedidoEnVuelo.cantidad || pedidoEnVuelo.totalPackages || 0;
+            }
+        }
+        // Si el vuelo es exclusivo para este pedido
+        if (String(vuelo.pedidoId) === String(idPedido)) {
+            return vuelo.currentPackages || vuelo.totalPackages || 0;
+        }
+        return vuelo.currentPackages || 0;
+    };
+
+    // Calcular cantidad total del pedido sumando todos sus vuelos
+    const getCantidadTotalPedido = (pedido) => {
+        const idPedido = pedido.idPedido || pedido.id;
+        
+        // Extraer solo el número del ID (puede venir como "203", 203, "RT0001-p-0", etc.)
+        const idNumerico = typeof idPedido === 'string' ? 
+            parseInt(idPedido.replace(/\D/g, ''), 10) : 
+            idPedido;
+        
+        // PRIMERO: Buscar en pedidosParaBusqueda (cargados del backend)
+        if (pedidosParaBusqueda && pedidosParaBusqueda.length > 0) {
+            // Buscar por ID exacto o por ID numérico
+            const pedidoOriginal = pedidosParaBusqueda.find(po => {
+                const poId = po.id;
+                return String(poId) === String(idPedido) || 
+                       Number(poId) === Number(idPedido) ||
+                       poId === idNumerico ||
+                       String(poId) === String(idNumerico);
+            });
+            
+            if (pedidoOriginal && pedidoOriginal.cantidadProductos > 0) {
+                return pedidoOriginal.cantidadProductos;
+            }
+        }
+        
+        // Luego intentar con el campo cantidadProductos del pedido
+        if (pedido.cantidadProductos && pedido.cantidadProductos > 0) {
+            return pedido.cantidadProductos;
+        }
+        // Luego con el campo cantidad directo
+        if (pedido.cantidad && pedido.cantidad > 1) {
+            return pedido.cantidad;
+        }
+        if (pedido.totalPackages && pedido.totalPackages > 1) {
+            return pedido.totalPackages;
+        }
+        // Sumar las cantidades de todos los vuelos del pedido
+        const vuelosDelPedido = getVuelosDelPedido(pedido);
+        if (vuelosDelPedido.length > 0) {
+            const total = vuelosDelPedido.reduce((sum, vuelo) => sum + getCantidadEnVuelo(vuelo, pedido), 0);
+            if (total > 0) return total;
+        }
+        return pedido.cantidad || 1;
     };
 
     const metricasPedidos = useMemo(() => {
@@ -225,18 +310,20 @@ const ReporteSimulacionModal = ({
             const status = p.status || p.estado || 'Pendiente';
             const statusClass = status === 'Entregado' ? 'status-entregado' : status === 'En vuelo' ? 'status-envuelo' : status === 'En escala' ? 'status-escala' : 'status-pendiente';
             const vuelosDelPedido = getVuelosDelPedido(p);
+            const cantidadTotal = getCantidadTotalPedido(p);
             return `<div class="pedido-card">
             <div class="pedido-header">
-                <div><span class="id">Pedido #${p.idPedido || p.id || (idx + 1)}</span><span class="ruta"> | ${p.origin || p.origen || '-'} → ${p.destination || p.destino || '-'} | Cant: ${p.cantidad || 1}</span></div>
+                <div><span class="id">Pedido #${p.idPedido || p.id || (idx + 1)}</span><span class="ruta"> | ${p.origin || p.origen || '-'} → ${p.destination || p.destino || '-'} | Cant: ${cantidadTotal}</span></div>
                 <span class="status ${statusClass}">${status}</span>
             </div>
             ${vuelosDelPedido.length > 0 ? `<div class="pedido-vuelos">
                 ${vuelosDelPedido.map((v, vIdx) => {
                     const vStatus = v.status === 'completed' ? 'Completado' : v.status === 'active' ? 'En vuelo' : 'Programado';
                     const vStatusClass = v.status === 'completed' ? 'status-completado' : v.status === 'active' ? 'status-envuelo' : 'status-pendiente';
+                    const cantidadEnVuelo = getCantidadEnVuelo(v, p);
                     return `<div class="vuelo-item">
                     <div class="vuelo-num">${vIdx + 1}</div>
-                    <div class="vuelo-ruta">${v.origin?.code || '-'} → ${v.destination?.code || '-'}</div>
+                    <div class="vuelo-ruta">${v.origin?.code || '-'} → ${v.destination?.code || '-'} <span style="background:#e3f2fd;padding:2px 6px;border-radius:4px;font-weight:600;margin-left:8px;">${cantidadEnVuelo} productos</span></div>
                     <div class="vuelo-fechas">Salida: ${formatearFechaCorta(v.fechaInicial || v.departureTime)} | Llegada: ${formatearFechaCorta(v.fechaFinal || v.arrivalTime)}</div>
                     <span class="status ${vStatusClass}" style="margin-left: 10px;">${vStatus}</span>
                 </div>`;}).join('')}
@@ -436,7 +523,7 @@ const ReporteSimulacionModal = ({
                                                         <TableCell><Typography variant="body2" fontWeight="600">{pedido.idPedido || pedido.id || '-'}</Typography></TableCell>
                                                         <TableCell>{pedido.origin || pedido.origen || '-'}</TableCell>
                                                         <TableCell>{pedido.destination || pedido.destino || '-'}</TableCell>
-                                                        <TableCell>{pedido.cantidad || 1}</TableCell>
+                                                        <TableCell>{getCantidadTotalPedido(pedido)}</TableCell>
                                                         <TableCell><Chip size="small" label={vuelosDelPedido.length} variant="outlined" sx={{ minWidth: 32 }} /></TableCell>
                                                         <TableCell>
                                                             <Chip size="small" label={getStatusLabel(pedido.status || pedido.estado)} color={getStatusColor(pedido.status || pedido.estado)} icon={getStatusIcon(pedido.status || pedido.estado)} />
@@ -460,7 +547,7 @@ const ReporteSimulacionModal = ({
                                                                                                 <Typography variant="body2" fontWeight="600">{vuelo.origin?.code || '-'}</Typography>
                                                                                                 <Typography variant="body2" color="text.secondary">→</Typography>
                                                                                                 <Typography variant="body2" fontWeight="600">{vuelo.destination?.code || '-'}</Typography>
-                                                                                                <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>ID: {vuelo.id}</Typography>
+                                                                                                <Typography variant="caption" sx={{ ml: 1, bgcolor: '#e3f2fd', px: 0.8, py: 0.2, borderRadius: 1, fontWeight: 600 }}>{getCantidadEnVuelo(vuelo, pedido)} productos</Typography>
                                                                                             </Box>
                                                                                         }
                                                                                         secondary={<Typography variant="caption" color="text.secondary">Salida: {formatearFechaCorta(vuelo.fechaInicial || vuelo.departureTime)} | Llegada: {formatearFechaCorta(vuelo.fechaFinal || vuelo.arrivalTime)}</Typography>}

@@ -1661,14 +1661,29 @@ const SimuladorDiario = () => {
 					const id = p.idPedido || p.id || `${f.id}-p-${idx}`;
 					if (!pedidosPlanificadosRef.current.has(id)) {
 						pedidosPlanificadosRef.current.add(id);
-						nuevos.push({ ...p, idPedido: id, flightId: f.id, origin: p.origen || f.origin?.code, destination: p.destino || f.destination?.code, cantidad: p.cantidad || 1 });
+						nuevos.push({ 
+							...p, 
+							idPedido: id, 
+							flightId: f.id, 
+							origin: p.origen || f.origin?.code, 
+							destination: p.destino || f.destination?.code, 
+							cantidad: p.cantidadProductos || p.cantidad || 1,
+							cantidadProductos: p.cantidadProductos || p.cantidad || 1
+						});
 					}
 				});
 			} else if (f.pedidoId) {
 				const id = String(f.pedidoId);
 				if (!pedidosPlanificadosRef.current.has(id)) {
 					pedidosPlanificadosRef.current.add(id);
-					nuevos.push({ idPedido: id, flightId: f.id, origin: f.origin?.code, destination: f.destination?.code, cantidad: f.currentPackages || 1 });
+					nuevos.push({ 
+						idPedido: id, 
+						flightId: f.id, 
+						origin: f.origin?.code, 
+						destination: f.destination?.code, 
+						cantidad: f.currentPackages || 1,
+						cantidadProductos: f.currentPackages || 1
+					});
 				}
 			}
 		});
@@ -4957,6 +4972,7 @@ const SimuladorDiario = () => {
 				fechaInicio={fechaInicioSimulacion}
 				fechaFin={fechaFinSimulacion}
 				tiempoRealTranscurrido={tiempoRealTranscurrido}
+				pedidosOriginales={pedidosDiarios}
 			/>
 		</div>
 	);

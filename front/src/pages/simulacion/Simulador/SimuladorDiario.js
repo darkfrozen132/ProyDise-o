@@ -28,7 +28,7 @@ import PedidoDiarioService from '../../../services/PedidoDiarioService';
 import { IoMdAirplane } from "react-icons/io";
 import ReactDOMServer from "react-dom/server";
 
-const DIAS_SIMULACION = 7;
+const DIAS_SIMULACION = 4;
 const DESIRED_TIME_SCALE = 300;
 const TIEMPO_RECOGIDA_MS = 2 * 60 * 60 * 1000;
 
@@ -1031,6 +1031,7 @@ const SimuladorDiario = () => {
 	// ==================== MODAL DE REPORTE ====================
 	const [mostrarReporteModal, setMostrarReporteModal] = useState(false);
 	const [fechaFinSimulacion, setFechaFinSimulacion] = useState('');
+	const [fechaInicioReal, setFechaInicioReal] = useState(''); // Fecha real de inicio con hora correcta
 	
 	// Estado para pestañas internas del panel de sede
 	const [selectedAirportInnerTab, setSelectedAirportInnerTab] = useState(0);
@@ -2110,11 +2111,16 @@ const SimuladorDiario = () => {
 			// 🆕 LIMPIAR CONTADOR DE PEDIDOS ACUMULADOS para nueva simulación
 			pedidosAcumuladosRef.current.clear();
 			setOrdersCount(0);
+			
+			// 🆕 CERRAR REPORTE SI ESTABA ABIERTO (para nueva simulación)
+			setMostrarReporteModal(false);
+			setFechaFinSimulacion(null);
 
 			// Iniciar reloj local
 			const inicioUTC = new Date(`${fechaInicioSimulacion}T${horaInicioSimulacion}:00Z`);
 			setSimClock(inicioUTC);
 			simStartRef.current = inicioUTC;
+			setFechaInicioReal(inicioUTC.toISOString()); // Guardar fecha de inicio real para el reporte
 			setTiempoRealMs(0);
 			setTickActual(0);
 			setTimeScale(DESIRED_TIME_SCALE);
@@ -2278,6 +2284,18 @@ const SimuladorDiario = () => {
 		setColaVuelos([]);
 		setVuelosEnAire([]);
 		colaVuelosRef.current = [];
+
+		// Calcular fecha de fin como el tiempo simulado actual (relojLocalRef)
+		if (relojLocalRef.current) {
+			setFechaFinSimulacion(relojLocalRef.current.toISOString());
+		} else if (simStartRef.current) {
+			// Fallback: usar inicio + DIAS_SIMULACION
+			const fechaFin = new Date(simStartRef.current.getTime() + (DIAS_SIMULACION * 24 * 60 * 60 * 1000));
+			setFechaFinSimulacion(fechaFin.toISOString());
+		} else {
+			setFechaFinSimulacion(new Date().toISOString());
+		}
+		setMostrarReporteModal(true);
 	};
 
 	const handleResetSimulacion = () => {
@@ -3046,7 +3064,12 @@ const SimuladorDiario = () => {
 			}
 
 			// 🆕 Mostrar modal de reporte al completar vía WebSocket
-			setFechaFinSimulacion(new Date().toISOString());
+			// Usar tiempo simulado actual, no tiempo real
+			if (relojLocalRef.current) {
+				setFechaFinSimulacion(relojLocalRef.current.toISOString());
+			} else {
+				setFechaFinSimulacion(new Date().toISOString());
+			}
 			setMostrarReporteModal(true);
 
 			// Desuscribirse del topic
@@ -4969,10 +4992,11 @@ const SimuladorDiario = () => {
 				}))}
 				vuelos={vuelosConEstadoActualizado}
 				metricas={{}}
-				fechaInicio={fechaInicioSimulacion}
+				fechaInicio={fechaInicioReal}
 				fechaFin={fechaFinSimulacion}
 				tiempoRealTranscurrido={tiempoRealTranscurrido}
 				pedidosOriginales={pedidosDiarios}
+				diasSimulacion={DIAS_SIMULACION}
 			/>
 		</div>
 	);

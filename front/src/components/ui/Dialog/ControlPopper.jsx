@@ -302,7 +302,7 @@ export default function ControlPopper({
                                 }}
                             >
                                 <FaStop size={14} />
-                                Detener Replanificación
+                                Detener
                             </button>
                             {/* Botón para mostrar/ocultar líneas de rutas */}
                             <button

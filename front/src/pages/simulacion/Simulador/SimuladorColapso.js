@@ -2001,7 +2001,7 @@ const SimuladorColapso = () => {
 					fecha: fechaInicioSimulacion,
 					hora: horaInicioSimulacion,
 					factorK: 12,
-					tipoSimulacion: 'diario'
+					tipoSimulacion: 'semanal'
 				})
 			});
 
@@ -4497,12 +4497,9 @@ const SimuladorColapso = () => {
 					status: computeOrderStatus(p)
 				}))}
 				vuelos={vuelosConEstadoActualizado}
-				metricas={{}}
 				fechaInicio={fechaInicioReal}
 				fechaFin={fechaFinSimulacion}
 				tiempoRealTranscurrido={tiempoRealTranscurrido}
-				pedidosOriginales={[]}
-				diasSimulacion={DIAS_SIMULACION}
 			/>
 		</div>
 	);

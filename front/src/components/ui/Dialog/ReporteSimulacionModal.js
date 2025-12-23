@@ -1,5 +1,4 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import PedidoDiarioService from '../../../services/PedidoDiarioService';
 import {
     Dialog,
     DialogTitle,
@@ -8,38 +7,19 @@ import {
     Button,
     Box,
     Typography,
-    Table,
-    TableBody,
-    TableCell,
-    TableContainer,
-    TableHead,
-    TableRow,
     Paper,
-    Tabs,
-    Tab,
-    Chip,
     LinearProgress,
     IconButton,
     Divider,
     Card,
     CardContent,
-    Grid,
-    Collapse,
-    List,
-    ListItem,
-    ListItemIcon,
-    ListItemText
+    Grid
 } from '@mui/material';
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
-import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import CloseIcon from '@mui/icons-material/Close';
 import DownloadIcon from '@mui/icons-material/Download';
 import FlightTakeoffIcon from '@mui/icons-material/FlightTakeoff';
-import FlightLandIcon from '@mui/icons-material/FlightLand';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import AssessmentIcon from '@mui/icons-material/Assessment';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import ScheduleIcon from '@mui/icons-material/Schedule';
 
 /**
  * Modal de Reporte de Simulación - Formato Profesional
@@ -49,124 +29,10 @@ const ReporteSimulacionModal = ({
     onClose,
     pedidos = [],
     vuelos = [],
-    metricas = {},
     fechaInicio = '',
     fechaFin = '',
     tiempoRealTranscurrido = 0,
-    pedidosOriginales = [],
-    diasSimulacion = 1
 }) => {
-    const [tabActual, setTabActual] = useState(0);
-    const [expandedRows, setExpandedRows] = useState({});
-    const [pedidosBackend, setPedidosBackend] = useState([]);
-
-    // Cargar pedidos originales del backend al abrir el modal
-    useEffect(() => {
-        if (open) {
-            const cargarPedidosBackend = async () => {
-                try {
-                    const pedidos = await PedidoDiarioService.obtenerTodos();
-                    setPedidosBackend(pedidos);
-                } catch (error) {
-                    console.error('❌ Error al cargar pedidos del backend:', error);
-                }
-            };
-            cargarPedidosBackend();
-        }
-    }, [open]);
-
-    // Usar pedidosBackend cargados directamente, o pedidosOriginales como fallback
-    const pedidosParaBusqueda = pedidosBackend.length > 0 ? pedidosBackend : pedidosOriginales;
-
-    const toggleRowExpanded = (pedidoId) => {
-        setExpandedRows(prev => ({ ...prev, [pedidoId]: !prev[pedidoId] }));
-    };
-
-    const getVuelosDelPedido = (pedido) => {
-        const idPedido = pedido.idPedido || pedido.id;
-        if (!idPedido) return [];
-        
-        const vuelosDelPedido = vuelos.filter(v => {
-            if (!v) return false;
-            if (v.pedidos && Array.isArray(v.pedidos)) {
-                return v.pedidos.some(p => 
-                    String(p.idPedido || p.id) === String(idPedido) || 
-                    Number(p.idPedido || p.id) === Number(idPedido)
-                );
-            }
-            return String(v.pedidoId) === String(idPedido);
-        });
-        
-        return vuelosDelPedido.sort((a, b) => {
-            const fechaA = new Date(a.fechaInicial || a.departureTime || 0).getTime();
-            const fechaB = new Date(b.fechaInicial || b.departureTime || 0).getTime();
-            return fechaA - fechaB;
-        });
-    };
-
-    // Obtener la cantidad de productos de un pedido específico en un vuelo
-    const getCantidadEnVuelo = (vuelo, pedido) => {
-        const idPedido = pedido.idPedido || pedido.id;
-        if (vuelo.pedidos && Array.isArray(vuelo.pedidos)) {
-            const pedidoEnVuelo = vuelo.pedidos.find(p => 
-                String(p.idPedido || p.id) === String(idPedido) || 
-                Number(p.idPedido || p.id) === Number(idPedido)
-            );
-            if (pedidoEnVuelo) {
-                return pedidoEnVuelo.cantidad || pedidoEnVuelo.totalPackages || 0;
-            }
-        }
-        // Si el vuelo es exclusivo para este pedido
-        if (String(vuelo.pedidoId) === String(idPedido)) {
-            return vuelo.currentPackages || vuelo.totalPackages || 0;
-        }
-        return vuelo.currentPackages || 0;
-    };
-
-    // Calcular cantidad total del pedido sumando todos sus vuelos
-    const getCantidadTotalPedido = (pedido) => {
-        const idPedido = pedido.idPedido || pedido.id;
-        
-        // Extraer solo el número del ID (puede venir como "203", 203, "RT0001-p-0", etc.)
-        const idNumerico = typeof idPedido === 'string' ? 
-            parseInt(idPedido.replace(/\D/g, ''), 10) : 
-            idPedido;
-        
-        // PRIMERO: Buscar en pedidosParaBusqueda (cargados del backend)
-        if (pedidosParaBusqueda && pedidosParaBusqueda.length > 0) {
-            // Buscar por ID exacto o por ID numérico
-            const pedidoOriginal = pedidosParaBusqueda.find(po => {
-                const poId = po.id;
-                return String(poId) === String(idPedido) || 
-                       Number(poId) === Number(idPedido) ||
-                       poId === idNumerico ||
-                       String(poId) === String(idNumerico);
-            });
-            
-            if (pedidoOriginal && pedidoOriginal.cantidadProductos > 0) {
-                return pedidoOriginal.cantidadProductos;
-            }
-        }
-        
-        // Luego intentar con el campo cantidadProductos del pedido
-        if (pedido.cantidadProductos && pedido.cantidadProductos > 0) {
-            return pedido.cantidadProductos;
-        }
-        // Luego con el campo cantidad directo
-        if (pedido.cantidad && pedido.cantidad > 1) {
-            return pedido.cantidad;
-        }
-        if (pedido.totalPackages && pedido.totalPackages > 1) {
-            return pedido.totalPackages;
-        }
-        // Sumar las cantidades de todos los vuelos del pedido
-        const vuelosDelPedido = getVuelosDelPedido(pedido);
-        if (vuelosDelPedido.length > 0) {
-            const total = vuelosDelPedido.reduce((sum, vuelo) => sum + getCantidadEnVuelo(vuelo, pedido), 0);
-            if (total > 0) return total;
-        }
-        return pedido.cantidad || 1;
-    };
 
     const metricasPedidos = useMemo(() => {
         const entregados = pedidos.filter(p => p.status === 'Entregado' || p.estado === 'Entregado').length;
@@ -195,15 +61,6 @@ const ReporteSimulacionModal = ({
         if (horas > 0) return `${horas}h ${minutos}m ${segs}s`;
         if (minutos > 0) return `${minutos}m ${segs}s`;
         return `${segs}s`;
-    };
-
-    const formatearFechaCorta = (fecha) => {
-        if (!fecha) return '-';
-        try {
-            return new Date(fecha).toLocaleString('es-PE', {
-                day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
-            });
-        } catch { return '-'; }
     };
 
     const formatFechaHora = (isoString) => {
@@ -305,33 +162,6 @@ const ReporteSimulacionModal = ({
             <div class="info-box"><div class="label">Programados</div><div class="value warning">${metricasVuelos.pendientes}</div></div>
         </div>
     </div>
-    <div class="section">
-        <div class="section-title">Detalle de Pedidos</div>
-        ${pedidos.slice(0, 50).map((p, idx) => {
-            const status = p.status || p.estado || 'Pendiente';
-            const statusClass = status === 'Entregado' ? 'status-entregado' : status === 'En vuelo' ? 'status-envuelo' : status === 'En escala' ? 'status-escala' : 'status-pendiente';
-            const vuelosDelPedido = getVuelosDelPedido(p);
-            const cantidadTotal = getCantidadTotalPedido(p);
-            return `<div class="pedido-card">
-            <div class="pedido-header">
-                <div><span class="id">Pedido #${p.idPedido || p.id || (idx + 1)}</span><span class="ruta"> | ${p.origin || p.origen || '-'} → ${p.destination || p.destino || '-'} | Cant: ${cantidadTotal}</span></div>
-                <span class="status ${statusClass}">${status}</span>
-            </div>
-            ${vuelosDelPedido.length > 0 ? `<div class="pedido-vuelos">
-                ${vuelosDelPedido.map((v, vIdx) => {
-                    const vStatus = v.status === 'completed' ? 'Completado' : v.status === 'active' ? 'En vuelo' : 'Programado';
-                    const vStatusClass = v.status === 'completed' ? 'status-completado' : v.status === 'active' ? 'status-envuelo' : 'status-pendiente';
-                    const cantidadEnVuelo = getCantidadEnVuelo(v, p);
-                    return `<div class="vuelo-item">
-                    <div class="vuelo-num">${vIdx + 1}</div>
-                    <div class="vuelo-ruta">${v.origin?.code || '-'} → ${v.destination?.code || '-'} <span style="background:#e3f2fd;padding:2px 6px;border-radius:4px;font-weight:600;margin-left:8px;">${cantidadEnVuelo} productos</span></div>
-                    <div class="vuelo-fechas">Salida: ${formatearFechaCorta(v.fechaInicial || v.departureTime)} | Llegada: ${formatearFechaCorta(v.fechaFinal || v.arrivalTime)}</div>
-                    <span class="status ${vStatusClass}" style="margin-left: 10px;">${vStatus}</span>
-                </div>`;}).join('')}
-            </div>` : `<div class="pedido-vuelos" style="color: #6c757d; font-style: italic;">Sin vuelos asignados</div>`}
-        </div>`;}).join('')}
-        ${pedidos.length > 50 ? `<p style="text-align: center; color: #6c757d; font-style: italic; margin-top: 15px;">... y ${pedidos.length - 50} pedidos adicionales</p>` : ''}
-    </div>
     <div class="footer">
         <div>Documento generado automáticamente por el Sistema de Gestión Logística de Morapack</div>
         <div>Página 1 de 1</div>
@@ -354,36 +184,6 @@ const ReporteSimulacionModal = ({
             }, 500);
         };
     };
-
-    const getStatusColor = (status) => {
-        switch (status) {
-            case 'Entregado': case 'completed': return 'success';
-            case 'En vuelo': case 'active': return 'primary';
-            case 'En escala': return 'secondary';
-            default: return 'warning';
-        }
-    };
-
-    const getStatusLabel = (status) => {
-        switch (status) {
-            case 'completed': return 'Completado';
-            case 'active': return 'En vuelo';
-            case 'waiting': return 'Programado';
-            default: return status || 'Pendiente';
-        }
-    };
-
-    const getStatusIcon = (status) => {
-        switch (status) {
-            case 'Entregado': case 'completed': return <CheckCircleIcon fontSize="small" />;
-            case 'En vuelo': case 'active': return <FlightTakeoffIcon fontSize="small" />;
-            case 'En escala': return <FlightLandIcon fontSize="small" />;
-            default: return <ScheduleIcon fontSize="small" />;
-        }
-    };
-
-    
-
 
     return (
         <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth PaperProps={{ sx: { borderRadius: 2, maxHeight: '90vh' } }}>
@@ -473,138 +273,6 @@ const ReporteSimulacionModal = ({
                             </Card>
                         </Grid>
                     </Grid>
-                </Box>
-
-                {/* Tabs */}
-                <Box sx={{ borderBottom: 1, borderColor: 'divider', px: 3 }}>
-                    <Tabs value={tabActual} onChange={(e, v) => setTabActual(v)}>
-                        <Tab label={`Pedidos (${pedidos.length})`} />
-                        <Tab label={`Vuelos (${vuelos.length})`} />
-                    </Tabs>
-                </Box>
-
-                {/* Contenido de tabs */}
-                <Box sx={{ p: 2, maxHeight: 400, overflow: 'auto' }}>
-                    {tabActual === 0 && (
-                        <TableContainer component={Paper} variant="outlined">
-                            <Table size="small" stickyHeader>
-                                <TableHead>
-                                    <TableRow sx={{ '& th': { bgcolor: '#2c4a6b', color: 'white', fontWeight: 600, fontSize: 11 } }}>
-                                        <TableCell sx={{ width: 50 }}></TableCell>
-                                        <TableCell>N°</TableCell>
-                                        <TableCell>ID Pedido</TableCell>
-                                        <TableCell>Origen</TableCell>
-                                        <TableCell>Destino</TableCell>
-                                        <TableCell>Cantidad</TableCell>
-                                        <TableCell>Escalas</TableCell>
-                                        <TableCell>Estado</TableCell>
-                                    </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                    {pedidos.length === 0 ? (
-                                        <TableRow><TableCell colSpan={8} align="center"><Typography color="text.secondary" sx={{ py: 4 }}>No hay pedidos registrados</Typography></TableCell></TableRow>
-                                    ) : (
-                                        pedidos.map((pedido, idx) => {
-                                            const pedidoId = pedido.idPedido || pedido.id || idx;
-                                            const vuelosDelPedido = getVuelosDelPedido(pedido);
-                                            const isExpanded = expandedRows[pedidoId];
-                                            const tieneVuelos = vuelosDelPedido.length > 0;
-                                            
-                                            return (
-                                                <React.Fragment key={pedidoId}>
-                                                    <TableRow hover sx={{ '& > *': { borderBottom: 'unset' } }}>
-                                                        <TableCell>
-                                                            {tieneVuelos && (
-                                                                <IconButton size="small" onClick={() => toggleRowExpanded(pedidoId)}>
-                                                                    {isExpanded ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
-                                                                </IconButton>
-                                                            )}
-                                                        </TableCell>
-                                                        <TableCell>{idx + 1}</TableCell>
-                                                        <TableCell><Typography variant="body2" fontWeight="600">{pedido.idPedido || pedido.id || '-'}</Typography></TableCell>
-                                                        <TableCell>{pedido.origin || pedido.origen || '-'}</TableCell>
-                                                        <TableCell>{pedido.destination || pedido.destino || '-'}</TableCell>
-                                                        <TableCell>{getCantidadTotalPedido(pedido)}</TableCell>
-                                                        <TableCell><Chip size="small" label={vuelosDelPedido.length} variant="outlined" sx={{ minWidth: 32 }} /></TableCell>
-                                                        <TableCell>
-                                                            <Chip size="small" label={getStatusLabel(pedido.status || pedido.estado)} color={getStatusColor(pedido.status || pedido.estado)} icon={getStatusIcon(pedido.status || pedido.estado)} />
-                                                        </TableCell>
-                                                    </TableRow>
-                                                    {tieneVuelos && (
-                                                        <TableRow>
-                                                            <TableCell colSpan={8} sx={{ py: 0, px: 0 }}>
-                                                                <Collapse in={isExpanded} timeout="auto" unmountOnExit>
-                                                                    <Box sx={{ m: 2, ml: 7, bgcolor: '#f8f9fa', borderRadius: 1, p: 2, border: '1px solid #e9ecef' }}>
-                                                                        <Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 600, color: '#2c4a6b' }}>Itinerario de vuelos:</Typography>
-                                                                        <List dense sx={{ py: 0 }}>
-                                                                            {vuelosDelPedido.map((vuelo, vIdx) => (
-                                                                                <ListItem key={vuelo.id || vIdx} sx={{ py: 0.5, px: 0 }}>
-                                                                                    <ListItemIcon sx={{ minWidth: 32 }}>
-                                                                                        <Box sx={{ width: 22, height: 22, bgcolor: '#00d4ff', color: '#2c4a6b', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 600 }}>{vIdx + 1}</Box>
-                                                                                    </ListItemIcon>
-                                                                                    <ListItemText
-                                                                                        primary={
-                                                                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                                                                <Typography variant="body2" fontWeight="600">{vuelo.origin?.code || '-'}</Typography>
-                                                                                                <Typography variant="body2" color="text.secondary">→</Typography>
-                                                                                                <Typography variant="body2" fontWeight="600">{vuelo.destination?.code || '-'}</Typography>
-                                                                                                <Typography variant="caption" sx={{ ml: 1, bgcolor: '#e3f2fd', px: 0.8, py: 0.2, borderRadius: 1, fontWeight: 600 }}>{getCantidadEnVuelo(vuelo, pedido)} productos</Typography>
-                                                                                            </Box>
-                                                                                        }
-                                                                                        secondary={<Typography variant="caption" color="text.secondary">Salida: {formatearFechaCorta(vuelo.fechaInicial || vuelo.departureTime)} | Llegada: {formatearFechaCorta(vuelo.fechaFinal || vuelo.arrivalTime)}</Typography>}
-                                                                                    />
-                                                                                    <Chip size="small" label={getStatusLabel(vuelo.status)} color={getStatusColor(vuelo.status)} sx={{ ml: 1 }} />
-                                                                                </ListItem>
-                                                                            ))}
-                                                                        </List>
-                                                                    </Box>
-                                                                </Collapse>
-                                                            </TableCell>
-                                                        </TableRow>
-                                                    )}
-                                                </React.Fragment>
-                                            );
-                                        })
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </TableContainer>
-                    )}
-
-                    {tabActual === 1 && (
-                        <TableContainer component={Paper} variant="outlined">
-                            <Table size="small" stickyHeader>
-                                <TableHead>
-                                    <TableRow sx={{ '& th': { bgcolor: '#2c4a6b', color: 'white', fontWeight: 600, fontSize: 11 } }}>
-                                        <TableCell>N°</TableCell>
-                                        <TableCell>ID Vuelo</TableCell>
-                                        <TableCell>Origen</TableCell>
-                                        <TableCell>Destino</TableCell>
-                                        <TableCell>Salida</TableCell>
-                                        <TableCell>Llegada</TableCell>
-                                        <TableCell>Estado</TableCell>
-                                    </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                    {vuelos.length === 0 ? (
-                                        <TableRow><TableCell colSpan={7} align="center"><Typography color="text.secondary" sx={{ py: 4 }}>No hay vuelos registrados</Typography></TableCell></TableRow>
-                                    ) : (
-                                        vuelos.map((vuelo, idx) => (
-                                            <TableRow key={vuelo.id || idx} hover>
-                                                <TableCell>{idx + 1}</TableCell>
-                                                <TableCell><Typography variant="body2" fontWeight="600">{vuelo.id || '-'}</Typography></TableCell>
-                                                <TableCell>{vuelo.origin?.code || '-'}</TableCell>
-                                                <TableCell>{vuelo.destination?.code || '-'}</TableCell>
-                                                <TableCell><Typography variant="caption">{formatearFechaCorta(vuelo.fechaInicial || vuelo.departureTime)}</Typography></TableCell>
-                                                <TableCell><Typography variant="caption">{formatearFechaCorta(vuelo.fechaFinal || vuelo.arrivalTime)}</Typography></TableCell>
-                                                <TableCell><Chip size="small" label={getStatusLabel(vuelo.status)} color={getStatusColor(vuelo.status)} /></TableCell>
-                                            </TableRow>
-                                        ))
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </TableContainer>
-                    )}
                 </Box>
             </DialogContent>
 

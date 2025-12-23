@@ -32,6 +32,11 @@ const DIAS_SIMULACION = 4;
 const DESIRED_TIME_SCALE = 300;
 const TIEMPO_RECOGIDA_MS = 2 * 60 * 60 * 1000;
 
+// ==================== CONSTANTES PARA SISTEMA DE ALERTAS DE COLAPSO ====================
+const LIMITE_NACIONAL_DIAS = 2;       // 2 días para entregas nacionales
+const LIMITE_INTERNACIONAL_DIAS = 3; // 3 días para entregas internacionales
+const UMBRAL_SATURACION_AEROPUERTO = 90; // 90% de saturación = alerta
+
 /* Reparar iconos por defecto de Leaflet */
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -1033,6 +1038,11 @@ const SimuladorDiario = () => {
 	const [fechaFinSimulacion, setFechaFinSimulacion] = useState('');
 	const [fechaInicioReal, setFechaInicioReal] = useState(''); // Fecha real de inicio con hora correcta
 	
+	// ==================== SISTEMA DE ALERTAS DE COLAPSO LOGÍSTICO ====================
+	const [alertasColapso, setAlertasColapso] = useState([]);
+	const [mostrarPanelAlertas, setMostrarPanelAlertas] = useState(false);
+	const alertasVistaRef = useRef(new Set()); // Para evitar alertas duplicadas
+	
 	// Estado para pestañas internas del panel de sede
 	const [selectedAirportInnerTab, setSelectedAirportInnerTab] = useState(0);
 
@@ -1165,6 +1175,100 @@ const SimuladorDiario = () => {
 			segundos: Math.floor((tiempoRealMs % 60000) / 1000)
 		});
 	}, [tiempoRealMs]);
+
+	/* ==================== DETECTOR DE ALERTAS DE COLAPSO LOGÍSTICO ==================== */
+	useEffect(() => {
+		const nuevasAlertas = [];
+		const ahora = new Date();
+		
+		// 1. DETECTAR PEDIDOS TARDÍOS (slackMinutes negativo o límite excedido)
+		// Verificar en pedidosPlanificados si hay pedidos que llegaron tarde
+		pedidosPlanificados.forEach(pedido => {
+			const alertaKey = `pedido-tardio-${pedido.id || pedido.codigo}`;
+			
+			// Si el pedido tiene slackMinutes negativo, llegó tarde
+			if (pedido.slackMinutes !== undefined && pedido.slackMinutes < 0) {
+				if (!alertasVistaRef.current.has(alertaKey)) {
+					alertasVistaRef.current.add(alertaKey);
+					const minutosRetraso = Math.abs(pedido.slackMinutes);
+					const horasRetraso = Math.floor(minutosRetraso / 60);
+					const diasRetraso = Math.floor(minutosRetraso / 1440);
+					
+					nuevasAlertas.push({
+						id: alertaKey,
+						tipo: 'PEDIDO_TARDIO',
+						severidad: diasRetraso >= 1 ? 'CRITICA' : 'ALTA',
+						mensaje: `Pedido ${pedido.id || pedido.codigo} llegó ${diasRetraso > 0 ? `${diasRetraso}d ` : ''}${horasRetraso % 24}h tarde`,
+						detalles: {
+							pedidoId: pedido.id || pedido.codigo,
+							origen: pedido.origen || pedido.origenCiudad,
+							destino: pedido.destino || pedido.destinoCiudad,
+							retrasoMinutos: minutosRetraso
+						},
+						timestamp: ahora.toISOString()
+					});
+				}
+			}
+		});
+		
+		// 2. DETECTAR SATURACIÓN DE AEROPUERTOS (>90% de capacidad)
+		airports.forEach(airport => {
+			if (airport.capacity === 'ILIMITADO') return; // Sedes no tienen límite
+			
+			const capacidad = typeof airport.capacity === 'number' ? airport.capacity : parseInt(airport.capacity) || 0;
+			const paquetes = airport.packages || 0;
+			const saturacion = capacidad > 0 ? (paquetes / capacidad) * 100 : 0;
+			
+			if (saturacion >= UMBRAL_SATURACION_AEROPUERTO) {
+				const alertaKey = `saturacion-${airport.code}-${Math.floor(saturacion / 5) * 5}`; // Agrupa por rangos de 5%
+				
+				if (!alertasVistaRef.current.has(alertaKey)) {
+					alertasVistaRef.current.add(alertaKey);
+					nuevasAlertas.push({
+						id: alertaKey,
+						tipo: 'AEROPUERTO_SATURADO',
+						severidad: saturacion >= 100 ? 'CRITICA' : 'ALTA',
+						mensaje: `${airport.name} saturado al ${saturacion.toFixed(1)}%`,
+						detalles: {
+							aeropuerto: airport.code,
+							nombre: airport.name,
+							paquetes: paquetes,
+							capacidad: capacidad,
+							saturacion: saturacion
+						},
+						timestamp: ahora.toISOString()
+					});
+				}
+			}
+		});
+		
+		// 3. DETECTAR COLAPSO DEL SISTEMA (más de 5 alertas críticas activas)
+		const alertasCriticas = [...alertasColapso, ...nuevasAlertas].filter(a => a.severidad === 'CRITICA');
+		if (alertasCriticas.length >= 5) {
+			const alertaKey = `colapso-sistema-${Math.floor(Date.now() / 60000)}`; // Una por minuto máximo
+			if (!alertasVistaRef.current.has(alertaKey)) {
+				alertasVistaRef.current.add(alertaKey);
+				nuevasAlertas.push({
+					id: alertaKey,
+					tipo: 'COLAPSO_SISTEMA',
+					severidad: 'CRITICA',
+					mensaje: `⚠️ COLAPSO LOGÍSTICO: ${alertasCriticas.length} problemas críticos activos`,
+					detalles: {
+						alertasCriticas: alertasCriticas.length,
+						aeropuertosSaturados: alertasCriticas.filter(a => a.tipo === 'AEROPUERTO_SATURADO').length,
+						pedidosTardios: alertasCriticas.filter(a => a.tipo === 'PEDIDO_TARDIO').length
+					},
+					timestamp: ahora.toISOString()
+				});
+			}
+		}
+		
+		// Agregar nuevas alertas al estado (máximo 50 alertas, las más recientes primero)
+		if (nuevasAlertas.length > 0) {
+			setAlertasColapso(prev => [...nuevasAlertas, ...prev].slice(0, 50));
+			console.log('🚨 Nuevas alertas de colapso:', nuevasAlertas);
+		}
+	}, [pedidosPlanificados, airports, alertasColapso]);
 
 	/* ==================== Cargar aeropuertos desde API al montar ==================== */
 	useEffect(() => {
@@ -3861,7 +3965,7 @@ const SimuladorDiario = () => {
 						}}>
 					</div>
 					<div className="sidebar-header">
-						<h2>Operaciones Diarias</h2>
+						<h2>Simulación de Colapso</h2>
 					</div>
 					<div className="sidebar-content" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', gap: '4px' }}>
 						{/* Material-UI Tabs */}
@@ -4787,7 +4891,7 @@ const SimuladorDiario = () => {
 							{/* Botón de Metricas */}
 							<MetricsButton onClick={handleMetricsButtonClick} onMount={handleMetricButtonMount}/>
 							{/* Botón de leyenda flotante */}
-							<LegendButton onClick={handleToggleLegend} />
+							<LegendButton onClick={handleToggleLegend} /> 
 							
 							{/* 📊 Botón de Reporte (visible cuando hay datos o simulación completada) */}
 							{(estadoSimulacionStomp === 'completed' || vuelosAcumulados.length > 0) && (
@@ -4819,7 +4923,7 @@ const SimuladorDiario = () => {
 								</button>
 							)}
 							
-							{/* 🔄 Toggle para cambiar entre Modo Semanal y Modo Diario */}
+							{/* 🔄 Toggle para cambiar entre Modo Semanal y Modo Diario 
 							<div
 								style={{
 									position: 'absolute',
@@ -4881,7 +4985,7 @@ const SimuladorDiario = () => {
 								}}>
 									{modoPanel === 'diario' ? 'Diario' : 'Semanal'}
 								</span>
-							</div>
+							</div> */}
 							
 							{/* Botón de control - abre el panel según el modo */}
 							<button
@@ -4998,6 +5102,194 @@ const SimuladorDiario = () => {
 				pedidosOriginales={pedidosDiarios}
 				diasSimulacion={DIAS_SIMULACION}
 			/>
+			
+			{/* ==================== PANEL DE ALERTAS DE COLAPSO LOGÍSTICO ==================== */}
+			{/* Botón flotante para mostrar alertas */}
+			<button
+				onClick={() => setMostrarPanelAlertas(!mostrarPanelAlertas)}
+				style={{
+					position: 'fixed',
+					bottom: '20px',
+					left: '20px',
+					zIndex: 2000,
+					width: '50px',
+					height: '50px',
+					borderRadius: '50%',
+					border: 'none',
+					background: alertasColapso.some(a => a.severidad === 'CRITICA') ? '#dc3545' : 
+					            alertasColapso.length > 0 ? '#f59e0b' : '#28a745',
+					color: 'white',
+					boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+					cursor: 'pointer',
+					display: 'flex',
+					alignItems: 'center',
+					justifyContent: 'center',
+					fontSize: '20px',
+					transition: 'all 0.3s ease',
+					animation: alertasColapso.some(a => a.severidad === 'CRITICA') ? 'pulse 1s infinite' : 'none',
+				}}
+				title={`${alertasColapso.length} alertas de colapso`}
+			>
+				🚨
+				{alertasColapso.length > 0 && (
+					<span style={{
+						position: 'absolute',
+						top: '-5px',
+						right: '-5px',
+						background: '#1a237e',
+						color: 'white',
+						borderRadius: '50%',
+						width: '22px',
+						height: '22px',
+						fontSize: '11px',
+						fontWeight: 'bold',
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'center',
+					}}>
+						{alertasColapso.length}
+					</span>
+				)}
+			</button>
+			
+			{/* Panel expandible de alertas */}
+			{mostrarPanelAlertas && (
+				<div style={{
+					position: 'fixed',
+					bottom: '80px',
+					left: '20px',
+					zIndex: 1999,
+					width: '380px',
+					maxHeight: '400px',
+					background: 'white',
+					borderRadius: '12px',
+					boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+					overflow: 'hidden',
+					display: 'flex',
+					flexDirection: 'column',
+				}}>
+					{/* Header del panel */}
+					<div style={{
+						background: 'linear-gradient(135deg, #1a237e 0%, #3949ab 100%)',
+						padding: '12px 16px',
+						display: 'flex',
+						justifyContent: 'space-between',
+						alignItems: 'center',
+					}}>
+						<span style={{ color: 'white', fontWeight: '600', fontSize: '14px' }}>
+							🚨 Alertas de Colapso Logístico
+						</span>
+						<button
+							onClick={() => {
+								setAlertasColapso([]);
+								alertasVistaRef.current.clear();
+							}}
+							style={{
+								background: 'rgba(255,255,255,0.2)',
+								border: 'none',
+								color: 'white',
+								padding: '4px 8px',
+								borderRadius: '4px',
+								fontSize: '11px',
+								cursor: 'pointer',
+							}}
+						>
+							Limpiar
+						</button>
+					</div>
+					
+					{/* Lista de alertas */}
+					<div style={{
+						flex: 1,
+						overflowY: 'auto',
+						padding: '8px',
+					}}>
+						{alertasColapso.length === 0 ? (
+							<div style={{
+								textAlign: 'center',
+								padding: '24px',
+								color: '#6b7280',
+							}}>
+								<div style={{ fontSize: '32px', marginBottom: '8px' }}>✅</div>
+								<div>Sin alertas de colapso</div>
+								<div style={{ fontSize: '12px', marginTop: '4px' }}>El sistema opera normalmente</div>
+							</div>
+						) : (
+							alertasColapso.map((alerta, idx) => (
+								<div
+									key={alerta.id || idx}
+									style={{
+										padding: '10px 12px',
+										marginBottom: '8px',
+										borderRadius: '8px',
+										background: alerta.severidad === 'CRITICA' ? '#fef2f2' :
+										            alerta.severidad === 'ALTA' ? '#fffbeb' : '#f0fdf4',
+										borderLeft: `4px solid ${
+											alerta.severidad === 'CRITICA' ? '#dc3545' :
+											alerta.severidad === 'ALTA' ? '#f59e0b' : '#28a745'
+										}`,
+									}}
+								>
+									<div style={{
+										display: 'flex',
+										justifyContent: 'space-between',
+										alignItems: 'flex-start',
+									}}>
+										<span style={{
+											fontSize: '13px',
+											fontWeight: '600',
+											color: alerta.severidad === 'CRITICA' ? '#991b1b' :
+											       alerta.severidad === 'ALTA' ? '#92400e' : '#166534',
+										}}>
+											{alerta.tipo === 'PEDIDO_TARDIO' && '📦'}
+											{alerta.tipo === 'AEROPUERTO_SATURADO' && '🏢'}
+											{alerta.tipo === 'COLAPSO_SISTEMA' && '⚠️'}
+											{' '}{alerta.mensaje}
+										</span>
+										<span style={{
+											fontSize: '10px',
+											color: '#9ca3af',
+											whiteSpace: 'nowrap',
+											marginLeft: '8px',
+										}}>
+											{new Date(alerta.timestamp).toLocaleTimeString()}
+										</span>
+									</div>
+									{alerta.detalles && (
+										<div style={{
+											fontSize: '11px',
+											color: '#6b7280',
+											marginTop: '4px',
+										}}>
+											{alerta.tipo === 'PEDIDO_TARDIO' && (
+												<span>Ruta: {alerta.detalles.origen} → {alerta.detalles.destino}</span>
+											)}
+											{alerta.tipo === 'AEROPUERTO_SATURADO' && (
+												<span>{alerta.detalles.paquetes}/{alerta.detalles.capacidad} paquetes</span>
+											)}
+											{alerta.tipo === 'COLAPSO_SISTEMA' && (
+												<span>
+													{alerta.detalles.aeropuertosSaturados} aeropuertos saturados, 
+													{' '}{alerta.detalles.pedidosTardios} pedidos tardíos
+												</span>
+											)}
+										</div>
+									)}
+								</div>
+							))
+						)}
+					</div>
+				</div>
+			)}
+			
+			{/* Estilos de animación para alertas críticas */}
+			<style>{`
+				@keyframes pulse {
+					0% { transform: scale(1); box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4); }
+					50% { transform: scale(1.1); box-shadow: 0 6px 20px rgba(220, 53, 69, 0.6); }
+					100% { transform: scale(1); box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4); }
+				}
+			`}</style>
 		</div>
 	);
 };
